@@ -1,0 +1,30 @@
+{
+  "expo": {
+    "name": "ISUMS",
+    "slug": "ISUMS",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/iconRetanlHouse.png",
+    "userInterfaceStyle": "light",
+    "newArchEnabled": true,
+    "splash": {
+      "image": "./assets/iconRetanlHouse.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#ffffff"
+    },
+    "ios": {
+      "supportsTablet": true
+    },
+    "android": {
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/iconRetanlHouse.png",
+        "backgroundColor": "#ffffff"
+      },
+      "edgeToEdgeEnabled": true,
+      "predictiveBackGestureEnabled": false
+    },
+    "web": {
+      "favicon": "./assets/iconRetanlHouse.png"
+    }
+  }
+}
