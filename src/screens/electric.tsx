@@ -1,10 +1,17 @@
-import { View, Text } from "react-native"
+import { View, Text, StyleSheet } from "react-native";
 
-const Electric = () => {
-    return (
-        <View>
-            <Text>Electric</Text>
-        </View>
-    )
-}
+const Electric = () => (
+  <View style={styles.screen}>
+    <Text>Electric</Text>
+  </View>
+);
+
+const styles = StyleSheet.create({
+  screen: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+});
+
 export default Electric;
