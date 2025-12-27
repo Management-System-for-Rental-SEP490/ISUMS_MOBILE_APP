@@ -3,14 +3,14 @@ import { useNavigation } from "@react-navigation/native";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
 
 import Icons from "../theme/icon";
-import homeStyles from "../styles/homeScreen/homeStyles";
 import { RootStackParamList } from "../types";
+import footerStyles from "../styles/footerStyles";
 
 const Footer = () => {
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
 
   return (
-    <View style={homeStyles.footer}>
+    <View style={footerStyles.footer}>
       <TouchableOpacity onPress={() => navigation.navigate("Home")}>
         <Icons.home size={26} color="#1f2937" />
       </TouchableOpacity>
