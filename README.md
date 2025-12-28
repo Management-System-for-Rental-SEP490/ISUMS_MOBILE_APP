@@ -29,25 +29,28 @@ ISUMS là ứng dụng mobile được xây dựng bằng React Native và Expo 
 
 ```
 ISUMS/
-├── src/                    # Thư mục chứa code chính
-│   ├── screens/           # Các màn hình (Home, Profile, Login...)
-│   ├── components/        # Các component tái sử dụng (Button, Card...)
-│   ├── navigation/         # Cấu hình điều hướng (Stack, Tab Navigator...)
-│   ├── services/          # Code gọi API (React Query hooks)
-│   ├── stores/             # Zustand stores (quản lý state)
-│   ├── hooks/              # Custom hooks (dùng React Query ở đây)
-│   ├── types/              # Định nghĩa TypeScript types
-│   └── utils/              # Các hàm tiện ích (formatDate, validation...)
-├── assets/                 # Hình ảnh, icons, fonts...
-│   ├── icon.png           # Icon chính của app
-│   ├── iconRetanlHouse.png # Icon app (custom)
-│   ├── splash-icon.png    # Splash screen
-│   └── ...
-├── App.tsx                 # Component gốc của ứng dụng
-├── index.ts                # Entry point
-├── app.json                # Cấu hình Expo
-├── package.json            # Dependencies và scripts
-└── tsconfig.json           # Cấu hình TypeScript
+├── src/
+│   ├── screens/             # Các màn hình (Login, Home, User, Water, Electric...)
+│   ├── components/          # Component tái sử dụng (footer, icon,...)
+│   ├── navigation/           # Cấu hình stack navigator
+│   ├── services/            # Các module gọi API/logic mock (authData, index)
+│   ├── stores/               # Zustand store (sẽ dùng sau)
+│   ├── hooks/                # Custom hooks (sẽ dùng React Query)
+│   ├── styles/               # Style riêng cho từng màn hình
+│   ├── theme/                # Icon/font/theme helper
+│   ├── types/                # Định nghĩa TypeScript dùng chung
+│   └── utils/                # Hàm tiện ích (formatDate, validation...)
+├── assets/                   # Hình ảnh, icon, splash...
+│   ├── favicon.png
+│   ├── icon.png
+│   ├── iconRetanlHouse.png
+│   ├── splash-icon.png
+│   └── adaptive-icon.png
+├── App.tsx                   # Component gốc của ứng dụng
+├── index.ts                  # Entry point
+├── app.json                  # Cấu hình Expo
+├── package.json              # Dependencies và scripts
+└── tsconfig.json             # Cấu hình TypeScript
 ```
 
 ## 🛠️ Cài đặt và chạy
