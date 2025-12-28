@@ -2,10 +2,11 @@ import FontAwesome from '@expo/vector-icons/FontAwesome';
 import AntDesign from '@expo/vector-icons/AntDesign';
 import FontAwesome5 from '@expo/vector-icons/FontAwesome5';
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
+import Entypo from '@expo/vector-icons/Entypo';
 import { IconProps } from '../types';
 const Icons = {
   home: ({ size = 24, color = 'black' }: IconProps = {}) => (
-    <AntDesign name="home" size={size} color={color} />
+    <Entypo name="home" size={size} color={color} />
   ),
   user: ({ size = 24, color = 'black' }: IconProps = {}) => (
     <FontAwesome name="user" size={size} color={color} />
