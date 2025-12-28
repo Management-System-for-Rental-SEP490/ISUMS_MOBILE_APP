@@ -1,20 +1,16 @@
 // Welcome to screens
 
-import { Text, View, StyleSheet } from "react-native";
-
+import { Text, View, StyleSheet, ImageBackground } from "react-native";
+import { homeStyles } from "../styles/homeScreen/homeStyles";
 const Home = () => (
-  <View style={styles.screen}>
-    <Text>Home</Text>
-  </View>
+  
+    <View style={homeStyles.container}>
+      <Text>Home</Text>
+    </View>
+  
 );
 
-const styles = StyleSheet.create({
-  screen: {
-    flex: 1,
-    justifyContent: "center",
-    alignItems: "center",
-  },
-});
+
 
 export default Home;
 

@@ -1,2 +1,2 @@
-// Welcome to services
+export * from "./authData";
 

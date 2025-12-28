@@ -1,5 +1,6 @@
 import { View, StyleSheet } from "react-native";
 import { NavigationContainer } from "@react-navigation/native";
+import Login from "../screens/login";
 import Home from "../screens/home";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import User from "../screens/user";
@@ -15,7 +16,8 @@ const Navigation = () => {
     <NavigationContainer>
       <View style={styles.layout}>
         <View style={styles.screenWrapper}>
-          <Stack.Navigator screenOptions={{ headerShown: false }}>
+          <Stack.Navigator initialRouteName="Login" screenOptions={{ headerShown: false }}>
+            <Stack.Screen name="Login" component={Login} />
             <Stack.Screen name="Home" component={Home} />
             <Stack.Screen name="User" component={User} />
             <Stack.Screen name="Electric" component={Electric} />
