@@ -1,13 +1,28 @@
 import { useState } from "react";
 import { View, Text, TextInput, TouchableOpacity, Alert, ImageBackground } from "react-native";
+import { useNavigation } from "@react-navigation/native";
+import { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import loginStyles from "../styles/authenticationScreen/loginStyles";
+import { RootStackParamList } from "../types";
+import { validateCredentials } from "../services";
 
+
+
+
+type LoginNavigationProp = NativeStackNavigationProp<RootStackParamList, "Login">;
+                            // kiểu dùng để định hình các prop điều hướng cho màn hình stack
 const Login = () => {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
+  const navigation = useNavigation<LoginNavigationProp>();
+
 
   const handleLogin = () => {
-    Alert.alert("Đăng nhập", `Tên: ${username || "(chưa nhập)"}`);
+    if (validateCredentials(username.trim(), password)) {
+      navigation.replace("Home", { username: username.trim() || "này là fall back chứ ko phải dữ liệu" });
+    } else {
+      Alert.alert("Lỗi đăng nhập", "Tên hoặc mật khẩu không đúng.");
+    }
   };
 
   // resizeMode="cover" nghĩa là hình nền sẽ được phóng to hoặc thu nhỏ sao cho toàn bộ background được bao phủ bởi ảnh, có thể sẽ bị cắt bớt ở hai cạnh nếu tỉ lệ ảnh không khớp với màn hình.
