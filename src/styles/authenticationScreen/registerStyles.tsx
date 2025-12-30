@@ -1,7 +1,6 @@
 import { StyleSheet } from "react-native";
 
-
-const loginStyles = StyleSheet.create({
+const registerStyles = StyleSheet.create({
     background: {
         flex: 1,
         width: "100%",
@@ -15,17 +14,17 @@ const loginStyles = StyleSheet.create({
         backgroundColor: "rgba(15, 23, 42, 0.35)",
     },
     form: {
-        width: "100%",              // Chiều rộng tối đa (full width container)
-        maxWidth: 420,              // Không vượt quá 420px (trên các thiết bị rộng)
-        backgroundColor: "#ffffff", // Nền trắng cho form
-        borderRadius: 20,           // Bo góc cho form mềm mại
-        padding: 24,                // Padding bên trong form (giãn cách nội dung với viền)
-        shadowColor: "#000",        // Màu bóng đổ (shadow) là đen
-        shadowOffset: { width: 0, height: 4 }, // Độ lệch của bóng đổ: ngang 0, dọc 4px
-        shadowOpacity: 0.1,         // Độ mờ của bóng đổ 10%
-        shadowRadius: 10,           // Độ “mờ loang” của bóng đổ
-        elevation: 6,               // "elevation" là thuộc tính để tạo hiệu ứng bóng đổ (shadow) và tạo cảm giác độ nổi cho thành phần trên thiết bị Android.
-                     
+        width: "100%",
+        maxWidth: 420,
+        backgroundColor: "#ffffff",
+        borderRadius: 20,
+        padding: 24,
+        shadowColor: "#000",
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.1,
+        shadowRadius: 10,
+        elevation: 6,
+        marginBottom: 100,
     },
     title: {
         fontSize: 24,
@@ -64,8 +63,7 @@ const loginStyles = StyleSheet.create({
     },
     linkRow: {
         marginTop: 12,
-        flexDirection: "row",
-        justifyContent: "space-between",
+        alignItems: "center",
     },
     linkText: {
         color: "#2563eb",
@@ -73,4 +71,4 @@ const loginStyles = StyleSheet.create({
     },
 });
 
-export default loginStyles;
+export default registerStyles;

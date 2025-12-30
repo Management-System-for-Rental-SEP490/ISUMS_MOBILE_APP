@@ -9,6 +9,8 @@ import Electric from "../screens/electric";
 import Water from "../screens/water";
 import { RootStackParamList } from "../types";
 import Footer from "../components/footer";
+import AuthRegister from "../screens/register";
+import AuthForgotPassword from "../screens/forgotPassword";
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
 
@@ -17,7 +19,7 @@ const Stack = createNativeStackNavigator<RootStackParamList>();
 
 const Navigation = () => {
   //tạo state lưu giá trị màn hình hiện tại
-  const [currentRoute, setCurrentRoute] = useState("Login");
+  const [currentRoute, setCurrentRoute] = useState("AuthLogin");
 
   // Đúng rồi, bạn hiểu hoàn toàn chính xác:
   // - Tham số 'state' trong handleStateChange được React Navigation truyền vào mỗi khi có sự thay đổi màn hình (navigation state changes).
@@ -46,7 +48,7 @@ const Navigation = () => {
     //      + state.index: chỉ số màn hình hiện tại (focused/active screen).
     //      + state.routes[state.index]: lấy ra route của màn hình hiện tại.
     //      + ...?.name: lấy thuộc tính 'name' để biết đang ở màn hình nào.
-    const nextRoute = state?.routes[state.index]?.name ?? "Login";
+    const nextRoute = state?.routes[state.index]?.name ?? "AuthLogin";
     setCurrentRoute(nextRoute);
   };
 
@@ -54,16 +56,17 @@ const Navigation = () => {
     <NavigationContainer onStateChange={handleStateChange}>
       <View style={styles.layout}>
         <View style={styles.screenWrapper}>
-          <Stack.Navigator initialRouteName="Login" screenOptions={{ headerShown: false }}>
-            <Stack.Screen name="Login" component={Login} />
+          <Stack.Navigator initialRouteName="AuthLogin" screenOptions={{ headerShown: false }}>
+            <Stack.Screen name="AuthLogin" component={Login} />
             <Stack.Screen name="Home" component={Home} />
             <Stack.Screen name="User" component={User} />
             <Stack.Screen name="Electric" component={Electric} />
             <Stack.Screen name="Water" component={Water} />
+            <Stack.Screen name="AuthRegister" component={AuthRegister} />
+            <Stack.Screen name="AuthForgotPassword" component={AuthForgotPassword} />
           </Stack.Navigator>
         </View>
-        
-        {currentRoute !== "Login" && <Footer />}
+        {!currentRoute.includes("Auth") && <Footer />} 
       </View>
     </NavigationContainer>
   );

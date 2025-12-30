@@ -1,5 +1,5 @@
 import { create } from "zustand";
-import { AuthState } from "../types";
+import { AuthState, ForgotPasswordState, RegisterState } from "../types";
 
 /*
 Giải thích logic, ý nghĩa từng syntax trong hàm useAuthStore và cơ chế zustand hoạt động (so với useState):
@@ -34,5 +34,18 @@ const useAuthStore = create<AuthState>((set) => ({
   login: (username: string) => set({ user: username, isLoggedIn: true }),
   logout: () => set({ user: null, isLoggedIn: false }),
 }));
+const useRegisterStore = create<RegisterState>((set) => ({
+  username: "",
+  email: "",
+  password: "",
+  setUsername: (username: string) => set({ username }),
+  setEmail: (email: string) => set({ email }),
+  setPassword: (password: string) => set({ password }),
+}));
+const useForgotPasswordStore = create<ForgotPasswordState>((set) => ({
+  email: "",
+  setEmail: (email: string) => set({ email }),
+  sendEmail: () => set({ email: "" }),
+}));
 
-export default useAuthStore;
+export { useAuthStore, useRegisterStore, useForgotPasswordStore};
