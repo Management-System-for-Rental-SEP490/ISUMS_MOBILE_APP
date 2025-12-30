@@ -17,6 +17,18 @@ const Login = () => {
   const [password, setPassword] = useState("");
   const navigation = useNavigation<LoginNavigationProp>();
 
+  /*
+    useAuthStore.getState().login(username.trim());
+
+    Giải thích:
+    - `useAuthStore` là custom hook/state store quản lý trạng thái đăng nhập bằng thư viện Zustand (đã khai báo ở file stores/useAuthStore.ts).
+    - `.getState()` là hàm Zustand cung cấp, trả về object state hiện tại của store (bao gồm các giá trị như user, isLoggedIn, cùng các hàm như login, logout).
+    - `.login(username.trim())` là gọi hàm action "login" được định nghĩa trong store, truyền vào username đã loại bỏ khoảng trắng đầu cuối (dùng trim()).
+    - Khi gọi như vậy, state toàn cục lưu trong Zustand sẽ cập nhật: user = username.trim(), isLoggedIn = true.
+    - Nhờ vậy, bất kỳ component nào khác dùng useAuthStore cũng sẽ biết được trạng thái đăng nhập thay đổi.
+
+    => Dòng này thực hiện logic cập nhật trạng thái login toàn app một cách nhất quán và tức thì nhờ Zustand.
+  */
 
   const handleLogin = () => {
     if (validateCredentials(username.trim(), password)) {

@@ -10,6 +10,8 @@ export type IconProps = {
   size?: number;
   color?: string;
 };
+
+
 export type AuthState = {
   user: string | null;
   isLoggedIn: boolean;
