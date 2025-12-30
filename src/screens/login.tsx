@@ -5,6 +5,7 @@ import { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import loginStyles from "../styles/authenticationScreen/loginStyles";
 import { RootStackParamList } from "../types";
 import { validateCredentials } from "../services";
+import useAuthStore from "../stores/useAuthStore";
 
 
 
@@ -19,7 +20,8 @@ const Login = () => {
 
   const handleLogin = () => {
     if (validateCredentials(username.trim(), password)) {
-      navigation.replace("Home", { username: username.trim() || "này là fall back chứ ko phải dữ liệu" });
+      useAuthStore.getState().login(username.trim());
+      navigation.replace("Home", { username: username.trim() });
     } else {
       Alert.alert("Lỗi đăng nhập", "Tên hoặc mật khẩu không đúng.");
     }
