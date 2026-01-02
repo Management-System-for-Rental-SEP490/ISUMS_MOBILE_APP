@@ -8,6 +8,9 @@ export type RootStackParamList = {
   AuthRegister: { username: string, email: string, password: string };
   AuthForgotPassword: { email: string };
 };
+// kiểu dữ liệu cho các route của footer
+export type FooterRoute = "Home" | "User" | "Electric" | "Water" | "Menu";
+
 export type IconProps = {
   size?: number;
   color?: string;

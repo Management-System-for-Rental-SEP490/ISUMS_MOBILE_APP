@@ -66,7 +66,7 @@ const Navigation = () => {
             <Stack.Screen name="AuthForgotPassword" component={AuthForgotPassword} />
           </Stack.Navigator>
         </View>
-        {!currentRoute.includes("Auth") && <Footer />} 
+        {!currentRoute.includes("Auth") && <Footer currentRoute={currentRoute} />} 
       </View>
     </NavigationContainer>
   );
