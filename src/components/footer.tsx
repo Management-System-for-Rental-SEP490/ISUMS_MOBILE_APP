@@ -6,10 +6,14 @@ import { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import Icons from "../theme/icon";
 import { FooterRoute, IconProps, RootStackParamList } from "../types";
 import footerStyles from "../styles/footerStyles";
+import MenuModal from "../screens/modal/menuModal";
+import { useMenuStore } from "../stores/useAuthStore";
+
 // component Footer nhận vào prop tên là currentRoute, kiểu dữ liệu là string hoặc undefined (string | undefined).
 const Footer = ({ currentRoute }: { currentRoute?: string }) => {
 //khai báo kiểu <NativeStackNavigationProp<RootStackParamList>> cho hook useNavigation để TypeScript hiểu navigation này đang dùng với cấu trúc các màn hình (route) của bạn.
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
+  const { open } = useMenuStore();
 
   // kiểu (props: IconProps) => React.ReactElement định nghĩa một hàm nhận vào props kiểu IconProps 
   // (ví dụ: {size, color...}) và sẽ trả về một đối tượng React.ReactElement.
@@ -41,10 +45,6 @@ const Footer = ({ currentRoute }: { currentRoute?: string }) => {
       name: "Water",
       icon: (props) => <Icons.water {...props} />,
     },
-    {
-      name: "Menu",
-      icon: (props) => <Icons.menu {...props} />,
-    },
   ];
 
 
@@ -61,9 +61,6 @@ const Footer = ({ currentRoute }: { currentRoute?: string }) => {
         break;
       case "Water":
         navigation.navigate("Water");
-        break;
-      case "Menu":
-        //navigation.navigate("Menu");
         break;
     }
   };
@@ -96,6 +93,12 @@ const Footer = ({ currentRoute }: { currentRoute?: string }) => {
           </TouchableOpacity>
         );
       })}
+      <TouchableOpacity style={footerStyles.iconWrapper} onPress={open}>
+        <View style={footerStyles.iconContainer}>
+          <Icons.menu size={26} color="#1f2937" />
+        </View>
+      </TouchableOpacity>
+      <MenuModal/>
     </View>
   );
 };

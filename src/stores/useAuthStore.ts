@@ -1,5 +1,5 @@
 import { create } from "zustand";
-import { AuthState, ForgotPasswordState, RegisterState } from "../types";
+import { AuthState, ForgotPasswordState, RegisterState, MenuModalState } from "../types";
 
 /*
 Giải thích logic, ý nghĩa từng syntax trong hàm useAuthStore và cơ chế zustand hoạt động (so với useState):
@@ -47,5 +47,9 @@ const useForgotPasswordStore = create<ForgotPasswordState>((set) => ({
   setEmail: (email: string) => set({ email }),
   sendEmail: () => set({ email: "" }),
 }));
-
-export { useAuthStore, useRegisterStore, useForgotPasswordStore};
+const useMenuStore = create<MenuModalState>((set) => ({
+  visible: false,
+  open: () => set({ visible: true }),
+  close: () => set({ visible: false }),
+}));
+export { useAuthStore, useRegisterStore, useForgotPasswordStore, useMenuStore};

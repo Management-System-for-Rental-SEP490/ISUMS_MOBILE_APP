@@ -35,6 +35,11 @@ export type ForgotPasswordState = {
   sendEmail: () => void;
 };
 
+export type MenuModalState = {
+  visible: boolean;
+  open: () => void;
+  close: () => void;
+};
 // quản lý thông tin người dùng trong màn hình profile
 export type UserState = {
   name: string;
