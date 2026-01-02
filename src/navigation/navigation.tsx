@@ -11,7 +11,7 @@ import { RootStackParamList } from "../types";
 import Footer from "../components/footer";
 import AuthRegister from "../screens/register";
 import AuthForgotPassword from "../screens/forgotPassword";
-
+import { SafeAreaView } from "react-native-safe-area-context";
 const Stack = createNativeStackNavigator<RootStackParamList>();
 
 
@@ -54,7 +54,7 @@ const Navigation = () => {
 
   return (               // là prop của NavigationContainer giúp thực thi tác vụ như chuyển màn hình              
     <NavigationContainer onStateChange={handleStateChange}>
-      <View style={styles.layout}>
+      <SafeAreaView style={styles.layout} edges={["top", "bottom"]}>
         <View style={styles.screenWrapper}>
           <Stack.Navigator initialRouteName="AuthLogin" screenOptions={{ headerShown: false }}>
             <Stack.Screen name="AuthLogin" component={Login} />
@@ -67,7 +67,7 @@ const Navigation = () => {
           </Stack.Navigator>
         </View>
         {!currentRoute.includes("Auth") && <Footer currentRoute={currentRoute} />} 
-      </View>
+      </SafeAreaView>
     </NavigationContainer>
   );
 };
