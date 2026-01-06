@@ -65,7 +65,7 @@ ISUMS/
 
 1. **Clone repository:**
    ```bash
-   git clone https://github.com/Anh-Khoa-fpt/ISUMS_APP.git
+   git clone https://github.com/Management-System-for-Rental-SEP490/ISUMS_MOBILE_APP.git
    cd ISUMS_APP/ISUMS
    ```
 
