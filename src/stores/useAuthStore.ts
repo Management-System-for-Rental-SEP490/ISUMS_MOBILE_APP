@@ -30,9 +30,26 @@ Tóm lại:
 
 const useAuthStore = create<AuthState>((set) => ({
   user: null,
+  role: null,
+  token: null,
+  refreshToken: null,
   isLoggedIn: false,
-  login: (username: string) => set({ user: username, isLoggedIn: true }),
-  logout: () => set({ user: null, isLoggedIn: false }),
+  login: (data) =>
+    set({
+      user: data.username,
+      role: data.role,
+      token: data.token,
+      refreshToken: data.refreshToken ?? null,
+      isLoggedIn: true,
+    }),
+  logout: () =>
+    set({
+      user: null,
+      role: null,
+      token: null,
+      refreshToken: null,
+      isLoggedIn: false,
+    }),
 }));
 const useRegisterStore = create<RegisterState>((set) => ({
   username: "",
@@ -47,6 +64,7 @@ const useForgotPasswordStore = create<ForgotPasswordState>((set) => ({
   setEmail: (email: string) => set({ email }),
   sendEmail: () => set({ email: "" }),
 }));
+// chưa sài
 const useMenuStore = create<MenuModalState>((set) => ({
   visible: false,
   open: () => set({ visible: true }),

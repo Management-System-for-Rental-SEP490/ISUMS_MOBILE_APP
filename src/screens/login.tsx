@@ -4,7 +4,7 @@ import { useNavigation } from "@react-navigation/native";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import loginStyles from "../styles/authenticationScreen/loginStyles";
 import { RootStackParamList } from "../types";
-import { validateCredentials } from "../services";
+import { mockLogin } from "../services";
 import { useAuthStore } from "../stores/useAuthStore";
 
 
@@ -45,12 +45,20 @@ const Login = () => {
     => Dòng này thực hiện logic cập nhật trạng thái login toàn app một cách nhất quán và tức thì nhờ Zustand.
   */
 
-  const handleLogin = () => {
-    if (validateCredentials(username.trim(), password)) {
-      useAuthStore.getState().login(username.trim());
-      navigation.replace("Home", { username: username.trim() });
-    } else {
-      Alert.alert("Lỗi đăng nhập", "Tên hoặc mật khẩu không đúng.");
+  const handleLogin = async () => {
+    const trimmedUsername = username.trim();
+
+    if (!trimmedUsername || !password) {
+      Alert.alert("Thiếu thông tin", "Vui lòng nhập đầy đủ tên đăng nhập và mật khẩu.");
+      return;
+    }
+
+    try {
+      const payload = await mockLogin(trimmedUsername, password);
+      useAuthStore.getState().login(payload);
+      navigation.replace("Main");
+    } catch (error) {
+      Alert.alert("Đăng nhập thất bại", error instanceof Error ? error.message : "Có lỗi xảy ra");
     }
   };
 

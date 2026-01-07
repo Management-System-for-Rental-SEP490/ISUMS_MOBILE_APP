@@ -3,6 +3,7 @@ import AntDesign from '@expo/vector-icons/AntDesign';
 import FontAwesome5 from '@expo/vector-icons/FontAwesome5';
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import Entypo from '@expo/vector-icons/Entypo';
+import FontAwesome6 from '@expo/vector-icons/FontAwesome6';
 import { IconProps } from '../types';
 const Icons = {
   home: ({ size = 24, color = 'black' }: IconProps = {}) => (
@@ -25,6 +26,9 @@ const Icons = {
   ),
   brain: ({ size = 24, color = 'black' }: IconProps = {}) => (
     <FontAwesome5 name="brain" size={size} color={color} />
+  ),
+  people: ({ size = 24, color = 'black' }: IconProps = {}) => (
+    <FontAwesome6 name="people-group" size={size} color={color} />
   ),
 };
 

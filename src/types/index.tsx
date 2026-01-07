@@ -1,24 +1,46 @@
 
-export type RootStackParamList = {
+export type AuthStackParamList = {
   AuthLogin: undefined;
-  Home: { username?: string };
-  User: undefined;
-  Electric: undefined;
-  Water: undefined;
-  AuthRegister: { username: string, email: string, password: string };
+  AuthRegister: { username: string; email: string; password: string };
   AuthForgotPassword: { email: string };
 };
-// kiểu dữ liệu cho các route của footer
-export type FooterRoute = "Home" | "User" | "Electric" | "Water" | "Menu";
+
+export type MainTabParamList = {
+  Dashboard: undefined;
+  ElectricUsage: undefined;
+  WaterUsage: undefined;
+  Billing: undefined;
+  Tenants: undefined;
+  Profile: undefined;
+};
+
+export type RootStackParamList = AuthStackParamList & {
+  Main: undefined;
+};
 
 export type IconProps = {
   size?: number;
   color?: string;
 };
+
+export type UserRole = "tenant" | "landlord" | "manager";
+
+export type AuthPayload = {
+  username: string;
+  role: UserRole;
+  token: string;
+  // refreshToken là một chuỗi (string) được sử dụng để lấy lại (làm mới) access token khi access token hết hạn. 
+  // Nó giúp người dùng không cần đăng nhập lại mỗi khi phiên làm việc (session) bị timeout.
+  refreshToken?: string;
+};
+
 export type AuthState = {
   user: string | null;
+  role: UserRole | null;
+  token: string | null;
+  refreshToken: string | null;
   isLoggedIn: boolean;
-  login: (username: string) => void;
+  login: (data: AuthPayload) => void;
   logout: () => void;
 };
 export type RegisterState = {
@@ -34,7 +56,7 @@ export type ForgotPasswordState = {
   setEmail: (email: string) => void;
   sendEmail: () => void;
 };
-
+// chưa sài
 export type MenuModalState = {
   visible: boolean;
   open: () => void;
