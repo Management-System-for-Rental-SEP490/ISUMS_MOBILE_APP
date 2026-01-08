@@ -23,7 +23,7 @@ export type IconProps = {
   color?: string;
 };
 
-export type UserRole = "tenant" | "landlord" | "manager";
+export type UserRole = "tenant" | "landlord" | "admin";
 
 export type AuthPayload = {
   username: string;

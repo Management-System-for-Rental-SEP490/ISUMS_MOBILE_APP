@@ -9,7 +9,7 @@ type MockUser = {
 const mockUsers: MockUser[] = [
   { username: "tenant", password: "tenant123", role: "tenant" },
   { username: "landlord", password: "landlord123", role: "landlord" },
-  { username: "manager", password: "manager123", role: "manager" },
+  { username: "admin", password: "admin123", role: "admin" },
 ];
 /*
 Dòng 15-17 trong file này:

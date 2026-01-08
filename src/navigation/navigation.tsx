@@ -6,7 +6,7 @@ import AuthRegister from "../screens/register";
 import Login from "../screens/login";
 import { useAuthStore } from "../stores/useAuthStore";
 import { RootStackParamList } from "../types";
-import { LandlordTabs, ManagerTabs, TenantTabs } from "../components/footer";
+import { LandlordTabs, AdminTabs, TenantTabs } from "../components/footer";
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
 
@@ -16,8 +16,8 @@ const RoleNavigator = () => {
   if (role === "landlord") {
     return <LandlordTabs />;
   }
-  if (role === "manager") {
-    return <ManagerTabs />;
+  if (role === "admin") {
+    return <AdminTabs />;
   }
 
   return <TenantTabs />;
