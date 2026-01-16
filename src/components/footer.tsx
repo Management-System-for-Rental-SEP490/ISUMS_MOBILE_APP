@@ -128,7 +128,16 @@ export const LandlordTabs = () => (
     <Tab.Screen name="Profile" component={User} options={{ title: "Hồ sơ" }} />
   </Tab.Navigator>
 );
-export const AdminTabs = () => (
+export const ManagerTabs = () => (
+  <Tab.Navigator screenOptions={tabScreenOptions}>
+    <Tab.Screen name="Dashboard" component={Home} options={{ title: "Dashboard" }} />
+    <Tab.Screen name="Billing" component={Billing} options={{ title: "Billing" }} />
+    <Tab.Screen name="Tenants" component={Tenants} options={{ title: "Cư dân" }} />
+    <Tab.Screen name="Profile" component={User} options={{ title: "Hồ sơ" }} />
+  </Tab.Navigator>
+);
+
+export const StaffTabs = () => (
   <Tab.Navigator screenOptions={tabScreenOptions}>
     <Tab.Screen name="Dashboard" component={Home} options={{ title: "Dashboard" }} />
     <Tab.Screen name="Billing" component={Billing} options={{ title: "Billing" }} />
