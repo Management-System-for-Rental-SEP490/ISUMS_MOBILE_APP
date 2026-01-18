@@ -1,4 +1,4 @@
-import { AuthPayload, UserRole } from "../types";
+import { AuthPayload, UserRole } from "../shared/types";
 
 type MockUser = {
   username: string;

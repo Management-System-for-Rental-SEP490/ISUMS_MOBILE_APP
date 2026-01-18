@@ -1,12 +1,12 @@
 import React from "react";
 import { NavigationContainer } from "@react-navigation/native";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
-import AuthForgotPassword from "../screens/forgotPassword";
-import AuthRegister from "../screens/register";
-import Login from "../screens/login";
-import { useAuthStore } from "../stores/useAuthStore";
-import { RootStackParamList } from "../types";
-import { LandlordTabs, ManagerTabs, TenantTabs, StaffTabs } from "../components/footer";
+import AuthForgotPassword from "../features/auth/screens/ForgotPasswordScreen";
+import AuthRegister from "../features/auth/screens/RegisterScreen";
+import Login from "../features/auth/screens/LoginScreen";
+import { useAuthStore } from "../store/useAuthStore";
+import { RootStackParamList } from "../shared/types";
+import { LandlordTabs, ManagerTabs, TenantTabs, StaffTabs } from "../shared/components/footerNavigator";
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
 
