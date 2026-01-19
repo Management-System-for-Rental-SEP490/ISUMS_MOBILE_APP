@@ -5,6 +5,8 @@ import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import Entypo from '@expo/vector-icons/Entypo';
 import FontAwesome6 from '@expo/vector-icons/FontAwesome6';
 import { IconProps } from '../types';
+import { LogoHomeIcon } from './LogoIcon';
+
 const Icons = {
   home: ({ size = 24, color = 'black' }: IconProps = {}) => (
     <Entypo name="home" size={size} color={color} />
@@ -30,6 +32,9 @@ const Icons = {
   people: ({ size = 24, color = 'black' }: IconProps = {}) => (
     <FontAwesome6 name="people-group" size={size} color={color} />
   ),
+  
+  logoHome: ({ size = 24 }: IconProps = {}) => <LogoHomeIcon width={size} height={size} />,
+  
 };
 
 export default Icons;

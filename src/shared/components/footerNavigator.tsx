@@ -32,7 +32,7 @@ export const Tab = createBottomTabNavigator<MainTabParamList>();
 
 
 export const tabIconMap: Record<keyof MainTabParamList, (props: IconProps) => React.ReactElement> = {
-  Dashboard: (props) => <Icons.home {...props} />, // {...props} là cách truyền các props (props là một object chứa các thuộc tính của component) cho component Icons.home.
+  Dashboard: (props) => <Icons.logoHome {...props} />, // {...props} là cách truyền các props (props là một object chứa các thuộc tính của component) cho component Icons.logoHome.
   ElectricUsage: (props) => <Icons.electric {...props} />,
   WaterUsage: (props) => <Icons.water {...props} />,
   Billing: (props) => <Icons.contract {...props} />,
@@ -52,11 +52,43 @@ export const tabIconMap: Record<keyof MainTabParamList, (props: IconProps) => Re
 // Vì vậy, mỗi lần bạn đổi tab hoặc thêm/bớt tab mới, chỉ cần update ở map icon (tabIconMap) hay cấu hình hàm này là đủ — toàn bộ thanh tab và nội dung sẽ tự động tuân theo cấu hình đó!
 /*
   Tóm lại:
-    - tabScreenOptions = function cấu hình option của từng tab
-    - route (truyền vào) => biết tab đó là gì
-    - Trả về: Các thuộc tính liên quan tới giao diện/thông tin từng tab
-    - Hệ thống navigation sử dụng output này để quyết định phải render cái gì trên thanh tab!
-*/
+    /**
+     * Hàm tabScreenOptions dùng để cấu hình tùy chọn (options) cho từng tab trong BottomTabNavigator.
+     *
+     * "Option của từng tab" nghĩa là bạn muốn mỗi tab sẽ có các thuộc tính hiển thị, icon, tiêu đề, màu sắc,... khác nhau.
+     * Hàm này sẽ được gọi cho từng tab, truyền vào thông tin về tab đó (route), rồi trả về các thuộc tính (options) mà bạn muốn cho tab đó.
+     * 
+     * Ví dụ dễ hiểu:
+     * - Nếu tab là "Dashboard" thì icon là hình ngôi nhà, khi active thì có màu đậm, khi inactive thì màu nhạt.
+     * - Nếu tab là "Billing" thì icon là hình hóa đơn, tiêu đề và màu sắc khác.
+     * - Bạn hoàn toàn có thể tuỳ biến style, background, hoặc hiển thị/ẩn header,... cho từng tab thông qua hàm này.
+     *
+     * Khi BottomTabNavigator render từng tab, nó sẽ gọi hàm này cho mỗi tab (với route tương ứng)
+     * => Hàm sẽ quyết định xem icon nào, màu nào, có hiện tiêu đề không,... hiển thị cho tab đó.
+     *
+     * Ví dụ đơn giản:
+     *   createBottomTabNavigator().screenOptions = tabScreenOptions
+     *   ==> Khi người dùng bấm sang "Dashboard", tabScreenOptions({route: {name:"Dashboard"}}) sẽ được gọi để lấy option của tab "Dashboard"
+     */
+    // - tabScreenOptions = function cấu hình option của từng tab
+    // - route (truyền vào) => biết tab đó là gì
+    // - Trả về: Các thuộc tính liên quan tới giao diện/thông tin từng tab
+    // - Hệ thống navigation sử dụng output này để quyết định phải render cái gì trên thanh tab!
+// Đúng rồi, "tab" ở đây chính là các nút/icon nằm trên thanh footer (BottomTab/TabBar) – mỗi tab là đại diện cho một màn hình trong ứng dụng (ví dụ Dashboard, Billing...).
+
+// Khi bạn đăng nhập với role "tenant", bạn sẽ thấy một tập các tab phù hợp với role đó. Các tab này được định nghĩa ở MainTabParamList (tùy từng role sẽ hiển thị các tab khác nhau nếu bạn cài đặt).
+
+// Hàm tabScreenOptions sẽ được gọi cho từng tab, để:
+//   - Gán icon phù hợp cho tab đó (dựa vào tên tab & tabIconMap)
+//   - Thiết lập thuộc tính liên quan tab đang được chọn: như icon highlight (màu active/inactive), header có hiển thị hay không (ở đây là headerShown: false để ẩn)
+//   - Bất cứ tuỳ chỉnh giao diện nào bạn muốn cho từng tab
+
+// Nghĩa là: Mỗi lần hệ thống render tab bar (footer), nó sẽ gọi tabScreenOptions cho từng tab (icon), xét xem tab nào đang active thì sẽ highlight icon đó, tab nào không active thì để màu nhạt, đồng thời cho phép bạn tuỳ chỉnh từng tab/từng icon theo ý muốn.
+
+// Ví dụ: Nếu bạn đang ở màn hình "Dashboard", icon "Dashboard" sẽ được tô màu active, các icon khác sẽ là màu inactive (tabBarActiveTintColor/tabBarInactiveTintColor). Header sẽ ẩn vì headerShown: false. Và bạn có thể custom thêm nếu muốn.
+
+// Tóm lại: Hiểu như bạn nói là đúng! Hàm tabScreenOptions sinh ra để tuỳ biến footer (tab bar) theo từng màn hình/tab hiện tại – đặc biệt hữu ích khi muốn thay đổi icon, màu, header hoặc các props khac cho từng role/user/tab khác nhau.
+
 
 // Giải thích TỪNG DÒNG, TỪNG CÂU LỆNH và TỪNG KÝ HIỆU
 export const tabScreenOptions = (
@@ -141,7 +173,6 @@ export const StaffTabs = () => (
   <Tab.Navigator screenOptions={tabScreenOptions}>
     <Tab.Screen name="Dashboard" component={HomeScreen} options={{ title: "Dashboard" }} />
     <Tab.Screen name="Billing" component={BillingScreen} options={{ title: "Billing" }} />
-    <Tab.Screen name="Tenants" component={TenantsScreen} options={{ title: "Cư dân" }} />
     <Tab.Screen name="Profile" component={UserProfileScreen} options={{ title: "Hồ sơ" }} />
   </Tab.Navigator>
 );

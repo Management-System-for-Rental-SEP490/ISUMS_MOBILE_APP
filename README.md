@@ -1,7 +1,7 @@
-# 🏠 ISUMS - Mobile Application
+﻿# 🏠 ISUMS - Mobile Application
 
 <div align="center">
-  <img src="./assets/iconRetanlHouse.png" alt="ISUMS Logo" width="200" height="200"/>
+  <img src="./assets/logob.png" alt="ISUMS Logo" width="200" height="200"/>
   
   **Capstone Project - Mobile Application**
   
@@ -130,7 +130,3 @@ ISUMS/
 This project is private and for educational purposes only.
 
 ---
-
-<div align="center">
-  Made with ❤️ using React Native & Expo
-</div>

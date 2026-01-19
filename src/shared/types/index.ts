@@ -22,6 +22,10 @@ export type IconProps = {
   size?: number;
   color?: string;
 };
+export type LogoProps = {
+  width?: number;
+  height?: number;
+};
 
 export type UserRole = "tenant" | "landlord" | "manager" | "staff";
 
