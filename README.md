@@ -100,7 +100,7 @@ ISUMS/
 ## 📱 Screenshots
 
 <div align="center">
-  <img src="./assets/iconRetanlHouse.png" alt="App Icon" width="150"/>
+  <img src="./assets/logob.png" alt="App Icon" width="150"/>
   <p><em>App Icon</em></p>
 </div>
 
