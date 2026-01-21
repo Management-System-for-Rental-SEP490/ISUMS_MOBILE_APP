@@ -12,10 +12,9 @@ import TenantsScreen from "../../features/house/screens/TenantsScreen";
 import UserProfileScreen from "../../features/house/screens/UserProfileScreen";
 import { iconStyles } from "../styles/iconStyles";
 import footerStyles from "../styles/footerStyles";
-
 export const Tab = createBottomTabNavigator<MainTabParamList>();
 
-const tabIconMap: Record<keyof MainTabParamList, (props: IconProps) => React.ReactElement> = {
+const tabIconMap: Record<keyof MainTabParamList, (props: IconProps) => React.ReactElement> = { // Record<K, V> là một loại (type) tiện ích trong TypeScript, đại diện cho một object với các key là kiểu K và value là kiểu V.
   Dashboard: (props) => <Icons.logoHome {...props} />,
   ElectricUsage: (props) => <Icons.electric {...props} />,
   WaterUsage: (props) => <Icons.water {...props} />,
@@ -68,7 +67,7 @@ const renderTabIcon =
             iconStyles.iconLabel,
             focused && iconStyles.iconLabelActive,
           ]}
-          numberOfLines={1}
+          numberOfLines={1} // giới hạn số dòng text hiển thị
         >
           {label}
         </Text>
@@ -90,8 +89,14 @@ const screenOptions = ({
   tabBarIcon: renderTabIcon(route.name),
 });
 
+
+
+
+
+
+
 export const TenantTabs = () => (
-  <Tab.Navigator screenOptions={screenOptions}> 
+  <Tab.Navigator screenOptions={screenOptions} initialRouteName="Dashboard">
     <Tab.Screen name="ElectricUsage" component={ElectricUsageScreen} />
     <Tab.Screen name="WaterUsage" component={WaterUsageScreen} />
     <Tab.Screen name="Dashboard" component={HomeScreen} />
@@ -101,7 +106,7 @@ export const TenantTabs = () => (
 );
 
 export const LandlordTabs = () => (
-  <Tab.Navigator screenOptions={screenOptions}>
+  <Tab.Navigator screenOptions={screenOptions} initialRouteName="Dashboard">
     <Tab.Screen name="Billing" component={BillingScreen} />
     <Tab.Screen name="Dashboard" component={HomeScreen} />
     <Tab.Screen name="Profile" component={UserProfileScreen} />
@@ -109,7 +114,7 @@ export const LandlordTabs = () => (
 );
 
 export const ManagerTabs = () => (
-  <Tab.Navigator screenOptions={screenOptions}>
+  <Tab.Navigator screenOptions={screenOptions} initialRouteName="Dashboard">
     <Tab.Screen name="ElectricUsage" component={ElectricUsageScreen} />
     <Tab.Screen name="Billing" component={BillingScreen} />
     <Tab.Screen name="Dashboard" component={HomeScreen} />
@@ -119,7 +124,7 @@ export const ManagerTabs = () => (
 );
 
 export const StaffTabs = () => (
-  <Tab.Navigator screenOptions={screenOptions}>
+  <Tab.Navigator screenOptions={screenOptions} initialRouteName="Dashboard">
     <Tab.Screen name="Dashboard" component={HomeScreen} />
     <Tab.Screen name="Billing" component={BillingScreen} />
     <Tab.Screen name="Profile" component={UserProfileScreen} />

@@ -23,7 +23,7 @@ export const iconStyles = StyleSheet.create({
     shadowOffset: { width: 0, height: 3 },
     shadowOpacity: 0.2,
     shadowRadius: 6,
-    elevation: 6,
+    elevation: 6, // shadow để icon active có hiệu ứng 3D
   },
   iconLabel: {
     marginTop: 4,
