@@ -1,3 +1,5 @@
+import React from "react";
+import { Text, View } from "react-native";
 import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
 import Icons from "../theme/icon";
 import { IconProps, MainTabParamList } from "../types";
@@ -8,6 +10,123 @@ import WaterUsageScreen from "../../features/consumption/screens/WaterUsageScree
 import BillingScreen from "../../features/billing/screens/BillingScreen";
 import TenantsScreen from "../../features/house/screens/TenantsScreen";
 import UserProfileScreen from "../../features/house/screens/UserProfileScreen";
+import { iconStyles } from "../styles/iconStyles";
+import footerStyles from "../styles/footerStyles";
+
+export const Tab = createBottomTabNavigator<MainTabParamList>();
+
+const tabIconMap: Record<keyof MainTabParamList, (props: IconProps) => React.ReactElement> = {
+  Dashboard: (props) => <Icons.logoHome {...props} />,
+  ElectricUsage: (props) => <Icons.electric {...props} />,
+  WaterUsage: (props) => <Icons.water {...props} />,
+  Billing: (props) => <Icons.contract {...props} />,
+  Tenants: (props) => <Icons.people {...props} />,
+  Profile: (props) => <Icons.user {...props} />,
+};
+
+const tabLabelMap: Record<keyof MainTabParamList, string> = {
+  Dashboard: "Dashboard",
+  ElectricUsage: "Điện",
+  WaterUsage: "Nước",
+  Billing: "Hóa đơn",
+  Tenants: "Cư dân",
+  Profile: "Hồ sơ",
+};
+
+const renderTabIcon =
+  (route: keyof MainTabParamList) =>
+  ({
+    color,
+    size,
+    focused,
+  }: {
+    color: string;
+    size: number;
+    focused: boolean;
+  }) => {
+    const icon = tabIconMap[route];
+    if (!icon) return null;
+    const iconSize = focused ? size + 6 : size;
+    const label = tabLabelMap[route] ?? route;
+    return (
+      <View
+        style={[
+          iconStyles.iconWrapper,
+          focused && iconStyles.iconWrapperActive,
+        ]}
+      >
+        <View
+          style={[
+            iconStyles.iconCircle,
+            focused && iconStyles.iconCircleActive,
+          ]}
+        >
+          {icon({ color, size: iconSize })}
+        </View>
+        <Text
+          style={[
+            iconStyles.iconLabel,
+            focused && iconStyles.iconLabelActive,
+          ]}
+          numberOfLines={1}
+        >
+          {label}
+        </Text>
+      </View>
+    );
+  };
+
+const screenOptions = ({
+  route,
+}: {
+  route: RouteProp<MainTabParamList, keyof MainTabParamList>;
+}) => ({
+  headerShown: false,
+  tabBarActiveTintColor: "#111827",
+  tabBarInactiveTintColor: "#9ca3af",
+  tabBarStyle: footerStyles.tabBar,
+  tabBarItemStyle: footerStyles.tabItem,
+  tabBarShowLabel: false,
+  tabBarIcon: renderTabIcon(route.name),
+});
+
+export const TenantTabs = () => (
+  <Tab.Navigator screenOptions={screenOptions}> 
+    <Tab.Screen name="ElectricUsage" component={ElectricUsageScreen} />
+    <Tab.Screen name="WaterUsage" component={WaterUsageScreen} />
+    <Tab.Screen name="Dashboard" component={HomeScreen} />
+    <Tab.Screen name="Profile" component={UserProfileScreen} />
+    <Tab.Screen name="Tenants" component={TenantsScreen} />
+  </Tab.Navigator>
+);
+
+export const LandlordTabs = () => (
+  <Tab.Navigator screenOptions={screenOptions}>
+    <Tab.Screen name="Billing" component={BillingScreen} />
+    <Tab.Screen name="Dashboard" component={HomeScreen} />
+    <Tab.Screen name="Profile" component={UserProfileScreen} />
+  </Tab.Navigator>
+);
+
+export const ManagerTabs = () => (
+  <Tab.Navigator screenOptions={screenOptions}>
+    <Tab.Screen name="ElectricUsage" component={ElectricUsageScreen} />
+    <Tab.Screen name="Billing" component={BillingScreen} />
+    <Tab.Screen name="Dashboard" component={HomeScreen} />
+    <Tab.Screen name="Tenants" component={TenantsScreen} />
+    <Tab.Screen name="Profile" component={UserProfileScreen} />
+  </Tab.Navigator>
+);
+
+export const StaffTabs = () => (
+  <Tab.Navigator screenOptions={screenOptions}>
+    <Tab.Screen name="Dashboard" component={HomeScreen} />
+    <Tab.Screen name="Billing" component={BillingScreen} />
+    <Tab.Screen name="Profile" component={UserProfileScreen} />
+  </Tab.Navigator>
+);
+
+
 // Tóm tắt ý nghĩa và chức năng:
 // createBottomTabNavigator cho phép bạn tạo ra một thanh điều hướng (bottom tab navigation) ở phía dưới màn hình ứng dụng.
 // Thư viện này hỗ trợ các chức năng như:
@@ -18,7 +137,6 @@ import UserProfileScreen from "../../features/house/screens/UserProfileScreen";
 // Tóm lại, nó giúp bạn xây dựng một giao diện có nhiều trang (screen) mà người dùng có thể di chuyển qua lại dễ dàng bằng các nút trên thanh tab ở bên dưới ứng dụng.
 
 
-export const Tab = createBottomTabNavigator<MainTabParamList>();
 // Giải thích: 
 // "Record<keyof MainTabParamList, (props: IconProps) => React.ReactElement>" nghĩa là object này có các key chính là tên các screen trong MainTabParamList.
 // Với mỗi key đó, value là một function nhận một tham số props có kiểu IconProps, và trả về một React element (chính là icon để hiển thị cho tab đó).
@@ -31,14 +149,9 @@ export const Tab = createBottomTabNavigator<MainTabParamList>();
 // Record<K, V> là một loại (type) tiện ích trong TypeScript, đại diện cho một object với các key là kiểu K và value là kiểu V.
 
 
-export const tabIconMap: Record<keyof MainTabParamList, (props: IconProps) => React.ReactElement> = {
-  Dashboard: (props) => <Icons.logoHome {...props} />, // {...props} là cách truyền các props (props là một object chứa các thuộc tính của component) cho component Icons.logoHome.
-  ElectricUsage: (props) => <Icons.electric {...props} />,
-  WaterUsage: (props) => <Icons.water {...props} />,
-  Billing: (props) => <Icons.contract {...props} />,
-  Tenants: (props) => <Icons.people {...props} />,
-  Profile: (props) => <Icons.user {...props} />,
-};
+
+  // {...props} là cách truyền các props (props là một object chứa các thuộc tính của component) cho component Icons.logoHome.
+
 
 // ĐÂY LÀ ĐỊNH NGHĨA MỘT HÀM. HÀM NÀY DÙNG LÀM GIÁ TRỊ (VALUE) CHO screenOptions CỦA createBottomTabNavigator.
 // LÝ DO HÀM NÀY PHẢI DÙNG ARROW FUNCTION: VÌ MỖI TAB SẼ GỌI HÀM NÀY VỚI route KHÁC NHAU (tức là truyền tham số khác nhau).
@@ -91,11 +204,11 @@ export const tabIconMap: Record<keyof MainTabParamList, (props: IconProps) => Re
 
 
 // Giải thích TỪNG DÒNG, TỪNG CÂU LỆNH và TỪNG KÝ HIỆU
-export const tabScreenOptions = (
-  {
+
+  
     // destructuring, lấy thuộc tính "route" từ object truyền vào hàm này
-    route, // "route" là thông tin về màn hình/tab hiện tại (do hệ thống truyền vào)
-  } : {
+     // "route" là thông tin về màn hình/tab hiện tại (do hệ thống truyền vào)
+  
     // Khai báo kiểu của tham số object này (TypeScript)
     // Cú pháp "route: RouteProp<MainTabParamList, keyof MainTabParamList>;" nghĩa là:
     // - route: là tên thuộc tính (property) trong object truyền vào.
@@ -104,76 +217,38 @@ export const tabScreenOptions = (
     // - Tham số đầu tiên "MainTabParamList" là type mô tả tất cả các route (screen/tab) và các tham số của chúng.
     // - Tham số thứ hai "keyof MainTabParamList" nghĩa là lấy tên (key) của tất cả các screen có trong MainTabParamList (ví dụ: "Dashboard", "ElectricUsage", ...)
     // => Kết quả: route là một biến mà TypeScript hiểu rằng nó sẽ chứa thông tin về một trong các màn hình có trong MainTabParamList.
-    route: RouteProp<MainTabParamList, keyof MainTabParamList>;
+   
     // Nghĩa là: route là 1 object chỉ lấy các tên (key) định nghĩa trong MainTabParamList mà thôi
-  }
-) => (
-  {
+
     // Ở đây dùng ngoặc tròn để hàm trả về trực tiếp 1 object mà không cần viết "return"
     // (Arrow function có thể trả về trực tiếp object như này, nếu bọc bằng dấu ngoặc tròn)
     
     // Không hiển thị header (tiêu đề trên cùng) cho từng tab
-    headerShown: false,
+ 
 
     // Khi tab được chọn, icon/text của tab sẽ có màu này
-    tabBarActiveTintColor: "#111827",
+
 
     // Khi tab không được chọn, icon/text của tab sẽ có màu này
-    tabBarInactiveTintColor: "#9ca3af",
+   
 
     // tabBarIcon là một function nhỏ dùng để custom icon cho từng tab ở dưới thanh tab bar
     // Hàm này do hệ thống gọi, và truyền vào object có 2 thuộc tính là color, size
-    tabBarIcon: (
-      { color, size } : { color: string; size: number }
+   
       // Tham số color là màu mà hệ thống muốn bạn dùng cho icon (phụ thuộc vào active/inactive)
       // Tham số size là kích cỡ icon (px)
-    ) => {
+      // Tham số focused cho biết tab này đang được chọn hay không
+    
       // lấy function tạo icon từ tabIconMap, dựa trên route.name (tên tab hiện tại)
-      const icon = tabIconMap[route.name];
-      // nếu tìm được icon thì truyền 2 props color, size để tạo ra icon đúng màu & cỡ
-      // nếu không tìm được thì trả về null (không hiển thị icon)
-      return icon ? icon({ color, size }) : null;
-    }
-  }
-);
+
 // Tóm lại: tabScreenOptions là 1 ARROW FUNCTION, mục đích trả về một object option cho từng tab dựa vào tên route
 
-export const TenantTabs = () => (
+
   // Tab.Navigator là một component được cung cấp bởi thư viện React Navigation (thường là @react-navigation/bottom-tabs hoặc @react-navigation/material-top-tabs).
   // Nó dùng để tạo ra thanh điều hướng tab (tab bar) ở phía dưới hoặc trên màn hình ứng dụng, giúp người dùng chuyển đổi giữa các màn hình (screen) chính.
   // Trong Tab.Navigator, bạn sẽ định nghĩa các Tab.Screen tương ứng với từng màn hình mà bạn muốn hiển thị trong tab bar.
   // Mỗi Tab.Screen sẽ đại diện cho một tab, với thuộc tính name (tên route) và component (component sẽ render khi tab này được chọn).
   // Props "screenOptions" dùng để cấu hình chung cho tất cả các tab (ví dụ: màu sắc, icon, ẩn hiện header,...).
   // Khi ứng dụng chạy, Tab.Navigator sẽ tự động tạo giao diện tab bar và xử lý chuyển đổi giữa các màn hình tương ứng khi người dùng chọn tab.
-  <Tab.Navigator screenOptions={tabScreenOptions}>
-    <Tab.Screen name="Dashboard" component={HomeScreen} options={{ title: "Dashboard" }} />
-    <Tab.Screen name="ElectricUsage" component={ElectricUsageScreen} options={{ title: "Tiêu thụ điện" }} />
-    <Tab.Screen name="WaterUsage" component={WaterUsageScreen} options={{ title: "Tiêu thụ nước" }} />
-    <Tab.Screen name="Profile" component={UserProfileScreen} options={{ title: "Hồ sơ" }} />
-  </Tab.Navigator>
-);
 
-export const LandlordTabs = () => (
-  <Tab.Navigator screenOptions={tabScreenOptions}>
-    <Tab.Screen name="Dashboard" component={HomeScreen} options={{ title: "Dashboard" }} />
-    <Tab.Screen name="Billing" component={BillingScreen} options={{ title: "Billing" }} />
-    <Tab.Screen name="Profile" component={UserProfileScreen} options={{ title: "Hồ sơ" }} />
-  </Tab.Navigator>
-);
-export const ManagerTabs = () => (
-  <Tab.Navigator screenOptions={tabScreenOptions}>
-    <Tab.Screen name="Dashboard" component={HomeScreen} options={{ title: "Dashboard" }} />
-    <Tab.Screen name="Billing" component={BillingScreen} options={{ title: "Billing" }} />
-    <Tab.Screen name="Tenants" component={TenantsScreen} options={{ title: "Cư dân" }} />
-    <Tab.Screen name="Profile" component={UserProfileScreen} options={{ title: "Hồ sơ" }} />
-  </Tab.Navigator>
-);
-
-export const StaffTabs = () => (
-  <Tab.Navigator screenOptions={tabScreenOptions}>
-    <Tab.Screen name="Dashboard" component={HomeScreen} options={{ title: "Dashboard" }} />
-    <Tab.Screen name="Billing" component={BillingScreen} options={{ title: "Billing" }} />
-    <Tab.Screen name="Profile" component={UserProfileScreen} options={{ title: "Hồ sơ" }} />
-  </Tab.Navigator>
-);
 

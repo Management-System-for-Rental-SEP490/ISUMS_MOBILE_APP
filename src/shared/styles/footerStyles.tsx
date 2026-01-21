@@ -1,11 +1,31 @@
-//chưa sài
 import { StyleSheet } from "react-native";
+
 const footerStyles = StyleSheet.create({
+  tabBar: {
+    backgroundColor: "#fff",
+    borderTopWidth: 1,
+    borderTopColor: "#e5e7eb",
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    height: 80,
+    paddingTop: 6,
+    paddingBottom: 10,
+    paddingHorizontal: 12,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: -3 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 8,
+    overflow: "visible",
+  },
+  tabItem: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "flex-start",
+    paddingTop: 0,
+  },
   /**
-   * - "footer": dùng cho khung tổng chứa tất cả các icon.
-   * - "iconWrapper": dùng cho từng nút-icon, luôn luôn áp dụng.
-   * - "iconWrapperActive": chỉ thêm vào iconWrapper nếu icon đó đang active (route hiện tại).
-   * - "iconContainer": bọc từng icon để set borderRadius, không ảnh hưởng padding ngoài.
+   * Legacy helpers, still kept for reference.
    */
   footer: {
     width: "100%",
@@ -22,21 +42,22 @@ const footerStyles = StyleSheet.create({
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
   },
-  iconWrapper: {
-    padding: 6,
-    borderRadius: 999,
-  },
-  iconWrapperActive: {
-    backgroundColor: "#e0f2fe",
-    shadowColor: "#0f172a",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.1,
-    shadowRadius: 6,
-    elevation: 6,
-    transform: [{ scale: 1.05 }],
-  },
-  iconContainer: {
-    borderRadius: 999,
-  },
+  // iconWrapper: {
+  //   padding: 6,
+  //   borderRadius: 999,
+  // },
+  // iconWrapperActive: {
+  //   backgroundColor: "#e0f2fe",
+  //   shadowColor: "#0f172a",
+  //   shadowOffset: { width: 0, height: 4 },
+  //   shadowOpacity: 0.1,
+  //   shadowRadius: 6,
+  //   elevation: 6,
+  //   transform: [{ scale: 1.05 }],
+  // },
+  // iconContainer: {
+  //   borderRadius: 999,
+  // },
 });
+
 export default footerStyles;
