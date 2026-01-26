@@ -5,11 +5,19 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import headerStyles from "../styles/headerStyles";
 import Icons from "../theme/icon";
 
-const Header = () => {
+type HeaderVariant = "default" | "electric" | "water";
+
+const gradientMaps: Record<HeaderVariant, [ColorValue, ColorValue]> = {
+  default: ["#3bb582", "rgba(12, 106, 181, 0.7)"],
+  electric: ["#008001", "rgba(24, 90, 24, 0.9)"],
+  water: ["#0072cf", "rgba(0, 114, 207, 0.9)"],
+};
+
+const Header = ({ variant = "default" }: { variant?: HeaderVariant }) => {
   const insets = useSafeAreaInsets();
   return (
     <LinearGradient
-      colors={["#3bb582", "rgba(12, 106, 181, 0.88)"] as [ColorValue, ColorValue]}
+      colors={gradientMaps[variant]}
       start={{ x: 0, y: 0 }}
       end={{ x: 1, y: 1 }}
       style={[headerStyles.gradient, { paddingTop: insets.top + 12 }]}
