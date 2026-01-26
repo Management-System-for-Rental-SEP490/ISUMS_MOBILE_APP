@@ -1,10 +1,17 @@
 import { View, Text, StyleSheet } from "react-native";
+import Header from "../../../shared/components/header";
 
-const ElectricUsageScreen = () => (
-  <View style={styles.screen}>
-    <Text>Electric</Text>
+const ElectricUsageScreen = () => {
+  return (
+    <View>
+      <Header/>
+  <View>
+      <View style={styles.screen}>
+        <Text>Electric</Text>
+      </View>
+    </View>
   </View>
-);
+);  }
 
 const styles = StyleSheet.create({
   screen: {

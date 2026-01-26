@@ -1,10 +1,18 @@
 import { View, Text, StyleSheet } from "react-native";
+import Header from "../../../shared/components/header";
 
-const WaterUsageScreen = () => (
-  <View style={styles.screen}>
-    <Text>Water</Text>
-  </View>
-);
+const WaterUsageScreen = () => {
+  return (
+    <View>
+      <Header/>
+    <View>
+        <View style={styles.screen}>
+          <Text>Water</Text>
+        </View>
+      </View>
+    </View>
+  );
+};
 
 const styles = StyleSheet.create({
   screen: {

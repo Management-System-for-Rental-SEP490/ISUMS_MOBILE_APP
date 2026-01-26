@@ -1,7 +1,13 @@
 import { Text, View, StyleSheet } from "react-native";
+import { useFocusEffect } from "@react-navigation/native";
+import { useCallback, useState } from "react";
+import { BottomTabScreenProps } from "@react-navigation/bottom-tabs";
 import { useAuthStore } from "../../../store/useAuthStore";
+import Header from "../../../shared/components/header";
+import { MainTabParamList } from "../../../shared/types";
 
-const HomeScreen = () => {
+type HomeScreenProps = BottomTabScreenProps<MainTabParamList, "Dashboard">;
+const HomeScreen = ({ navigation }: HomeScreenProps) => {
   const { user, role } = useAuthStore();
   /*
     Giải thích:
@@ -11,13 +17,15 @@ const HomeScreen = () => {
     => Kết quả: biến roleLabel sẽ chứa tên role với chữ cái đầu viết hoa (ví dụ: "Tenant", "Landlord", "Manager"), hoặc "Khách" nếu chưa đăng nhập.
   */
   const roleLabel = role ? `${role.charAt(0).toUpperCase()}${role.slice(1)}` : "Khách";
-
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>Chào mừng, {user ?? "đối tác"}</Text>
-      <Text style={styles.subtitle}>
-        Bạn đang đăng nhập dưới vai trò {roleLabel}. Dashboard sẽ hiển thị thông tin phù hợp cho role này.
-      </Text>
+      <Header />
+      <View style={styles.content}>
+        <Text style={styles.title}>Chào mừng, {user ?? "đối tác"}</Text>
+        <Text style={styles.subtitle}>
+          Bạn đang đăng nhập dưới vai trò {roleLabel}. Dashboard sẽ hiển thị thông tin phù hợp cho role này.
+        </Text>
+      </View>
     </View>
   );
 };
@@ -25,8 +33,11 @@ const HomeScreen = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    padding: 24,
     backgroundColor: "#fff",
+  },
+  content: {
+    flex: 1,
+    padding: 24,
     justifyContent: "center",
   },
   title: {

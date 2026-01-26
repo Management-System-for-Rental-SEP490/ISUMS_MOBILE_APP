@@ -97,11 +97,11 @@ const screenOptions = ({
 
 export const TenantTabs = () => (
   <Tab.Navigator screenOptions={screenOptions} initialRouteName="Dashboard">
+    <Tab.Screen name="Billing" component={BillingScreen} />
     <Tab.Screen name="ElectricUsage" component={ElectricUsageScreen} />
-    <Tab.Screen name="WaterUsage" component={WaterUsageScreen} />
     <Tab.Screen name="Dashboard" component={HomeScreen} />
+    <Tab.Screen name="WaterUsage" component={WaterUsageScreen} />
     <Tab.Screen name="Profile" component={UserProfileScreen} />
-    <Tab.Screen name="Tenants" component={TenantsScreen} />
   </Tab.Navigator>
 );
 
