@@ -25,6 +25,9 @@
     },
     "web": {
       "favicon": "./assets/logob.png"
-    }
+    },
+    "plugins": [
+      "expo-barcode-scanner"
+    ]
   }
 }

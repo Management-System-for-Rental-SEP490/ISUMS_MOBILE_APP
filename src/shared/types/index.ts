@@ -78,3 +78,20 @@ export type UserState = {
   setEmail: (email: string) => void;
   setPassword: (password: string) => void;
 }; 
+
+export type DeviceType = "electric" | "water" | "other";
+export type DeviceStatus = "active" | "inactive" | "maintenance" | "pending";
+export type Device = {
+  id: string;
+  name: string;
+  type: DeviceType;
+  nfcTagId: string;
+  location: string;
+  status: DeviceStatus;
+  metadata?: {
+    serialNumber?: string;
+    manufacturer?: string;
+    model?: string;
+    installationDate?: string;
+  };
+};

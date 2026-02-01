@@ -6,7 +6,7 @@ import AuthRegister from "../features/auth/screens/RegisterScreen";
 import Login from "../features/auth/screens/LoginScreen";
 import { useAuthStore } from "../store/useAuthStore";
 import { RootStackParamList } from "../shared/types";
-import { LandlordTabs, ManagerTabs, TenantTabs, StaffTabs } from "../shared/components/footerNavigator";
+import { TenantTabs, StaffTabs } from "../shared/components/footerNavigator";
 import CameraScreen from "../screens/modal/CameraScreen";
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
@@ -14,12 +14,12 @@ const Stack = createNativeStackNavigator<RootStackParamList>();
 const RoleNavigator = () => {
   const role = useAuthStore((state) => state.role);
 
-  if (role === "landlord") {
-    return <LandlordTabs />;
-  }
-  if (role === "manager") {
-    return <ManagerTabs />;
-  }
+  // if (role === "landlord") {
+  //   return <LandlordTabs />;
+  // }
+  // if (role === "manager") {
+  //   return <ManagerTabs />;
+  // }
   if (role === "staff") {
     return <StaffTabs />;
   }

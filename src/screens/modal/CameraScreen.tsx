@@ -22,13 +22,13 @@ const CameraScreen = () => {
 
   return(
     <View style={{ flex: 1 }}>
-        <CameraView style={{ flex: 1 }} facing="back" /> // facing="back" là một tham số để chỉ định camera sẽ sử dụng camera sau (back camera).
+        <CameraView style={{ flex: 1 }} facing="back" /> 
         <TouchableOpacity
           onPress={() => navigation.goBack()} // goBack là một phương thức của navigation, nó dùng để quay lại trang trước đó.
           style={{ position: "absolute", bottom: 24, alignSelf: "center" }}
         >
-          <Text style={{ color: "#fff", fontSize: 16, fontWeight: "bold", marginBottom: 10 }}>Đóng</Text> // text style là một tham số để chỉ định style cho text.
-        </TouchableOpacity> // touchable opacity là một component trong React Native, nó dùng để tạo ra một button mà khi người dùng nhấn vào nó, nó sẽ trigger một sự kiện (event) nào đó.
+          <Text style={{ color: "#fff", fontSize: 16, fontWeight: "bold", marginBottom: 10 }}>Đóng</Text> 
+        </TouchableOpacity>
       
     </View>
   );
