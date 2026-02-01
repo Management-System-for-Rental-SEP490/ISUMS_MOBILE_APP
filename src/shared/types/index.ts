@@ -12,6 +12,8 @@ export type MainTabParamList = {
   Billing: undefined;
   Tenants: undefined;
   Profile: undefined;
+  Calendar: undefined;
+  Notification: undefined;
 };
 export type HeaderVariant = "default" | "electric" | "water"; // định nghĩa các loại variant của header
 export type RootStackParamList = AuthStackParamList & {

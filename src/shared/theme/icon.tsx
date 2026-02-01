@@ -7,6 +7,7 @@ import FontAwesome6 from '@expo/vector-icons/FontAwesome6';
 import { IconProps } from '../types';
 import { LogoHomeIcon } from './LogoIcon';
 
+
 const Icons = {
   home: ({ size = 24, color = 'black' }: IconProps = {}) => (
     <Entypo name="home" size={size} color={color} />
@@ -35,9 +36,13 @@ const Icons = {
   people: ({ size = 24, color = 'black' }: IconProps = {}) => (
     <FontAwesome6 name="people-group" size={size} color={color} />
   ),
-  
   logoHome: ({ size = 24 }: IconProps = {}) => <LogoHomeIcon width={size} height={size} />,
-  
+  calendar: ({ size = 24, color = 'black' }: IconProps = {}) => (
+    <AntDesign name="calendar" size={size} color={color} />
+  ),
+  notification: ({ size = 24, color = 'black' }: IconProps = {}) => (
+    <FontAwesome name="bell" size={size} color={color} />
+  ),
 };
 
 export default Icons;

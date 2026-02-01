@@ -12,6 +12,8 @@ import TenantsScreen from "../../features/house/screens/TenantsScreen";
 import UserProfileScreen from "../../features/house/screens/UserProfileScreen";
 import { iconStyles } from "../styles/iconStyles";
 import footerStyles from "../styles/footerStyles";
+import CalendarScreen from "../../calendar/CalendarScreen";
+import NotificationScreen from "../../features/notification/NotificationScreen";
 export const Tab = createBottomTabNavigator<MainTabParamList>();
 
 const tabIconMap: Record<keyof MainTabParamList, (props: IconProps) => React.ReactElement> = { // Record<K, V> là một loại (type) tiện ích trong TypeScript, đại diện cho một object với các key là kiểu K và value là kiểu V.
@@ -21,6 +23,8 @@ const tabIconMap: Record<keyof MainTabParamList, (props: IconProps) => React.Rea
   Billing: (props) => <Icons.contract {...props} />,
   Tenants: (props) => <Icons.people {...props} />,
   Profile: (props) => <Icons.user {...props} />,
+  Calendar: (props) => <Icons.calendar {...props} />,
+  Notification: (props) => <Icons.notification {...props} />,
 };
 
 const tabLabelMap: Record<keyof MainTabParamList, string> = {
@@ -30,6 +34,8 @@ const tabLabelMap: Record<keyof MainTabParamList, string> = {
   Billing: "Báo cáo",
   Tenants: "Cư dân",
   Profile: "Hồ sơ",
+  Calendar: "Lịch",
+  Notification: "Thông báo",
 };
 
 const renderTabIcon =
@@ -97,7 +103,7 @@ const screenOptions = ({
 
 export const TenantTabs = () => (
   <Tab.Navigator screenOptions={screenOptions} initialRouteName="Dashboard">
-    <Tab.Screen name="Billing" component={BillingScreen} />
+    <Tab.Screen name="Notification" component={NotificationScreen} />
     <Tab.Screen name="ElectricUsage" component={ElectricUsageScreen} />
     <Tab.Screen name="Dashboard" component={HomeScreen} />
     <Tab.Screen name="WaterUsage" component={WaterUsageScreen} />
@@ -125,8 +131,10 @@ export const TenantTabs = () => (
 
 export const StaffTabs = () => (
   <Tab.Navigator screenOptions={screenOptions} initialRouteName="Dashboard">
-    <Tab.Screen name="Dashboard" component={HomeScreen} />
     <Tab.Screen name="Billing" component={BillingScreen} />
+    <Tab.Screen name="Calendar" component={CalendarScreen} />
+    <Tab.Screen name="Dashboard" component={HomeScreen} />
+    <Tab.Screen name="Notification" component={NotificationScreen} />
     <Tab.Screen name="Profile" component={UserProfileScreen} />
   </Tab.Navigator>
 );
