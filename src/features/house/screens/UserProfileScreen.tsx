@@ -1,15 +1,17 @@
 import { View, Text, StyleSheet } from "react-native";
+import Header from "../../../shared/components/header";
 
 const UserProfileScreen = () => (
-  <View style={styles.screen}>
+  <View style={styles.container}>
+    <Header variant="default" />
     <Text>User</Text>
   </View>
 );
 
 const styles = StyleSheet.create({
-  screen: {
+  container: {
     flex: 1,
-    justifyContent: "center",
+    justifyContent: "flex-start",
     alignItems: "center",
   },
 });

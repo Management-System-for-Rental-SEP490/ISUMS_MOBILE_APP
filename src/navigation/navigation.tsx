@@ -8,6 +8,7 @@ import { useAuthStore } from "../store/useAuthStore";
 import { RootStackParamList } from "../shared/types";
 import { TenantTabs, StaffTabs } from "../shared/components/footerNavigator";
 import CameraScreen from "../screens/modal/CameraScreen";
+import DeviceDetail from "../features/devices/deviceDetail";
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
 
@@ -47,6 +48,7 @@ const Navigation = () => {
           component={CameraScreen}
           options={{ presentation: "modal" }}
         />
+        <Stack.Screen name="DeviceDetail" component={DeviceDetail} />
       </Stack.Navigator>
     </NavigationContainer>
   );

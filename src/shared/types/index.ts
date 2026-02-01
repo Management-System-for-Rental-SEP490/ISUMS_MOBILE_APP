@@ -19,6 +19,7 @@ export type HeaderVariant = "default" | "electric" | "water"; // định nghĩa 
 export type RootStackParamList = AuthStackParamList & {
   Main: undefined;
   Camera: undefined;
+  DeviceDetail: { device: Device }; // device là một object có kiểu Device
 };
 
 export type IconProps = {

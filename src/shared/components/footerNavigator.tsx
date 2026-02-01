@@ -16,7 +16,7 @@ import CalendarScreen from "../../calendar/CalendarScreen";
 import NotificationScreen from "../../features/notification/NotificationScreen";
 export const Tab = createBottomTabNavigator<MainTabParamList>();
 
-const tabIconMap: Record<keyof MainTabParamList, (props: IconProps) => React.ReactElement> = {
+const tabIconMap: Record<keyof MainTabParamList, (props: IconProps) => React.ReactElement> = { // Record<K, V> là một loại (type) tiện ích trong TypeScript, đại diện cho một object với các key là kiểu K và value là kiểu V.
   Dashboard: (props) => <Icons.logoHome {...props} />,
   ElectricUsage: (props) => <Icons.electric {...props} />,
   WaterUsage: (props) => <Icons.water {...props} />,
