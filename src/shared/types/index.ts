@@ -18,6 +18,7 @@ export type MainTabParamList = {
 export type HeaderVariant = "default" | "electric" | "water"; // định nghĩa các loại variant của header
 export type RootStackParamList = AuthStackParamList & {
   Main: undefined;
+  Camera: undefined;
 };
 
 export type IconProps = {

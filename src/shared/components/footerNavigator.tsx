@@ -2,8 +2,8 @@ import React from "react";
 import { Text, View } from "react-native";
 import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
 import Icons from "../theme/icon";
-import { IconProps, MainTabParamList } from "../types";
-import { RouteProp } from "@react-navigation/native";
+import { IconProps, MainTabParamList, RootStackParamList } from "../types";
+import { NavigationProp, RouteProp } from "@react-navigation/native";
 import HomeScreen from "../../features/house/screens/HomeScreen";
 import ElectricUsageScreen from "../../features/consumption/screens/ElectricUsageScreen";
 import WaterUsageScreen from "../../features/consumption/screens/WaterUsageScreen";
@@ -16,7 +16,7 @@ import CalendarScreen from "../../calendar/CalendarScreen";
 import NotificationScreen from "../../features/notification/NotificationScreen";
 export const Tab = createBottomTabNavigator<MainTabParamList>();
 
-const tabIconMap: Record<keyof MainTabParamList, (props: IconProps) => React.ReactElement> = { // Record<K, V> là một loại (type) tiện ích trong TypeScript, đại diện cho một object với các key là kiểu K và value là kiểu V.
+const tabIconMap: Record<keyof MainTabParamList, (props: IconProps) => React.ReactElement> = {
   Dashboard: (props) => <Icons.logoHome {...props} />,
   ElectricUsage: (props) => <Icons.electric {...props} />,
   WaterUsage: (props) => <Icons.water {...props} />,
@@ -94,18 +94,73 @@ const screenOptions = ({
   tabBarShowLabel: false,
   tabBarIcon: renderTabIcon(route.name),
 });
+/*
+  Đoạn code sau định nghĩa một function component `DashboardListener`, dùng cho tab "Dashboard" trong Tab Navigator của React Navigation.
+  Chức năng chính là lắng nghe sự kiện khi người dùng nhấn vào tab "Dashboard" và thực hiện hành động tuỳ biến thay vì chuyển màn hình mặc định.
+
+  Cụ thể:
+
+  const DashboardListener = ({
+    navigation,
+  }: {
+    navigation: NavigationProp<MainTabParamList>;
+  }) => ({
+    tabPress: (e: { preventDefault: () => void }) => {
+      e.preventDefault();
+      navigation.getParent<NavigationProp<RootStackParamList>>()?.navigate("Camera");
+    }, 
+  });
+
+  Giải thích chi tiết:
+  - `DashboardListener` nhận vào props có thuộc tính `navigation`, nó là object navigation của tab hiện tại ("Dashboard").
+  - Hàm trả về một object chứa key `tabPress`, đây là hàm sẽ được attach vào props `listeners` của Tab.Screen ("Dashboard").
+  - Khi người dùng nhấn vào tab "Dashboard", hàm `tabPress` sẽ được gọi:
+    + `e.preventDefault()` giúp ngăn hành động mặc định (là chuyển đến màn hình Dashboard).
+    + Sau đó, dùng `navigation.getParent<NavigationProp<RootStackParamList>>()` để lấy navigation object của parent navigator (ở đây là RootStack).
+    + Nếu lấy được, gọi `.navigate("Camera")` để chuyển hướng sang màn hình "Camera" ở root stack.
+  - Như vậy, mỗi khi người dùng nhấn vào tab "Dashboard", thay vì chuyển về Dashboard, app sẽ mở màn hình Camera (theo logic tuỳ chỉnh này).
+  - Điều này hữu ích khi bạn muốn nút tab "Dashboard" có chức năng đặc biệt như mở camera, trung tâm quét mã, hoặc action đặc biệt.
+
+  Tổng quan, đoạn code này custom hành vi của tab, giới thiệu luồng chuyển màn hình linh hoạt cho trường hợp cần "nút đặc biệt" trên tab bar.
+*/
 
 
-
-
-
+const DashboardListener = ({ // DashboardListener là một hàm để lắng nghe sự kiện (event) khi người dùng nhấn vào tab "Dashboard".
+  navigation, // navigation là một biến state để lưu trữ trạng thái navigation.
+}: {
+  navigation: NavigationProp<MainTabParamList>; // navigation là một biến state để lưu trữ trạng thái navigation.
+}) => ({ // () => ({}) là một arrow function, nó dùng để trả về một object.
+  tabPress: (e: { preventDefault: () => void }) => { // tabPress là một sự kiện (event) khi người dùng nhấn vào tab "Dashboard".
+    e.preventDefault(); // preventDefault là một phương thức của event, nó dùng để ngăn chặn hành động mặc định của event.
+    navigation.getParent<NavigationProp<RootStackParamList>>()?.navigate("Camera"); // getParent là một phương thức của navigation, nó dùng để lấy navigation prop từ parent navigator.
+  }, 
+});
+// Nếu bạn không truyền prop bằng function:
+// <Tab.Screen name="Dashboard">
+//   {(props) => <HomeScreen {...props} />}
+// </Tab.Screen>
+//
+// mà chỉ dùng component:
+// <Tab.Screen name="Dashboard" component={HomeScreen} />
+//
+// thì React Navigation vẫn sẽ tự động truyền các props như navigation, route,... vào HomeScreen.
+// Vì vậy, trong trường hợp HomeScreen không cần xử lý thêm gì đặc biệt lúc nhận props, bạn có thể dùng component={HomeScreen} cho đơn giản.
+//
+// Tuy nhiên, nếu bạn muốn:
+// - Chèn logic giữa quá trình truyền props (logging, inject props mới, custom render, ...),
+// - Tránh việc màn hình Dashboard bị unmount/re-mount khi thay đổi,
+// thì dạng function-as-children (render prop) sẽ cho bạn sự kiểm soát tốt hơn.
+//
+// Tóm lại: Nếu không quy định cách truyền prop tại đây và chỉ dùng component, React Navigation vẫn sẽ tự động truyền props cho HomeScreen.
 
 
 export const TenantTabs = () => (
   <Tab.Navigator screenOptions={screenOptions} initialRouteName="Dashboard">
     <Tab.Screen name="Notification" component={NotificationScreen} />
     <Tab.Screen name="ElectricUsage" component={ElectricUsageScreen} />
-    <Tab.Screen name="Dashboard" component={HomeScreen} />
+    <Tab.Screen name="Dashboard" listeners={DashboardListener}>
+      {(props) => <HomeScreen {...props} />} 
+    </Tab.Screen>
     <Tab.Screen name="WaterUsage" component={WaterUsageScreen} />
     <Tab.Screen name="Profile" component={UserProfileScreen} />
   </Tab.Navigator>
@@ -133,7 +188,9 @@ export const StaffTabs = () => (
   <Tab.Navigator screenOptions={screenOptions} initialRouteName="Dashboard">
     <Tab.Screen name="Billing" component={BillingScreen} />
     <Tab.Screen name="Calendar" component={CalendarScreen} />
-    <Tab.Screen name="Dashboard" component={HomeScreen} />
+    <Tab.Screen name="Dashboard" listeners={DashboardListener}>
+      {(props) => <HomeScreen {...props} />}
+    </Tab.Screen>
     <Tab.Screen name="Notification" component={NotificationScreen} />
     <Tab.Screen name="Profile" component={UserProfileScreen} />
   </Tab.Navigator>

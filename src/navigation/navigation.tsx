@@ -7,6 +7,7 @@ import Login from "../features/auth/screens/LoginScreen";
 import { useAuthStore } from "../store/useAuthStore";
 import { RootStackParamList } from "../shared/types";
 import { LandlordTabs, ManagerTabs, TenantTabs, StaffTabs } from "../shared/components/footerNavigator";
+import CameraScreen from "../screens/modal/CameraScreen";
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
 
@@ -41,6 +42,11 @@ const Navigation = () => {
         <Stack.Screen name="AuthRegister" component={AuthRegister} />
         <Stack.Screen name="AuthForgotPassword" component={AuthForgotPassword} />
         <Stack.Screen name="Main" component={RoleNavigator} />
+        <Stack.Screen
+          name="Camera"
+          component={CameraScreen}
+          options={{ presentation: "modal" }}
+        />
       </Stack.Navigator>
     </NavigationContainer>
   );
