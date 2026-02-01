@@ -23,6 +23,9 @@ const Icons = {
   electric: ({ size = 24, color = 'black' }: IconProps = {}) => (
     <MaterialIcons name="electrical-services" size={size} color={color} />
   ),
+  search: ({ size = 24, color = 'black' }: IconProps = {}) => (
+    <MaterialIcons name="search" size={size} color={color} />
+  ),
   contract: ({ size = 24, color = 'black' }: IconProps = {}) => (
     <FontAwesome5 name="file-contract" size={size} color={color} />
   ),

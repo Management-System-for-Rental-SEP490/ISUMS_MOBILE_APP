@@ -24,10 +24,10 @@ const tabIconMap: Record<keyof MainTabParamList, (props: IconProps) => React.Rea
 };
 
 const tabLabelMap: Record<keyof MainTabParamList, string> = {
-  Dashboard: "Dashboard",
+  Dashboard: "Scan",
   ElectricUsage: "Điện",
   WaterUsage: "Nước",
-  Billing: "Hóa đơn",
+  Billing: "Báo cáo",
   Tenants: "Cư dân",
   Profile: "Hồ sơ",
 };
@@ -105,23 +105,23 @@ export const TenantTabs = () => (
   </Tab.Navigator>
 );
 
-export const LandlordTabs = () => (
-  <Tab.Navigator screenOptions={screenOptions} initialRouteName="Dashboard">
-    <Tab.Screen name="Billing" component={BillingScreen} />
-    <Tab.Screen name="Dashboard" component={HomeScreen} />
-    <Tab.Screen name="Profile" component={UserProfileScreen} />
-  </Tab.Navigator>
-);
+// export const LandlordTabs = () => (
+//   <Tab.Navigator screenOptions={screenOptions} initialRouteName="Dashboard">
+//     <Tab.Screen name="Billing" component={BillingScreen} />
+//     <Tab.Screen name="Dashboard" component={HomeScreen} />
+//     <Tab.Screen name="Profile" component={UserProfileScreen} />
+//   </Tab.Navigator>
+// );
 
-export const ManagerTabs = () => (
-  <Tab.Navigator screenOptions={screenOptions} initialRouteName="Dashboard">
-    <Tab.Screen name="ElectricUsage" component={ElectricUsageScreen} />
-    <Tab.Screen name="Billing" component={BillingScreen} />
-    <Tab.Screen name="Dashboard" component={HomeScreen} />
-    <Tab.Screen name="Tenants" component={TenantsScreen} />
-    <Tab.Screen name="Profile" component={UserProfileScreen} />
-  </Tab.Navigator>
-);
+// export const ManagerTabs = () => (
+//   <Tab.Navigator screenOptions={screenOptions} initialRouteName="Dashboard">
+//     <Tab.Screen name="ElectricUsage" component={ElectricUsageScreen} />
+//     <Tab.Screen name="Billing" component={BillingScreen} />
+//     <Tab.Screen name="Dashboard" component={HomeScreen} />
+//     <Tab.Screen name="Tenants" component={TenantsScreen} />
+//     <Tab.Screen name="Profile" component={UserProfileScreen} />
+//   </Tab.Navigator>
+// );
 
 export const StaffTabs = () => (
   <Tab.Navigator screenOptions={screenOptions} initialRouteName="Dashboard">
