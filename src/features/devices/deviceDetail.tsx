@@ -15,7 +15,7 @@ const DeviceDetail = () => {
 
   return (
     <SafeAreaProvider style={deviceDetailStyles.background}>
-      <ScrollView contentContainerStyle={deviceDetailStyles.content}>
+      <ScrollView style={deviceDetailStyles.content}>
         <TouchableOpacity 
           onPress={() => navigation.goBack()}
           style={deviceDetailStyles.backButton}

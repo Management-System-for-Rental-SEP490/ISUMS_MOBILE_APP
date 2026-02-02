@@ -14,9 +14,7 @@ const deviceDetailStyles = StyleSheet.create({
         backgroundColor: "rgba(15, 23, 42, 0.35)",
     },
     content: {
-        flex: 1,
-        justifyContent: "center",
-        alignItems: "center",
+        flexGrow: 1,
         padding: 20,
     },
     backButton: {
