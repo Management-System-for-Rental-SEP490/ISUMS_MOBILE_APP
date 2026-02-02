@@ -7,8 +7,8 @@ import { getDeviceById, getDeviceByNfcTag } from "../../shared/services/deviceDa
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { RootStackParamList } from "../../shared/types";
 import NfcManager, { NfcTech, Ndef } from "react-native-nfc-manager";
+import { ScanMode } from "../../shared/types";
 
-type ScanMode = "qr" | "nfc";
 
 const CameraScreen = () => {
   const [permission, requestPermission] = useCameraPermissions(); 
@@ -16,8 +16,11 @@ const CameraScreen = () => {
   const [scanMode, setScanMode] = useState<ScanMode>("qr");
   const [nfcScanning, setNfcScanning] = useState(false);
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>(); 
-  const nfcTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const nfcTimeoutRef = useRef<NodeJS.Timeout | null>(null); //useRef<...>(...): hook của React, tạo một object ref có thể "giữ" lại giá trị bất kỳ qua các lần render lại component nhưng không gây render lại khi thay đổi.
 
+  //[]: Chỉ chạy một lần khi mount.
+  //[value]: Chạy lại khi value thay đổi.
+  //Không có mảng: Chạy sau mỗi lần render.
   useEffect(() => {
     if (!permission) {
       requestPermission();
@@ -26,19 +29,19 @@ const CameraScreen = () => {
 
   useEffect(() => {
     // Khởi tạo NFC Manager khi component mount
-    NfcManager.start().catch((err) => {
-      console.log("NFC không được hỗ trợ:", err);
+    NfcManager.start().catch((err) => { // khởi tạo NFC và gọi start() để bắt đầu quét NFC(trả về 1 promise).
+      console.log("NFC không được hỗ trợ:", err); // nếu không được hỗ trợ thì log lỗi.
     });
 
-    return () => {
+    return () => {// cleanup function: khi component unmount & trước khi effect chạy lại
       // Cleanup khi component unmount
       if (nfcTimeoutRef.current) {
-        clearTimeout(nfcTimeoutRef.current);
+        clearTimeout(nfcTimeoutRef.current); // huỷ timeout nếu có.
       }
-      NfcManager.cancelTechnologyRequest().catch(() => {});
+      NfcManager.cancelTechnologyRequest().catch(() => {}); // huỷ yêu cầu technology request nếu có và bắt lỗi nhưng ko làm gì
     };
   }, []);
-
+// → Tránh Alert hiện ra sau khi đã đóng màn hình
   useEffect(() => {
     // Khi chuyển sang chế độ NFC, tự động bắt đầu scan
     if (scanMode === "nfc" && !scanned && !nfcScanning) {
@@ -57,6 +60,7 @@ const CameraScreen = () => {
       // Thử dùng NfcA trước (cho NTAG213 - ISO14443 Type A)
       // Nếu không được thì thử Ndef
       let tag = null;
+      // let là biến có thể gán lại giá trị.
       
       try {
         await NfcManager.requestTechnology(NfcTech.NfcA);
@@ -65,7 +69,7 @@ const CameraScreen = () => {
         // Nếu NfcA không được, thử Ndef
         console.log("Thử NfcA không được, chuyển sang Ndef:", nfcAError);
         await NfcManager.requestTechnology(NfcTech.Ndef);
-        tag = await NfcManager.getTag();
+        tag = await NfcManager.getTag();//
       }
       
       // Đặt timeout để tránh scan quá lâu
@@ -86,13 +90,13 @@ const CameraScreen = () => {
           ]
         );
       }, 10000); // 10 giây timeout
-
+//setTimeout(callback, delay): tạo timeout, chạy callback sau delay ms.
       if (tag && !scanned) {
         handleNfcScanned(tag);
       }
     } catch (err: any) {
       console.log("Lỗi scan NFC:", err);
-      if (err.message !== "User cancelled") {
+      if (err.message !== "User cancelled") { //Chỉ hiển thị Alert nếu không phải lỗi do người dùng hủy.
         Alert.alert(
           "Lỗi",
           "Không thể đọc thẻ NFC. Vui lòng thử lại.",
@@ -118,7 +122,7 @@ const CameraScreen = () => {
       nfcTimeoutRef.current = null;
     }
     try {
-      await NfcManager.cancelTechnologyRequest();
+      await NfcManager.cancelTechnologyRequest(); // huỷ yêu cầu technology request nếu có và bắt lỗi nhưng ko làm gì
     } catch (err) {
       console.log("Lỗi dừng NFC:", err);
     }
@@ -128,45 +132,48 @@ const CameraScreen = () => {
   const handleNfcScanned = async (tag: any) => {
     if (scanned) return;
     setScanned(true);
-    await stopNfcScan();
+    await stopNfcScan();//await: chờ cho đến khi stopNfcScan hoàn thành.
 
     // Lấy ID của thẻ NFC
     // Format ID có thể khác nhau tùy loại thẻ, thử nhiều cách
     let nfcId = "";
     
     // Debug: log tag để xem cấu trúc
-    console.log("NFC Tag object:", JSON.stringify(tag, null, 2));
+    console.log("NFC Tag object:", JSON.stringify(tag, null, 2)); //
     
     // Thử đọc từ idBytes trước (đây là cách đúng nhất cho NTAG213)
     if (tag.idBytes && Array.isArray(tag.idBytes)) {
       // Với NTAG213, UID thường là 7 bytes đầu tiên
-      const uidBytes = tag.idBytes.slice(0, 7);
+      const uidBytes = tag.idBytes.slice(0, 7);//slice(start, end): lấy phần tử từ start đến end. lấy 7 phần tử đầu tiên.
       nfcId = uidBytes
         .map((byte: number) => {
-          if (typeof byte !== "number" || isNaN(byte) || byte < 0 || byte > 255) {
+          if (typeof byte !== "number" || isNaN(byte) || byte < 0 || byte > 255) { //isNaN: kiểm tra xem byte có phải là số không.
             return null;
           }
-          return byte.toString(16).padStart(2, "0").toUpperCase();
+          return byte.toString(16).padStart(2, "0").toUpperCase(); //padStart(length, "0"): đệm 0 vào đầu string để đảm bảo độ dài là length.
         })
-        .filter((hex: string | null) => hex !== null)
-        .join(" ");
+        .filter((hex: string | null) => hex !== null) //filter(callback): lọc các phần tử của mảng, chỉ lấy các phần tử không phải null.
+        .join(" "); //join(" "): nối các phần tử của mảng thành một string, cách nhau bởi dấu cách.
     }
     // Nếu không có idBytes, thử đọc từ id (có thể là string hex hoặc array)
     else if (tag.id) {
       if (typeof tag.id === "string") {
         // Nếu id là string hex (ví dụ: "049C59A2B21990" hoặc "04:9C:59:A2:B2:19:90")
         // Loại bỏ tất cả ký tự không phải hex
-        let cleanedId = tag.id.replace(/[^0-9A-Fa-f]/g, "");
+        let cleanedId = tag.id.replace(/[^0-9A-Fa-f]/g, ""); //replace(pattern, replacement): thay thế tất cả ký tự không phải hex bằng "", tức là xóa hết. /g: global, thay thế tất cả ký tự không phải hex.
         // Nếu có dấu hai chấm hoặc khoảng trắng, giữ lại format
         if (tag.id.includes(":") || tag.id.includes(" ")) {
-          cleanedId = tag.id.replace(/[^0-9A-Fa-f\s:]/gi, "");
+          cleanedId = tag.id.replace(/[^0-9A-Fa-f\s:]/gi, ""); //gi: global, case insensitive, thay thế tất cả ký tự(có viết hoa và viết thường) không phải hex bằng "", tức là xóa hết.
           // Chuyển đổi về format có khoảng trắng
-          cleanedId = cleanedId.replace(/:/g, " ").replace(/\s+/g, " ").trim();
+          cleanedId = cleanedId.replace(/:/g, " ").replace(/\s+/g, " ").trim();///:/g: tìm tất cả dấu hai chấm.Thay bằng " " ,/\s+/g: khớp một hoặc nhiều khoảng trắng liên tiếp. Thay bằng " " ,trim(): xóa khoảng trắng ở đầu và cuối string.
           nfcId = cleanedId.toUpperCase();
         } else {
           // Chuyển đổi thành format "XX XX XX..."
-          nfcId = cleanedId.match(/.{1,2}/g)?.slice(0, 7).join(" ").toUpperCase() || "";
+          nfcId = cleanedId.match(/.{1,2}/g)?.slice(0, 7).join(" ").toUpperCase() || ""; //match(pattern): tìm tất cả ký tự phù hợp với pattern. slice(start, end): lấy phần tử từ start đến end. join(" "): nối các phần tử của mảng thành một string, cách nhau bởi dấu cách.
         }
+//const cleanedId = "049C59A2B21990";
+//cleanedId.match(/.{1,2}/g)?.slice(0, 7).join(" ").toUpperCase()
+// Kết quả: ["04", "9C", "59", "A2", "B2", "19", "90"]
       } else if (Array.isArray(tag.id)) {
         // Nếu id là array, lấy 7 bytes đầu (UID của NTAG213)
         const uidArray = tag.id.slice(0, 7);
@@ -185,7 +192,7 @@ const CameraScreen = () => {
           const uidArray = idArray.slice(0, 7);
           nfcId = uidArray
             .map((byte: unknown) => {
-              const num = typeof byte === "number" ? byte : parseInt(String(byte), 10);
+              const num = typeof byte === "number" ? byte : parseInt(String(byte), 10); // nếu byte là số thì lấy byte, nếu không thì convert byte thành số.
               if (isNaN(num) || num < 0 || num > 255) return null;
               return num.toString(16).padStart(2, "0").toUpperCase();
             })
@@ -245,6 +252,8 @@ const CameraScreen = () => {
       );
     }
   };
+
+// logic scan QR code
 
   const handleBarCodeScanned = ({ data }: { data: string }) => {
     if (scanned || scanMode !== "qr") return;
@@ -340,7 +349,7 @@ const CameraScreen = () => {
         <>
           <CameraView
             style={{ flex: 1 }}
-            onBarcodeScanned={scanned ? undefined : handleBarCodeScanned}
+            onBarcodeScanned={scanned ? undefined : handleBarCodeScanned} //nếu đã scan → undefined (tắt), nếu chưa → handleBarCodeScanned
             barcodeScannerSettings={{
               barcodeTypes: ["qr"],
             }}
