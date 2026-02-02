@@ -1,6 +1,7 @@
 import React from "react";
 import { Text, View } from "react-native";
 import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import Icons from "../theme/icon";
 import { IconProps, MainTabParamList, RootStackParamList } from "../types";
 import { NavigationProp, RouteProp } from "@react-navigation/native";
@@ -81,7 +82,7 @@ const renderTabIcon =
     );
   };
 
-const screenOptions = ({
+const createScreenOptions = (bottomInset: number) => ({
   route,
 }: {
   route: RouteProp<MainTabParamList, keyof MainTabParamList>;
@@ -89,7 +90,13 @@ const screenOptions = ({
   headerShown: false,
   tabBarActiveTintColor: "#111827",
   tabBarInactiveTintColor: "#9ca3af",
-  tabBarStyle: footerStyles.tabBar,
+  tabBarStyle: [
+    footerStyles.tabBar,
+    {
+      paddingBottom: Math.max(bottomInset, 10), // Đảm bảo padding bottom tối thiểu là 10, hoặc lớn hơn nếu có safe area insets
+      height: 80 + Math.max(bottomInset - 10, 0), // Tăng height nếu bottomInset > 10
+    },
+  ],
   tabBarItemStyle: footerStyles.tabItem,
   tabBarShowLabel: false,
   tabBarIcon: renderTabIcon(route.name),
@@ -177,17 +184,20 @@ const DashboardListener = ({ // DashboardListener là một hàm để lắng ng
 // Tóm lại: Nếu không quy định cách truyền prop tại đây và chỉ dùng component, React Navigation vẫn sẽ tự động truyền props cho HomeScreen.
 
 
-export const TenantTabs = () => (
-  <Tab.Navigator screenOptions={screenOptions} initialRouteName="Dashboard">
-    <Tab.Screen name="Notification" component={NotificationScreen} />
-    <Tab.Screen name="ElectricUsage" component={ElectricUsageScreen} />
-    <Tab.Screen name="Dashboard" listeners={DashboardListener}>
-      {(props) => <HomeScreen {...props} />} 
-    </Tab.Screen>
-    <Tab.Screen name="WaterUsage" component={WaterUsageScreen} />
-    <Tab.Screen name="Profile" component={UserProfileScreen} />
-  </Tab.Navigator>
-);
+export const TenantTabs = () => {
+  const insets = useSafeAreaInsets();
+  return (
+    <Tab.Navigator screenOptions={createScreenOptions(insets.bottom)} initialRouteName="Dashboard">
+      <Tab.Screen name="Notification" component={NotificationScreen} />
+      <Tab.Screen name="ElectricUsage" component={ElectricUsageScreen} />
+      <Tab.Screen name="Dashboard" listeners={DashboardListener}>
+        {(props) => <HomeScreen {...props} />} 
+      </Tab.Screen>
+      <Tab.Screen name="WaterUsage" component={WaterUsageScreen} />
+      <Tab.Screen name="Profile" component={UserProfileScreen} />
+    </Tab.Navigator>
+  );
+};
 
 // export const LandlordTabs = () => (
 //   <Tab.Navigator screenOptions={screenOptions} initialRouteName="Dashboard">
@@ -207,17 +217,20 @@ export const TenantTabs = () => (
 //   </Tab.Navigator>
 // );
 
-export const StaffTabs = () => (
-  <Tab.Navigator screenOptions={screenOptions} initialRouteName="Dashboard">
-    <Tab.Screen name="Billing" component={BillingScreen} />
-    <Tab.Screen name="Calendar" component={CalendarScreen} />
-    <Tab.Screen name="Dashboard" listeners={DashboardListener}>
-      {(props) => <HomeScreen {...props} />}
-    </Tab.Screen>
-    <Tab.Screen name="Notification" component={NotificationScreen} />
-    <Tab.Screen name="Profile" component={UserProfileScreen} />
-  </Tab.Navigator>
-);
+export const StaffTabs = () => {
+  const insets = useSafeAreaInsets();
+  return (
+    <Tab.Navigator screenOptions={createScreenOptions(insets.bottom)} initialRouteName="Dashboard">
+      <Tab.Screen name="Billing" component={BillingScreen} />
+      <Tab.Screen name="Calendar" component={CalendarScreen} />
+      <Tab.Screen name="Dashboard" listeners={DashboardListener}>
+        {(props) => <HomeScreen {...props} />}
+      </Tab.Screen>
+      <Tab.Screen name="Notification" component={NotificationScreen} />
+      <Tab.Screen name="Profile" component={UserProfileScreen} />
+    </Tab.Navigator>
+  );
+};
 
 
 // Tóm tắt ý nghĩa và chức năng:
