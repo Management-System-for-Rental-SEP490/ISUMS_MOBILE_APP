@@ -49,8 +49,6 @@ export const cameraStyles = StyleSheet.create({
         },
         focusedContainer: {
           width: 250,
-          // borderWidth: 2,
-          // borderColor: "#000000", // borderColor: "#00FF00" là một thuộc tính của CSS, nó định nghĩa màu sắc của viền của phần tử. xanh lá cây
           backgroundColor: "transparent",
         },
       });
