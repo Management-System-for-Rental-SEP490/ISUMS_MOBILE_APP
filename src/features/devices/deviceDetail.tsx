@@ -27,6 +27,7 @@ const DeviceDetail = () => {
           Chi tiết thiết bị
         </Text>
 
+
         <View style={deviceDetailStyles.deviceInfo}>
           <DetailItem label="Tên thiết bị" value={device.name} />
           <DetailItem label="ID" value={device.id} />
@@ -34,8 +35,8 @@ const DeviceDetail = () => {
           <DetailItem label="Vị trí" value={device.location} />
           <DetailItem label="Trạng thái" value={getStatusText(device.status)} />
           <DetailItem label="NFC Tag ID" value={device.nfcTagId} />
-          
-          {device.metadata && (
+          {/* Nếu thiết bị có trường metadata (thông tin kỹ thuật bổ sung), thì mới hiển thị các thông tin sau: */}
+          {device.metadata && ( 
             <>
               <Text style={deviceDetailStyles.technicalInfoTitle}>
                 Thông tin kỹ thuật

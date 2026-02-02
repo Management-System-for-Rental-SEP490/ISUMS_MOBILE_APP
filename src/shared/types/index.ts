@@ -1,4 +1,4 @@
-
+import { BottomTabScreenProps } from "@react-navigation/bottom-tabs";
 export type AuthStackParamList = {
   AuthLogin: undefined;
   AuthRegister: { username: string; email: string; password: string };
@@ -96,3 +96,4 @@ export type Device = {
     installationDate?: string;
   };
 };
+export type HomeScreenProps = BottomTabScreenProps<MainTabParamList, "Dashboard">; // HomeScreenProps là một type alias cho BottomTabScreenProps<MainTabParamList, "Dashboard">.

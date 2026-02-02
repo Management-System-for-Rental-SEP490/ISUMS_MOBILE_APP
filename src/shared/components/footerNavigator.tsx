@@ -124,9 +124,32 @@ const screenOptions = ({
   Tổng quan, đoạn code này custom hành vi của tab, giới thiệu luồng chuyển màn hình linh hoạt cho trường hợp cần "nút đặc biệt" trên tab bar.
 */
 
+// Đoạn code từ dòng 128-137 định nghĩa một function component tên là `DashboardListener`. Đoạn code này dùng cho tab "Dashboard" trong Tab Navigator của React Navigation, cho phép tùy biến hành vi khi người dùng nhấn vào tab này.
+//
+
+//
+// 1. `const DashboardListener = ({ navigation }: { navigation: NavigationProp<MainTabParamList>; }) => ({ ... })`:
+//    - Định nghĩa một hàm nhận vào props có thuộc tính `navigation`. Kiểu của navigation là NavigationProp<MainTabParamList>, tức là đối tượng điều hướng dành cho MainTab (bao gồm Dashboard, Profile, ElectricUsage, v.v).
+//
+// 2. Hàm trả về một object có key là `tabPress`. Đây là một event listener cho sự kiện khi user nhấn vào tab "Dashboard".
+//
+// 3. `tabPress: (e: { preventDefault: () => void }) => { ... }`:
+//    - Hàm này nhận vào event `e`. Hàm này sẽ được gọi khi user nhấn tab "Dashboard".
+//
+// 4. `e.preventDefault();`:
+//    - Gọi hàm preventDefault() trên event để chặn hành động mặc định, tức là chuyển sang màn hình "Dashboard".
+//
+// 5. `navigation.getParent<NavigationProp<RootStackParamList>>()?.navigate("Camera");`:
+//    - Lấy ra navigation của parent navigator (ở đây là RootStack).
+//    - Nếu lấy được, gọi `.navigate("Camera")`, chuyển sang màn hình "Camera" thay vì Dashboard.
+//    - Ví dụ: Khi bạn đang ở bất kỳ tab nào, nhấn vào tab Dashboard sẽ đưa bạn đến màn Camera thay vì màn Dashboard.
+//
+// **Ví dụ dễ hiểu:**
+// - Thông thường, khi bạn nhấn vào tab "Dashboard" (🏠), app sẽ về màn Dashboard.
+// - Với `DashboardListener` trên, khi nhấn vào tab "Dashboard", thay vào đó app sẽ mở camera (giống như một button đặc biệt ở chính giữa tab bar để mở nhanh camera quét QR chẳng hạn).
 
 const DashboardListener = ({ // DashboardListener là một hàm để lắng nghe sự kiện (event) khi người dùng nhấn vào tab "Dashboard".
-  navigation, // navigation là một biến state để lưu trữ trạng thái navigation.
+  navigation, // navigation là một biến state để lưu trữ trạng thái navigation. 
 }: {
   navigation: NavigationProp<MainTabParamList>; // navigation là một biến state để lưu trữ trạng thái navigation.
 }) => ({ // () => ({}) là một arrow function, nó dùng để trả về một object.

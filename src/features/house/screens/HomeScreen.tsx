@@ -1,13 +1,11 @@
 import { Text, View, StyleSheet } from "react-native";
-import { useFocusEffect } from "@react-navigation/native";
-import { useCallback, useState } from "react";
-import { BottomTabScreenProps } from "@react-navigation/bottom-tabs";
 import { useAuthStore } from "../../../store/useAuthStore";
 import Header from "../../../shared/components/header";
-import { MainTabParamList } from "../../../shared/types";
+import { HomeScreenProps } from "../../../shared/types";
 
-type HomeScreenProps = BottomTabScreenProps<MainTabParamList, "Dashboard">;
-const HomeScreen = ({ navigation }: HomeScreenProps) => {
+
+
+const HomeScreen = ({ navigation }: HomeScreenProps) => { // HomeScreen là một function component nhận vào props có kiểu HomeScreenProps.
   const { user, role } = useAuthStore();
   /*
     Giải thích:
