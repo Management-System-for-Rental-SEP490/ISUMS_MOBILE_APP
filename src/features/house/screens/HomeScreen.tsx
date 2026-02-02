@@ -16,38 +16,26 @@ const HomeScreen = ({ navigation }: HomeScreenProps) => { // HomeScreen là mộ
   */
   const roleLabel = role ? `${role.charAt(0).toUpperCase()}${role.slice(1)}` : "Khách";
   return (
-    <View style={styles.container}>
-      <Header />
-      <View style={styles.content}>
-        <Text style={styles.title}>Chào mừng, {user ?? "đối tác"}</Text>
-        <Text style={styles.subtitle}>
-          Bạn đang đăng nhập dưới vai trò {roleLabel}. Dashboard sẽ hiển thị thông tin phù hợp cho role này.
-        </Text>
+      <View style={styles.container}>
+        <Header variant="default" />
+        <View style={styles.screen}>
+          <Text>Bạn đang là {roleLabel}</Text>
+        </View>
       </View>
-    </View>
-  );
-};
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: "#fff",
-  },
-  content: {
-    flex: 1,
-    padding: 24,
-    justifyContent: "center",
-  },
-  title: {
-    fontSize: 24,
-    fontWeight: "700",
-    marginBottom: 12,
-  },
-  subtitle: {
-    fontSize: 16,
-    color: "#374151",
-  },
-});
+    );
+  };
+  
+  const styles = StyleSheet.create({
+    container: {
+      flex: 1,
+      backgroundColor: "#fff",
+    },
+    screen: {
+      flex: 1,
+      justifyContent: "center",
+      alignItems: "center",
+    },
+  });
 
 export default HomeScreen;
 

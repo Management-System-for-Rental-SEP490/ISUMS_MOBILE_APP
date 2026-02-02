@@ -2,20 +2,28 @@ import { StyleSheet } from "react-native";
 // Định nghĩa một object các style sử dụng trong header bằng StyleSheet.create({
 const headerStyles = StyleSheet.create({
   gradient: { // Style cho nền gradient phần header
+    width: "100%", // Đảm bảo chiếm toàn bộ chiều rộng của parent
     paddingVertical: 18, // Padding theo chiều dọc (top và bottom) là 18
     paddingHorizontal: 20, // Padding theo chiều ngang (left và right) là 20
     borderBottomLeftRadius: 32, // Bo góc trái phía dưới 32 đơn vị
     borderBottomRightRadius: 32, // Bo góc phải phía dưới 32 đơn vị
+    overflow: "hidden", // Đảm bảo nội dung không tràn ra ngoài
+  },
+  container: {
+    width: "100%",
+    overflow: "hidden",
   },
   headerRow: { // Style cho View chứa hàng ngang chính của header
     flexDirection: "row", // Các phần tử con xếp thành hàng ngang
-    justifyContent: "space-between", // Các phần tử con trải đều, khoảng cách tối đa
     alignItems: "center", // Căn giữa các phần tử con theo chiều dọc
     gap: 10, // Khoảng cách giữa các phần tử con là 10
+    width: "100%", // Đảm bảo chiếm toàn bộ chiều rộng
+    flexShrink: 1, // Cho phép thu nhỏ nếu cần
   },
   brandRow: { // Style cho phần chứa logo và tên thương hiệu
     flexDirection: "row", // Xếp cạnh nhau theo hàng ngang
     alignItems: "center", // Căn giữa các mục theo chiều dọc
+    flexShrink: 0, // Không cho phép thu nhỏ phần brand
   },
   logoWrapper: { // Style cho ô chứa logo bên trái
     width: 48, // Chiều rộng 48
@@ -30,13 +38,13 @@ const headerStyles = StyleSheet.create({
     color: "#fff", // Màu chữ trắng
     fontSize: 18, // Cỡ chữ 18
     fontWeight: "700", // Đậm
+    flexShrink: 0, // Không cho phép thu nhỏ text
   },
   searchInput: {
     flex: 1,
     marginLeft: 10,
     color: "#0f172a",
-    fontSize: 15,
-    fontWeight: "500",
+    minWidth: 0, // Cho phép thu nhỏ xuống dưới 0 để flex hoạt động đúng
   },
   searchContainer: {
     flexDirection: "row",
@@ -50,8 +58,8 @@ const headerStyles = StyleSheet.create({
     shadowOpacity: 0.12,
     shadowRadius: 8,
     elevation: 3,
-    width: 260,
-    marginLeft: 12,
+    flex: 1, // Tự động điều chỉnh chiều rộng để vừa với không gian còn lại
+    minWidth: 0, // Cho phép thu nhỏ xuống dưới 0 để flex hoạt động đúng
   },
 });
 
