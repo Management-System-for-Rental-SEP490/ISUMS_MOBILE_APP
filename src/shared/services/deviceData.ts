@@ -29,6 +29,20 @@ export const mockDevices: Device[] = [
       installationDate: "2022-08-06",
     },
   },
+  {
+    id: "dev-003",
+    name: "Thiết bị NFC - NTAG213",
+    type: "other",
+    nfcTagId: "04 9C 59 A2 B2 19 90",
+    location: "Chưa xác định",
+    status: "active",
+    metadata: {
+      serialNumber: "SN-NFC-2025-003",
+      manufacturer: "NXP Semiconductors",
+      model: "NTAG213",
+      installationDate: new Date().toISOString().split("T")[0],
+    },
+  },
 ];
 
 export const getDeviceByNfcTag = (nfcTagId: string): Device | undefined =>
