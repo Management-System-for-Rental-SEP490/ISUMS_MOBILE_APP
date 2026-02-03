@@ -19,7 +19,7 @@ export const mockDevices: Device[] = [
     id: "dev-002",
     name: "Đồng hồ nước tòa A - phòng 102",
     type: "water",
-    nfcTagId: "04 9C 59 A2 B2 19 91",
+    nfcTagId: "1D 6C 7D 0E 09 10 80",
     location: "Tầng 1 - Phòng 102",
     status: "maintenance",
     metadata: {
@@ -33,7 +33,7 @@ export const mockDevices: Device[] = [
     id: "dev-003",
     name: "Thiết bị NFC - NTAG213",
     type: "other",
-    nfcTagId: "04 9C 59 A2 B2 19 90",
+    nfcTagId: "1D A3 8A 0E 09 10 80",
     location: "Chưa xác định",
     status: "active",
     metadata: {

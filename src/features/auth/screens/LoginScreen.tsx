@@ -4,7 +4,7 @@ import { useNavigation } from "@react-navigation/native";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import loginStyles from "../../../shared/styles/authenticationScreen/loginStyles";
 import { RootStackParamList } from "../../../shared/types";
-import { mockLogin } from "../../../services/authData";
+import { mockLogin } from "../../../shared/services/authData";
 import { useAuthStore } from "../../../store/useAuthStore";
 
 

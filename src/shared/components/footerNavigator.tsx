@@ -13,7 +13,7 @@ import TenantsScreen from "../../features/house/screens/TenantsScreen";
 import UserProfileScreen from "../../features/house/screens/UserProfileScreen";
 import { iconStyles } from "../styles/iconStyles";
 import footerStyles from "../styles/footerStyles";
-import CalendarScreen from "../../calendar/CalendarScreen";
+import CalendarScreen from "../../features/calendar/CalendarScreen";
 import NotificationScreen from "../../features/notification/NotificationScreen";
 export const Tab = createBottomTabNavigator<MainTabParamList>();
 
