@@ -27,11 +27,28 @@
         "android.permission.CAMERA",
         "android.permission.NFC"
       ],
-      "package": "com.anonymous.ISUMS"
+      "package": "com.anonymous.isums",
+      "intentFilters": [
+        {
+          "action": "VIEW",
+          "autoVerify": true,
+          "data": [
+            {
+              "scheme": "isums"
+            }
+          ],
+          "category": [
+            "BROWSABLE",
+            "DEFAULT"
+          ]
+        }
+      ]
     },
     "web": {
       "favicon": "./assets/logob.png"
-    }
-    
+    },
+    "plugins": [
+      "expo-web-browser"
+    ]
   }
 }
