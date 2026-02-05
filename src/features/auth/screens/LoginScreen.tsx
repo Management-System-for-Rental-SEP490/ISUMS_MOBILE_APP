@@ -1,5 +1,5 @@
 import { useEffect } from "react";
-import { View, Text, TouchableOpacity, Alert, Linking, AppState } from "react-native";
+import { View, Text, TouchableOpacity, Alert, Linking, AppState, Image } from "react-native";
 import { useNavigation } from "@react-navigation/native";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { LinearGradient } from "expo-linear-gradient";
@@ -8,7 +8,6 @@ import loginStyles from "../../../shared/styles/authenticationScreen/loginStyles
 import { RootStackParamList } from "../../../shared/types";
 import { useAuthStore } from "../../../store/useAuthStore";
 import { openKeycloakLogin, handleKeycloakCallback, exchangeCodeForToken } from "../../../shared/services/keycloakAuth";
-import Icons from "../../../shared/theme/icon";
 
 type LoginNavigationProp = NativeStackNavigationProp<RootStackParamList, "AuthLogin">;
 
@@ -100,7 +99,11 @@ const LoginScreen = () => {
       <View style={loginStyles.content}>
         <View style={loginStyles.logoContainer}>
           <View style={loginStyles.logoWrapper}>
-            <Icons.logoHome size={80} />
+            <Image
+              source={require("../../../../assets/logob.png")}
+              style={loginStyles.logoImage}
+              accessibilityLabel="ISUMS logo"
+            />
           </View>
           <Text style={loginStyles.brandTitle}>ISUMS</Text>
           <Text style={loginStyles.subtitle}>Hệ thống quản lý điều hành trực tuyến</Text>
