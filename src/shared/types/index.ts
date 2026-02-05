@@ -29,7 +29,7 @@ export type LogoProps = {
   height?: number;
 };
 
-export type UserRole = "tenant" | "landlord" | "manager" | "staff";
+export type UserRole = "tenant"| "technical";
 
 export type AuthPayload = {
   username: string;
