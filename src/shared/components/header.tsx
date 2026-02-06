@@ -27,8 +27,9 @@ import { NavigationProp, useNavigation } from "@react-navigation/native";
 //        - style: dùng style headerStyles.gradient và tăng paddingTop theo lề an toàn (insets.top + 12).
 const gradientMaps: Record<HeaderVariant, [ColorValue, ColorValue]> = {
   default: ["#3bb582", "rgba(12, 106, 181, 0.7)"],
-  electric: ["#008001", "rgba(33, 152, 33, 0.9)"],
-  water: ["#0072cf", "rgba(9, 128, 225, 0.9)"],
+  electric: ["#82A762", "#82A762"], // Sử dụng 1 màu xanh lá nhạt
+  // electric: ["#008001", "rgba(26, 197, 60, 0.9)"],
+  water: ["#20B8EB", "#20B8EB"], // Sử dụng 1 màu xanh nhạt
 };
 
 const Header = ({ variant = "default" }: { variant?: HeaderVariant }) => {

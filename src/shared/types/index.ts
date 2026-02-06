@@ -16,6 +16,7 @@ export type MainTabParamList = {
 export type HeaderVariant = "default" | "electric" | "water"; // định nghĩa các loại variant của header
 export type RootStackParamList = AuthStackParamList & {
   Main: undefined;
+  OnBoarding: undefined;
   Camera: undefined;
   DeviceDetail: { device: Device }; // device là một object có kiểu Device
 };
@@ -35,6 +36,7 @@ export type AuthPayload = {
   username: string;
   role: UserRole;
   token: string;
+  idToken?: string; // Thêm idToken để dùng cho logout
   // refreshToken là một chuỗi (string) được sử dụng để lấy lại (làm mới) access token khi access token hết hạn. 
   // Nó giúp người dùng không cần đăng nhập lại mỗi khi phiên làm việc (session) bị timeout.
   refreshToken?: string;
@@ -44,10 +46,13 @@ export type AuthState = {
   user: string | null;
   role: UserRole | null;
   token: string | null;
+  idToken: string | null; // Thêm vào state
   refreshToken: string | null;
   isLoggedIn: boolean;
+  onboardedUsers: string[]; // Danh sách username đã xem onboarding
   login: (data: AuthPayload) => void;
   logout: () => void;
+  completeOnboarding: () => void; // Hàm xác nhận user hiện tại đã xem xong
 };
 export type RegisterState = {
   username: string;

@@ -211,3 +211,35 @@ body::before {
   color: #1e40af;
   border: 1px solid #93c5fd;
 }
+
+/* New styles for Back to Login link */
+.back-to-login {
+  margin-top: 24px;
+  text-align: center;
+}
+
+.link-back {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: #6b7280;
+  text-decoration: none;
+  font-size: 14px;
+  font-weight: 500;
+  transition: color 0.2s;
+  padding: 8px 16px;
+  border-radius: 8px;
+}
+
+.link-back:hover {
+  color: #0ea5e9;
+  background-color: #f3f4f6;
+}
+
+.icon-arrow {
+  transition: transform 0.2s;
+}
+
+.link-back:hover .icon-arrow {
+  transform: translateX(-4px);
+}

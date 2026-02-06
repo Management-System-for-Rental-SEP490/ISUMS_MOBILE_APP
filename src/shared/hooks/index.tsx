@@ -1,2 +1,4 @@
-// Welcome to hooks
-// react query ở đây để quản lý state và API calls
+// Export tất cả các hooks tại đây để import ngắn gọn
+// Ví dụ: import { useUserProfile } from "../../shared/hooks";
+
+export * from "./useUserProfile";

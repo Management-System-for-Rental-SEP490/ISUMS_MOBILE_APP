@@ -41,7 +41,7 @@
             </#if>
 
             <#if realm.resetPasswordAllowed>
-                <a href="${url.loginResetCredentialsUrl}" class="forgot-link">${msg("doForgotPassword")}</a>
+                <a href="${url.loginResetCredentialsUrl}" class="forgot-link">${msg("Forgot Password")}</a>
             </#if>
 
             <input type="hidden" id="id-hidden-input" name="credentialId" <#if auth.selectedCredential?has_content>value="${auth.selectedCredential}"</#if>/>

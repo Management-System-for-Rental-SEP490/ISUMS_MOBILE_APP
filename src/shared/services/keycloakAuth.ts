@@ -1,13 +1,19 @@
 import { Linking, Platform } from "react-native";
 import axios from "axios";
+import * as WebBrowser from "expo-web-browser";
 import { AuthPayload, UserRole } from "../types";
+
+// Đảm bảo WebBrowser hoạt động đúng trên Web
+WebBrowser.maybeCompleteAuthSession();
 
 // Lấy IP address động hoặc dùng localhost
 const getKeycloakBaseUrl = (): string => {
   if (Platform.OS === 'web') {
     return "http://localhost:8080";
   }
-  const MOBILE_KEYCLOAK_IP = process.env.EXPO_PUBLIC_KEYCLOAK_IP || "192.168.137.1";
+  const MOBILE_KEYCLOAK_IP = process.env.EXPO_PUBLIC_KEYCLOAK_IP || "192.168.1.13";
+  //hotpot của lap
+  // const MOBILE_KEYCLOAK_IP = process.env.EXPO_PUBLIC_KEYCLOAK_IP || "192.168.137.1";
   return `http://${MOBILE_KEYCLOAK_IP}:8080`;
   // Nếu dùng chung cho mọi nền tảng
   //return "https://sso.isums.pro";
@@ -29,16 +35,15 @@ const KEYCLOAK_CONFIG = {
 };
 
 // Tạo URL authorization để chuyển hướng đến Keycloak login
-//đoạn này chuẩn bị các tham số cần thiết để xây dựng URL chuyển hướng người dùng sang trang đăng nhập Keycloak, tuân thủ luồng Authorization Code của OAuth 2.0.
 export const getKeycloakAuthUrl = (): string => {
-  const params = new URLSearchParams({ //URLSearchParams là API của JavaScript để làm việc với URL.
+  const params = new URLSearchParams({
     client_id: KEYCLOAK_CONFIG.clientId,
-    redirect_uri: KEYCLOAK_CONFIG.redirectUri, //redirect_uri là URL chuyển hướng sau khi đăng nhập thành công.
-    response_type: "code", //response_type là kiểu response từ Keycloak.
-    scope: "openid email profile", //scope là các quyền của user.
+    redirect_uri: KEYCLOAK_CONFIG.redirectUri,
+    response_type: "code",
+    scope: "openid email profile",
+    // prompt: "login", // Xóa dòng này để tránh xung đột re-auth
   });
-  // cấu hình đường url cho người dùng mở đúng url của keycloak
-  return `${KEYCLOAK_CONFIG.baseUrl}/realms/${KEYCLOAK_CONFIG.realm}/protocol/openid-connect/auth?${params.toString()}`; //đoạn này tạo ra URL chuyển hướng người dùng sang trang đăng nhập Keycloak, tuân thủ luồng Authorization Code của OAuth 2.0.
+  return `${KEYCLOAK_CONFIG.baseUrl}/realms/${KEYCLOAK_CONFIG.realm}/protocol/openid-connect/auth?${params.toString()}`;
 };
 
 // Trao đổi authorization code lấy access token
@@ -61,15 +66,16 @@ export const exchangeCodeForToken = async (code: string): Promise<AuthPayload> =
       }
     );
 
-    const { access_token, refresh_token } = response.data;
+    const { access_token, refresh_token, id_token } = response.data; // Lấy thêm id_token
     const userInfo = await getUserInfo(access_token);
     const role = determineUserRole(userInfo, access_token);
-    // sau có thể có thêm xác định group nhận attributes của user
+    
     return {
       username: userInfo.preferred_username || userInfo.name || "user",
       role: role,
       token: access_token,
       refreshToken: refresh_token,
+      idToken: id_token, // Trả về idToken
     };
   } catch (error: any) {
     const errorMessage = error.response?.data?.error_description 
@@ -79,6 +85,10 @@ export const exchangeCodeForToken = async (code: string): Promise<AuthPayload> =
     throw new Error(`Lỗi đăng nhập: ${errorMessage}`);
   }
 };
+// ... (giữ nguyên getUserInfo, decodeJWT, determineUserRole) ...
+
+// ... (giữ nguyên openKeycloakLogin, handleKeycloakCallback, openAccountManagement) ...
+
 
 // Lấy thông tin user từ Keycloak userinfo endpoint
 //Giống API get user
@@ -136,6 +146,26 @@ const determineUserRole = (userInfo: any, accessToken: string): UserRole => { //
     // if (resourceRoles.includes("landlord")) return "landlord";
     // if (resourceRoles.includes("manager")) return "manager";
     if (resourceRoles.includes("tenant")) return "tenant";
+
+    // --- MỚI: Kiểm tra Group từ Keycloak ---
+    // Yêu cầu: Cấu hình Mapper "Group Membership" trong Keycloak -> Token Claim Name: "groups"
+    const groups = tokenClaims.groups || userInfo.groups || [];
+    if (Array.isArray(groups)) {
+      // Group trong Keycloak thường có dạng path: "/Technical Group" hoặc "Technical Group"
+      if (groups.some((g: string) => g.toLowerCase().includes("technical") || g.toLowerCase().includes("staff"))) {
+        return "technical";
+      }
+      if (groups.some((g: string) => g.toLowerCase().includes("tenant") || g.toLowerCase().includes("resident"))) {
+        return "tenant";
+      }
+    }
+
+    // --- MỚI: Kiểm tra Attributes tùy chỉnh ---
+    // Ví dụ: user có attribute "user_type": "technical"
+    const attributes = userInfo.attributes || tokenClaims.attributes || {};
+    if (attributes.user_type === "technical" || (Array.isArray(attributes.user_type) && attributes.user_type.includes("technical"))) {
+      return "technical";
+    }
   }
   
   // Fallback: kiểm tra từ username
@@ -147,24 +177,63 @@ const determineUserRole = (userInfo: any, accessToken: string): UserRole => { //
   return "tenant";
 };
 
+// Làm mới token bằng refresh token
+export const refreshAccessToken = async (refreshToken: string): Promise<AuthPayload> => {
+  try {
+    const tokenUrl = `${KEYCLOAK_CONFIG.baseUrl}/realms/${KEYCLOAK_CONFIG.realm}/protocol/openid-connect/token`;
+
+    const response = await axios.post(
+      tokenUrl,
+      new URLSearchParams({
+        grant_type: "refresh_token",
+        client_id: KEYCLOAK_CONFIG.clientId,
+        refresh_token: refreshToken,
+      }),
+      {
+        headers: {
+          "Content-Type": "application/x-www-form-urlencoded",
+        },
+      }
+    );
+
+    const { access_token, refresh_token: new_refresh_token, id_token } = response.data;
+    const userInfo = await getUserInfo(access_token);
+    const role = determineUserRole(userInfo, access_token);
+
+    return {
+      username: userInfo.preferred_username || userInfo.name || "user",
+      role: role,
+      token: access_token,
+      // Keycloak có thể trả về refresh token mới hoặc không (nếu cấu hình Refresh Token Rotation)
+      // Nếu không có mới, dùng lại cái cũ
+      refreshToken: new_refresh_token || refreshToken,
+      idToken: id_token,
+    };
+  } catch (error: any) {
+    const errorMessage = error.response?.data?.error_description
+      || error.response?.data?.error
+      || error.message
+      || "Không thể làm mới token";
+    throw new Error(`Lỗi làm mới token: ${errorMessage}`);
+  }
+};
+
 // Mở Keycloak login page trong browser
-export const openKeycloakLogin = async (): Promise<void> => {
+export const openKeycloakLogin = async (): Promise<WebBrowser.WebBrowserAuthSessionResult | null> => {
   try {
     const authUrl = getKeycloakAuthUrl();
-    
+    const redirectUrl = KEYCLOAK_CONFIG.redirectUri;
+
     // Trên web, mở trong tab mới
-    if (Platform.OS === 'web' && typeof window !== 'undefined') {
-      window.open(authUrl, '_blank'); // '_blank' là tạo tab mới để tránh mất dữ liệu đang nhập.
-      return;
+    if (Platform.OS === 'web') {
+      window.open(authUrl, '_blank');
+      return null;
     }
     
-    // Trên mobile, dùng Linking.openURL để đảm bảo deep link hoạt động
-    const canOpen = await Linking.canOpenURL(authUrl);
-    if (canOpen) {
-      await Linking.openURL(authUrl);
-    } else {
-      throw new Error("Không thể mở trình duyệt");
-    }
+    // Trên mobile, dùng expo-web-browser
+    const result = await WebBrowser.openAuthSessionAsync(authUrl, redirectUrl);
+    return result;
+
   } catch (error: any) {
     throw new Error(`Không thể mở trang đăng nhập: ${error.message || error}`);
   }
@@ -205,5 +274,41 @@ export const openAccountManagement = async () => {
     }
   } catch (error: any) {
     throw new Error(`Không thể mở trang quản lý tài khoản: ${error.message || error}`);
+  }
+};
+
+/**
+ * Đăng xuất khỏi Keycloak (Xóa session trên server)
+ * - idToken: ID Token để gợi ý Keycloak logout đúng user (BẮT BUỘC để tránh lỗi 500/confirm page)
+ */
+export const logoutKeycloak = async (idToken?: string | null) => {
+  try {
+    let logoutUrl = `${KEYCLOAK_CONFIG.baseUrl}/realms/${KEYCLOAK_CONFIG.realm}/protocol/openid-connect/logout`;
+    const params = new URLSearchParams();
+
+    // 1. Dùng post_logout_redirect_uri để quay về app
+    params.append('post_logout_redirect_uri', KEYCLOAK_CONFIG.redirectUri);
+    
+    // 2. Nếu có idToken, gửi kèm id_token_hint -> Logout triệt để, không hỏi lại
+    if (idToken) {
+      params.append('id_token_hint', idToken);
+    } 
+    // Nếu KHÔNG có idToken, buộc phải gửi client_id (nhưng dễ bị lỗi 500 hoặc hỏi confirm)
+    else {
+      params.append('client_id', KEYCLOAK_CONFIG.clientId);
+    }
+
+    logoutUrl += `?${params.toString()}`;
+    
+    // Dùng WebBrowser để logout -> tự đóng tab khi xong
+    if (Platform.OS !== 'web') {
+        // Đối với logout, ta cũng dùng openAuthSessionAsync
+        // Nó sẽ mở browser -> gọi url logout -> Keycloak redirect về app -> browser đóng
+        await WebBrowser.openAuthSessionAsync(logoutUrl, KEYCLOAK_CONFIG.redirectUri);
+    } else {
+        window.location.href = logoutUrl;
+    }
+  } catch (error) {
+    console.error("Lỗi khi logout Keycloak:", error);
   }
 };

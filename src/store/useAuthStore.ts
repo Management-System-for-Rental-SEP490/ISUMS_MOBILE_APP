@@ -1,4 +1,6 @@
 import { create } from "zustand";
+import { persist, createJSONStorage } from "zustand/middleware";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import { AuthState, ForgotPasswordState, RegisterState, MenuModalState } from "../shared/types";
 
 /*
@@ -26,31 +28,74 @@ Tóm lại:
 - Zustand quản lý trạng thái tập trung bằng một store toàn cục.
 - useAuthStore cho phép mọi component truy cập và chỉnh sửa trạng thái đăng nhập, login/logout tiện lợi và nhất quán, không cần props drilling.
 - Cú pháp object return trong create giúp khai báo state ban đầu và các “thao tác” với state ngay tại chỗ.
+ Update: Thêm persist middleware để lưu trạng thái đăng nhập vào AsyncStorage.
+  Khi app mở lại, state sẽ được tự động khôi phục (rehydrated).
 */
 
-const useAuthStore = create<AuthState>((set) => ({
-  user: null,
-  role: null,
-  token: null,
-  refreshToken: null,
-  isLoggedIn: false,
-  login: (data) =>
-    set({
-      user: data.username,
-      role: data.role,
-      token: data.token,
-      refreshToken: data.refreshToken ?? null,
-      isLoggedIn: true,
-    }),
-  logout: () =>
-    set({
+const useAuthStore = create<AuthState>()(
+  persist(
+    (set, get) => ({
       user: null,
       role: null,
       token: null,
+      idToken: null,
       refreshToken: null,
       isLoggedIn: false,
+      onboardedUsers: [], // Danh sách các user đã xem Intro
+
+      login: (data) =>
+        set((state) => ({
+          user: data.username,
+          role: data.role,
+          token: data.token,
+          idToken: data.idToken ?? null,
+          refreshToken: data.refreshToken ?? null,
+          isLoggedIn: true,
+          // Giữ nguyên onboardedUsers
+          onboardedUsers: state.onboardedUsers, 
+        })),
+
+      logout: () =>
+        set((state) => ({
+          user: null,
+          role: null,
+          token: null,
+          idToken: null,
+          refreshToken: null,
+          isLoggedIn: false,
+          // KHÔNG reset onboardedUsers để ghi nhớ lịch sử của các user trên máy này
+          onboardedUsers: state.onboardedUsers, 
+        })),
+
+      completeOnboarding: () => {
+        const currentUser = get().user;
+        if (currentUser) {
+          set((state) => {
+            // Nếu user này chưa có trong list thì thêm vào
+            if (!state.onboardedUsers.includes(currentUser)) {
+              return { onboardedUsers: [...state.onboardedUsers, currentUser] };
+            }
+            return {};
+          });
+        }
+      },
     }),
-}));
+    {
+      name: "auth-storage-v2", // Đổi tên key để reset data cũ (tránh lỗi conflict type)
+      storage: createJSONStorage(() => AsyncStorage), 
+      partialize: (state) => ({
+        user: state.user,
+        role: state.role,
+        token: state.token,
+        idToken: state.idToken,
+        refreshToken: state.refreshToken,
+        isLoggedIn: state.isLoggedIn,
+        onboardedUsers: state.onboardedUsers, // Lưu danh sách này
+      }),
+    }
+  )
+);
+
 const useRegisterStore = create<RegisterState>((set) => ({
   username: "",
   email: "",
@@ -59,15 +104,18 @@ const useRegisterStore = create<RegisterState>((set) => ({
   setEmail: (email: string) => set({ email }),
   setPassword: (password: string) => set({ password }),
 }));
+
 const useForgotPasswordStore = create<ForgotPasswordState>((set) => ({
   email: "",
   setEmail: (email: string) => set({ email }),
   sendEmail: () => set({ email: "" }),
 }));
+
 // chưa sài
 const useMenuStore = create<MenuModalState>((set) => ({
   visible: false,
   open: () => set({ visible: true }),
   close: () => set({ visible: false }),
 }));
-export { useAuthStore, useRegisterStore, useForgotPasswordStore, useMenuStore};
+
+export { useAuthStore, useRegisterStore, useForgotPasswordStore, useMenuStore };
