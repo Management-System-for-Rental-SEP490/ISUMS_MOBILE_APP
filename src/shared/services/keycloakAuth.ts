@@ -2,6 +2,7 @@ import { Linking, Platform } from "react-native";
 import axios from "axios";
 import * as WebBrowser from "expo-web-browser";
 import { AuthPayload, UserRole } from "../types";
+import { useAuthStore } from "../../store/useAuthStore";
 
 // Đảm bảo WebBrowser hoạt động đúng trên Web
 WebBrowser.maybeCompleteAuthSession();
@@ -11,7 +12,7 @@ const getKeycloakBaseUrl = (): string => {
   if (Platform.OS === 'web') {
     return "http://localhost:8080";
   }
-  const MOBILE_KEYCLOAK_IP = process.env.EXPO_PUBLIC_KEYCLOAK_IP || "192.168.1.13";
+  const MOBILE_KEYCLOAK_IP = process.env.EXPO_PUBLIC_KEYCLOAK_IP || "172.20.10.6";
   //hotpot của lap
   // const MOBILE_KEYCLOAK_IP = process.env.EXPO_PUBLIC_KEYCLOAK_IP || "192.168.137.1";
   return `http://${MOBILE_KEYCLOAK_IP}:8080`;
@@ -261,6 +262,43 @@ export const handleKeycloakCallback = (url: string): string | null => {
     return null;
   }
 };
+// Mở trang đổi mật khẩu trực tiếp (Sử dụng luồng UPDATE_PASSWORD của Keycloak)
+export const openChangePasswordPage = async () => {
+  try {
+    // Thêm tham số kc_action=UPDATE_PASSWORD để kích hoạt hành động bắt buộc đổi mật khẩu
+    // Điều này sẽ mở trang update password của theme Login (login-update-password.ftl)
+    const authUrl = `${getKeycloakAuthUrl()}&kc_action=UPDATE_PASSWORD`;
+    const redirectUrl = KEYCLOAK_CONFIG.redirectUri;
+
+    // Trên web, mở trong tab mới
+    if (Platform.OS === 'web') {
+        window.open(authUrl, '_blank');
+        return;
+    } 
+    
+    // Trên mobile, dùng WebBrowser để bắt callback sau khi đổi xong
+    const result = await WebBrowser.openAuthSessionAsync(authUrl, redirectUrl);
+
+    if (result.type === 'success' && result.url) {
+        const code = handleKeycloakCallback(result.url);
+        if (code) {
+             // Đổi mật khẩu thành công, Keycloak redirect về với auth code mới.
+             // Dùng code này để lấy token mới (tự động đăng nhập lại với mật khẩu mới)
+             const authPayload = await exchangeCodeForToken(code);
+             
+             // Cập nhật lại AuthStore
+             useAuthStore.getState().login(authPayload);
+        }
+    }
+  } catch (error: any) {
+    // Bỏ qua lỗi nếu user tự tắt browser
+    if (error.message && error.message.includes("User canceled")) {
+        return;
+    }
+    throw new Error(`Không thể mở trang đổi mật khẩu: ${error.message || error}`);
+  }
+};
+
 // mở tài khoản để đổi mật khẩu
 export const openAccountManagement = async () => {
   try {

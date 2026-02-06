@@ -67,6 +67,11 @@ const userProfileStyles = StyleSheet.create({
     color: "#333",
     marginBottom: 5,
   },
+  userEmail: {
+    fontSize: 14,
+    color: "#666",
+    marginBottom: 10,
+  },
   userRoleContainer: {
     backgroundColor: "#E8F5E9",
     paddingHorizontal: 12,
@@ -143,6 +148,33 @@ const userProfileStyles = StyleSheet.create({
     color: "#D32F2F",
     fontSize: 16,
     fontWeight: "bold",
+  },
+  infoItem: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: 15,
+  },
+  infoIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: "#F0F4F8",
+    justifyContent: "center",
+    alignItems: "center",
+    marginRight: 15,
+  },
+  infoContent: {
+    flex: 1,
+  },
+  infoLabel: {
+    fontSize: 14,
+    fontWeight: "600",
+    color: "#333",
+    marginBottom: 5,
+  },
+  infoValue: {
+    fontSize: 14,
+    color: "#666",
   },
 });
 
