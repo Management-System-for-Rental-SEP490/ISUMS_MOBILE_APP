@@ -335,6 +335,7 @@ export const logoutKeycloak = async (idToken?: string | null) => {
     else {
       params.append('client_id', KEYCLOAK_CONFIG.clientId);
     }
+    
 
     logoutUrl += `?${params.toString()}`;
     
