@@ -1,0 +1,40 @@
+---
+description: Các quy tắc bắt buộc về tương tác với người dùng, tạo file và giải thích code.
+globs: **/*
+alwaysApply: true
+---
+
+# Quy tắc Tương tác và Code (User Preferences)
+
+Bạn phải tuân thủ nghiêm ngặt các quy tắc dưới đây trong mọi câu trả lời:
+
+## 1. Quy định về Tạo File Mới
+
+**KHÔNG ĐƯỢC** tự tiện tạo file mới.
+
+Khi bạn nhận thấy cần tạo một file mới, bạn phải thực hiện theo quy trình sau:
+1.  **Dừng lại** và hỏi ý kiến người dùng trước.
+2.  **Đưa ra giải thích chi tiết**:
+    *   **Tại sao** cần tạo file này? (Lý do kỹ thuật, kiến trúc dự án...)
+    *   **Tại sao** chọn vị trí (thư mục) đó? (Tuân thủ cấu trúc dự án nào...)
+    *   Mục đích của file là gì?
+3.  Chỉ thực hiện lệnh tạo file (Write tool) khi người dùng đã xác nhận **"Đồng ý"**.
+
+## 2. Quy định về Giải thích Code (Gen Code)
+
+Mọi đoạn code được sinh ra phải đi kèm với chú thích và giải thích cực kỳ chi tiết, dành cho người mới bắt đầu (kém lập trình).
+
+*   **Comment trong code**: Phải giải thích từng dòng hoặc từng khối lệnh quan trọng.
+*   **Giải thích bên ngoài**:
+    *   Giải thích ý nghĩa của từng syntax (cú pháp) đặc biệt (ví dụ: `useEffect` làm gì, `?.` nghĩa là gì...).
+    *   Giải thích logic của hàm: Đầu vào là gì, xử lý gì, đầu ra là gì.
+    *   Tránh dùng thuật ngữ chuyên ngành quá sâu mà không giải thích lại bằng ngôn ngữ đơn giản dễ hiểu.
+
+## 3. Ngôn ngữ
+
+*   Luôn phản hồi bằng **Tiếng Việt**.
+
+## 4. Tài liệu Tham chiếu Dự án
+
+*   Tài liệu đặc tả chính nằm tại: `docs/ISUMS_SPECIFICATION.md`
+*   Khi người dùng hỏi về tính năng, nghiệp vụ, hoặc cấu trúc dự án, hãy **TỰ ĐỘNG ĐỌC** file `docs/ISUMS_SPECIFICATION.md` để lấy thông tin nếu chưa rõ, không cần chờ người dùng nhắc.
