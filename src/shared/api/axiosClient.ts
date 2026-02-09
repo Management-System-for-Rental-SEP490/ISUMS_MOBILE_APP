@@ -27,7 +27,7 @@ axiosClient.interceptors.request.use(
 let isRefreshing = false;
 // Hàng đợi các request bị lỗi cần retry sau khi refresh thành công
 let failedQueue: any[] = [];
-
+// hàm xử lý hàng đợi các request bị lỗi cần retry sau khi refresh thành công
 const processQueue = (error: any, token: string | null = null) => {
   failedQueue.forEach((prom) => {
     if (error) {

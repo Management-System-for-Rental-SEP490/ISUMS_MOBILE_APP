@@ -12,7 +12,7 @@ const getKeycloakBaseUrl = (): string => {
   if (Platform.OS === 'web') {
     return "http://localhost:8080";
   }
-  const MOBILE_KEYCLOAK_IP = process.env.EXPO_PUBLIC_KEYCLOAK_IP || "172.20.10.6";
+  const MOBILE_KEYCLOAK_IP = process.env.EXPO_PUBLIC_KEYCLOAK_IP || "192.168.1.17";
   //hotpot của lap
   // const MOBILE_KEYCLOAK_IP = process.env.EXPO_PUBLIC_KEYCLOAK_IP || "192.168.137.1";
   return `http://${MOBILE_KEYCLOAK_IP}:8080`;
@@ -35,14 +35,13 @@ const KEYCLOAK_CONFIG = {
   },
 };
 
-// Tạo URL authorization để chuyển hướng đến Keycloak login
+// Tạo URL authorization để chuyển hướng đến Keycloak login - tạo link và mở trình duyệt
 export const getKeycloakAuthUrl = (): string => {
   const params = new URLSearchParams({
     client_id: KEYCLOAK_CONFIG.clientId,
     redirect_uri: KEYCLOAK_CONFIG.redirectUri,
     response_type: "code",
     scope: "openid email profile",
-    // prompt: "login", // Xóa dòng này để tránh xung đột re-auth
   });
   return `${KEYCLOAK_CONFIG.baseUrl}/realms/${KEYCLOAK_CONFIG.realm}/protocol/openid-connect/auth?${params.toString()}`;
 };
@@ -160,7 +159,7 @@ const determineUserRole = (userInfo: any, accessToken: string): UserRole => { //
         return "tenant";
       }
     }
-
+// hàm dưới có thể sai
     // --- MỚI: Kiểm tra Attributes tùy chỉnh ---
     // Ví dụ: user có attribute "user_type": "technical"
     const attributes = userInfo.attributes || tokenClaims.attributes || {};
@@ -174,7 +173,6 @@ const determineUserRole = (userInfo: any, accessToken: string): UserRole => { //
   if (username.includes("technical") || username.includes("admin")) return "technical";
   // if (username.includes("landlord")) return "landlord";
   // if (username.includes("manager")) return "manager";
-  
   return "tenant";
 };
 
@@ -304,14 +302,14 @@ export const openAccountManagement = async () => {
   try {
     const accountUrl = `${KEYCLOAK_CONFIG.baseUrl}/realms/${KEYCLOAK_CONFIG.realm}/account`;
     
-    const canOpen = await Linking.canOpenURL(accountUrl);
+    const canOpen = await Linking.canOpenURL(accountUrl); // kiểm tra xem có thể mở được trình duyệt không
     if (canOpen) {
-      await Linking.openURL(accountUrl);
+      await Linking.openURL(accountUrl); // mở trình duyệt
     } else {
-      throw new Error("Không thể mở trình duyệt");
+      throw new Error("Không thể mở trình duyệt"); // nếu không thể mở trình duyệt thì throw lỗi
     }
   } catch (error: any) {
-    throw new Error(`Không thể mở trang quản lý tài khoản: ${error.message || error}`);
+    throw new Error(`Không thể mở trang quản lý tài khoản: ${error.message || error}`); // nếu có lỗi thì throw lỗi
   }
 };
 
@@ -322,7 +320,7 @@ export const openAccountManagement = async () => {
 export const logoutKeycloak = async (idToken?: string | null) => {
   try {
     let logoutUrl = `${KEYCLOAK_CONFIG.baseUrl}/realms/${KEYCLOAK_CONFIG.realm}/protocol/openid-connect/logout`;
-    const params = new URLSearchParams();
+    const params = new URLSearchParams(); // xử lý phần tham số phía sau dấu hỏi ? của một đường link.
 
     // 1. Dùng post_logout_redirect_uri để quay về app
     params.append('post_logout_redirect_uri', KEYCLOAK_CONFIG.redirectUri);

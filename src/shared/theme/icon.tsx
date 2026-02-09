@@ -6,6 +6,7 @@ import Entypo from '@expo/vector-icons/Entypo';
 import FontAwesome6 from '@expo/vector-icons/FontAwesome6';
 import { IconProps } from '../types';
 import { LogoHomeIcon } from './LogoIcon';
+import Ionicons from '@expo/vector-icons/build/Ionicons';
 
 
 const Icons = {
@@ -42,6 +43,21 @@ const Icons = {
   ),
   notification: ({ size = 24, color = 'black' }: IconProps = {}) => (
     <FontAwesome name="bell" size={size} color={color} />
+  ),
+  mail: ({ size = 24, color = 'black' }: IconProps = {}) => (
+    <MaterialIcons name="mail" size={size} color={color} />
+  ),
+  call: ({ size = 24, color = 'black' }: IconProps = {}) => (
+    <MaterialIcons name="call" size={size} color={color} />
+  ),
+  shield: ({ size = 24, color = 'black' }: IconProps = {}) => (
+    <FontAwesome5 name="shield-alt" size={size} color={color} />
+  ),
+  chevronForward: ({ size = 24, color = 'black' }: IconProps = {}) => (
+    <Ionicons name="chevron-forward" size={size} color={color} />
+  ),
+  logOut: ({ size = 24, color = 'black' }: IconProps = {}) => (
+    <Ionicons name="log-out-outline" size={size} color={color} />
   ),
 };
 

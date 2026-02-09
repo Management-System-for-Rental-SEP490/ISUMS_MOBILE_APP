@@ -1,8 +1,8 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { getUserProfile, updateUserProfile, UserProfileResponse } from "../services/userService";
+import { getUserProfile, updateUserProfile } from "../services/userApi";
+import { UserProfileResponse } from "../types/api";
 
-// Query Key: Định danh duy nhất cho loại dữ liệu này trong Cache
-// Khi muốn làm mới dữ liệu từ nơi khác, ta sẽ dùng key này
+// Query Key
 export const USER_KEYS = {
   all: ["user"] as const,
   profile: () => [...USER_KEYS.all, "profile"] as const,
@@ -11,13 +11,8 @@ export const USER_KEYS = {
 // Hook lấy thông tin user
 export const useUserProfile = () => {
   return useQuery({
-    queryKey: USER_KEYS.profile(), // Key định danh: ["user", "profile"]
-    queryFn: getUserProfile,       // Hàm gọi API thực tế
-    
-    // Các tùy chọn thêm (Optional):
-    // staleTime: 5 * 60 * 1000, // Dữ liệu coi là cũ sau 5 phút (mặc định set ở App.tsx rồi)
-    // enabled: !!token,         // Chỉ chạy khi có token (nhưng axiosClient lo rồi nên kệ)
-    // onError: (error) => console.log(error),
+    queryKey: USER_KEYS.profile(), 
+    queryFn: getUserProfile,       
   });
 };
 
@@ -26,16 +21,9 @@ export const useUpdateUserMutation = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: updateUserProfile, // Hàm gọi API update
-    
-    // Khi update thành công
+    mutationFn: updateUserProfile, 
     onSuccess: (data) => {
-      // 1. Cập nhật ngay lập tức dữ liệu trong cache (Optimistic UI update - Optional)
-      // queryClient.setQueryData(USER_KEYS.profile(), data);
-
-      // 2. Hoặc đơn giản là đánh dấu dữ liệu cũ là "bẩn" (stale) để React Query tự fetch lại
       queryClient.invalidateQueries({ queryKey: USER_KEYS.profile() });
-      
       console.log("Update profile success!");
     },
     onError: (error) => {

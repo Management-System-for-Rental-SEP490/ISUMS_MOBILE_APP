@@ -9,12 +9,12 @@ import {
   Dimensions,
 } from "react-native";
 import { useAuthStore } from "../../../store/useAuthStore";
-import styles from "../onBoardingStyles";
+import styles from "./onBoardingStyles";
 import { StatusBar } from "expo-status-bar";
 import { LinearGradient } from "expo-linear-gradient";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
-const { width } = Dimensions.get("window");
+const { width } = Dimensions.get("window"); //lấy chiều rộng của màn hình.
 
 const SLIDES = [
   {
@@ -41,20 +41,20 @@ const SLIDES = [
 ];
 
 const OnBoarding = () => {
-  const [currentIndex, setCurrentIndex] = useState(0);
-  const scrollX = useRef(new Animated.Value(0)).current;
-  const slidesRef = useRef<FlatList>(null);
-  const completeOnboarding = useAuthStore((state) => state.completeOnboarding);
+  const [currentIndex, setCurrentIndex] = useState(0); //currentIndex là biến để lưu trữ index của slide hiện tại.
+  const scrollX = useRef(new Animated.Value(0)).current; //scrollX là biến để lưu trữ giá trị scroll của FlatList.
+  const slidesRef = useRef<FlatList>(null); //slidesRef là biến để lưu trữ ref của FlatList.
+  const completeOnboarding = useAuthStore((state) => state.completeOnboarding); //completeOnboarding là hàm để hoàn thành onboarding.
   const insets = useSafeAreaInsets(); 
-
-  const viewableItemsChanged = useRef(({ viewableItems }: any) => {
+  //hàm dùng để nhận biết người dùng đang ở trang nào để cập nhật thanh hiển thị
+  const viewableItemsChanged = useRef(({ viewableItems }: any) => { 
     if (viewableItems && viewableItems.length > 0) {
-      setCurrentIndex(viewableItems[0].index);
+      setCurrentIndex(viewableItems[0].index); //set giá trị của currentIndex về index của slide hiện tại.
     }
-  }).current;
+  }).current; // Hàm được tạo 1 lần, ghim chặt vào bộ nhớ, không bao giờ đổi.
 
-  const viewConfig = useRef({ viewAreaCoveragePercentThreshold: 50 }).current;
-
+  const viewConfig = useRef({ viewAreaCoveragePercentThreshold: 50 }).current; //Quy định cho FlatList biết "Khi nào thì được tính là đã chuyển sang trang mới?".
+   //Xử lý logic khi người dùng bấm vào nút mũi tên hoặc nút "Tiếp tục".
   const handleNext = () => {
     if (currentIndex < SLIDES.length - 1) {
       slidesRef.current?.scrollToIndex({ index: currentIndex + 1 });
@@ -66,25 +66,26 @@ const OnBoarding = () => {
   const handleFinish = () => {
     completeOnboarding();
   };
-
+//vẽ ra dãy các dấu chấm ở dưới cùng màn hình
   const Paginator = ({ data, scrollX }: { data: any[]; scrollX: Animated.Value }) => {
     return (
       <View style={styles.paginationContainer}>
         {data.map((_, i) => {
-          const inputRange = [(i - 1) * width, i * width, (i + 1) * width];
+          const inputRange = [(i - 1) * width, i * width, (i + 1) * width]; //Xác định 3 mốc vị trí của màn hình
 
-          const dotWidth = scrollX.interpolate({
+          const dotWidth = scrollX.interpolate({ //tính toán chiều rộng của dấu chấm dựa vào vị trí của màn hình
             inputRange,
-            outputRange: [10, 24, 10], 
-            extrapolate: "clamp",
+            outputRange: [10, 24, 10], //Khi bạn lướt từ từ, dấu chấm sẽ từ từ phình to ra từ 10 lên 24, rồi lại co về 10.
+            extrapolate: "clamp", //giới hạn giá trị của dấu chấm ở giữa 2 mốc vị trí.
           });
 
           const opacity = scrollX.interpolate({
             inputRange,
-            outputRange: [0.3, 1, 0.3],
+            outputRange: [0.3, 1, 0.3], // này là độ đậm nhạt
             extrapolate: "clamp",
           });
-
+//Bắt buộc phải dùng thẻ này (thay vì View thường) thì mới hiểu được các giá trị động (dotWidth, opacity)
+//  đang thay đổi liên tục 60 khung hình/giây.
           return (
             <Animated.View
               key={i.toString()}
@@ -106,6 +107,7 @@ const OnBoarding = () => {
       end={{ x: 1, y: 1 }}
       style={styles.container}
     >
+      {/* Thanh hiển thị trạng thái màn hình */}
       <StatusBar style="light" />
 
       {/* Nút Skip ở góc trên bên phải */}

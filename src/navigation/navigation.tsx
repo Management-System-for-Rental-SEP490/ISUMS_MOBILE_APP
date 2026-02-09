@@ -36,10 +36,10 @@ const Navigation = () => {
 
   // Kiểm tra xem User hiện tại đã xem Onboarding chưa
   const showOnboarding = isLoggedIn && user && !onboardedUsers.includes(user);
-
+// đọc state từ AsyncStorage vào store
   useEffect(() => {
     const rehydrate = async () => {
-        if (useAuthStore.persist && useAuthStore.persist.hasHydrated) {
+        if (useAuthStore.persist && useAuthStore.persist.hasHydrated) { //Middleware của Zustand giúp lưu state vào AsyncStorage (ổ cứng điện thoại).
              if (useAuthStore.persist.hasHydrated()) {
                  setIsReady(true);
              } else {
@@ -55,7 +55,8 @@ const Navigation = () => {
   if (!isReady) {
       return (
           <View style={{flex: 1, justifyContent: 'center', alignItems: 'center'}}>
-              <ActivityIndicator size="large" color="#3bb582" />
+            {/* Hiển thị loading khi đang đọc state từ AsyncStorage vào store(cái vòng tròn xoay */}
+              <ActivityIndicator size="large" color="#3bb582" /> 
           </View>
       );
   }

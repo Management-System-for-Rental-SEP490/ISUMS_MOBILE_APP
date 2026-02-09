@@ -82,7 +82,6 @@ export type UserState = {
   setEmail: (email: string) => void;
   setPassword: (password: string) => void;
 }; 
-
 export type DeviceType = "electric" | "water" | "other";
 export type DeviceStatus = "active" | "inactive" | "maintenance" | "pending";
 export type Device = {

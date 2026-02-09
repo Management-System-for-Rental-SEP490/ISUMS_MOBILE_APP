@@ -15,20 +15,22 @@ const LoginScreen = () => {
   const navigation = useNavigation<LoginNavigationProp>();
   const insets = useSafeAreaInsets();
   const [isLoading, setIsLoading] = useState(false);
-  const isProcessing = useRef(false);
+  const isProcessing = useRef(false); //useRef là một hook trong React để lưu trữ giá trị không thay đổi (immutable) trong suốt cả quá trình render của component.
 
-  // Reset trạng thái khi màn hình được focus lại (ví dụ: quay lại từ browser nhưng không login)
+  // Reset trạng thái khi màn hình được focus lại (ví dụ: quay lại từ browser nhưng không login):
+  //Đoạn code này là một cơ chế dọn dẹp và reset trạng thái an toàn dành riêng cho việc điều hướng giữa các màn hình 
+  // trong React Native, đảm bảo UI không bị treo ở trạng thái loading khi người dùng quay lại màn hình này.
   useFocusEffect(
     useCallback(() => {
-      isProcessing.current = false;
-      setIsLoading(false);
+      isProcessing.current = false; //set giá trị của isProcessing về false để không xử lý deep link callback khi màn hình được focus lại.
+      setIsLoading(false); //set giá trị của isLoading về false để không hiển thị loading khi màn hình được focus lại.
     }, [])
   );
 
-  // Hàm xử lý deep link callback từ Keycloak
+  // Hàm xử lý deep link callback từ Keycloak, bắt deep link, giải nghĩa lấy code để đổi lấy token
   const handleDeepLink = async (event: { url: string }) => {
     if (isProcessing.current) {
-        return;
+        return; //nếu isProcessing.current là true thì không xử lý deep link callback.
     }
 
     const code = handleKeycloakCallback(event.url);
@@ -75,7 +77,7 @@ const LoginScreen = () => {
     }
   };
 
-  // Lắng nghe deep link callback từ Keycloak
+  // hàm để app bắt thông tin đăng nhập khi cả chạy ngầm và đã tắt
   useEffect(() => {
     const handleUrl = (event: { url: string }) => {
       handleDeepLink(event);
@@ -101,7 +103,7 @@ const LoginScreen = () => {
   const handleKeycloakLogin = async () => {
     try {
       // Gọi mở browser đăng nhập
-      const result = await openKeycloakLogin();
+      const result = await openKeycloakLogin(); //mở một cái "In-App Browser" (trình duyệt nhúng trong App).
       
       // Xử lý kết quả trả về ngay lập tức (Chủ động)
       if (result && result.type === "success" && result.url) {

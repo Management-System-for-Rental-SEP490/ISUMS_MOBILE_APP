@@ -7,6 +7,7 @@ import userProfileStyles from "./UserProfileScreenStyles";
 import { useAuthStore } from "../../../store/useAuthStore";
 import { logoutKeycloak, openChangePasswordPage } from "../../../shared/services/keycloakAuth";
 import { UserProfileResponse } from "../../../shared/services/userService";
+import Icons from "../../../shared/theme/icon";
 
 const UserProfileScreen = () => {
   const navigation = useNavigation<any>();
@@ -42,7 +43,7 @@ const UserProfileScreen = () => {
     if (role === "tenant") return "Cư dân";
     return "Người dùng";
   };
-
+// hàm lấy khi tự đầu tiên của tên là hình nền
   const getAvatarInitials = (name: string | null) => {
     return name ? name.charAt(0).toUpperCase() : "U";
   };
@@ -77,7 +78,7 @@ const UserProfileScreen = () => {
           
           <View style={userProfileStyles.infoItem}>
             <View style={userProfileStyles.infoIcon}>
-                <Ionicons name="mail-outline" size={20} color="#666" />
+                <Icons.mail size={20} color="#666" />
             </View>
             <View style={userProfileStyles.infoContent}>
                 <Text style={userProfileStyles.infoLabel}>Email</Text>
@@ -87,7 +88,7 @@ const UserProfileScreen = () => {
 
           <View style={[userProfileStyles.infoItem, { borderBottomWidth: 0 }]}>
             <View style={userProfileStyles.infoIcon}>
-                <Ionicons name="call-outline" size={20} color="#666" />
+                <Icons.call size={20} color="#666" />
             </View>
             <View style={userProfileStyles.infoContent}>
                 <Text style={userProfileStyles.infoLabel}>Số điện thoại</Text>
@@ -105,13 +106,13 @@ const UserProfileScreen = () => {
             onPress={openChangePasswordPage}
           >
             <View style={[userProfileStyles.menuIcon, { backgroundColor: "#E3F2FD" }]}>
-              <Ionicons name="shield-checkmark-outline" size={22} color="#0c6ab5" />
+              <Icons.shield size={22} color="#0c6ab5" />
             </View>
             <View style={userProfileStyles.menuContent}>
               <Text style={userProfileStyles.menuLabel}>Đổi mật khẩu</Text>
               <Text style={userProfileStyles.menuDescription}>Cập nhật mật khẩu bảo vệ tài khoản</Text>
             </View>
-            <Ionicons name="chevron-forward" size={20} color="#ccc" />
+            <Icons.chevronForward size={20} color="#ccc" />
           </TouchableOpacity>
         </View>
 
@@ -121,19 +122,19 @@ const UserProfileScreen = () => {
 
           <TouchableOpacity style={userProfileStyles.menuItem} onPress={() => navigation.navigate("Notification")}>
             <View style={[userProfileStyles.menuIcon, { backgroundColor: "#FFF3E0" }]}>
-              <Ionicons name="notifications-outline" size={22} color="#F57C00" />
+              <Icons.notification size={22} color="#F57C00" />
             </View>
             <View style={userProfileStyles.menuContent}>
               <Text style={userProfileStyles.menuLabel}>Thông báo</Text>
               <Text style={userProfileStyles.menuDescription}>Cài đặt nhận tin</Text>
             </View>
-            <Ionicons name="chevron-forward" size={20} color="#ccc" />
+            <Icons.chevronForward size={20} color="#ccc" />
           </TouchableOpacity>
         </View>
 
         {/* Logout Button */}
         <TouchableOpacity style={userProfileStyles.logoutButton} onPress={handleLogout}>
-            <Ionicons name="log-out-outline" size={20} color="#D32F2F" style={{marginRight: 8}} />
+            <Icons.logOut size={20} color="#D32F2F" />
             <Text style={userProfileStyles.logoutText}>Đăng xuất</Text>
         </TouchableOpacity>
 

@@ -31,9 +31,9 @@ Tóm lại:
  Update: Thêm persist middleware để lưu trạng thái đăng nhập vào AsyncStorage.
   Khi app mở lại, state sẽ được tự động khôi phục (rehydrated).
 */
-
+//state (tham số đầu vào) đại diện cho "Bản ghi nhớ cũ" trước khi bạn sửa đổi.
 const useAuthStore = create<AuthState>()(
-  persist(
+  persist( // middleware của Zustand giúp lưu state vào AsyncStorage (ổ cứng điện thoại).
     (set, get) => ({
       user: null,
       role: null,
@@ -75,27 +75,27 @@ const useAuthStore = create<AuthState>()(
             if (!state.onboardedUsers.includes(currentUser)) {
               return { onboardedUsers: [...state.onboardedUsers, currentUser] };
             }
-            return {};
+            return {}; // trả về state hiện tại là rỗng sau khi đã thêm thành công
           });
         }
       },
     }),
     {
       name: "auth-storage-v2", // Đổi tên key để reset data cũ (tránh lỗi conflict type)
-      storage: createJSONStorage(() => AsyncStorage), 
-      partialize: (state) => ({
+      storage: createJSONStorage(() => AsyncStorage), // lưu vào ổ cứng điện thoại
+      partialize: (state) => ({ // chọn lọc những gì muốn lưu
         user: state.user,
         role: state.role,
         token: state.token,
         idToken: state.idToken,
         refreshToken: state.refreshToken,
         isLoggedIn: state.isLoggedIn,
-        onboardedUsers: state.onboardedUsers, // Lưu danh sách này
+        onboardedUsers: state.onboardedUsers, // lưu xuống ổ cứng
       }),
     }
   )
 );
-
+// ko sài nữa
 const useRegisterStore = create<RegisterState>((set) => ({
   username: "",
   email: "",
