@@ -12,12 +12,12 @@ const getKeycloakBaseUrl = (): string => {
   if (Platform.OS === 'web') {
     return "http://localhost:8080";
   }
-  const MOBILE_KEYCLOAK_IP = process.env.EXPO_PUBLIC_KEYCLOAK_IP || "192.168.1.75";
-  //hotpot của lap
-  // const MOBILE_KEYCLOAK_IP = process.env.EXPO_PUBLIC_KEYCLOAK_IP || "192.168.137.1";
-  return `http://${MOBILE_KEYCLOAK_IP}:8080`;
-  // Nếu dùng chung cho mọi nền tảng
-  //return "https://sso.isums.pro";
+  // const MOBILE_KEYCLOAK_IP = process.env.EXPO_PUBLIC_KEYCLOAK_IP || "192.168.1.75";
+  // //hotpot của lap
+  // // const MOBILE_KEYCLOAK_IP = process.env.EXPO_PUBLIC_KEYCLOAK_IP || "192.168.137.1";
+  // return `http://${MOBILE_KEYCLOAK_IP}:8080`;
+  // // Nếu dùng chung cho mọi nền tảng
+  return "https://sso.isums.pro";
 };
 
 // Cấu hình Keycloak
@@ -25,7 +25,8 @@ const KEYCLOAK_CONFIG = {
   get baseUrl() {
     return getKeycloakBaseUrl();
   },
-  realm: "isums-realm",
+  // realm: "isums-realm",
+  realm: "isums",
   clientId: "mobile-app",
   get redirectUri() {
     if (Platform.OS === 'web') {
