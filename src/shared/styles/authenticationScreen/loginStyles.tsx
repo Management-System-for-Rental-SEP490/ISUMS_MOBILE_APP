@@ -89,6 +89,38 @@ const loginStyles = StyleSheet.create({
         fontWeight: "600",
         letterSpacing: 0.5,
     },
+    languageContainer: {
+        flexDirection: "row",
+        justifyContent: "center",
+        marginBottom: 32,
+        backgroundColor: "rgba(255, 255, 255, 0.2)",
+        borderRadius: 20,
+        padding: 4,
+        marginHorizontal: 24,
+    },
+    languageButton: {
+        paddingVertical: 8,
+        paddingHorizontal: 16,
+        borderRadius: 16,
+        marginHorizontal: 4,
+    },
+    languageButtonActive: {
+        backgroundColor: "#ffffff",
+        shadowColor: "#000",
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.1,
+        shadowRadius: 4,
+        elevation: 2,
+    },
+    languageText: {
+        color: "rgba(255, 255, 255, 0.8)",
+        fontSize: 14,
+        fontWeight: "600",
+    },
+    languageTextActive: {
+        color: "#1e88e5",
+        fontWeight: "700",
+    },
 });
 
 export default loginStyles;

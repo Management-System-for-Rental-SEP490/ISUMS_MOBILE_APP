@@ -1,5 +1,6 @@
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import './src/shared/i18n'; // Import configuration i18n
 import Navigation from './src/navigation/navigation';
 
 // Tạo một instance của QueryClient

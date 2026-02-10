@@ -6,7 +6,7 @@
                 <img src="${url.resourcesPath}/img/logob.png" alt="ISUMS Logo" />
             </div>
             <h1 class="app-name">ISUMS APP</h1>
-            <p class="tagline">Nhập tên và email để đăng nhập</p>
+            <p class="tagline">${msg("loginTitle")}</p>
         </header>
     <#elseif section = "form">
         <form id="kc-form-login" action="${url.loginAction}" method="post">
@@ -14,7 +14,7 @@
                 <#if usernameEditDisabled??>
                     <input tabindex="1" id="username" class="input" name="username" value="${(login.username!'')}" type="text" disabled />
                 <#else>
-                    <input tabindex="1" id="username" class="input" name="username" value="${(login.username!'')}" type="text" autofocus autocomplete="username" placeholder="Nhập tên đăng nhập hoặc email" />
+                    <input tabindex="1" id="username" class="input" name="username" value="${(login.username!'')}" type="text" autofocus autocomplete="username" placeholder="${msg("usernamePlaceholder")}" />
                 </#if>
             </div>
 
@@ -22,7 +22,7 @@
                 <label for="password">${msg("password")}</label>
                 <div class="password-wrap">
                     <input tabindex="2" id="password" class="input" name="password" type="password" autocomplete="current-password" placeholder="••••••••" />
-                    <button type="button" class="toggle-password" onclick="togglePassword()" aria-label="Hiện/ẩn mật khẩu">👁</button>
+                    <button type="button" class="toggle-password" onclick="togglePassword()" aria-label="${msg("passwordToggle")}">👁</button>
                 </div>
             </div>
 

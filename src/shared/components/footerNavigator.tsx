@@ -15,6 +15,9 @@ import { iconStyles } from "../styles/iconStyles";
 import footerStyles from "../styles/footerStyles";
 import CalendarScreen from "../../features/calendar/CalendarScreen";
 import NotificationScreen from "../../features/notification/NotificationScreen";
+import i18next from "i18next";
+import { useTranslation } from "react-i18next";
+
 export const Tab = createBottomTabNavigator<MainTabParamList>();
 
 const tabIconMap: Record<keyof MainTabParamList, (props: IconProps) => React.ReactElement> = { // Record<K, V> là một loại (type) tiện ích trong TypeScript, đại diện cho một object với các key là kiểu K và value là kiểu V.
@@ -28,16 +31,7 @@ const tabIconMap: Record<keyof MainTabParamList, (props: IconProps) => React.Rea
   Notification: (props) => <Icons.notification {...props} />,
 };
 
-const tabLabelMap: Record<keyof MainTabParamList, string> = {
-  Dashboard: "Scan",
-  ElectricUsage: "Điện",
-  WaterUsage: "Nước",
-  Billing: "Báo cáo",
-  Tenants: "Cư dân",
-  Profile: "Hồ sơ",
-  Calendar: "Lịch",
-  Notification: "Thông báo",
-};
+
 
 const renderTabIcon =
   (route: keyof MainTabParamList) =>
@@ -53,7 +47,8 @@ const renderTabIcon =
     const icon = tabIconMap[route];
     if (!icon) return null;
     const iconSize = focused ? size + 6 : size;
-    const label = tabLabelMap[route] ?? route;
+    // Dịch label
+    const label = i18next.t(`nav.${route}`);
     return (
       <View
         style={[
@@ -185,6 +180,7 @@ const DashboardListener = ({ // DashboardListener là một hàm để lắng ng
 
 
 export const TenantTabs = () => {
+  const { t } = useTranslation(); // Trigger re-render khi đổi ngôn ngữ
   const insets = useSafeAreaInsets();
   return (
     <Tab.Navigator screenOptions={createScreenOptions(insets.bottom)} initialRouteName="Dashboard">
@@ -218,6 +214,7 @@ export const TenantTabs = () => {
 // );
 
 export const StaffTabs = () => {
+  const { t } = useTranslation(); // Trigger re-render khi đổi ngôn ngữ
   const insets = useSafeAreaInsets();
   return (
     <Tab.Navigator screenOptions={createScreenOptions(insets.bottom)} initialRouteName="Dashboard">

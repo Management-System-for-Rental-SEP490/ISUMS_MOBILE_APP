@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from "react";
-import { View, Text, TouchableOpacity, Alert, Linking, AppState, Image, ActivityIndicator } from "react-native";
+import { View, Text, TouchableOpacity, Alert, Linking, Image, ActivityIndicator } from "react-native";
 import { useNavigation, useFocusEffect } from "@react-navigation/native";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { LinearGradient } from "expo-linear-gradient";
@@ -8,10 +8,12 @@ import loginStyles from "../../../shared/styles/authenticationScreen/loginStyles
 import { RootStackParamList } from "../../../shared/types";
 import { useAuthStore } from "../../../store/useAuthStore";
 import { openKeycloakLogin, handleKeycloakCallback, exchangeCodeForToken } from "../../../shared/services/keycloakAuth";
+import { useTranslation } from "react-i18next";
 
 type LoginNavigationProp = NativeStackNavigationProp<RootStackParamList, "AuthLogin">; //đây là khai báo kiểu để useNavigation có type an toàn khi dùng trong LoginScreen.
 
 const LoginScreen = () => {
+  const { t, i18n } = useTranslation();
   const navigation = useNavigation<LoginNavigationProp>();
   const insets = useSafeAreaInsets();
   const [isLoading, setIsLoading] = useState(false);
@@ -26,6 +28,10 @@ const LoginScreen = () => {
       setIsLoading(false); //set giá trị của isLoading về false để không hiển thị loading khi màn hình được focus lại.
     }, [])
   );
+  // Hàm đổi ngôn ngữ
+  const changeLanguage = (lang: string) => {
+    i18n.changeLanguage(lang);
+  };
 
   // Hàm xử lý deep link callback từ Keycloak, bắt deep link, giải nghĩa lấy code để đổi lấy token
   const handleDeepLink = async (event: { url: string }) => {
@@ -103,7 +109,7 @@ const LoginScreen = () => {
   const handleKeycloakLogin = async () => {
     try {
       // Gọi mở browser đăng nhập
-      const result = await openKeycloakLogin(); //mở một cái "In-App Browser" (trình duyệt nhúng trong App).
+      const result = await openKeycloakLogin(i18n.language); //mở một cái "In-App Browser" (trình duyệt nhúng trong App).
       
       // Xử lý kết quả trả về ngay lập tức (Chủ động)
       if (result && result.type === "success" && result.url) {
@@ -124,10 +130,16 @@ const LoginScreen = () => {
     return (
       <View style={{ flex: 1, justifyContent: "center", alignItems: "center", backgroundColor: "#fff" }}>
         <ActivityIndicator size="large" color="#3bb582" />
-        <Text style={{ marginTop: 10, color: "#666" }}>Đang đăng nhập...</Text>
+        <Text style={{ marginTop: 10, color: "#666" }}>{t('loading')}</Text>
       </View>
     );
   }
+
+  const languages = [
+    { code: 'vi', label: 'Tiếng Việt' },
+    { code: 'en', label: 'English' },
+    { code: 'ja', label: '日本語' }
+  ];
 
   return (
     <LinearGradient
@@ -149,10 +161,31 @@ const LoginScreen = () => {
           <Text style={loginStyles.subtitle}>Hệ thống quản lý điều hành trực tuyến</Text>
         </View>
 
+        {/* Language Selector */}
+        <View style={loginStyles.languageContainer}>
+          {languages.map((lang) => (
+            <TouchableOpacity
+              key={lang.code}
+              style={[
+                loginStyles.languageButton,
+                i18n.language === lang.code && loginStyles.languageButtonActive
+              ]}
+              onPress={() => changeLanguage(lang.code)}
+            >
+              <Text style={[
+                loginStyles.languageText,
+                i18n.language === lang.code && loginStyles.languageTextActive
+              ]}>
+                {lang.label}
+              </Text>
+            </TouchableOpacity>
+          ))}
+        </View>
+
         <View style={loginStyles.form}>
-          <Text style={loginStyles.title}>Chào mừng bạn đến với ISUMS</Text>
+          <Text style={loginStyles.title}>{t('welcome')}</Text>
           <Text style={loginStyles.description}>
-            Vui lòng đăng nhập để tiếp tục sử dụng ứng dụng
+            {t('description')}
           </Text>
           
           <TouchableOpacity 
@@ -160,7 +193,7 @@ const LoginScreen = () => {
             onPress={handleKeycloakLogin}
             activeOpacity={0.8} //đây là thuộc tính để đặt độ mờ của button khi nhấn vào.
           >
-            <Text style={loginStyles.buttonText}>Đăng nhập với tài khoản ISUMS</Text>
+            <Text style={loginStyles.buttonText}>{t('login_btn')}</Text>
           </TouchableOpacity>
         </View>
       </View>

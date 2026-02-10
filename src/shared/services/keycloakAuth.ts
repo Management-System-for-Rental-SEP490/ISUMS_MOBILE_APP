@@ -12,7 +12,7 @@ const getKeycloakBaseUrl = (): string => {
   if (Platform.OS === 'web') {
     return "http://localhost:8080";
   }
-  const MOBILE_KEYCLOAK_IP = process.env.EXPO_PUBLIC_KEYCLOAK_IP || "192.168.1.17";
+  const MOBILE_KEYCLOAK_IP = process.env.EXPO_PUBLIC_KEYCLOAK_IP || "192.168.1.75";
   //hotpot của lap
   // const MOBILE_KEYCLOAK_IP = process.env.EXPO_PUBLIC_KEYCLOAK_IP || "192.168.137.1";
   return `http://${MOBILE_KEYCLOAK_IP}:8080`;
@@ -36,13 +36,19 @@ const KEYCLOAK_CONFIG = {
 };
 
 // Tạo URL authorization để chuyển hướng đến Keycloak login - tạo link và mở trình duyệt
-export const getKeycloakAuthUrl = (): string => {
+export const getKeycloakAuthUrl = (locale?: string): string => {
   const params = new URLSearchParams({
     client_id: KEYCLOAK_CONFIG.clientId,
     redirect_uri: KEYCLOAK_CONFIG.redirectUri,
     response_type: "code",
     scope: "openid email profile",
   });
+
+  if (locale) {
+    params.append('kc_locale', locale); // Tham số riêng của Keycloak để ép ngôn ngữ
+    params.append('ui_locales', locale); // Tham số chuẩn OIDC (dự phòng)
+  }
+
   return `${KEYCLOAK_CONFIG.baseUrl}/realms/${KEYCLOAK_CONFIG.realm}/protocol/openid-connect/auth?${params.toString()}`;
 };
 
@@ -218,9 +224,9 @@ export const refreshAccessToken = async (refreshToken: string): Promise<AuthPayl
 };
 
 // Mở Keycloak login page trong browser
-export const openKeycloakLogin = async (): Promise<WebBrowser.WebBrowserAuthSessionResult | null> => {
+export const openKeycloakLogin = async (locale?: string): Promise<WebBrowser.WebBrowserAuthSessionResult | null> => {
   try {
-    const authUrl = getKeycloakAuthUrl();
+    const authUrl = getKeycloakAuthUrl(locale);
     const redirectUrl = KEYCLOAK_CONFIG.redirectUri;
 
     // Trên web, mở trong tab mới
