@@ -74,7 +74,26 @@ const resources = {
               "inactive": "Ngừng hoạt động",
               "maintenance": "Đang bảo trì",
               "pending": "Chờ xử lý"
-          }
+          },
+          "report_button": "Báo cáo sự cố"
+      },
+      "ticket": {
+          "title": "Tạo phiếu báo cáo",
+          "device_info_title": "Thông tin thiết bị",
+          "title_label": "Tiêu đề",
+          "title_placeholder": "Nhập tiêu đề báo cáo",
+          "description_label": "Mô tả",
+          "description_placeholder": "Mô tả chi tiết về sự cố hoặc yêu cầu bảo trì...",
+          "priority_label": "Mức độ ưu tiên",
+          "priority_low": "Thấp",
+          "priority_medium": "Trung bình",
+          "priority_high": "Cao",
+          "submit_button": "Gửi báo cáo",
+          "validation_error_title": "Lỗi xác thực",
+          "title_required": "Vui lòng nhập tiêu đề",
+          "description_required": "Vui lòng nhập mô tả",
+          "success_title": "Thành công",
+          "success_message": "Phiếu báo cáo đã được gửi thành công"
       },
       "tenants": {
           "title": "Quản lý cư dân thuê",
@@ -220,7 +239,26 @@ const resources = {
               "inactive": "Inactive",
               "maintenance": "Maintenance",
               "pending": "Pending"
-          }
+          },
+          "report_button": "Report Issue"
+      },
+      "ticket": {
+          "title": "Create Report Ticket",
+          "device_info_title": "Device Information",
+          "title_label": "Title",
+          "title_placeholder": "Enter report title",
+          "description_label": "Description",
+          "description_placeholder": "Describe the issue or maintenance request in detail...",
+          "priority_label": "Priority",
+          "priority_low": "Low",
+          "priority_medium": "Medium",
+          "priority_high": "High",
+          "submit_button": "Submit Report",
+          "validation_error_title": "Validation Error",
+          "title_required": "Please enter a title",
+          "description_required": "Please enter a description",
+          "success_title": "Success",
+          "success_message": "Report ticket has been submitted successfully"
       },
       "tenants": {
           "title": "Tenant Management",
@@ -366,7 +404,26 @@ const resources = {
               "inactive": "停止中",
               "maintenance": "メンテナンス中",
               "pending": "保留中"
-          }
+          },
+          "report_button": "問題を報告"
+      },
+      "ticket": {
+          "title": "レポートチケットを作成",
+          "device_info_title": "デバイス情報",
+          "title_label": "タイトル",
+          "title_placeholder": "レポートタイトルを入力",
+          "description_label": "説明",
+          "description_placeholder": "問題やメンテナンス要求について詳しく説明してください...",
+          "priority_label": "優先度",
+          "priority_low": "低",
+          "priority_medium": "中",
+          "priority_high": "高",
+          "submit_button": "レポートを送信",
+          "validation_error_title": "検証エラー",
+          "title_required": "タイトルを入力してください",
+          "description_required": "説明を入力してください",
+          "success_title": "成功",
+          "success_message": "レポートチケットが正常に送信されました"
       },
       "tenants": {
           "title": "居住者管理",

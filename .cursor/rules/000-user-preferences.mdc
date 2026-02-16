@@ -38,3 +38,19 @@ Mọi đoạn code được sinh ra phải đi kèm với chú thích và giải
 
 *   Tài liệu đặc tả chính nằm tại: `docs/ISUMS_SPECIFICATION.md`
 *   Khi người dùng hỏi về tính năng, nghiệp vụ, hoặc cấu trúc dự án, hãy **TỰ ĐỘNG ĐỌC** file `docs/ISUMS_SPECIFICATION.md` để lấy thông tin nếu chưa rõ, không cần chờ người dùng nhắc.
+
+## 5. Quy định về Đa ngôn ngữ (i18n)
+
+Ứng dụng này tích hợp **3 ngôn ngữ**, do đó bạn **PHẢI** đảm bảo tích hợp đa ngôn ngữ cho tất cả các phần có thể:
+
+*   **KHÔNG ĐƯỢC** hardcode text trực tiếp vào code (ví dụ: `"Xin chào"`, `"Submit"`, `"Cancel"`).
+*   **PHẢI** sử dụng hệ thống i18n (internationalization) có sẵn trong dự án cho mọi text hiển thị cho người dùng:
+    *   Sử dụng các hàm dịch từ thư viện i18n (ví dụ: `t()`, `translate()`, hoặc các hàm tương tự).
+    *   Kiểm tra file i18n hiện có để xem các key đã tồn tại trước khi tạo key mới.
+    *   Nếu cần tạo key mới, phải thêm vào **TẤT CẢ** các file ngôn ngữ (3 ngôn ngữ).
+*   **Áp dụng cho**:
+    *   Tất cả các label, button text, placeholder, error messages.
+    *   Các thông báo, alert, toast messages.
+    *   Tiêu đề màn hình, menu items.
+    *   Bất kỳ text nào hiển thị cho người dùng cuối.
+*   **Tránh bỏ sót**: Khi tạo component mới hoặc thêm tính năng mới, luôn kiểm tra lại xem có text nào cần dịch không.

@@ -14,8 +14,11 @@ const deviceDetailStyles = StyleSheet.create({
         backgroundColor: "rgba(15, 23, 42, 0.35)",
     },
     content: {
-        flexGrow: 1,
+        flex: 1,
+    },
+    contentContainer: {
         padding: 20,
+        paddingBottom: 40,
     },
     backButton: {
         marginBottom: 20,
@@ -109,6 +112,27 @@ const deviceDetailStyles = StyleSheet.create({
         fontSize: 14,
         color: "#6b7280",
         marginBottom: 4,
+    },
+    reportButton: {
+        backgroundColor: "#0ea5e9", // Màu xanh nước biển phù hợp với hệ thống
+        borderRadius: 12,
+        padding: 16,
+        marginTop: 24,
+        alignItems: "center",
+        justifyContent: "center",
+        shadowColor: "#0ea5e9",
+        shadowOffset: {
+            width: 0,
+            height: 2,
+        },
+        shadowOpacity: 0.2,
+        shadowRadius: 3.84,
+        elevation: 5,
+    },
+    reportButtonText: {
+        color: "#fff",
+        fontSize: 16,
+        fontWeight: "600",
     },
     
 });

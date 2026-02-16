@@ -19,6 +19,7 @@ export type RootStackParamList = AuthStackParamList & {
   OnBoarding: undefined;
   Camera: undefined;
   DeviceDetail: { device: Device }; // device là một object có kiểu Device
+  Ticket: { device: Device }; // Ticket screen nhận device để tự động điền thông tin thiết bị
 };
 
 export type IconProps = {

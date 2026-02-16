@@ -4,7 +4,7 @@ import { RouteProp, useNavigation, useRoute } from "@react-navigation/native";
 import { RootStackParamList } from "../../shared/types";
 import deviceDetailStyles from "./deviceDetailStyles";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
-import { SafeAreaProvider } from "react-native-safe-area-context";
+import { SafeAreaProvider, useSafeAreaInsets } from "react-native-safe-area-context";
 type DeviceDetailRouteProp = RouteProp<RootStackParamList, "DeviceDetail">;
 type DeviceDetailNavigationProp = NativeStackNavigationProp<RootStackParamList, "DeviceDetail">;
 
@@ -15,6 +15,7 @@ const DeviceDetail = () => {
   const route = useRoute<DeviceDetailRouteProp>();
   const navigation = useNavigation<DeviceDetailNavigationProp>();
   const { device } = route.params;
+  const insets = useSafeAreaInsets();
 
   const getStatusText = (status: string) => {
     switch (status) {
@@ -37,7 +38,13 @@ const DeviceDetail = () => {
 
   return (
     <SafeAreaProvider style={deviceDetailStyles.background}>
-      <ScrollView style={deviceDetailStyles.content}>
+      <ScrollView 
+        style={deviceDetailStyles.content}
+        contentContainerStyle={[
+          deviceDetailStyles.contentContainer,
+          { paddingBottom: Math.max(insets.bottom, 20) + 100 } // Thêm padding để tránh bị che bởi bottom navigation (khoảng 80px) + safe area
+        ]}
+      >
         <TouchableOpacity 
           onPress={() => navigation.goBack()}
           style={deviceDetailStyles.backButton}
@@ -70,6 +77,16 @@ const DeviceDetail = () => {
             </>
           )}
         </View>
+
+        {/* Nút báo cáo sự cố - cho phép người dùng tạo phiếu báo cáo bảo trì */}
+        <TouchableOpacity 
+          style={deviceDetailStyles.reportButton}
+          onPress={() => navigation.navigate('Ticket', { device })}
+        >
+          <Text style={deviceDetailStyles.reportButtonText}>
+            {t('device_detail.report_button')}
+          </Text>
+        </TouchableOpacity>
       </ScrollView>
     </SafeAreaProvider>
   );

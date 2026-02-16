@@ -9,6 +9,7 @@ import { RootStackParamList } from "../shared/types";
 import { TenantTabs, StaffTabs } from "../shared/components/footerNavigator";
 import CameraScreen from "../screens/modal/CameraScreen";
 import DeviceDetail from "../features/devices/deviceDetail";
+import TicketScreen from "../features/ticket/ticket";
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
 
@@ -78,6 +79,11 @@ const Navigation = () => {
                 options={{ presentation: "modal" }}
               />
               <Stack.Screen name="DeviceDetail" component={DeviceDetail} />
+              <Stack.Screen 
+                name="Ticket" 
+                component={TicketScreen}
+                options={{ presentation: "modal" }}
+              />
             </>
           )
         ) : (
