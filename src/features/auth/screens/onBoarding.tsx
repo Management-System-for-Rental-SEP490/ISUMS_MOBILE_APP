@@ -13,34 +13,33 @@ import styles from "./onBoardingStyles";
 import { StatusBar } from "expo-status-bar";
 import { LinearGradient } from "expo-linear-gradient";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { useTranslation } from "react-i18next";
 
 const { width } = Dimensions.get("window"); //lấy chiều rộng của màn hình.
 
 const SLIDES = [
   {
     id: "1",
-    title: "Quản lý thiết bị NFC",
-    description:
-      "Quét thẻ NFC trên thiết bị để xem thông tin chi tiết và gửi báo cáo hư hỏng ngay lập tức.",
+    titleKey: "onboarding.slide1.title",
+    descKey: "onboarding.slide1.desc",
     image: require("../../../../assets/logob.png"), 
   },
   {
     id: "2",
-    title: "Thanh toán Dịch vụ",
-    description:
-      "Hỗ trợ thanh toán trực tuyến nhanh chóng sau khi quy trình bảo trì thiết bị hoàn tất thành công.",
+    titleKey: "onboarding.slide2.title",
+    descKey: "onboarding.slide2.desc",
     image: require("../../../../assets/logob.png"),
   },
   {
     id: "3",
-    title: "Giám sát Điện & Nước",
-    description:
-      "Hệ thống IoT theo dõi chỉ số tiêu thụ theo thời gian thực và cảnh báo ngay nếu có bất thường.",
+    titleKey: "onboarding.slide3.title",
+    descKey: "onboarding.slide3.desc",
     image: require("../../../../assets/logob.png"),
   },
 ];
 
 const OnBoarding = () => {
+  const { t } = useTranslation();
   const [currentIndex, setCurrentIndex] = useState(0); //currentIndex là biến để lưu trữ index của slide hiện tại.
   const scrollX = useRef(new Animated.Value(0)).current; //scrollX là biến để lưu trữ giá trị scroll của FlatList.
   const slidesRef = useRef<FlatList>(null); //slidesRef là biến để lưu trữ ref của FlatList.
@@ -110,13 +109,15 @@ const OnBoarding = () => {
       {/* Thanh hiển thị trạng thái màn hình */}
       <StatusBar style="light" />
 
+
+
       {/* Nút Skip ở góc trên bên phải */}
       {currentIndex < SLIDES.length - 1 && (
         <TouchableOpacity 
           style={[styles.topSkipButton, { top: insets.top + 10 }]} 
           onPress={handleFinish}
         >
-          <Text style={styles.skipText}>Bỏ qua</Text>
+          <Text style={styles.skipText}>{t('onboarding.skip')}</Text>
         </TouchableOpacity>
       )}
       
@@ -132,8 +133,8 @@ const OnBoarding = () => {
                 </View>
               </View>
               <View style={styles.textContainer}>
-                <Text style={styles.title}>{item.title}</Text>
-                <Text style={styles.description}>{item.description}</Text>
+                <Text style={styles.title}>{t(item.titleKey)}</Text>
+                <Text style={styles.description}>{t(item.descKey)}</Text>
               </View>
             </View>
           )}
@@ -160,7 +161,7 @@ const OnBoarding = () => {
         <View style={styles.buttonContainer}>
           <TouchableOpacity style={styles.button} onPress={handleNext}>
             <Text style={styles.buttonText}>
-              {currentIndex === SLIDES.length - 1 ? "Bắt đầu ngay" : "Tiếp tục"}
+              {currentIndex === SLIDES.length - 1 ? t('onboarding.start') : t('onboarding.continue')}
             </Text>
           </TouchableOpacity>
         </View>

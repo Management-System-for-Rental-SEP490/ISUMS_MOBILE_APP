@@ -8,9 +8,11 @@ import { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { RootStackParamList } from "../../shared/types";
 import NfcManager, { NfcTech, Ndef } from "react-native-nfc-manager";
 import { ScanMode } from "../../shared/types";
+import { useTranslation } from "react-i18next";
 
 
 const CameraScreen = () => {
+  const { t } = useTranslation();
   const [permission, requestPermission] = useCameraPermissions(); 
   const [scanned, setScanned] = useState(false);
   const [scanMode, setScanMode] = useState<ScanMode>("qr");
@@ -76,15 +78,15 @@ const CameraScreen = () => {
       nfcTimeoutRef.current = setTimeout(() => {
         stopNfcScan();
         Alert.alert(
-          "Hết thời gian",
-          "Không tìm thấy thẻ NFC. Vui lòng thử lại.",
+          t('camera.timeout_title'),
+          t('camera.timeout_msg'),
           [
             {
-              text: "Thử lại",
+              text: t('common.try_again'),
               onPress: () => startNfcScan(),
             },
             {
-              text: "Đóng",
+              text: t('common.close'),
               onPress: () => navigation.goBack(),
             },
           ]
@@ -98,15 +100,15 @@ const CameraScreen = () => {
       console.log("Lỗi scan NFC:", err);
       if (err.message !== "User cancelled") { //Chỉ hiển thị Alert nếu không phải lỗi do người dùng hủy.
         Alert.alert(
-          "Lỗi",
-          "Không thể đọc thẻ NFC. Vui lòng thử lại.",
+          t('camera.error_title'),
+          t('camera.read_error'),
           [
             {
-              text: "Thử lại",
+              text: t('common.try_again'),
               onPress: () => startNfcScan(),
             },
             {
-              text: "Đóng",
+              text: t('common.close'),
               onPress: () => navigation.goBack(),
             },
           ]
@@ -208,18 +210,18 @@ const CameraScreen = () => {
 
     if (!nfcId || nfcId.length === 0) {
       Alert.alert(
-        "Lỗi",
-        "Không thể đọc ID từ thẻ NFC.",
+        t('camera.error_title'),
+        t('camera.id_error'),
         [
           {
-            text: "Thử lại",
+            text: t('common.try_again'),
             onPress: () => {
               setScanned(false);
               startNfcScan();
             },
           },
           {
-            text: "Đóng",
+            text: t('common.close'),
             onPress: () => navigation.goBack(),
           },
         ]
@@ -234,18 +236,18 @@ const CameraScreen = () => {
       navigation.replace("DeviceDetail", { device });
     } else {
       Alert.alert(
-        "Không tìm thấy",
-        `Không tìm thấy thiết bị với NFC ID: ${nfcId}`,
+        t('camera.not_found_title'),
+        t('camera.not_found_nfc', { id: nfcId }),
         [
           {
-            text: "Quét lại",
+            text: t('camera.rescan'),
             onPress: () => {
               setScanned(false);
               startNfcScan();
             },
           },
           {
-            text: "Đóng",
+            text: t('common.close'),
             onPress: () => navigation.goBack(),
           },
         ]
@@ -265,15 +267,15 @@ const CameraScreen = () => {
       navigation.replace("DeviceDetail", { device });
     } else {
       Alert.alert(
-        "Không tìm thấy",
-        `Không tìm thấy thiết bị với mã: ${data}`,
+        t('camera.not_found_title'),
+        t('camera.not_found_qr', { id: data }),
         [
           {
-            text: "Quét lại",
+            text: t('camera.rescan'),
             onPress: () => setScanned(false),
           },
           {
-            text: "Đóng",
+            text: t('common.close'),
             onPress: () => navigation.goBack(),
           },
         ]
@@ -284,7 +286,7 @@ const CameraScreen = () => {
   if (!permission) { 
     return (
       <View style={cameraStyles.container}>
-        <Text style={cameraStyles.text}>Đang tải...</Text>
+        <Text style={cameraStyles.text}>{t('camera.loading')}</Text>
       </View>
     );
   }
@@ -292,9 +294,9 @@ const CameraScreen = () => {
   if (!permission.granted) { 
     return (
       <View style={cameraStyles.container}>
-        <Text style={cameraStyles.text}>Không có quyền truy cập camera</Text>
+        <Text style={cameraStyles.text}>{t('camera.no_permission')}</Text>
         <TouchableOpacity onPress={requestPermission} style={cameraStyles.button}>
-          <Text style={cameraStyles.buttonText}>Cấp quyền</Text>
+          <Text style={cameraStyles.buttonText}>{t('camera.grant_permission')}</Text>
         </TouchableOpacity>
       </View>
     );
@@ -320,7 +322,7 @@ const CameraScreen = () => {
               scanMode === "qr" && cameraStyles.modeButtonTextActive,
             ]}
           >
-            QR Code
+            {t('camera.qr_mode')}
           </Text>
         </TouchableOpacity>
         <TouchableOpacity
@@ -339,7 +341,7 @@ const CameraScreen = () => {
               scanMode === "nfc" && cameraStyles.modeButtonTextActive,
             ]}
           >
-            NFC
+            {t('camera.nfc_mode')}
           </Text>
         </TouchableOpacity>
       </View>
@@ -371,24 +373,24 @@ const CameraScreen = () => {
             <Text style={cameraStyles.nfcIcon}>📱</Text>
           </View>
           <Text style={cameraStyles.nfcTitle}>
-            {nfcScanning ? "Đang quét NFC..." : "Đưa thẻ NFC vào điện thoại"}
+            {nfcScanning ? t('camera.nfc_scanning') : t('camera.nfc_instruction')}
           </Text>
           <Text style={cameraStyles.nfcDescription}>
             {nfcScanning
-              ? "Vui lòng đợi trong khi hệ thống đọc thẻ NFC"
-              : "Nhấn nút bên dưới để bắt đầu quét NFC"}
+              ? t('camera.nfc_wait')
+              : t('camera.nfc_start')}
           </Text>
           {!nfcScanning && !scanned && (
             <TouchableOpacity
               style={cameraStyles.nfcScanButton}
               onPress={startNfcScan}
             >
-              <Text style={cameraStyles.nfcScanButtonText}>Bắt đầu quét NFC</Text>
+              <Text style={cameraStyles.nfcScanButtonText}>{t('camera.nfc_btn')}</Text>
             </TouchableOpacity>
           )}
           {nfcScanning && (
             <View style={cameraStyles.nfcScanningIndicator}>
-              <Text style={cameraStyles.nfcScanningText}>Đang quét...</Text>
+              <Text style={cameraStyles.nfcScanningText}>{t('camera.nfc_scanning_indicator')}</Text>
             </View>
           )}
         </View>
@@ -401,7 +403,7 @@ const CameraScreen = () => {
         }}
         style={cameraStyles.closeButton}
       >
-        <Text style={cameraStyles.closeButtonText}>Đóng</Text>
+        <Text style={cameraStyles.closeButtonText}>{t('common.close')}</Text>
       </TouchableOpacity>
     </View>
   );

@@ -292,7 +292,7 @@ export const StaffTabs = () => {
     // - Hệ thống navigation sử dụng output này để quyết định phải render cái gì trên thanh tab!
 // Đúng rồi, "tab" ở đây chính là các nút/icon nằm trên thanh footer (BottomTab/TabBar) – mỗi tab là đại diện cho một màn hình trong ứng dụng (ví dụ Dashboard, Billing...).
 
-// Khi bạn đăng nhập với role "tenant", bạn sẽ thấy một tập các tab phù hợp với role đó. Các tab này được định nghĩa ở MainTabParamList (tùy từng role sẽ hiển thị các tab khác nhau nếu bạn cài đặt).
+// Khi bạn đăng nhập với role "Tenant", bạn sẽ thấy một tập các tab phù hợp với role đó. Các tab này được định nghĩa ở MainTabParamList (tùy từng role sẽ hiển thị các tab khác nhau nếu bạn cài đặt).
 
 // Hàm tabScreenOptions sẽ được gọi cho từng tab, để:
 //   - Gán icon phù hợp cho tab đó (dựa vào tên tab & tabIconMap)

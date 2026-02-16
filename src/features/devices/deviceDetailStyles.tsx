@@ -85,27 +85,27 @@ const deviceDetailStyles = StyleSheet.create({
         color: "#6b7280",
         marginBottom: 4,
     },
-    technicalInfoTitle: {
+    TechnicalInfoTitle: {
         fontSize: 18,
         fontWeight: "600",
         marginTop: 10,
     },
-    technicalInfoSerialNumber: {
+    TechnicalInfoSerialNumber: {
         fontSize: 14,
         color: "#6b7280",
         marginBottom: 4,
     },
-    technicalInfoManufacturer: {
+    TechnicalInfoManufacturer: {
         fontSize: 14,
         color: "#6b7280",
         marginBottom: 4,
     },
-    technicalInfoModel: {
+    TechnicalInfoModel: {
         fontSize: 14,
         color: "#6b7280",
         marginBottom: 4,
     },
-    technicalInfoInstallationDate: {
+    TechnicalInfoInstallationDate: {
         fontSize: 14,
         color: "#6b7280",
         marginBottom: 4,

@@ -30,7 +30,7 @@ export type LogoProps = {
   height?: number;
 };
 
-export type UserRole = "tenant"| "technical";
+export type UserRole = "Tenant"| "Technical";
 
 export type AuthPayload = {
   username: string;
@@ -98,5 +98,14 @@ export type Device = {
     installationDate?: string;
   };
 };
+export interface RentalHouse {
+  id: string;
+  name: string; // Tên phòng/nhà (VD: Phòng 101, Căn hộ A2)
+  address: string;
+  contractId: string; // Mã hợp đồng
+  contractStatus: 'Active' | 'Expired' | 'Pending';
+  startDate: string; // Ngày bắt đầu thuê
+  endDate: string; // Ngày kết thúc
+}
 export type ScanMode = "qr" | "nfc";
 export type HomeScreenProps = BottomTabScreenProps<MainTabParamList, "Dashboard">; // HomeScreenProps là một type alias cho BottomTabScreenProps<MainTabParamList, "Dashboard">.

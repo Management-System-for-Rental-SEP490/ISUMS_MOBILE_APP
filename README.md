@@ -48,7 +48,7 @@ ISUMS_MOBILE_APP/
 ├── src/
 │   ├── features/
 │   │   ├── auth/             # Các màn hình, logic và hook dành cho đăng nhập/đăng 
-│   │   ├── house/            # Dashboard tenant/landlord/manager, profile, danh 
+│   │   ├── house/            # Dashboard Tenant/landlord/manager, profile, danh 
 │   │   ├── consumption/      # Đặt mục tiêu tiêu thụ điện/nước
 │   │   ├── billing/          # Màn hình hóa đơn & thanh toán
 │   │   └── ...               # Các tính năng khác theo nghiệp vụ

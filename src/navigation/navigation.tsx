@@ -21,7 +21,7 @@ const RoleNavigator = () => {
   // if (role === "manager") {
   //   return <ManagerTabs />;
   // }
-  if (role === "technical") {
+  if (role === "Technical") {
     return <StaffTabs />;
   }
   return <TenantTabs />;
