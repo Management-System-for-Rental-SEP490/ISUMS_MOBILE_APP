@@ -7,7 +7,7 @@
 // };
 
 // const mockUsers: MockUser[] = [
-//   { username: "tenant", password: "tenant123", role: "tenant" },
+//   { username: "Tenant", password: "Tenant123", role: "Tenant" },
 //   { username: "landlord", password: "landlord123", role: "landlord" },
 //   { username: "manager", password: "manager123", role: "manager" },
 //   { username: "staff", password: "staff123", role: "staff" },
@@ -59,7 +59,7 @@
 // - Nếu không tìm thấy user phù hợp, trả về Promise bị reject cùng lỗi tiếng Việt "Thông tin đăng nhập không đúng. Vui lòng thử lại."
 // - Nếu tìm thấy user, trả về Promise resolve với object có dạng:
 //     + username: tên đăng nhập của user,
-//     + role: quyền ("tenant", "landlord", "admin"),
+//     + role: quyền ("Tenant", "landlord", "admin"),
 //     + token: dùng hàm createToken ở trên để tạo mã token mới,
 //     + refreshToken: dùng createRefreshToken để tạo refreshToken mới.
 // - Hàm này nhằm mô phỏng như là gọi API đăng nhập lên backend thật, dùng cho việc phát triển, test giao diện hoặc logic frontend khi chưa có server thật.

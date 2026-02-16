@@ -1,13 +1,17 @@
 import { View, Text, StyleSheet } from "react-native";
+import { useTranslation } from "react-i18next";
 
-const BillingScreen = () => (
-  <View style={styles.screen}>
-    <Text style={styles.title}>Bảng điều khiển Billing</Text>
-    <Text style={styles.subtitle}>
-      Tổng quan hóa đơn, thanh toán và các khoản phí phụ trợ dành cho chủ nhà.
-    </Text>
-  </View>
-);
+const BillingScreen = () => {
+  const { t } = useTranslation();
+  return (
+    <View style={styles.screen}>
+      <Text style={styles.title}>{t('billing.title')}</Text>
+      <Text style={styles.subtitle}>
+        {t('billing.subtitle')}
+      </Text>
+    </View>
+  );
+};
 
 const styles = StyleSheet.create({
   screen: {

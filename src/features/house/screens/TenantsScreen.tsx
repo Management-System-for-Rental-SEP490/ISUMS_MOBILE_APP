@@ -1,13 +1,17 @@
 import { View, Text, StyleSheet } from "react-native";
+import { useTranslation } from "react-i18next";
 
-const TenantsScreen = () => (
-  <View style={styles.screen}>
-    <Text style={styles.title}>Quản lý cư dân thuê</Text>
-    <Text style={styles.subtitle}>
-      Theo dõi hợp đồng, thông tin liên hệ và lịch sử thanh toán của từng tenant.
-    </Text>
-  </View>
-);
+const TenantsScreen = () => {
+  const { t } = useTranslation();
+  return (
+    <View style={styles.screen}>
+      <Text style={styles.title}>{t('tenants.title')}</Text>
+      <Text style={styles.subtitle}>
+        {t('tenants.subtitle')}
+      </Text>
+    </View>
+  );
+};
 
 const styles = StyleSheet.create({
   screen: {

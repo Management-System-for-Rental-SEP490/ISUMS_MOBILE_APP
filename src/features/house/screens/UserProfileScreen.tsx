@@ -41,8 +41,8 @@ const UserProfileScreen = () => {
   };
 
   const getRoleDisplayName = (role: string | null) => {
-    if (role === "technical") return t('profile.role_technical');
-    if (role === "tenant") return t('profile.role_tenant');
+    if (role === "Technical") return t('profile.role_Technical');
+    if (role === "Tenant") return t('profile.role_Tenant');
     return t('profile.role_guest');
   };
 // hàm lấy khi tự đầu tiên của tên là hình nền

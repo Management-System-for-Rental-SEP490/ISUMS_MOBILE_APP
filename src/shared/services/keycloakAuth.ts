@@ -12,12 +12,12 @@ const getKeycloakBaseUrl = (): string => {
   if (Platform.OS === 'web') {
     return "http://localhost:8080";
   }
-  const MOBILE_KEYCLOAK_IP = process.env.EXPO_PUBLIC_KEYCLOAK_IP || "192.168.1.75";
-  //hotpot của lap
-  // const MOBILE_KEYCLOAK_IP = process.env.EXPO_PUBLIC_KEYCLOAK_IP || "192.168.137.1";
+  const MOBILE_KEYCLOAK_IP = process.env.EXPO_PUBLIC_KEYCLOAK_IP || "192.168.1.142";
+  // //hotpot của lap
+  // // const MOBILE_KEYCLOAK_IP = process.env.EXPO_PUBLIC_KEYCLOAK_IP || "192.168.137.1";
   return `http://${MOBILE_KEYCLOAK_IP}:8080`;
-  // Nếu dùng chung cho mọi nền tảng
-  //return "https://sso.isums.pro";
+  // // Nếu dùng chung cho mọi nền tảng
+  // return "https://sso.isums.pro";
 };
 
 // Cấu hình Keycloak
@@ -26,6 +26,7 @@ const KEYCLOAK_CONFIG = {
     return getKeycloakBaseUrl();
   },
   realm: "isums-realm",
+  //realm: "isums",
   clientId: "mobile-app",
   get redirectUri() {
     if (Platform.OS === 'web') {
@@ -141,45 +142,45 @@ const determineUserRole = (userInfo: any, accessToken: string): UserRole => { //
   if (tokenClaims) {
     // Kiểm tra realm_access.roles trong token
     const realmRoles = tokenClaims.realm_access?.roles || []; //roles là các quyền của user trong realm.
-    if (realmRoles.includes("technical")) return "technical";
+    if (realmRoles.includes("Technical")) return "Technical";
     // if (realmRoles.includes("landlord")) return "landlord";
     // if (realmRoles.includes("manager")) return "manager";
-    if (realmRoles.includes("tenant")) return "tenant";
+    if (realmRoles.includes("Tenant")) return "Tenant";
     
     // Kiểm tra resource_access nếu có
     const resourceRoles = tokenClaims.resource_access?.["mobile-app"]?.roles || [];
-    if (resourceRoles.includes("technical")) return "technical";
+    if (resourceRoles.includes("Technical")) return "Technical";
     // if (resourceRoles.includes("landlord")) return "landlord";
     // if (resourceRoles.includes("manager")) return "manager";
-    if (resourceRoles.includes("tenant")) return "tenant";
+    if (resourceRoles.includes("Tenant")) return "Tenant";
 
     // --- MỚI: Kiểm tra Group từ Keycloak ---
     // Yêu cầu: Cấu hình Mapper "Group Membership" trong Keycloak -> Token Claim Name: "groups"
     const groups = tokenClaims.groups || userInfo.groups || [];
     if (Array.isArray(groups)) {
       // Group trong Keycloak thường có dạng path: "/Technical Group" hoặc "Technical Group"
-      if (groups.some((g: string) => g.toLowerCase().includes("technical") || g.toLowerCase().includes("staff"))) {
-        return "technical";
+      if (groups.some((g: string) => g.toLowerCase().includes("Technical") || g.toLowerCase().includes("staff"))) {
+        return "Technical";
       }
-      if (groups.some((g: string) => g.toLowerCase().includes("tenant") || g.toLowerCase().includes("resident"))) {
-        return "tenant";
+      if (groups.some((g: string) => g.toLowerCase().includes("Tenant") || g.toLowerCase().includes("resident"))) {
+        return "Tenant";
       }
     }
 // hàm dưới có thể sai
     // --- MỚI: Kiểm tra Attributes tùy chỉnh ---
-    // Ví dụ: user có attribute "user_type": "technical"
+    // Ví dụ: user có attribute "user_type": "Technical"
     const attributes = userInfo.attributes || tokenClaims.attributes || {};
-    if (attributes.user_type === "technical" || (Array.isArray(attributes.user_type) && attributes.user_type.includes("technical"))) {
-      return "technical";
+    if (attributes.user_type === "Technical" || (Array.isArray(attributes.user_type) && attributes.user_type.includes("Technical"))) {
+      return "Technical";
     }
   }
   
   // Fallback: kiểm tra từ username
   const username = userInfo.preferred_username?.toLowerCase() || "";
-  if (username.includes("technical") || username.includes("admin")) return "technical";
+  if (username.includes("Technical") || username.includes("admin")) return "Technical";
   // if (username.includes("landlord")) return "landlord";
   // if (username.includes("manager")) return "manager";
-  return "tenant";
+  return "Tenant";
 };
 
 // Làm mới token bằng refresh token
