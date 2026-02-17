@@ -197,6 +197,39 @@ const resources = {
                  "inactive": "Ngừng hĐ"
             }
         }
+      },
+      "consumption": {
+        "area_all": "Tất cả",
+        "area_kitchen": "Bếp",
+        "area_living_room": "Phòng khách",
+        "area_bedroom": "Phòng ngủ",
+        "area_bathroom": "Phòng tắm",
+        "chart_title_electric": "Tiêu thụ điện theo tuần",
+        "chart_title_water": "Tiêu thụ nước theo tuần",
+        "unit_kwh": "kWh",
+        "unit_m3": "m³",
+        "period_week": "Tuần này",
+        "day_label": "T{{n}}",
+        "chart_title_pie": "Phân bố theo khu vực"
+      },
+      "notification": {
+        "empty": "Chưa có thông báo nào",
+        "type_ticket": "Phiếu bảo trì",
+        "type_electric": "Cảnh báo điện",
+        "type_water": "Cảnh báo nước",
+        "msg_ticket_received_title": "Phiếu bảo trì #{{id}} đã được tiếp nhận",
+        "msg_ticket_received_body": "Kỹ thuật viên sẽ liên hệ trong 24h.",
+        "msg_ticket_done_title": "Phiếu #{{id}} đã hoàn thành",
+        "msg_ticket_done_body": "Thiết bị máy lạnh phòng khách đã được sửa xong.",
+        "msg_ticket_assigned_title": "Phiếu #{{id}} đã được phân công",
+        "msg_ticket_assigned_body": "Nhân viên sẽ đến kiểm tra theo lịch hẹn.",
+        "msg_electric_anomaly_title": "Cảnh báo tiêu thụ điện bất thường",
+        "msg_electric_anomaly_body": "Khu vực Bếp: mức tiêu thụ cao hơn {{percent}}% so với bình thường. AI đề xuất kiểm tra thiết bị.",
+        "msg_water_anomaly_title": "Cảnh báo phát hiện rò rỉ nước",
+        "msg_water_anomaly_body": "AI phát hiện bất thường tại Phòng tắm. Vui lòng kiểm tra ngay.",
+        "time_minutes": "{{n}} phút trước",
+        "time_hours": "{{n}} giờ trước",
+        "time_days": "{{n}} ngày trước"
       }
     }
   },
@@ -362,6 +395,39 @@ const resources = {
                  "inactive": "Inactive"
             }
         }
+      },
+      "consumption": {
+        "area_all": "All",
+        "area_kitchen": "Kitchen",
+        "area_living_room": "Living room",
+        "area_bedroom": "Bedroom",
+        "area_bathroom": "Bathroom",
+        "chart_title_electric": "Weekly electricity consumption",
+        "chart_title_water": "Weekly water consumption",
+        "unit_kwh": "kWh",
+        "unit_m3": "m³",
+        "period_week": "This week",
+        "day_label": "Day {{n}}",
+        "chart_title_pie": "Distribution by area"
+      },
+      "notification": {
+        "empty": "No notifications yet",
+        "type_ticket": "Maintenance ticket",
+        "type_electric": "Electric alert",
+        "type_water": "Water alert",
+        "msg_ticket_received_title": "Ticket #{{id}} has been received",
+        "msg_ticket_received_body": "A technician will contact you within 24 hours.",
+        "msg_ticket_done_title": "Ticket #{{id}} completed",
+        "msg_ticket_done_body": "Living room AC unit has been repaired.",
+        "msg_ticket_assigned_title": "Ticket #{{id}} has been assigned",
+        "msg_ticket_assigned_body": "Staff will come for inspection as scheduled.",
+        "msg_electric_anomaly_title": "Unusual electricity consumption alert",
+        "msg_electric_anomaly_body": "Kitchen area: consumption {{percent}}% higher than usual. AI suggests checking devices.",
+        "msg_water_anomaly_title": "Water leak detection alert",
+        "msg_water_anomaly_body": "AI detected anomaly in Bathroom. Please check as soon as possible.",
+        "time_minutes": "{{n}} min ago",
+        "time_hours": "{{n}} hours ago",
+        "time_days": "{{n}} days ago"
       }
     }
   },
@@ -527,6 +593,39 @@ const resources = {
                  "inactive": "停止中"
             }
         }
+      },
+      "consumption": {
+        "area_all": "すべて",
+        "area_kitchen": "キッチン",
+        "area_living_room": "リビング",
+        "area_bedroom": "寝室",
+        "area_bathroom": "浴室",
+        "chart_title_electric": "週間電力消費",
+        "chart_title_water": "週間水道消費",
+        "unit_kwh": "kWh",
+        "unit_m3": "m³",
+        "period_week": "今週",
+        "day_label": "{{n}}日",
+        "chart_title_pie": "エリア別割合"
+      },
+      "notification": {
+        "empty": "通知はありません",
+        "type_ticket": "保守チケット",
+        "type_electric": "電気アラート",
+        "type_water": "水道アラート",
+        "msg_ticket_received_title": "チケット #{{id}} を受付ました",
+        "msg_ticket_received_body": "24時間以内に技術者が連絡します。",
+        "msg_ticket_done_title": "チケット #{{id}} 完了",
+        "msg_ticket_done_body": "リビングのエアコンが修理されました。",
+        "msg_ticket_assigned_title": "チケット #{{id}} が割り当てられました",
+        "msg_ticket_assigned_body": "スタッフが予定通り点検に伺います。",
+        "msg_electric_anomaly_title": "電力消費異常の警告",
+        "msg_electric_anomaly_body": "キッチン: 通常より{{percent}}%高い消費。AIが機器確認を推奨しています。",
+        "msg_water_anomaly_title": "漏水検知の警告",
+        "msg_water_anomaly_body": "浴室で異常を検知しました。至急ご確認ください。",
+        "time_minutes": "{{n}}分前",
+        "time_hours": "{{n}}時間前",
+        "time_days": "{{n}}日前"
       }
     }
   }
