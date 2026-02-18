@@ -12,14 +12,24 @@ export type MainTabParamList = {
   Profile: undefined;
   Calendar: undefined;
   Notification: undefined;
+  /** Tab danh sách ticket dành cho Staff (thay vì Billing) */
+  Ticket: undefined;
 };
 export type HeaderVariant = "default" | "electric" | "water"; // định nghĩa các loại variant của header
 export type RootStackParamList = AuthStackParamList & {
   Main: undefined;
   OnBoarding: undefined;
   Camera: undefined;
-  DeviceDetail: { device: Device }; // device là một object có kiểu Device
-  Ticket: { device: Device }; // Ticket screen nhận device để tự động điền thông tin thiết bị
+  DeviceDetail: { device: Device };
+  Ticket: { device: Device };
+  /** Chi tiết nhà cho Staff: danh sách thiết bị + nút gán NFC */
+  BuildingDetail: {
+    buildingId: string;
+    buildingName: string;
+    buildingAddress: string;
+  };
+  /** Chi tiết ticket cho Staff: thông tin, trạng thái, nút Nhận ticket (nếu pending) */
+  TicketDetail: { ticketId: string };
 };
 
 export type IconProps = {

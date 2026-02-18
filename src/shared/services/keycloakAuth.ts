@@ -12,7 +12,7 @@ const getKeycloakBaseUrl = (): string => {
   if (Platform.OS === 'web') {
     return "http://localhost:8080";
   }
-  const MOBILE_KEYCLOAK_IP = process.env.EXPO_PUBLIC_KEYCLOAK_IP || "192.168.1.146";
+  const MOBILE_KEYCLOAK_IP = process.env.EXPO_PUBLIC_KEYCLOAK_IP || "192.168.1.159";
   // //hotpot của lap
   // // const MOBILE_KEYCLOAK_IP = process.env.EXPO_PUBLIC_KEYCLOAK_IP || "192.168.137.1";
   return `http://${MOBILE_KEYCLOAK_IP}:8080`;

@@ -10,6 +10,22 @@ import { TenantTabs, StaffTabs } from "../shared/components/footerNavigator";
 import CameraScreen from "../screens/modal/CameraScreen";
 import DeviceDetail from "../features/devices/deviceDetail";
 import TicketScreen from "../features/ticket/ticket";
+import BuildingDetailScreen from "../features/staff/screens/BuildingDetailScreen";
+import TicketDetailScreen from "../features/staff/screens/TicketDetailScreen";
+import { StaffScheduleProvider } from "../features/staff/context/StaffScheduleContext";
+
+// Wrapper components để bọc Provider cho các screen cần useStaffSchedule
+const BuildingDetailScreenWrapper = () => (
+  <StaffScheduleProvider>
+    <BuildingDetailScreen />
+  </StaffScheduleProvider>
+);
+
+const TicketDetailScreenWrapper = () => (
+  <StaffScheduleProvider>
+    <TicketDetailScreen />
+  </StaffScheduleProvider>
+);
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
 
@@ -31,6 +47,7 @@ const RoleNavigator = () => {
 const Navigation = () => {
   const isLoggedIn = useAuthStore((state) => state.isLoggedIn);
   const user = useAuthStore((state) => state.user);
+  const role = useAuthStore((state) => state.role);
   const onboardedUsers = useAuthStore((state) => state.onboardedUsers);
   
   const [isReady, setIsReady] = useState(false);
@@ -84,6 +101,17 @@ const Navigation = () => {
                 component={TicketScreen}
                 options={{ presentation: "modal" }}
               />
+              {role === "Technical" ? (
+                <>
+                  <Stack.Screen name="BuildingDetail" component={BuildingDetailScreenWrapper} />
+                  <Stack.Screen name="TicketDetail" component={TicketDetailScreenWrapper} />
+                </>
+              ) : (
+                <>
+                  <Stack.Screen name="BuildingDetail" component={BuildingDetailScreen} />
+                  <Stack.Screen name="TicketDetail" component={TicketDetailScreen} />
+                </>
+              )}
             </>
           )
         ) : (

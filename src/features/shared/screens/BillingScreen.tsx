@@ -1,13 +1,13 @@
 import { View, Text, StyleSheet } from "react-native";
 import { useTranslation } from "react-i18next";
 
-const TenantsScreen = () => {
+const BillingScreen = () => {
   const { t } = useTranslation();
   return (
     <View style={styles.screen}>
-      <Text style={styles.title}>{t('tenants.title')}</Text>
+      <Text style={styles.title}>{t('billing.title')}</Text>
       <Text style={styles.subtitle}>
-        {t('tenants.subtitle')}
+        {t('billing.subtitle')}
       </Text>
     </View>
   );
@@ -33,5 +33,4 @@ const styles = StyleSheet.create({
   },
 });
 
-export default TenantsScreen;
-
+export default BillingScreen;

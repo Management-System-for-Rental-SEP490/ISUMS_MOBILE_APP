@@ -156,7 +156,96 @@ const resources = {
         "Tenants": "Cư dân",
         "Profile": "Hồ sơ",
         "Calendar": "Lịch",
-        "Notification": "Thông báo"
+        "Notification": "Thông báo",
+        "Ticket": "Ticket"
+      },
+      "staff_home": {
+        "schedule_title": "Lịch làm việc tuần này",
+        "schedule_summary_title": "Tóm tắt lịch có việc",
+        "schedule_no_slots": "Tuần này chưa có ca nào",
+        "schedule_col_time": "Thời gian",
+        "schedule_col_building": "Căn nhà",
+        "schedule_col_task": "Công việc",
+        "assets_by_building_title": "Thiết bị / Asset theo căn nhà",
+        "buildings_title": "Các căn nhà",
+        "nfc_assigned": "Đã gán NFC",
+        "nfc_not_assigned": "Chưa gán NFC",
+        "asset_status": {
+          "active": "Hoạt động",
+          "maintenance": "Bảo trì",
+          "inactive": "Ngừng",
+          "pending": "Chờ xử lý"
+        }
+      },
+      "staff_notification": {
+        "tenant_sent_ticket_title": "Có ticket mới từ người thuê",
+        "tenant_sent_ticket_body": "Người thuê tại {{house}} đã gửi ticket #{{id}}. Vui lòng xem và xử lý.",
+        "schedule_updated_title": "Lịch làm việc đã được cập nhật",
+        "schedule_updated_body": "Lịch tuần này có thay đổi. Vui lòng kiểm tra lại lịch của bạn.",
+        "ticket_assigned_title": "Bạn được phân công ticket #{{id}}",
+        "ticket_assigned_body": "Ticket đã được gán cho bạn. Hãy liên hệ người thuê và sắp xếp lịch xử lý.",
+        "inspection_reminder_title": "Nhắc kiểm tra định kỳ",
+        "inspection_reminder_body": "Đến hạn kiểm tra định kỳ tại {{building}}. Vui lòng thực hiện theo lịch.",
+        "system_maintenance_title": "Bảo trì hệ thống",
+        "system_maintenance_body": "Hệ thống sẽ bảo trì vào cuối tuần. Ứng dụng có thể gián đoạn ngắn."
+      },
+      "staff_ticket_list": {
+        "title": "Danh sách Ticket",
+        "empty": "Chưa có ticket nào",
+        "tenant": "Người thuê",
+        "today": "Hôm nay",
+        "yesterday": "Hôm qua",
+        "days_ago": "{{n}} ngày trước",
+        "priority_high": "Cao",
+        "priority_medium": "Trung bình",
+        "priority_low": "Thấp",
+        "status_pending": "Chờ nhận",
+        "status_assigned": "Đã phân công",
+        "status_scheduled": "Đã đặt lịch",
+        "status_in_progress": "Đang xử lý",
+        "status_completed": "Hoàn thành",
+        "status_cancelled": "Đã hủy"
+      },
+      "staff_ticket_detail": {
+        "status": "Trạng thái",
+        "priority": "Mức ưu tiên",
+        "title_label": "Tiêu đề",
+        "description": "Mô tả",
+        "device": "Thiết bị",
+        "building": "Căn nhà",
+        "tenant": "Người thuê",
+        "created_at": "Ngày tạo",
+        "accept_ticket": "Nhận ticket",
+        "choose_slot_modal_title": "Chọn khung giờ trong lịch tuần này",
+        "choose_slot_modal_hint": "Chỉ hiển thị khung giờ bạn đã đăng ký và còn trống. Chọn một ca để xử lý ticket này.",
+        "choose_slot_no_free": "Không có khung giờ trống trong tuần này. Các ca đã có ticket sẽ không hiển thị.",
+        "confirm_slot": "Xác nhận"
+      },
+      "staff_calendar": {
+        "this_week_title": "Lịch tuần này",
+        "no_slots_today": "Không có ca trong ngày",
+        "day_off_label": "Nghỉ",
+        "next_week_register_title": "Đăng ký lịch tuần sau",
+        "next_week_register_hint": "Chọn khung giờ phù hợp để đăng ký. Sau khi duyệt, lịch sẽ hiển thị ở tuần tới.",
+        "register_slot": "Đăng ký",
+        "registered": "Đã đăng ký"
+      },
+      "staff_building_detail": {
+        "devices_title": "Thiết bị ({{count}})",
+        "no_devices": "Chưa có thiết bị nào",
+        "assign_nfc": "Gán mã NFC",
+        "status_active": "Hoạt động",
+        "status_maintenance": "Bảo trì",
+        "status_inactive": "Ngừng",
+        "status_pending": "Chờ xử lý"
+      },
+      "staff_book_schedule_modal": {
+        "title": "Đăng ký ngày nghỉ",
+        "hint": "Mặc định bạn làm 8h–18h mỗi ngày. Chọn ngày muốn nghỉ trong tuần này.",
+        "day_label": "Chọn ngày nghỉ",
+        "already_off": "Nghỉ",
+        "confirm_off": "Đăng ký nghỉ ngày này",
+        "confirm_remove_off": "Bỏ đăng ký nghỉ"
       },
       "profile": {
         "title": "Hồ sơ cá nhân",
@@ -354,7 +443,96 @@ const resources = {
         "Tenants": "Tenants",
         "Profile": "Profile",
         "Calendar": "Calendar",
-        "Notification": "Notification"
+        "Notification": "Notification",
+        "Ticket": "Ticket"
+      },
+      "staff_home": {
+        "schedule_title": "This week's work schedule",
+        "schedule_summary_title": "When you have work (summary)",
+        "schedule_no_slots": "No slots this week",
+        "schedule_col_time": "Time",
+        "schedule_col_building": "Building",
+        "schedule_col_task": "Task",
+        "assets_by_building_title": "Assets by building",
+        "buildings_title": "Buildings",
+        "nfc_assigned": "NFC assigned",
+        "nfc_not_assigned": "No NFC",
+        "asset_status": {
+          "active": "Active",
+          "maintenance": "Maintenance",
+          "inactive": "Inactive",
+          "pending": "Pending"
+        }
+      },
+      "staff_notification": {
+        "tenant_sent_ticket_title": "New ticket from tenant",
+        "tenant_sent_ticket_body": "A tenant at {{house}} submitted ticket #{{id}}. Please review and handle.",
+        "schedule_updated_title": "Work schedule updated",
+        "schedule_updated_body": "This week's schedule has changed. Please check your schedule.",
+        "ticket_assigned_title": "You were assigned ticket #{{id}}",
+        "ticket_assigned_body": "The ticket has been assigned to you. Contact the tenant and schedule the repair.",
+        "inspection_reminder_title": "Inspection reminder",
+        "inspection_reminder_body": "Scheduled inspection due at {{building}}. Please complete as planned.",
+        "system_maintenance_title": "System maintenance",
+        "system_maintenance_body": "System maintenance is scheduled for the weekend. The app may be briefly unavailable."
+      },
+      "staff_ticket_list": {
+        "title": "Ticket list",
+        "empty": "No tickets yet",
+        "tenant": "Tenant",
+        "today": "Today",
+        "yesterday": "Yesterday",
+        "days_ago": "{{n}} days ago",
+        "priority_high": "High",
+        "priority_medium": "Medium",
+        "priority_low": "Low",
+        "status_pending": "Pending",
+        "status_assigned": "Assigned",
+        "status_scheduled": "Scheduled",
+        "status_in_progress": "In progress",
+        "status_completed": "Completed",
+        "status_cancelled": "Cancelled"
+      },
+      "staff_ticket_detail": {
+        "status": "Status",
+        "priority": "Priority",
+        "title_label": "Title",
+        "description": "Description",
+        "device": "Device",
+        "building": "Building",
+        "tenant": "Tenant",
+        "created_at": "Created at",
+        "accept_ticket": "Accept ticket",
+        "choose_slot_modal_title": "Choose time slot from this week's schedule",
+        "choose_slot_modal_hint": "Only registered, free slots are shown. Select one to handle this ticket.",
+        "choose_slot_no_free": "No free slots this week. Slots already assigned to a ticket are hidden.",
+        "confirm_slot": "Confirm"
+      },
+      "staff_calendar": {
+        "this_week_title": "This week's schedule",
+        "no_slots_today": "No slots this day",
+        "day_off_label": "Off",
+        "next_week_register_title": "Register schedule for next week",
+        "next_week_register_hint": "Pick time slots that work for you. After approval, they will show in next week's schedule.",
+        "register_slot": "Register",
+        "registered": "Registered"
+      },
+      "staff_building_detail": {
+        "devices_title": "Devices ({{count}})",
+        "no_devices": "No devices yet",
+        "assign_nfc": "Assign NFC",
+        "status_active": "Active",
+        "status_maintenance": "Maintenance",
+        "status_inactive": "Inactive",
+        "status_pending": "Pending"
+      },
+      "staff_book_schedule_modal": {
+        "title": "Register day off",
+        "hint": "By default you work 8am–6pm every day. Select the day you want to take off this week.",
+        "day_label": "Select day off",
+        "already_off": "Off",
+        "confirm_off": "Register this day off",
+        "confirm_remove_off": "Cancel day off"
       },
       "profile": {
         "title": "My Profile",
@@ -552,7 +730,96 @@ const resources = {
         "Tenants": "居住者",
         "Profile": "プロフィール",
         "Calendar": "カレンダー",
-        "Notification": "通知"
+        "Notification": "通知",
+        "Ticket": "チケット"
+      },
+      "staff_home": {
+        "schedule_title": "今週の勤務表",
+        "schedule_summary_title": "勤務あり（まとめ）",
+        "schedule_no_slots": "今週の予定はありません",
+        "schedule_col_time": "時間",
+        "schedule_col_building": "建物",
+        "schedule_col_task": "作業",
+        "assets_by_building_title": "建物別資産",
+        "buildings_title": "建物一覧",
+        "nfc_assigned": "NFC割り当て済み",
+        "nfc_not_assigned": "NFC未割り当て",
+        "asset_status": {
+          "active": "稼働中",
+          "maintenance": "メンテ中",
+          "inactive": "停止",
+          "pending": "保留"
+        }
+      },
+      "staff_notification": {
+        "tenant_sent_ticket_title": "入居者からチケットが届きました",
+        "tenant_sent_ticket_body": "{{house}}の入居者がチケット #{{id}} を送信しました。確認して対応してください。",
+        "schedule_updated_title": "勤務表が更新されました",
+        "schedule_updated_body": "今週のスケジュールに変更があります。勤務表をご確認ください。",
+        "ticket_assigned_title": "チケット #{{id}} が割り当てられました",
+        "ticket_assigned_body": "チケットがあなたに割り当てられました。入居者に連絡し、修理の日程を調整してください。",
+        "inspection_reminder_title": "点検リマインダー",
+        "inspection_reminder_body": "{{building}} の定期点検の時期です。予定通り実施してください。",
+        "system_maintenance_title": "システムメンテナンス",
+        "system_maintenance_body": "週末にシステムメンテナンスを予定しています。アプリが一時利用できなくなる場合があります。"
+      },
+      "staff_ticket_list": {
+        "title": "チケット一覧",
+        "empty": "チケットはありません",
+        "tenant": "入居者",
+        "today": "今日",
+        "yesterday": "昨日",
+        "days_ago": "{{n}}日前",
+        "priority_high": "高",
+        "priority_medium": "中",
+        "priority_low": "低",
+        "status_pending": "未対応",
+        "status_assigned": "割当済",
+        "status_scheduled": "予定済",
+        "status_in_progress": "対応中",
+        "status_completed": "完了",
+        "status_cancelled": "キャンセル"
+      },
+      "staff_ticket_detail": {
+        "status": "ステータス",
+        "priority": "優先度",
+        "title_label": "タイトル",
+        "description": "説明",
+        "device": "デバイス",
+        "building": "建物",
+        "tenant": "入居者",
+        "created_at": "作成日時",
+        "accept_ticket": "チケットを受ける",
+        "choose_slot_modal_title": "今週の勤務から時間帯を選択",
+        "choose_slot_modal_hint": "登録済みで空いている時間帯のみ表示されます。このチケットに対応する時間帯を選んでください。",
+        "choose_slot_no_free": "今週は空き時間がありません。チケット割当済みの時間帯は表示されません。",
+        "confirm_slot": "確認"
+      },
+      "staff_calendar": {
+        "this_week_title": "今週の勤務表",
+        "no_slots_today": "この日の予定はありません",
+        "day_off_label": "休",
+        "next_week_register_title": "来週の勤務登録",
+        "next_week_register_hint": "都合の良い時間帯を選択して登録します。承認後、来週のスケジュールに表示されます。",
+        "register_slot": "登録",
+        "registered": "登録済み"
+      },
+      "staff_building_detail": {
+        "devices_title": "デバイス ({{count}})",
+        "no_devices": "デバイスがありません",
+        "assign_nfc": "NFCを割り当て",
+        "status_active": "稼働中",
+        "status_maintenance": "メンテ中",
+        "status_inactive": "停止",
+        "status_pending": "保留"
+      },
+      "staff_book_schedule_modal": {
+        "title": "休暇登録",
+        "hint": "通常は毎日8時〜18時勤務です。今週休みにしたい日を選んでください。",
+        "day_label": "休暇日を選択",
+        "already_off": "休",
+        "confirm_off": "この日を休暇に登録",
+        "confirm_remove_off": "休暇を取り消す"
       },
       "profile": {
         "title": "プロフィール",

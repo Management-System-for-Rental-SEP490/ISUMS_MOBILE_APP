@@ -72,7 +72,35 @@ export const mockDevices: Device[] = [
       installationDate: new Date().toISOString().split("T")[0],
     },
   },
+  {
+    id: "dev-006",
+    name: "Máy giặt chưa gán NFC",
+    type: "other",
+    nfcTagId: "",
+    location: "Tầng 1 - Phòng 101",
+    status: "pending",
+    metadata: {
+      manufacturer: "LG",
+      model: "Inverter 9kg",
+    },
+  },
+  {
+    id: "dev-007",
+    name: "Quạt trần phòng 202",
+    type: "other",
+    nfcTagId: "",
+    location: "Tầng 2 - Phòng 202",
+    status: "active",
+    metadata: {},
+  },
 ];
+
+/** Ánh xạ nhà (houseId) -> danh sách id thiết bị thuộc nhà đó. Dùng cho Staff xem thiết bị theo nhà. */
+const HOUSE_DEVICE_IDS: Record<string, string[]> = {
+  H001: ["dev-001", "dev-002", "dev-003", "dev-006"],
+  H002: ["dev-004", "dev-005"],
+  H003: ["dev-007"],
+};
 
 // Hàm lấy thiết bị theo NFC Tag ID
 export const getDeviceByNfcTag = (nfcTagId: string): Device | undefined =>
@@ -84,8 +112,13 @@ export const getDeviceById = (id: string): Device | undefined =>
 
 // Hàm lấy danh sách thiết bị của một ngôi nhà (giả lập)
 // Input: houseId (string) - ID của ngôi nhà
-// Output: Promise<Device[]> - Danh sách thiết bị
+// Output: Promise<Device[]> - Danh sách thiết bị thuộc nhà đó (theo HOUSE_DEVICE_IDS)
 export const getHouseDevices = async (houseId: string): Promise<Device[]> => {
-  // Giả lập độ trễ mạng 1 giây
-  return new Promise((resolve) => setTimeout(() => resolve(mockDevices), 1000));
+  const ids = HOUSE_DEVICE_IDS[houseId];
+  const list = ids
+    ? ids.map((id) => mockDevices.find((d) => d.id === id)).filter(Boolean) as Device[]
+    : [];
+  return new Promise((resolve) =>
+    setTimeout(() => resolve(list), 500)
+  );
 };

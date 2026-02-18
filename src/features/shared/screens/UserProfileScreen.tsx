@@ -9,7 +9,6 @@ import { logoutKeycloak, openChangePasswordPage } from "../../../shared/services
 import { UserProfileResponse } from "../../../shared/types/api";
 import Icons from "../../../shared/theme/icon";
 import { useTranslation } from "react-i18next";
-
 const UserProfileScreen = () => {
   const { t } = useTranslation();
   const navigation = useNavigation<any>();
