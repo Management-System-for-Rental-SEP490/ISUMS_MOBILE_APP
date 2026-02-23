@@ -1,8 +1,8 @@
 /**
  * Màn hình Home dành cho Staff (technical).
- * (1) Tóm tắt lịch có việc. (2) Danh sách nhà (từ getStaffBuildings); nhấn vào nhà → màn Chi tiết nhà (thiết bị + nút gán NFC).
+ * (1) Tóm tắt lịch có việc. (2) Danh sách nhà từ API GET /api/houses; nhấn vào nhà → màn Chi tiết nhà (thiết bị + nút gán NFC).
  */
-import React, { useMemo, useState, useEffect } from "react";
+import React, { useMemo } from "react";
 import {
   View,
   Text,
@@ -15,13 +15,14 @@ import { useNavigation } from "@react-navigation/native";
 import type { CompositeNavigationProp } from "@react-navigation/native";
 import type { BottomTabNavigationProp } from "@react-navigation/bottom-tabs";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
+import { useQuery } from "@tanstack/react-query";
 import { MainTabParamList } from "../../../shared/types";
 import { RootStackParamList } from "../../../shared/types";
+import type { HouseFromApi } from "../../../shared/types";
 import Header from "../../../shared/components/header";
 import { getWorkScheduleThisWeek, WorkSlot } from "../data/mockStaffData";
 import { useStaffSchedule } from "../context/StaffScheduleContext";
-import { getStaffBuildings } from "../../../shared/services/mockHouseService";
-import { RentalHouse } from "../../../shared/types";
+import { getHouses } from "../../../shared/services/houseApi";
 import Icons from "../../../shared/theme/icon";
 import { staffHomeStyles } from "../styles/staffHomeStyles";
 
@@ -44,15 +45,14 @@ export default function StaffHomeScreen() {
   const { t } = useTranslation();
   const navigation = useNavigation<StaffHomeNavProp>();
   const { dayOffList } = useStaffSchedule();
-  const [loading, setLoading] = useState(true);
-  const [buildings, setBuildings] = useState<RentalHouse[]>([]);
-/** Lấy danh sách các nhà */
-  useEffect(() => {
-    getStaffBuildings().then((list) => {
-      setBuildings(list);
-      setLoading(false);
-    });
-  }, []);
+
+  // React Query: gọi API GET /api/houses, cache key "houses", token tự gắn qua axiosClient
+  const { data, isLoading, isError, refetch } = useQuery({
+    queryKey: ["houses"],
+    queryFn: getHouses,
+  });
+  const buildings: HouseFromApi[] = data?.data ?? [];
+  const loading = isLoading;
 
   // Chỉ hiển thị các slot có việc (có ticketId) - tóm tắt lịch có việc
   const sortedSchedule = useMemo(
@@ -82,7 +82,7 @@ export default function StaffHomeScreen() {
     </View>
   );
 
-  const openBuildingDetail = (house: RentalHouse) => {
+  const openBuildingDetail = (house: HouseFromApi) => {
     const root = navigation.getParent?.();
     if (root && "navigate" in root) {
       (root as { navigate: (name: string, params: object) => void }).navigate(
@@ -91,12 +91,17 @@ export default function StaffHomeScreen() {
           buildingId: house.id,
           buildingName: house.name,
           buildingAddress: house.address,
+          description: house.description,
+          ward: house.ward,
+          commune: house.commune,
+          city: house.city,
+          status: house.status,
         }
       );
     }
   };
 
-  const renderBuildingItem = ({ item }: { item: RentalHouse }) => (
+  const renderBuildingItem = ({ item }: { item: HouseFromApi }) => (
     <TouchableOpacity
       style={staffHomeStyles.buildingCard}
       onPress={() => openBuildingDetail(item)}
@@ -158,6 +163,25 @@ export default function StaffHomeScreen() {
           <Text style={{ marginTop: 10, color: "#6B7280" }}>
             {t("home.loading_data")}
           </Text>
+        </View>
+      </View>
+    );
+  }
+
+  if (isError) {
+    return (
+      <View style={staffHomeStyles.container}>
+        <Header variant="default" />
+        <View style={[staffHomeStyles.loadingContainer, { padding: 24 }]}>
+          <Text style={{ color: "#6B7280", textAlign: "center" }}>
+            {t("staff_home.buildings_error")}
+          </Text>
+          <TouchableOpacity
+            onPress={() => refetch()}
+            style={{ marginTop: 12, paddingVertical: 10, paddingHorizontal: 16, backgroundColor: "#2563EB", borderRadius: 8 }}
+          >
+            <Text style={{ color: "#fff", fontWeight: "600" }}>{t("common.try_again")}</Text>
+          </TouchableOpacity>
         </View>
       </View>
     );

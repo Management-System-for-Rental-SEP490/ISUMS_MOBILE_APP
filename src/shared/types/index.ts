@@ -22,11 +22,21 @@ export type RootStackParamList = AuthStackParamList & {
   Camera: undefined;
   DeviceDetail: { device: Device };
   Ticket: { device: Device };
-  /** Chi tiết nhà cho Staff: danh sách thiết bị + nút gán NFC */
+  /** Chi tiết nhà cho Staff: danh sách thiết bị + nút gán NFC. Có thể truyền thêm thông tin từ API houses. */
   BuildingDetail: {
     buildingId: string;
     buildingName: string;
     buildingAddress: string;
+    /** Mô tả căn nhà (từ API) */
+    description?: string;
+    /** Phường (từ API) */
+    ward?: string;
+    /** Quận (từ API) */
+    commune?: string;
+    /** Thành phố (từ API) */
+    city?: string;
+    /** Trạng thái: AVAILABLE, RENTED, ... (từ API) */
+    status?: string;
   };
   /** Chi tiết ticket cho Staff: thông tin, trạng thái, nút Nhận ticket (nếu pending) */
   TicketDetail: { ticketId: string };
@@ -117,6 +127,27 @@ export interface RentalHouse {
   contractStatus: 'Active' | 'Expired' | 'Pending';
   startDate: string; // Ngày bắt đầu thuê
   endDate: string; // Ngày kết thúc
+}
+
+/** Dữ liệu căn nhà trả về từ API GET /api/houses (dùng cho Staff). */
+export interface HouseFromApi {
+  id: string;
+  userRentalId: string | null;
+  name: string;
+  address: string;
+  ward?: string;
+  commune?: string;
+  city?: string;
+  description?: string;
+  status?: string; // VD: "AVAILABLE", "RENTED"
+}
+
+/** Response body của API GET /api/houses. */
+export interface HousesApiResponse {
+  data: HouseFromApi[];
+  message: string;
+  statusCode: number;
+  success: boolean;
 }
 export type ScanMode = "qr" | "nfc";
 export type HomeScreenProps = BottomTabScreenProps<MainTabParamList, "Dashboard">; // HomeScreenProps là một type alias cho BottomTabScreenProps<MainTabParamList, "Dashboard">.

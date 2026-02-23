@@ -168,6 +168,7 @@ const resources = {
         "schedule_col_task": "Công việc",
         "assets_by_building_title": "Thiết bị / Asset theo căn nhà",
         "buildings_title": "Các căn nhà",
+        "buildings_error": "Không tải được danh sách căn nhà. Vui lòng thử lại.",
         "nfc_assigned": "Đã gán NFC",
         "nfc_not_assigned": "Chưa gán NFC",
         "asset_status": {
@@ -237,7 +238,10 @@ const resources = {
         "status_active": "Hoạt động",
         "status_maintenance": "Bảo trì",
         "status_inactive": "Ngừng",
-        "status_pending": "Chờ xử lý"
+        "status_pending": "Chờ xử lý",
+        "house_status_available": "Còn trống",
+        "house_status_rented": "Đã cho thuê",
+        "house_status_other": "{{status}}"
       },
       "staff_book_schedule_modal": {
         "title": "Đăng ký ngày nghỉ",
@@ -455,6 +459,7 @@ const resources = {
         "schedule_col_task": "Task",
         "assets_by_building_title": "Assets by building",
         "buildings_title": "Buildings",
+        "buildings_error": "Could not load buildings. Please try again.",
         "nfc_assigned": "NFC assigned",
         "nfc_not_assigned": "No NFC",
         "asset_status": {
@@ -524,7 +529,10 @@ const resources = {
         "status_active": "Active",
         "status_maintenance": "Maintenance",
         "status_inactive": "Inactive",
-        "status_pending": "Pending"
+        "status_pending": "Pending",
+        "house_status_available": "Available",
+        "house_status_rented": "Rented",
+        "house_status_other": "{{status}}"
       },
       "staff_book_schedule_modal": {
         "title": "Register day off",
@@ -742,6 +750,7 @@ const resources = {
         "schedule_col_task": "作業",
         "assets_by_building_title": "建物別資産",
         "buildings_title": "建物一覧",
+        "buildings_error": "建物一覧を読み込めませんでした。もう一度お試しください。",
         "nfc_assigned": "NFC割り当て済み",
         "nfc_not_assigned": "NFC未割り当て",
         "asset_status": {
@@ -811,7 +820,10 @@ const resources = {
         "status_active": "稼働中",
         "status_maintenance": "メンテ中",
         "status_inactive": "停止",
-        "status_pending": "保留"
+        "status_pending": "保留",
+        "house_status_available": "空き",
+        "house_status_rented": "賃貸中",
+        "house_status_other": "{{status}}"
       },
       "staff_book_schedule_modal": {
         "title": "休暇登録",

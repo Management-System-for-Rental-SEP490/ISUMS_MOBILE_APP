@@ -55,6 +55,34 @@ export const staffBuildingDetailStyles = StyleSheet.create({
     color: "#6B7280",
     lineHeight: 20,
   },
+  /** Dòng địa chỉ chi tiết: phường, quận, thành phố (từ API). */
+  buildingAddressDetail: {
+    fontSize: 13,
+    color: "#9CA3AF",
+    marginTop: 4,
+    lineHeight: 18,
+  },
+  /** Badge trạng thái căn nhà (AVAILABLE, RENTED). */
+  statusHouseBadge: {
+    alignSelf: "flex-start",
+    marginTop: 8,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 8,
+    backgroundColor: "#E0E7FF",
+  },
+  statusHouseText: {
+    fontSize: 12,
+    fontWeight: "600",
+    color: "#3730A3",
+  },
+  /** Mô tả căn nhà (từ API). */
+  buildingDescription: {
+    fontSize: 13,
+    color: "#6B7280",
+    lineHeight: 20,
+    marginTop: 10,
+  },
   sectionTitle: {
     fontSize: 16,
     fontWeight: "700",

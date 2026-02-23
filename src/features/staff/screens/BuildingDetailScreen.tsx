@@ -29,7 +29,16 @@ export default function BuildingDetailScreen() {
   const navigation = useNavigation<NavProp>();
   const route = useRoute<BuildingDetailRouteProp>();
   const insets = useSafeAreaInsets();
-  const { buildingId, buildingName, buildingAddress } = route.params;
+  const {
+    buildingId,
+    buildingName,
+    buildingAddress,
+    description,
+    ward,
+    commune,
+    city,
+    status,
+  } = route.params;
 
   const [devices, setDevices] = useState<Device[]>([]);
   const [loading, setLoading] = useState(true);
@@ -84,6 +93,17 @@ export default function BuildingDetailScreen() {
     }
   };
 
+  /** Dịch trạng thái căn nhà từ API (AVAILABLE, RENTED, ...). */
+  const getHouseStatusLabel = (statusValue: string) => {
+    const key =
+      statusValue === "AVAILABLE"
+        ? "house_status_available"
+        : statusValue === "RENTED"
+          ? "house_status_rented"
+          : "house_status_other";
+    return t(`staff_building_detail.${key}`, { status: statusValue });
+  };
+
   const handleAssignNfc = (device: Device) => {
     // TODO: Mở luồng quét NFC / màn gán NFC khi có API
     // Có thể navigate sang Camera (chế độ NFC) hoặc màn AssignNfcScreen
@@ -120,6 +140,21 @@ export default function BuildingDetailScreen() {
         <View style={staffBuildingDetailStyles.headerCard}>
           <Text style={staffBuildingDetailStyles.buildingName}>{buildingName}</Text>
           <Text style={staffBuildingDetailStyles.buildingAddress}>{buildingAddress}</Text>
+          {(ward || commune || city) ? (
+            <Text style={staffBuildingDetailStyles.buildingAddressDetail}>
+              {[ward, commune, city].filter(Boolean).join(", ")}
+            </Text>
+          ) : null}
+          {status ? (
+            <View style={staffBuildingDetailStyles.statusHouseBadge}>
+              <Text style={staffBuildingDetailStyles.statusHouseText}>
+                {getHouseStatusLabel(status)}
+              </Text>
+            </View>
+          ) : null}
+          {description ? (
+            <Text style={staffBuildingDetailStyles.buildingDescription}>{description}</Text>
+          ) : null}
         </View>
 
         <Text style={staffBuildingDetailStyles.sectionTitle}>
