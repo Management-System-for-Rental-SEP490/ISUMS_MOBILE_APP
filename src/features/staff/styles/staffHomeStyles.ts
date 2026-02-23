@@ -232,8 +232,54 @@ export const staffHomeStyles = StyleSheet.create({
   categoryChipTextActive: {
     color: "#fff",
   },
-  /** Vùng giữ chỗ cho danh sách thiết bị (khi có API items sẽ thay bằng list thật) */
-  devicesPlaceholder: {
+  /** Vùng danh sách thiết bị (items từ API) */
+  devicesList: {
+    marginTop: 16,
+  },
+  /** Một dòng thiết bị trong mục "Tất cả thiết bị" (có thể nhấn → DeviceDetail) */
+  deviceItemCard: {
+    backgroundColor: "#fff",
+    marginBottom: 10,
+    paddingVertical: 12,
+    paddingHorizontal: 14,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: "#E5E7EB",
+  },
+  deviceItemRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+  },
+  deviceItemContent: {
+    flex: 1,
+    marginRight: 8,
+  },
+  deviceItemChevron: {
+    padding: 4,
+  },
+  deviceItemName: {
+    fontSize: 15,
+    fontWeight: "600",
+    color: "#1F2937",
+  },
+  deviceItemMeta: {
+    fontSize: 12,
+    color: "#6B7280",
+    marginTop: 4,
+  },
+  deviceItemStatus: {
+    marginTop: 6,
+    alignSelf: "flex-start",
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 8,
+  },
+  deviceItemStatusText: {
+    fontSize: 11,
+    fontWeight: "600",
+  },
+  devicesEmpty: {
     marginTop: 16,
     paddingVertical: 24,
     paddingHorizontal: 16,
@@ -243,7 +289,7 @@ export const staffHomeStyles = StyleSheet.create({
     borderColor: "#E5E7EB",
     alignItems: "center",
   },
-  devicesPlaceholderText: {
+  devicesEmptyText: {
     fontSize: 14,
     color: "#94a3b8",
     textAlign: "center",

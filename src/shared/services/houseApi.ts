@@ -3,7 +3,11 @@
  * Dùng axiosClient để tự động gắn Bearer token (từ useAuthStore) và xử lý refresh token khi 401.
  */
 import axiosClient from "../api/axiosClient";
-import type { HousesApiResponse, AssetCategoriesApiResponse } from "../types";
+import type {
+  HousesApiResponse,
+  AssetCategoriesApiResponse,
+  AssetItemsApiResponse,
+} from "../types";
 
 /** Base URL của Backend API (houses, asset/categories, items, event, images). Có thể chuyển sang EXPO_PUBLIC_HOUSES_API_BASE. */
 const API_BASE =
@@ -32,5 +36,28 @@ export const getAssetCategories = async (): Promise<AssetCategoriesApiResponse> 
   const response = await axiosClient.get<AssetCategoriesApiResponse>(
     `${API_BASE}/asset/categories`
   );
+  return response.data;
+};
+
+/** Tham số filter cho GET /api/asset/items (tùy chọn theo nhà và/hoặc danh mục). */
+export type AssetItemsParams = {
+  houseId?: string;
+  categoryId?: string;
+};
+
+/**
+ * Lấy danh sách thiết bị (GET /api/asset/items), có thể lọc theo houseId và/hoặc categoryId.
+ * @param params - houseId, categoryId (optional); không truyền = lấy tất cả
+ * @returns Promise<AssetItemsApiResponse> - data là mảng AssetItemFromApi
+ */
+export const getAssetItems = async (
+  params?: AssetItemsParams
+): Promise<AssetItemsApiResponse> => {
+  const searchParams = new URLSearchParams();
+  if (params?.houseId) searchParams.set("houseId", params.houseId);
+  if (params?.categoryId) searchParams.set("categoryId", params.categoryId);
+  const query = searchParams.toString();
+  const url = query ? `${API_BASE}/asset/items?${query}` : `${API_BASE}/asset/items`;
+  const response = await axiosClient.get<AssetItemsApiResponse>(url);
   return response.data;
 };

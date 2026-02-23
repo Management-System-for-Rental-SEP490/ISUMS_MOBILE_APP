@@ -163,5 +163,22 @@ export interface AssetCategoriesApiResponse {
   data: AssetCategoryFromApi[];
 }
 
+/** Một thiết bị/item từ API GET /api/asset/items (có thể filter theo houseId, categoryId). */
+export interface AssetItemFromApi {
+  id: string;
+  houseId: string;
+  categoryId: string;
+  displayName: string;
+  serialNumber: string;
+  nfcId: string | null;
+  conditionPercent: number;
+  status: string; // VD: "AVAILABLE", "DISPOSED"
+}
+
+/** Response body của API GET /api/asset/items. */
+export interface AssetItemsApiResponse {
+  data: AssetItemFromApi[];
+}
+
 export type ScanMode = "qr" | "nfc";
 export type HomeScreenProps = BottomTabScreenProps<MainTabParamList, "Dashboard">; // HomeScreenProps là một type alias cho BottomTabScreenProps<MainTabParamList, "Dashboard">.

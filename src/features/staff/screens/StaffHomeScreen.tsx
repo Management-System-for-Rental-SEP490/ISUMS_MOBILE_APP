@@ -19,11 +19,20 @@ import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { useQuery } from "@tanstack/react-query";
 import { MainTabParamList } from "../../../shared/types";
 import { RootStackParamList } from "../../../shared/types";
-import type { HouseFromApi, AssetCategoryFromApi } from "../../../shared/types";
+import type {
+  HouseFromApi,
+  AssetCategoryFromApi,
+  AssetItemFromApi,
+  Device,
+} from "../../../shared/types";
 import Header from "../../../shared/components/header";
 import { getWorkScheduleThisWeek, WorkSlot } from "../data/mockStaffData";
 import { useStaffSchedule } from "../context/StaffScheduleContext";
-import { getHouses, getAssetCategories } from "../../../shared/services/houseApi";
+import {
+  getHouses,
+  getAssetCategories,
+  getAssetItems,
+} from "../../../shared/services/houseApi";
 import Icons from "../../../shared/theme/icon";
 import { staffHomeStyles } from "../styles/staffHomeStyles";
 
@@ -62,6 +71,16 @@ export default function StaffHomeScreen() {
   });
   const categories: AssetCategoryFromApi[] = categoriesData?.data ?? [];
   const [selectedCategoryId, setSelectedCategoryId] = useState<string | null>(null);
+
+  // Danh sách thiết bị từ GET /api/asset/items, filter theo category (và houseId nếu cần sau)
+  const { data: itemsData } = useQuery({
+    queryKey: ["assetItems", selectedCategoryId],
+    queryFn: () =>
+      getAssetItems({
+        categoryId: selectedCategoryId ?? undefined,
+      }),
+  });
+  const items: AssetItemFromApi[] = itemsData?.data ?? [];
 
   // Chỉ hiển thị các slot có việc (có ticketId) - tóm tắt lịch có việc
   const sortedSchedule = useMemo(
@@ -110,6 +129,52 @@ export default function StaffHomeScreen() {
     }
   };
 
+  /** Dịch trạng thái thiết bị từ API (AVAILABLE, DISPOSED, ...). */
+  const getItemStatusLabel = (statusValue: string) => {
+    if (statusValue === "AVAILABLE") return t("staff_home.all_devices_status_available");
+    if (statusValue === "DISPOSED") return t("staff_home.all_devices_status_disposed");
+    return t("staff_home.all_devices_status_other", { status: statusValue });
+  };
+
+  const getItemStatusStyle = (statusValue: string) => {
+    if (statusValue === "AVAILABLE")
+      return { bg: "#D1FAE5", color: "#059669" };
+    if (statusValue === "DISPOSED")
+      return { bg: "#FEE2E2", color: "#DC2626" };
+    return { bg: "#F3F4F6", color: "#6B7280" };
+  };
+
+  /** Chuyển AssetItemFromApi (API items) sang Device để màn DeviceDetail dùng chung. */
+  const assetItemToDevice = (
+    item: AssetItemFromApi,
+    houseName?: string
+  ): Device => ({
+    id: item.id,
+    name: item.displayName,
+    type: "other",
+    nfcTagId: item.nfcId ?? "",
+    location: houseName ?? "-",
+    status:
+      item.status === "AVAILABLE"
+        ? "active"
+        : item.status === "DISPOSED"
+          ? "inactive"
+          : "pending",
+    metadata: { serialNumber: item.serialNumber },
+  });
+
+  const openDeviceDetail = (item: AssetItemFromApi) => {
+    const houseName = buildings.find((b) => b.id === item.houseId)?.name;
+    const device = assetItemToDevice(item, houseName);
+    const root = navigation.getParent?.();
+    if (root && "navigate" in root) {
+      (root as { navigate: (name: string, params: object) => void }).navigate(
+        "DeviceDetail",
+        { device }
+      );
+    }
+  };
+
   const renderBuildingItem = ({ item }: { item: HouseFromApi }) => (
     <TouchableOpacity
       style={staffHomeStyles.buildingCard}
@@ -126,7 +191,7 @@ export default function StaffHomeScreen() {
     </TouchableOpacity>
   );
 
-  // Footer: mục "Tất cả thiết bị" với thanh category (từ API) + placeholder cho danh sách items (API thêm sau)
+  // Footer: mục "Tất cả thiết bị" với thanh category (từ API) + danh sách items từ GET /api/asset/items
   const listFooter = (
     <View style={staffHomeStyles.devicesSection}>
       <Text style={staffHomeStyles.sectionTitle}>
@@ -180,10 +245,64 @@ export default function StaffHomeScreen() {
           );
         })}
       </ScrollView>
-      <View style={staffHomeStyles.devicesPlaceholder}>
-        <Text style={staffHomeStyles.devicesPlaceholderText}>
-          {t("staff_home.all_devices_items_placeholder")}
-        </Text>
+      <View style={staffHomeStyles.devicesList}>
+        {items.length === 0 ? (
+          <View style={staffHomeStyles.devicesEmpty}>
+            <Text style={staffHomeStyles.devicesEmptyText}>
+              {t("staff_home.all_devices_no_items")}
+            </Text>
+          </View>
+        ) : (
+          items.map((item) => {
+            const categoryName =
+              categories.find((c) => c.id === item.categoryId)?.name ?? item.categoryId;
+            const houseName =
+              buildings.find((b) => b.id === item.houseId)?.name ?? item.houseId;
+            const statusStyle = getItemStatusStyle(item.status);
+            return (
+              <TouchableOpacity
+                key={item.id}
+                style={staffHomeStyles.deviceItemCard}
+                onPress={() => openDeviceDetail(item)}
+                activeOpacity={0.8}
+              >
+                <View style={staffHomeStyles.deviceItemRow}>
+                  <View style={staffHomeStyles.deviceItemContent}>
+                    <Text style={staffHomeStyles.deviceItemName} numberOfLines={1}>
+                      {item.displayName}
+                    </Text>
+                    <Text style={staffHomeStyles.deviceItemMeta} numberOfLines={1}>
+                      {item.serialNumber}
+                      {houseName ? ` • ${houseName}` : ""}
+                      {categoryName ? ` • ${categoryName}` : ""}
+                    </Text>
+                    <Text style={staffHomeStyles.deviceItemMeta}>
+                      {t("staff_home.asset_condition_label", { percent: item.conditionPercent })}
+                    </Text>
+                    <View
+                      style={[
+                        staffHomeStyles.deviceItemStatus,
+                        { backgroundColor: statusStyle.bg },
+                      ]}
+                    >
+                      <Text
+                        style={[
+                          staffHomeStyles.deviceItemStatusText,
+                          { color: statusStyle.color },
+                        ]}
+                      >
+                        {getItemStatusLabel(item.status)}
+                      </Text>
+                    </View>
+                  </View>
+                  <View style={staffHomeStyles.deviceItemChevron}>
+                    <Icons.chevronForward size={20} color="#64748b" />
+                  </View>
+                </View>
+              </TouchableOpacity>
+            );
+          })
+        )}
       </View>
     </View>
   );

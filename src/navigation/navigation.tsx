@@ -8,7 +8,7 @@ import { useAuthStore } from "../store/useAuthStore";
 import { RootStackParamList } from "../shared/types";
 import {StaffTabs, TenantTabs } from "../shared/components/footerNavigator";
 import CameraScreen from "../features/modal/CameraScreen";
-import DeviceDetail from "../features/tenant/devices/deviceDetail";
+import DeviceDetail from "../features/screens/deviceDetail";
 import TicketScreen from "../features/tenant/screens/ticket";
 import BuildingDetailScreen from "../features/staff/screens/BuildingDetailScreen";
 import TicketDetailScreen from "../features/staff/screens/TicketDetailScreen";
