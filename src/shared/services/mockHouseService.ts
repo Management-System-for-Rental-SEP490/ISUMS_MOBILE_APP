@@ -1,6 +1,6 @@
 import { RentalHouse } from "../types";
 
-// Giả lập dữ liệu thông tin ngôi nhà của Tenant
+// Giả lập dữ liệu thông tin ngôi nhà của tenant
 const MOCK_HOUSE: RentalHouse = {
   id: "H001",
   name: "Căn hộ Studio 101",
@@ -11,9 +11,9 @@ const MOCK_HOUSE: RentalHouse = {
   endDate: "2025-01-01",
 };
 
-// Hàm lấy thông tin nhà của Tenant đang đăng nhập (giả lập)
+// Hàm lấy thông tin nhà của tenant đang đăng nhập (giả lập)
 // Output: Promise<RentalHouse> - Thông tin chi tiết ngôi nhà
-export const getTenantHouseInfo = async (): Promise<RentalHouse> => {
+export const gettenantHouseInfo = async (): Promise<RentalHouse> => {
   return new Promise((resolve) => setTimeout(() => resolve(MOCK_HOUSE), 1000));
 };
 

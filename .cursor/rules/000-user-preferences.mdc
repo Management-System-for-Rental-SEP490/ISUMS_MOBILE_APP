@@ -55,169 +55,104 @@ Mọi đoạn code được sinh ra phải đi kèm với chú thích và giải
     *   Bất kỳ text nào hiển thị cho người dùng cuối.
 *   **Tránh bỏ sót**: Khi tạo component mới hoặc thêm tính năng mới, luôn kiểm tra lại xem có text nào cần dịch không.
 
-## 6. Quy định về Ticket Workflow và Staff Requirements
+## 6. Quy định về Ticket Workflow và Staff (đã có – mock)
 
-### 6.1. Luồng Ticket Hiện Tại (Tenant)
+**Hiện trạng:** Luồng tenant tạo ticket và luồng Staff xem danh sách/chi tiết ticket **đã được implement** với **mock data**. Khi có API, chỉ cần thay mock bằng dữ liệu BE (mục 8).
 
-**Luồng hiện tại đã implement:**
-1. Tenant quét NFC hoặc chọn thiết bị từ DeviceDetail screen
-2. Mở `TicketScreen` (hiện tại ở `features/ticket/ticket.tsx`) với device info
-3. Tenant điền form:
-   - Title (bắt buộc)
-   - Description (bắt buộc)
-   - Priority: low/medium/high
-   - Device info (tự động điền, chỉ đọc)
-4. Submit → Ticket được tạo với status "pending"
-5. TODO: Gửi API request đến backend (chưa có API)
+### 6.1. Luồng tenant (đã có)
 
-**Cấu trúc hiện tại:**
-- File: `src/features/ticket/ticket.tsx` - Screen để Tenant tạo ticket
-- Navigation: `Ticket: { device: Device }` trong RootStackParamList
-- Chỉ phục vụ Tenant role
+*   tenant mở `TicketScreen` từ DeviceDetail (quét NFC hoặc chọn thiết bị) → điền form (title, description, priority) → Submit → ticket status "pending". File: `src/features/ticket/ticket.tsx`. Navigation: `Ticket: { device: Device }`. Chưa gọi API (TODO).
 
-### 6.2. Luồng Ticket Tương Lai (Staff) - CHƯA IMPLEMENT
+### 6.2. Luồng Staff (đã có – mock)
 
-**Luồng Staff sẽ cần implement sau (khi có API):**
+*   **TicketListScreen:** `src/features/staff/screens/TicketListScreen.tsx` – danh sách ticket (mock `MOCK_STAFF_TICKETS`), filter status/priority, nhấn item → navigate **TicketDetail** với `ticketId`.
+*   **TicketDetailScreen:** `src/features/staff/screens/TicketDetailScreen.tsx` – chi tiết ticket, hiển thị đầy đủ thông tin; có action "Nhận Ticket" (logic mock). Tab Staff dùng TicketListScreen; Stack có màn TicketDetail.
+*   Khi có API: thay mock bằng React Query/Zustand; bổ sung actions Đặt lịch, Check-in, Hoàn thành theo spec (xem `docs/ISUMS_SPECIFICATION.md`).
 
-1. **Staff nhận thông báo:**
-   - Notification: "Có ticket mới" khi Tenant tạo ticket
-   - Type: `"ticket"` trong NotificationItem
+### 6.3. Types và cấu trúc
 
-2. **Staff xem danh sách ticket:**
-   - Screen: `TicketListScreen` (MỚI - cần tạo)
-   - Location: `features/staff/screens/TicketListScreen.tsx`
-   - Hiển thị:
-     - Danh sách ticket với status "pending" (chưa được nhận)
-     - Danh sách ticket đã được assign cho staff này (status "assigned", "in_progress")
-     - Filter theo status, priority
-   - Mỗi ticket hiển thị: title, device name, priority, created date, tenant name
+*   **Types hiện tại:** `TicketStatus`, `TicketPriority`, `StaffTicketListItem` nằm trong `src/features/staff/data/mockStaffData.ts`.
+*   **Khi kết nối BE:** Đặt types/interface chuẩn (request/response, model đầy đủ) tại **`src/shared/types/`** (mục 8.5); có thể tham khảo spec trong `docs/ISUMS_SPECIFICATION.md`.
 
-3. **Staff xem chi tiết ticket:**
-   - Screen: `TicketDetailScreen` (MỚI - cần tạo)
-   - Location: `features/staff/screens/TicketDetailScreen.tsx`
-   - Hiển thị đầy đủ thông tin:
-     - Title, Description, Priority
-     - Device info (name, location, id)
-     - Tenant info (name, contact)
-     - Created date, Status
-     - Images (nếu có)
-   - Actions:
-     - **"Nhận Ticket"** button (nếu status = "pending")
-       - Khi nhấn → Status chuyển thành "assigned"
-       - Assign ticket cho staff hiện tại
-     - **"Đặt Lịch"** button (nếu status = "assigned")
-       - Mở Calendar picker
-       - Chọn ngày/giờ bảo trì
-       - Status chuyển thành "scheduled"
-       - Tích hợp với CalendarScreen
-     - **"Check-in"** button (khi đến ngày scheduled)
-       - Status chuyển thành "in_progress"
-     - **"Hoàn thành"** button (sau khi sửa xong)
-       - Cập nhật kết quả sửa chữa
-       - Upload ảnh (nếu cần)
-       - Báo giá (nếu có phí)
-       - Status chuyển thành "completed"
+### 6.4. Lưu ý
 
-4. **Tích hợp với Calendar:**
-   - Khi Staff đặt lịch → Tạo event trong Calendar
-   - CalendarScreen hiển thị các ticket đã scheduled
-   - Nhắc nhở khi đến ngày scheduled
+*   **Role:** Chỉ Staff thấy TicketList / TicketDetail (phân biệt role: mục 8.10).
+*   **Notification:** Khi có API, link thông báo ticket từ NotificationScreen đến TicketDetailScreen.
+*   i18n: mục 5; mock/API: mục 7, 8.
 
-### 6.3. Cấu Trúc Ticket Data Type (Cần Tạo)
+---
 
-**Khi implement Staff features, cần tạo Ticket interface:**
+## 7. Hiện trạng Dữ liệu (Data Source)
 
-```typescript
-// src/shared/types/api.ts hoặc src/shared/types/ticket.ts
+*   **Phần lớn ứng dụng hiện dùng mock data** do đã xây dựng sẵn; **chưa áp dụng API** để liên kết với Backend (BE).
+*   **Ngoại lệ:** Luồng **authentication** đã dùng **Keycloak** (kết nối thật với IdP).
+*   Khi người dùng hoặc AI agent làm việc với tính năng liên quan dữ liệu (ticket, lịch staff, tiêu thụ điện/nước, thông báo, v.v.), cần **nhớ rằng** nguồn dữ liệu hiện tại là mock; khi bắt đầu kết nối BE thì áp dụng thêm **mục 8** bên dưới.
 
-export type TicketStatus = 
-  | "pending"      // Chờ được nhận
-  | "assigned"     // Đã được assign cho staff
-  | "scheduled"    // Đã đặt lịch
-  | "in_progress"  // Đang xử lý
-  | "completed"    // Hoàn thành
-  | "cancelled";   // Đã hủy
+---
 
-export type TicketPriority = "low" | "medium" | "high";
+## 8. Quy định khi Bắt đầu Kết nối Backend (BE)
 
-export interface Ticket {
-  id: string;
-  title: string;
-  description: string;
-  priority: TicketPriority;
-  status: TicketStatus;
-  
-  // Thông tin thiết bị
-  device: Device;
-  deviceId: string;
-  
-  // Thông tin người tạo (Tenant)
-  tenantId: string;
-  tenantName?: string;
-  tenantContact?: string;
-  
-  // Thông tin người xử lý (Staff)
-  assignedStaffId?: string;
-  assignedStaffName?: string;
-  
-  // Lịch bảo trì
-  scheduledDate?: Date;
-  scheduledTime?: string;
-  
-  // Kết quả sửa chữa
-  repairResult?: string;
-  repairImages?: string[];
-  quotation?: {
-    amount: number;
-    description: string;
-    approved: boolean;
-  };
-  
-  // Metadata
-  createdAt: Date;
-  updatedAt: Date;
-  completedAt?: Date;
-}
-```
+Khi bắt đầu tích hợp API và kết nối với BE, AI agent **phải** tuân thủ các quy định sau (bên cạnh các quy tắc đã nêu ở mục 1–6):
 
-### 6.4. Cấu Trúc Folder Đề Xuất
+### 8.1. Tái sử dụng file và thay mock bằng dữ liệu BE
 
-**Khi implement Staff features:**
+*   **Ưu tiên dùng các file đã tạo sẵn** trong dự án.
+*   **Xóa hoặc thay thế** phần mock data tương ứng bằng dữ liệu lấy từ BE (gọi API, React Query, Zustand, v.v.).
+*   Không tạo lại từ đầu những màn hình/component đã có nếu chỉ đổi nguồn dữ liệu.
 
-```
-features/
-├── tenant/
-│   └── screens/
-│       └── CreateTicketScreen.tsx  (di chuyển từ ticket/ticket.tsx)
-│
-├── staff/
-│   └── screens/
-│       ├── TicketListScreen.tsx     (MỚI)
-│       └── TicketDetailScreen.tsx   (MỚI)
-│
-└── shared/
-    └── types/
-        └── ticket.ts                (MỚI - Ticket types)
-```
+### 8.2. Giữ đúng cấu trúc code hiện tại
 
-### 6.5. Navigation Updates Cần Thiết
+*   **Đảm bảo đúng cấu trúc code** đã xây dựng (folder features, shared, screens, components, styles, data/context, v.v.).
+*   Khi thêm API layer hoặc store, đặt đúng vị trí theo cấu trúc dự án (vd: `shared/services`, `shared/api`, store trong từng feature hoặc shared tùy doc).
 
-**Khi implement Staff features, cần thêm vào RootStackParamList:**
+### 8.3. File mới / tài nguyên mới – gợi ý, người dùng tự tạo
 
-```typescript
-export type RootStackParamList = {
-  // ... existing routes
-  Ticket: { device: Device };                    // Tenant create ticket
-  TicketList: undefined;                          // Staff xem danh sách
-  TicketDetail: { ticketId: string };            // Staff xem chi tiết
-  TicketSchedule: { ticketId: string };          // Staff đặt lịch
-};
-```
+*   Nếu cần **tạo file hoặc tài nguyên mới**: **không** tự tiện tạo bằng tool; **hỏi người dùng trước**.
+*   **Gợi ý** rõ: tên file, **lý do** cần, **vị trí** (đường dẫn) và mục đích.
+*   **Yêu cầu người dùng tự tạo** (hoặc xác nhận đã tạo) **rồi mới tiếp tục** bước tiếp theo (điền code, hướng dẫn sửa).
 
-### 6.6. Lưu Ý Quan Trọng
+### 8.4. Giải thích code đầy đủ, dễ hiểu
 
-*   **Hiện tại chưa có API:** Tất cả các features Staff đều cần mock data hoặc TODO cho đến khi có API
-*   **Timeline:** Staff features sẽ được implement sau khi có API và backend ready
-*   **i18n:** Tất cả text trong Staff screens phải dùng i18n, không hardcode
-*   **Role-based:** Chỉ Staff role mới thấy TicketList và TicketDetail screens
-*   **Notification integration:** Ticket notifications đã có trong NotificationScreen, chỉ cần link đến TicketDetailScreen khi có API
+*   Áp dụng **mục 2** (Quy định về Giải thích Code) cho mọi code liên quan kết nối BE.
+*   Thêm: nêu **file dùng để làm gì**, **hàm có chức năng gì** (đầu vào, xử lý, đầu ra), **từng dòng/khối** có ý nghĩa gì trong chức năng đó.
+
+### 8.5. Kiểu dữ liệu (types) – vị trí quy định
+
+*   **Types/interface** (TypeScript) phải được quy định và đặt tại **`src/shared/types/`** (hoặc đúng cấu trúc con đã thống nhất trong dự án).
+*   Tránh định nghĩa type rải rác trong từng screen; dùng shared types cho API request/response và model dùng chung.
+
+### 8.6. Format (chữ, ngày giờ, số, …) – vị trí quy định
+
+*   Các hàm **format** (chuỗi, ngày giờ, số, đơn vị, v.v.) phải được quy định và đặt tại **`src/shared/utils/`** (vd: `formatDate`, `formatNumber`, `formatDateTime`).
+*   UI và API layer **gọi** các util này thay vì format inline nhiều nơi.
+
+### 8.7. React Query và Zustand theo tài liệu
+
+*   **Đảm bảo dùng React Query và Zustand** đúng như tài liệu dự án (docx / spec) yêu cầu.
+*   Gọi API qua React Query (useQuery, useMutation, v.v.); state global/client (vd user, session, cache nghiệp vụ) dùng Zustand theo quy ước đã định.
+
+### 8.8. Gen code trong chat: đầy đủ để code tay theo
+
+*   **Mặc định:** Khi sinh code liên quan kết nối BE, **gen trong khung chat đầy đủ** để người dùng có thể **code tay theo** (vừa code vừa học).
+*   **Tránh:** Gen xong rồi chạy được nhưng người dùng phải đọc lại code từng file, mất thời gian.
+*   **Ngoại lệ:** Chỉ **gen ra file/code trực tiếp** (patch, write) khi người dùng **yêu cầu rõ** “gen ra luôn” / “áp dụng luôn”.
+
+### 8.9. Hướng dẫn từng bước
+
+*   Khi thực hiện yêu cầu kết nối BE, **hướng dẫn từng bước** rõ ràng: Bước 1 làm gì, Bước 2 làm gì, … (có thể kèm code mẫu hoặc đoạn cần sửa).
+*   Giúp người dùng thực hiện tuần tự, tránh làm dồn một lúc khó kiểm soát.
+
+### 8.10. Phân biệt rõ hai role: Thợ kỹ thuật (Staff) và Người thuê (tenant)
+
+*   **Phân biệt rõ** hai role **Staff** (thợ kỹ thuật) và **tenant** (người thuê).
+*   **Tránh lộn file / luồng:** Màn hình, API, store dành cho Staff đặt trong `features/staff/` (hoặc đúng cấu trúc Staff); dành cho tenant trong `features/` tương ứng (tenant, house, ticket, v.v.). Không dùng nhầm screen hoặc endpoint của role này cho role kia.
+
+### 8.11. Đa ngôn ngữ (i18n)
+
+*   Tuân thủ **mục 5** (Quy định về Đa ngôn ngữ) cho mọi phần có thể, kể cả message/error từ API hiển thị cho user.
+
+### 8.12. Đọc tài liệu trước khi làm
+
+*   **Đọc lại tài liệu** dự án (vd `docs/ISUMS_SPECIFICATION.md`, tài liệu API, docx yêu cầu React Query/Zustand) **trước khi** thực hiện thay đổi hoặc gợi ý code.
+*   Đảm bảo gợi ý và code khớp với spec và quy ước đã ghi.
+

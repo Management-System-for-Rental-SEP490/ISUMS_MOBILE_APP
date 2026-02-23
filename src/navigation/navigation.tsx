@@ -2,14 +2,14 @@ import React, { useEffect, useState } from "react";
 import { View, ActivityIndicator } from "react-native";
 import { NavigationContainer } from "@react-navigation/native";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
-import Login from "../features/auth/screens/LoginScreen";
-import OnBoarding from "../features/auth/screens/onBoarding";
+import Login from "../features/screens/LoginScreen";
+import OnBoarding from "../features/screens/onBoarding";
 import { useAuthStore } from "../store/useAuthStore";
 import { RootStackParamList } from "../shared/types";
-import { TenantTabs, StaffTabs } from "../shared/components/footerNavigator";
-import CameraScreen from "../screens/modal/CameraScreen";
-import DeviceDetail from "../features/devices/deviceDetail";
-import TicketScreen from "../features/ticket/ticket";
+import {StaffTabs, TenantTabs } from "../shared/components/footerNavigator";
+import CameraScreen from "../features/modal/CameraScreen";
+import DeviceDetail from "../features/tenant/devices/deviceDetail";
+import TicketScreen from "../features/tenant/screens/ticket";
 import BuildingDetailScreen from "../features/staff/screens/BuildingDetailScreen";
 import TicketDetailScreen from "../features/staff/screens/TicketDetailScreen";
 import { StaffScheduleProvider } from "../features/staff/context/StaffScheduleContext";
@@ -38,7 +38,7 @@ const RoleNavigator = () => {
   // if (role === "manager") {
   //   return <ManagerTabs />;
   // }
-  if (role === "Technical") {
+  if (role === "technical") {
     return <StaffTabs />;
   }
   return <TenantTabs />;
@@ -101,7 +101,7 @@ const Navigation = () => {
                 component={TicketScreen}
                 options={{ presentation: "modal" }}
               />
-              {role === "Technical" ? (
+              {role === "technical" ? (
                 <>
                   <Stack.Screen name="BuildingDetail" component={BuildingDetailScreenWrapper} />
                   <Stack.Screen name="TicketDetail" component={TicketDetailScreenWrapper} />

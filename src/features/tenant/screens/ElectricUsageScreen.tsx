@@ -9,7 +9,7 @@ import {
 import { useTranslation } from "react-i18next";
 import Svg, { Path } from "react-native-svg";
 import Header from "../../../shared/components/header";
-import { electricUsageStyles } from "./electricUsageStyles";
+import { electricUsageStyles } from "../styles/electricUsageStyles";
 
 /** ID khu vực – khi có API sẽ map với zone/room từ backend */
 export type AreaId = "all" | "kitchen" | "living_room" | "bedroom" | "bathroom";

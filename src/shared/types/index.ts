@@ -8,7 +8,7 @@ export type MainTabParamList = {
   ElectricUsage: undefined;
   WaterUsage: undefined;
   Billing: undefined;
-  Tenants: undefined;
+  tenants: undefined;
   Profile: undefined;
   Calendar: undefined;
   Notification: undefined;
@@ -41,7 +41,7 @@ export type LogoProps = {
   height?: number;
 };
 
-export type UserRole = "Tenant"| "Technical";
+export type UserRole = "tenant"| "technical";
 
 export type AuthPayload = {
   username: string;

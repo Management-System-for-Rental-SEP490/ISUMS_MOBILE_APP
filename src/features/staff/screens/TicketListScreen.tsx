@@ -19,7 +19,7 @@ type TicketListNavProp = CompositeNavigationProp<
   BottomTabNavigationProp<MainTabParamList, "Ticket">,
   NativeStackNavigationProp<RootStackParamList>
 >;
-
+// String về priority ticket
 function getPriorityStyle(priority: string) {
   switch (priority) {
     case "high":
@@ -30,7 +30,7 @@ function getPriorityStyle(priority: string) {
       return { bg: "#F3F4F6", color: "#6B7280" };
   }
 }
-
+// String về status ticket
 function getStatusStyle(status: string) {
   switch (status) {
     case "pending":
@@ -53,11 +53,11 @@ function getStatusStyle(status: string) {
 function formatDate(d: Date, t: (key: string, options?: Record<string, number>) => string): string {
   const now = new Date();
   const diff = now.getTime() - d.getTime();
-  const days = Math.floor(diff / (24 * 60 * 60 * 1000));
+  const days = Math.floor(diff / (24 * 60 * 60 * 1000)); // trả về khoảng thời gian giữa d và bây giờ, bỏ phần lẻ
   if (days === 0) return t("staff_ticket_list.today");
   if (days === 1) return t("staff_ticket_list.yesterday");
-  if (days < 7) return t("staff_ticket_list.days_ago", { n: days });
-  return d.toLocaleDateString();
+  if (days < 7) return t("staff_ticket_list.days_ago", { n: days }); //
+  return d.toLocaleDateString(); // chuyển đổi ngày thành chuỗi theo locale
 }
 
 export default function TicketListScreen() {
@@ -67,9 +67,9 @@ export default function TicketListScreen() {
 
   const openTicketDetail = (ticketId: string) => {
     const root = navigation.getParent?.();
-    if (root && "navigate" in root) {
+    if (root && "navigate" in root) { // nếu root có navigate thì gọi navigate
       (root as { navigate: (name: string, params: { ticketId: string }) => void }).navigate(
-        "TicketDetail",
+        "TicketDetail", // navigate đến màn hình chi tiết ticket
         { ticketId }
       );
     }

@@ -4,10 +4,10 @@ import { useNavigation, useFocusEffect } from "@react-navigation/native";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { LinearGradient } from "expo-linear-gradient";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import loginStyles from "../../../shared/styles/authenticationScreen/loginStyles";
-import { RootStackParamList } from "../../../shared/types";
-import { useAuthStore } from "../../../store/useAuthStore";
-import { openKeycloakLogin, handleKeycloakCallback, exchangeCodeForToken } from "../../../shared/services/keycloakAuth";
+import loginStyles from "./screenStyles/loginStyles";
+import { RootStackParamList } from "../../shared/types";
+import { useAuthStore } from "../../store/useAuthStore";
+import { openKeycloakLogin, handleKeycloakCallback, exchangeCodeForToken } from "../../shared/services/keycloakAuth";
 import { useTranslation } from "react-i18next";
 
 type LoginNavigationProp = NativeStackNavigationProp<RootStackParamList, "AuthLogin">; //đây là khai báo kiểu để useNavigation có type an toàn khi dùng trong LoginScreen.
@@ -152,7 +152,7 @@ const LoginScreen = () => {
         <View style={loginStyles.logoContainer}>
           <View style={loginStyles.logoWrapper}>
             <Image
-              source={require("../../../../assets/logob.png")}
+              source={require("../../../assets/logob.png")}
               style={loginStyles.logoImage}
               accessibilityLabel="ISUMS logo" //đây là thuộc tính để đánh dấu logo ISUMS để screen reader có thể đọc.
             />

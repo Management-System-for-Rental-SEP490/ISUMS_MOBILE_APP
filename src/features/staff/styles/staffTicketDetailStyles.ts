@@ -16,7 +16,7 @@ export const staffTicketDetailStyles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     paddingHorizontal: 12,
-    paddingVertical: 12,
+    paddingVertical: 12, // Khoảng cách giữa title và content
     backgroundColor: "#fff",
     borderBottomWidth: 1,
     borderBottomColor: "#E5E7EB",
@@ -40,7 +40,7 @@ export const staffTicketDetailStyles = StyleSheet.create({
     borderWidth: 1,
     borderColor: "#E5E7EB",
     shadowColor: "#000",
-    shadowOffset: { width: 0, height: 1 },
+    shadowOffset: { width: 0, height: 1 }, // Độ lệch của bóng
     shadowOpacity: 0.05,
     shadowRadius: 3,
     elevation: 2,

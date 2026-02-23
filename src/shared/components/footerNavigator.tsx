@@ -5,16 +5,14 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import Icons from "../theme/icon";
 import { IconProps, MainTabParamList, RootStackParamList } from "../types";
 import { NavigationProp, RouteProp } from "@react-navigation/native";
-import HomeScreen from "../../features/shared/screens/HomeScreen";
+import HomeScreen from "../../features/tenant/screens/HomeScreen";
 import ElectricUsageScreen from "../../features/tenant/screens/ElectricUsageScreen";
 import WaterUsageScreen from "../../features/tenant/screens/WaterUsageScreen";
-import BillingScreen from "../../features/shared/screens/BillingScreen";
-import TenantsScreen from "../../features/shared/screens/TenantsScreen";
-import UserProfileScreen from "../../features/shared/screens/UserProfileScreen";
+import UserProfileScreen from "../../features/screens/UserProfileScreen";
 import { iconStyles } from "../styles/iconStyles";
 import footerStyles from "../styles/footerStyles";
 import CalendarScreen from "../../features/staff/screens/CalendarScreen";
-import NotificationScreen from "../../features/shared/screens/NotificationScreen";
+import NotificationScreen from "../../features/tenant/screens/NotificationScreen";
 import StaffHomeScreen from "../../features/staff/screens/StaffHomeScreen";
 import StaffNotificationScreen from "../../features/staff/screens/StaffNotificationScreen";
 import TicketListScreen from "../../features/staff/screens/TicketListScreen";
@@ -29,7 +27,7 @@ const tabIconMap: Record<keyof MainTabParamList, (props: IconProps) => React.Rea
   ElectricUsage: (props) => <Icons.electric {...props} />,
   WaterUsage: (props) => <Icons.water {...props} />,
   Billing: (props) => <Icons.contract {...props} />,
-  Tenants: (props) => <Icons.people {...props} />,
+  tenants: (props) => <Icons.people {...props} />,
   Profile: (props) => <Icons.user {...props} />,
   Calendar: (props) => <Icons.calendar {...props} />,
   Notification: (props) => <Icons.notification {...props} />,
@@ -213,7 +211,7 @@ export const TenantTabs = () => {
 //     <Tab.Screen name="ElectricUsage" component={ElectricUsageScreen} />
 //     <Tab.Screen name="Billing" component={BillingScreen} />
 //     <Tab.Screen name="Dashboard" component={HomeScreen} />
-//     <Tab.Screen name="Tenants" component={TenantsScreen} />
+//     <Tab.Screen name="tenants" component={tenantsScreen} />
 //     <Tab.Screen name="Profile" component={UserProfileScreen} />
 //   </Tab.Navigator>
 // );
@@ -298,7 +296,7 @@ export const StaffTabs = () => {
     // - Hệ thống navigation sử dụng output này để quyết định phải render cái gì trên thanh tab!
 // Đúng rồi, "tab" ở đây chính là các nút/icon nằm trên thanh footer (BottomTab/TabBar) – mỗi tab là đại diện cho một màn hình trong ứng dụng (ví dụ Dashboard, Billing...).
 
-// Khi bạn đăng nhập với role "Tenant", bạn sẽ thấy một tập các tab phù hợp với role đó. Các tab này được định nghĩa ở MainTabParamList (tùy từng role sẽ hiển thị các tab khác nhau nếu bạn cài đặt).
+// Khi bạn đăng nhập với role "tenant", bạn sẽ thấy một tập các tab phù hợp với role đó. Các tab này được định nghĩa ở MainTabParamList (tùy từng role sẽ hiển thị các tab khác nhau nếu bạn cài đặt).
 
 // Hàm tabScreenOptions sẽ được gọi cho từng tab, để:
 //   - Gán icon phù hợp cho tab đó (dựa vào tên tab & tabIconMap)

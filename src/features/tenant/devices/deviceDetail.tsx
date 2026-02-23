@@ -1,7 +1,7 @@
 import React from "react";
 import { View, Text, TouchableOpacity, SafeAreaView, ScrollView } from "react-native";
 import { RouteProp, useNavigation, useRoute } from "@react-navigation/native";
-import { RootStackParamList } from "../../shared/types";
+import { RootStackParamList } from "../../../shared/types";
 import deviceDetailStyles from "./deviceDetailStyles";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { SafeAreaProvider, useSafeAreaInsets } from "react-native-safe-area-context";
@@ -67,7 +67,7 @@ const DeviceDetail = () => {
           {/* Nếu thiết bị có trường metadata (thông tin kỹ thuật bổ sung), thì mới hiển thị các thông tin sau: */}
           {device.metadata && ( 
             <>
-              <Text style={deviceDetailStyles.TechnicalInfoTitle}>
+              <Text style={deviceDetailStyles.technicalInfoTitle}>
                 {t('device_detail.technical_info')}
               </Text>
               <DetailItem label={t('device_detail.serial_number')} value={device.metadata.serialNumber} />

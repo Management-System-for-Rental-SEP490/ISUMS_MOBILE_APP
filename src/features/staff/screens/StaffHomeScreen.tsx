@@ -1,5 +1,5 @@
 /**
- * Màn hình Home dành cho Staff (Technical).
+ * Màn hình Home dành cho Staff (technical).
  * (1) Tóm tắt lịch có việc. (2) Danh sách nhà (từ getStaffBuildings); nhấn vào nhà → màn Chi tiết nhà (thiết bị + nút gán NFC).
  */
 import React, { useMemo, useState, useEffect } from "react";
@@ -46,7 +46,7 @@ export default function StaffHomeScreen() {
   const { dayOffList } = useStaffSchedule();
   const [loading, setLoading] = useState(true);
   const [buildings, setBuildings] = useState<RentalHouse[]>([]);
-
+/** Lấy danh sách các nhà */
   useEffect(() => {
     getStaffBuildings().then((list) => {
       setBuildings(list);

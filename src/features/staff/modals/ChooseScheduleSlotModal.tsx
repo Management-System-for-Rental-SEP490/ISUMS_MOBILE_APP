@@ -34,7 +34,7 @@ type ChooseScheduleSlotModalProps = {
 };
 
 export default function ChooseScheduleSlotModal({
-  visible,
+  visible, // hiển thị modal
   onClose,
   slots,
   onConfirm,
@@ -193,11 +193,11 @@ const styles = StyleSheet.create({
     borderBottomColor: "#e2e8f0",
   },
   tableRowSelected: {
-    backgroundColor: "#EFF6FF",
-    borderLeftWidth: 4,
-    borderLeftColor: "#2563EB",
-    marginLeft: -4,
-    paddingLeft: 8,
+   backgroundColor: "#EFF6FF",
+   //borderLeftWidth: 4,
+   borderLeftColor: "#2563EB",
+   marginLeft: -4,
+   paddingLeft: 8,
   },
   td: {
     fontSize: 13,

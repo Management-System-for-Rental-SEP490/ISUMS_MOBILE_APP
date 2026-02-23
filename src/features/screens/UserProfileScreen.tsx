@@ -3,13 +3,12 @@ import { View, Text, TouchableOpacity, ScrollView, Alert, Platform } from "react
 import { useNavigation } from "@react-navigation/native";
 import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons } from "@expo/vector-icons";
-import userProfileStyles from "./UserProfileScreenStyles";
-import { useAuthStore } from "../../../store/useAuthStore";
-import { logoutKeycloak, openChangePasswordPage } from "../../../shared/services/keycloakAuth";
-import { UserProfileResponse } from "../../../shared/types/api";
-import Icons from "../../../shared/theme/icon";
+import userProfileStyles from "./screenStyles/UserProfileScreenStyles";
+import { useAuthStore } from "../../store/useAuthStore";
+import { logoutKeycloak, openChangePasswordPage } from "../../shared/services/keycloakAuth";
+import { UserProfileResponse } from "../../shared/types/api";
+import Icons from "../../shared/theme/icon";
 import { useTranslation } from "react-i18next";
-
 const UserProfileScreen = () => {
   const { t } = useTranslation();
   const navigation = useNavigation<any>();
@@ -41,8 +40,8 @@ const UserProfileScreen = () => {
   };
 
   const getRoleDisplayName = (role: string | null) => {
-    if (role === "Technical") return t('profile.role_Technical');
-    if (role === "Tenant") return t('profile.role_Tenant');
+    if (role === "technical") return t('profile.role_technical');
+    if (role === "tenant") return t('profile.role_tenant');
     return t('profile.role_guest');
   };
 // hàm lấy khi tự đầu tiên của tên là hình nền

@@ -91,23 +91,30 @@ const DEFAULT_TIME_SLOTS = [
 
 function parseTimeRange(timeRange: string): { startMinutes: number; endMinutes: number } {
   const match = timeRange.match(/(\d{1,2}):(\d{2})\s*-\s*(\d{1,2}):(\d{2})/);
+  //\d{1,2} — 1 hoặc 2 chữ số (giờ: 8 hoặc 08).
+  //:(\d{2}) — 2 chữ số (phút: 00 hoặc 30).
+  //\s* ko hoặc vài khoảng trắng.
+  //match.map(Number) — chuyển các nhóm (giờ, phút) thành số.
+  //[, sh, sm, eh, em] — sh=start hour, sm=start minute, eh=end hour, em=end minute.
+  //sh * 60 + sm — chuyển giờ, phút thành phút từ 0h.
+  //eh * 60 + em — chuyển giờ, phút thành phút từ 0h.
   if (!match) return { startMinutes: WORK_START_MINUTES, endMinutes: WORK_END_MINUTES };
-  const [, sh, sm, eh, em] = match.map(Number);
+  const [, sh, sm, eh, em] = match.map(Number); // gôm kết quả của match thành mảng mới và chuyển chuỗi thành số
   return { startMinutes: sh * 60 + sm, endMinutes: eh * 60 + em };
 }
 
-function getThisWeekDates(): { dayOfWeek: number; date: string }[] {
-  const today = new Date();
-  const day = today.getDay();
+function getThisWeekDates(): { dayOfWeek: number; date: string }[] { //mỗi phần tử của mảng là một object
+  const today = new Date(); // lấy ngày hiện tại
+  const day = today.getDay(); // lấy ngày trong tuần (0=Chủ nhật, 1=Thứ hai, ..., 6=Thứ bảy)
   const monday = new Date(today);
-  monday.setDate(today.getDate() - (day === 0 ? 6 : day - 1));
-  const result: { dayOfWeek: number; date: string }[] = [];
+  monday.setDate(today.getDate() - (day === 0 ? 6 : day - 1)); // lệnh tìm thứ 2 của today bằng cách lấy CN (0) trừ 6 
+  const result: { dayOfWeek: number; date: string }[] = []; // mảng object rỗng chứa kiểu là dayOfWeek và date
   for (let i = 0; i < 7; i++) {
     const d = new Date(monday);
     d.setDate(monday.getDate() + i);
-    result.push({
-      dayOfWeek: d.getDay() === 0 ? 7 : d.getDay(),
-      date: d.getDate().toString().padStart(2, "0") + "/" + (d.getMonth() + 1).toString().padStart(2, "0"),
+    result.push({ // thêm mới phần tử vào mảng
+      dayOfWeek: d.getDay() === 0 ? 7 : d.getDay(), //nếu là CN thì gán = 7, nếu không thì gán = ngày trong tuần
+      date: d.getDate().toString().padStart(2, "0") + "/" + (d.getMonth() + 1).toString().padStart(2, "0"), // chuyển đổi ngày thành chuỗi và thêm 0 vào trước nếu cần, Thêm số 0 bên trái cho đủ 2 ký tự
     });
   }
   return result;
@@ -138,11 +145,11 @@ export function getWorkScheduleThisWeek(dayOffDates: string[]): WorkSlot[] {
   const result: WorkSlot[] = [];
   const dayOffSet = new Set(dayOffDates.map((d) => d.trim()));
 
-  for (const day of weekDays) {
-    if (dayOffSet.has(day.date)) continue;
+  for (const day of weekDays) { 
+    if (dayOffSet.has(day.date)) continue; //Nếu đúng là ngày nghỉ thì bỏ qua luôn
 
     for (const timeRange of DEFAULT_TIME_SLOTS) {
-      const { startMinutes, endMinutes } = parseTimeRange(timeRange);
+      const { startMinutes, endMinutes } = parseTimeRange(timeRange); // gán giá trị trả về của parseTimeRange vào startMinutes và endMinutes
       const assignment = MOCK_TICKET_ASSIGNMENTS.find(
         (a) => a.date === day.date && a.timeRange === timeRange
       );
@@ -155,7 +162,7 @@ export function getWorkScheduleThisWeek(dayOffDates: string[]): WorkSlot[] {
         timeRange,
         startMinutes,
         endMinutes,
-        buildingName: assignment?.buildingName ?? "-",
+        buildingName: assignment?.buildingName ?? "-", //Nếu assignment có buildingName thì gán, nếu không thì gán "-"
         task: assignment?.task ?? "Chưa có công việc",
         slotType: assignment ? "ticket" : "other",
         ticketId: assignment?.ticketId,
@@ -179,8 +186,8 @@ export function getFreeScheduleSlots(dayOffDates: string[]): WorkSlot[] {
 export function getThisWeekDatesForPicker(): { dayOfWeek: number; date: string; dateLabel: string }[] {
   const dayNames = ["T2", "T3", "T4", "T5", "T6", "T7", "CN"];
   return weekDays.map((d) => ({
-    ...d,
-    dateLabel: `${dayNames[d.dayOfWeek - 1]} ${d.date}`,
+    ...d, // trả mọi thuộc tính của d
+    dateLabel: `${dayNames[d.dayOfWeek - 1]} ${d.date}`, // thêm hoặc ghi đè thuộc tính dateLabel vào d
   }));
 }
 

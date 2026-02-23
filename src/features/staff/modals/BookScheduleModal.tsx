@@ -38,12 +38,12 @@ export default function BookScheduleModal({
   const handleConfirm = () => {
     if (!selectedDate) return;
     if (dayOffList.includes(selectedDate)) {
-      removeDayOff(selectedDate);
+      removeDayOff(selectedDate); // nếu chọn vô ngày đã state nghỉ thì bỏ nghỉ
     } else {
-      addDayOff(selectedDate);
+      addDayOff(selectedDate); // nếu chọn vô ngày chưa state nghỉ thì thêm vào state nghỉ
     }
-    onConfirm?.();
-    onClose();
+    onConfirm?.(); // gọi hàm onConfirm nếu có
+    onClose(); // đóng modal
   };
 
   const isSelectedOff = selectedDate != null && dayOffList.includes(selectedDate);
@@ -109,7 +109,7 @@ export default function BookScheduleModal({
             >
               <Text style={styles.confirmBtnText}>
                 {selectedDate
-                  ? isSelectedOff
+                  ? isSelectedOff // nếu chọn vô ngày đã state nghỉ thì hiển thị "Bỏ đăng ký nghỉ"
                     ? t("staff_book_schedule_modal.confirm_remove_off")
                     : t("staff_book_schedule_modal.confirm_off")
                   : t("staff_book_schedule_modal.confirm_off")}

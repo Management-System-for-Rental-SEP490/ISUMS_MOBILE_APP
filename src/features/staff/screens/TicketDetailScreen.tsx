@@ -90,7 +90,7 @@ export default function TicketDetailScreen() {
   const ticket = getTicketById(ticketId);
   const [slotModalVisible, setSlotModalVisible] = useState(false);
 
-  if (!ticket) {
+  if (!ticket) { // nếu ticket không tồn tại thì hiển thị thông báo
     return (
       <View style={[staffTicketDetailStyles.container, { justifyContent: "center", alignItems: "center" }]}>
         <Text style={{ color: "#6B7280" }}>{t("common.no_data")}</Text>

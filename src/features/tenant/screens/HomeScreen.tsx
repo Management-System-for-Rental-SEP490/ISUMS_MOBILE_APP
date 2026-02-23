@@ -5,8 +5,8 @@ import Header from "../../../shared/components/header";
 import { HomeScreenProps, RentalHouse, Device, RootStackParamList } from "../../../shared/types";
 import { useTranslation } from "react-i18next";
 import { NavigationProp } from "@react-navigation/native";
-import homeStyles from "../../../shared/styles/homeScreen/homeStyles";
-import { getTenantHouseInfo } from "../../../shared/services/mockHouseService";
+import homeStyles from "../styles/homeStyles";
+import { gettenantHouseInfo } from "../../../shared/services/mockHouseService";
 import { getHouseDevices } from "../../../shared/services/deviceData";
 import Icons from "../../../shared/theme/icon"; // Import Icons để hiển thị icon cho thiết bị
 
@@ -30,7 +30,7 @@ const HomeScreen = ({ navigation }: HomeScreenProps) => {
       setLoading(true);
       // Gọi API giả lập song song để tiết kiệm thời gian
       const [houseData, deviceList] = await Promise.all([
-        getTenantHouseInfo(),
+        gettenantHouseInfo(),
         getHouseDevices("H001") // Giả sử ID nhà là H001
       ]);
       
@@ -60,10 +60,6 @@ const HomeScreen = ({ navigation }: HomeScreenProps) => {
       statusLabel = t('home.device_list.status.inactive');
     }
 
-    // Xóa phần render icon thiết bị vì thiết kế không cần
-    // const getDeviceIcon = () => { ... }
-
-
     return (
       <TouchableOpacity 
         style={homeStyles.deviceCard}
@@ -74,7 +70,6 @@ const HomeScreen = ({ navigation }: HomeScreenProps) => {
         }}
       >
         <View style={homeStyles.deviceLeft}>
-          {/* Đã xóa icon placeholder */}
           <View style={homeStyles.deviceInfo}>
             <Text style={homeStyles.deviceName}>{item.name}</Text>
             <Text style={homeStyles.deviceLocation}>{item.location}</Text>
@@ -144,7 +139,6 @@ const HomeScreen = ({ navigation }: HomeScreenProps) => {
           ListHeaderComponent={renderListHeader}
           contentContainerStyle={homeStyles.deviceListContent}
           showsVerticalScrollIndicator={false}
-          // Pull to refresh (Kéo xuống để làm mới)
           refreshing={loading}
           onRefresh={loadData}
         />

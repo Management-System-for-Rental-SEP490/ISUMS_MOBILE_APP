@@ -7,10 +7,10 @@ type MockUser = {
 };
 
 const mockUsers: MockUser[] = [
-  { username: "Tenant", password: "Tenant123", role: "Tenant" },
+  { username: "tenant", password: "tenant123", role: "tenant" },
   // { username: "landlord", password: "landlord123", role: "landlord" },
   // { username: "manager", password: "manager123", role: "manager" },
-  { username: "Staff", password: "staff123", role: "Technical" },
+  { username: "Staff", password: "staff123", role: "technical" },
 ];
 
 const createToken = (username: string) => `mock-token-${username}-${Date.now()}`;

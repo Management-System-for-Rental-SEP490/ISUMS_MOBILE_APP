@@ -22,7 +22,7 @@ import {
   SLOT_COLORS,
 } from "../styles/staffCalendarStyles";
 
-const HOURS_COUNT = TIMELINE_END_HOUR - TIMELINE_START_HOUR;
+const HOURS_COUNT = TIMELINE_END_HOUR - TIMELINE_START_HOUR; // trả về số giờ từ 08:00 đến 18:00
 
 const DAY_LABELS: Record<number, string> = {
   1: "T2",
@@ -52,7 +52,7 @@ function getSlotColor(slotType?: SlotType): string {
   return slotType ? (SLOT_COLORS[slotType] ?? SLOT_COLORS.other) : SLOT_COLORS.other;
 }
 
-/** Tính top (px) và height (px) cho block slot trên timeline */
+/** Tính top (px) và height (px) cho block slot trên timeline */ //Hàm này quy đổi “slot từ mấy giờ đến mấy giờ” thành “vẽ ô ở đâu và cao bao nhiêu” trên màn hình Lịch.
 function getSlotLayout(startMinutes: number, endMinutes: number) {
   const startHour = startMinutes / 60;
   const endHour = endMinutes / 60;
@@ -157,7 +157,7 @@ export default function CalendarScreen() {
       </View>
     );
   };
-
+/** Tạo danh sách các ngày trong tuần */
   const thisWeekDays = useMemo(() => {
     const weekDays: { dayOfWeek: number; date: string }[] = [];
     const today = new Date();

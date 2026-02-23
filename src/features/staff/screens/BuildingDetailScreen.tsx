@@ -134,7 +134,7 @@ export default function BuildingDetailScreen() {
           </View>
         ) : (
           devices.map((device) => {
-            const hasNfc = !!device.nfcTagId?.trim();
+            const hasNfc = !!device.nfcTagId?.trim(); // nếu device.nfcTagId có giá trị và không phải là rỗng thì trả về true, ngược lại trả về false
             const statusStyle = getStatusStyle(device.status);
             const meta = device.metadata;
             const metaStr = [
@@ -142,8 +142,8 @@ export default function BuildingDetailScreen() {
               meta?.model,
               meta?.serialNumber,
             ]
-              .filter(Boolean)
-              .join(" • ");
+              .filter(Boolean) 
+              .join(" • "); // nối các phần tử của mảng thành một chuỗi, phân tách bởi " • "
 
             return (
               <View key={device.id} style={staffBuildingDetailStyles.deviceCard}>

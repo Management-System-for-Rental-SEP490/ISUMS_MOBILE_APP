@@ -29,7 +29,7 @@ export const ticketListStyles = StyleSheet.create({
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.08,
     shadowRadius: 6,
-    elevation: 3,
+    elevation: 3, // Độ lệch của bóng
     borderLeftWidth: 4,
     borderLeftColor: "#2563EB",
   },

@@ -8,8 +8,8 @@ import {
   TouchableOpacity,
   Dimensions,
 } from "react-native";
-import { useAuthStore } from "../../../store/useAuthStore";
-import styles from "./onBoardingStyles";
+import { useAuthStore } from "../../store/useAuthStore";
+import styles from "./screenStyles/onBoardingStyles";
 import { StatusBar } from "expo-status-bar";
 import { LinearGradient } from "expo-linear-gradient";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -22,19 +22,19 @@ const SLIDES = [
     id: "1",
     titleKey: "onboarding.slide1.title",
     descKey: "onboarding.slide1.desc",
-    image: require("../../../../assets/logob.png"), 
+    image: require("../../../assets/logob.png"), 
   },
   {
     id: "2",
     titleKey: "onboarding.slide2.title",
     descKey: "onboarding.slide2.desc",
-    image: require("../../../../assets/logob.png"),
+    image: require("../../../assets/logob.png"),
   },
   {
     id: "3",
     titleKey: "onboarding.slide3.title",
     descKey: "onboarding.slide3.desc",
-    image: require("../../../../assets/logob.png"),
+    image: require("../../../assets/logob.png"),
   },
 ];
 
