@@ -196,4 +196,56 @@ export const staffHomeStyles = StyleSheet.create({
     alignItems: "center",
     paddingVertical: 40,
   },
+  /** Mục "Tất cả thiết bị": tiêu đề + thanh category + danh sách (placeholder đến khi có API items) */
+  devicesSection: {
+    marginTop: 24,
+    marginHorizontal: 16,
+    marginBottom: 24,
+  },
+  /** Thanh cuộn ngang chọn danh mục (category) từ API asset/categories */
+  categoryScroll: {
+    marginTop: 12,
+  },
+  categoryContent: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingRight: 16,
+  },
+  categoryChip: {
+    marginRight: 10,
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 20,
+    backgroundColor: "#fff",
+    borderWidth: 1,
+    borderColor: "#E5E7EB",
+  },
+  categoryChipActive: {
+    backgroundColor: "#2563EB",
+    borderColor: "#2563EB",
+  },
+  categoryChipText: {
+    fontSize: 13,
+    fontWeight: "600",
+    color: "#6B7280",
+  },
+  categoryChipTextActive: {
+    color: "#fff",
+  },
+  /** Vùng giữ chỗ cho danh sách thiết bị (khi có API items sẽ thay bằng list thật) */
+  devicesPlaceholder: {
+    marginTop: 16,
+    paddingVertical: 24,
+    paddingHorizontal: 16,
+    backgroundColor: "#fff",
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: "#E5E7EB",
+    alignItems: "center",
+  },
+  devicesPlaceholderText: {
+    fontSize: 14,
+    color: "#94a3b8",
+    textAlign: "center",
+  },
 });

@@ -2,13 +2,14 @@
  * Màn hình Home dành cho Staff (technical).
  * (1) Tóm tắt lịch có việc. (2) Danh sách nhà từ API GET /api/houses; nhấn vào nhà → màn Chi tiết nhà (thiết bị + nút gán NFC).
  */
-import React, { useMemo } from "react";
+import React, { useMemo, useState } from "react";
 import {
   View,
   Text,
   FlatList,
   ActivityIndicator,
   TouchableOpacity,
+  ScrollView,
 } from "react-native";
 import { useTranslation } from "react-i18next";
 import { useNavigation } from "@react-navigation/native";
@@ -18,11 +19,11 @@ import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { useQuery } from "@tanstack/react-query";
 import { MainTabParamList } from "../../../shared/types";
 import { RootStackParamList } from "../../../shared/types";
-import type { HouseFromApi } from "../../../shared/types";
+import type { HouseFromApi, AssetCategoryFromApi } from "../../../shared/types";
 import Header from "../../../shared/components/header";
 import { getWorkScheduleThisWeek, WorkSlot } from "../data/mockStaffData";
 import { useStaffSchedule } from "../context/StaffScheduleContext";
-import { getHouses } from "../../../shared/services/houseApi";
+import { getHouses, getAssetCategories } from "../../../shared/services/houseApi";
 import Icons from "../../../shared/theme/icon";
 import { staffHomeStyles } from "../styles/staffHomeStyles";
 
@@ -53,6 +54,14 @@ export default function StaffHomeScreen() {
   });
   const buildings: HouseFromApi[] = data?.data ?? [];
   const loading = isLoading;
+
+  // Danh mục thiết bị từ API GET /api/asset/categories (dùng cho thanh filter "Tất cả thiết bị")
+  const { data: categoriesData } = useQuery({
+    queryKey: ["assetCategories"],
+    queryFn: getAssetCategories,
+  });
+  const categories: AssetCategoryFromApi[] = categoriesData?.data ?? [];
+  const [selectedCategoryId, setSelectedCategoryId] = useState<string | null>(null);
 
   // Chỉ hiển thị các slot có việc (có ticketId) - tóm tắt lịch có việc
   const sortedSchedule = useMemo(
@@ -115,6 +124,68 @@ export default function StaffHomeScreen() {
         </View>
       </View>
     </TouchableOpacity>
+  );
+
+  // Footer: mục "Tất cả thiết bị" với thanh category (từ API) + placeholder cho danh sách items (API thêm sau)
+  const listFooter = (
+    <View style={staffHomeStyles.devicesSection}>
+      <Text style={staffHomeStyles.sectionTitle}>
+        {t("staff_home.all_devices_title")}
+      </Text>
+      <ScrollView
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        contentContainerStyle={staffHomeStyles.categoryContent}
+        style={staffHomeStyles.categoryScroll}
+      >
+        <TouchableOpacity
+          style={[
+            staffHomeStyles.categoryChip,
+            selectedCategoryId === null && staffHomeStyles.categoryChipActive,
+          ]}
+          onPress={() => setSelectedCategoryId(null)}
+          activeOpacity={0.8}
+        >
+          <Text
+            style={[
+              staffHomeStyles.categoryChipText,
+              selectedCategoryId === null && staffHomeStyles.categoryChipTextActive,
+            ]}
+          >
+            {t("staff_home.all_devices_category_all")}
+          </Text>
+        </TouchableOpacity>
+        {categories.map((cat) => {
+          const isActive = selectedCategoryId === cat.id;
+          return (
+            <TouchableOpacity
+              key={cat.id}
+              style={[
+                staffHomeStyles.categoryChip,
+                isActive && staffHomeStyles.categoryChipActive,
+              ]}
+              onPress={() => setSelectedCategoryId(cat.id)}
+              activeOpacity={0.8}
+            >
+              <Text
+                style={[
+                  staffHomeStyles.categoryChipText,
+                  isActive && staffHomeStyles.categoryChipTextActive,
+                ]}
+                numberOfLines={1}
+              >
+                {cat.name}
+              </Text>
+            </TouchableOpacity>
+          );
+        })}
+      </ScrollView>
+      <View style={staffHomeStyles.devicesPlaceholder}>
+        <Text style={staffHomeStyles.devicesPlaceholderText}>
+          {t("staff_home.all_devices_items_placeholder")}
+        </Text>
+      </View>
+    </View>
   );
 
   // Chỉ hiển thị các slot có việc (tóm tắt); trang Lịch mới hiện chi tiết từng ngày.
@@ -194,6 +265,7 @@ export default function StaffHomeScreen() {
         data={buildings}
         keyExtractor={(item) => item.id}
         ListHeaderComponent={listHeader}
+        ListFooterComponent={listFooter}
         renderItem={renderBuildingItem}
         contentContainerStyle={staffHomeStyles.listContent}
         showsVerticalScrollIndicator={false}

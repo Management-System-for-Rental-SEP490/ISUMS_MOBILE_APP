@@ -149,5 +149,19 @@ export interface HousesApiResponse {
   statusCode: number;
   success: boolean;
 }
+
+/** Một danh mục thiết bị từ API GET /api/asset/categories (loại sản phẩm/thiết bị trong hệ thống). */
+export interface AssetCategoryFromApi {
+  id: string;
+  name: string;
+  compensationPercent: number;
+  description: string;
+}
+
+/** Response body của API GET /api/asset/categories. */
+export interface AssetCategoriesApiResponse {
+  data: AssetCategoryFromApi[];
+}
+
 export type ScanMode = "qr" | "nfc";
 export type HomeScreenProps = BottomTabScreenProps<MainTabParamList, "Dashboard">; // HomeScreenProps là một type alias cho BottomTabScreenProps<MainTabParamList, "Dashboard">.
