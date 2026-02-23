@@ -242,6 +242,8 @@ const resources = {
       "staff_building_detail": {
         "devices_title": "Thiết bị ({{count}})",
         "no_devices": "Chưa có thiết bị nào",
+        "devices_load_error": "Không tải được danh sách thiết bị.",
+        "category_other": "Khác",
         "assign_nfc": "Gán mã NFC",
         "status_active": "Hoạt động",
         "status_maintenance": "Bảo trì",
@@ -541,6 +543,8 @@ const resources = {
       "staff_building_detail": {
         "devices_title": "Devices ({{count}})",
         "no_devices": "No devices yet",
+        "devices_load_error": "Could not load devices.",
+        "category_other": "Other",
         "assign_nfc": "Assign NFC",
         "status_active": "Active",
         "status_maintenance": "Maintenance",
@@ -840,6 +844,8 @@ const resources = {
       "staff_building_detail": {
         "devices_title": "デバイス ({{count}})",
         "no_devices": "デバイスがありません",
+        "devices_load_error": "デバイス一覧を読み込めませんでした。",
+        "category_other": "その他",
         "assign_nfc": "NFCを割り当て",
         "status_active": "稼働中",
         "status_maintenance": "メンテ中",

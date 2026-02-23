@@ -91,6 +91,50 @@ export const staffBuildingDetailStyles = StyleSheet.create({
     marginBottom: 10,
     marginTop: 8,
   },
+  /** Thanh category cuộn ngang (giống StaffHomeScreen). */
+  categoryScroll: {
+    marginBottom: 12,
+  },
+  categoryContent: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: 16,
+    paddingRight: 16,
+  },
+  categoryChip: {
+    marginRight: 10,
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 20,
+    backgroundColor: "#fff",
+    borderWidth: 1,
+    borderColor: "#E5E7EB",
+  },
+  categoryChipActive: {
+    backgroundColor: "#2563EB",
+    borderColor: "#2563EB",
+  },
+  categoryChipText: {
+    fontSize: 13,
+    fontWeight: "600",
+    color: "#6B7280",
+  },
+  categoryChipTextActive: {
+    color: "#fff",
+  },
+  /** Khối một category (tiêu đề + danh sách thiết bị). */
+  categoryBlock: {
+    marginBottom: 16,
+  },
+  /** Tiêu đề từng nhóm category (VD: IT Equipment, Furniture). */
+  categorySectionTitle: {
+    fontSize: 14,
+    fontWeight: "600",
+    color: "#4B5563",
+    marginHorizontal: 16,
+    marginBottom: 8,
+    marginTop: 4,
+  },
   deviceCard: {
     backgroundColor: "#fff",
     marginHorizontal: 16,
@@ -111,6 +155,9 @@ export const staffBuildingDetailStyles = StyleSheet.create({
   deviceInfo: {
     flex: 1,
     marginRight: 12,
+  },
+  deviceCardChevron: {
+    padding: 4,
   },
   deviceName: {
     fontSize: 15,

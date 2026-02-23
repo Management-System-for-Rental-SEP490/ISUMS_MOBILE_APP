@@ -1,9 +1,9 @@
 /**
  * Màn hình Chi tiết nhà dành cho Staff.
- * Hiển thị thông tin nhà + danh sách thiết bị (từ getHouseDevices).
+ * Hiển thị thông tin nhà + danh sách thiết bị từ API GET /api/asset/items (filter theo houseId).
  * Thiết bị chưa có NFC hiển thị nút "Gán mã NFC" (sau này mở luồng quét NFC).
  */
-import React, { useEffect, useState } from "react";
+import React, { useMemo, useState } from "react";
 import {
   View,
   Text,
@@ -15,9 +15,10 @@ import { useTranslation } from "react-i18next";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useNavigation, useRoute, RouteProp } from "@react-navigation/native";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
+import { useQuery } from "@tanstack/react-query";
 import { RootStackParamList } from "../../../shared/types";
-import { Device } from "../../../shared/types";
-import { getHouseDevices } from "../../../shared/services/deviceData";
+import type { Device, AssetItemFromApi, AssetCategoryFromApi } from "../../../shared/types";
+import { getAssetItems, getAssetCategories } from "../../../shared/services/houseApi";
 import Icons from "../../../shared/theme/icon";
 import { staffBuildingDetailStyles } from "../styles/staffBuildingDetailStyles";
 
@@ -40,21 +41,83 @@ export default function BuildingDetailScreen() {
     status,
   } = route.params;
 
-  const [devices, setDevices] = useState<Device[]>([]);
-  const [loading, setLoading] = useState(true);
+  // Lấy thiết bị thuộc căn nhà này từ API GET /api/asset/items?houseId=...
+  const { data: itemsData, isLoading, isError } = useQuery({
+    queryKey: ["assetItems", "house", buildingId],
+    queryFn: () => getAssetItems({ houseId: buildingId }),
+  });
+  const rawItems: AssetItemFromApi[] = itemsData?.data ?? [];
 
-  useEffect(() => {
-    let cancelled = false;
-    getHouseDevices(buildingId).then((list) => {
-      if (!cancelled) {
-        setDevices(list);
-        setLoading(false);
+  // Danh mục từ API để hiển thị tên và nhóm thiết bị theo category
+  const { data: categoriesData } = useQuery({
+    queryKey: ["assetCategories"],
+    queryFn: getAssetCategories,
+  });
+  const categories: AssetCategoryFromApi[] = categoriesData?.data ?? [];
+
+  /** Map item từ API sang Device (để dùng chung UI). */
+  const itemToDevice = (item: AssetItemFromApi): Device => ({
+    id: item.id,
+    name: item.displayName,
+    type: "other",
+    nfcTagId: item.nfcId ?? "",
+    location: buildingName ?? "-",
+    status:
+      item.status === "AVAILABLE"
+        ? "active"
+        : item.status === "DISPOSED"
+          ? "inactive"
+          : "pending",
+    metadata: { serialNumber: item.serialNumber },
+  });
+
+  /** Nhóm thiết bị theo category: [{ categoryId, categoryName, items }], thứ tự theo danh sách category từ API. */
+  const devicesByCategory = useMemo(() => {
+    const map = new Map<string, AssetItemFromApi[]>();
+    for (const item of rawItems) {
+      const list = map.get(item.categoryId) ?? [];
+      list.push(item);
+      map.set(item.categoryId, list);
+    }
+    const result: { categoryId: string; categoryName: string; items: AssetItemFromApi[] }[] = [];
+    // Thứ tự theo categories từ API
+    for (const cat of categories) {
+      const items = map.get(cat.id);
+      if (items?.length) {
+        result.push({ categoryId: cat.id, categoryName: cat.name, items });
+        map.delete(cat.id);
       }
-    });
-    return () => {
-      cancelled = true;
-    };
-  }, [buildingId]);
+    }
+    // Phần còn lại (categoryId không có trong danh sách category) gom vào "Khác"
+    for (const [categoryId, items] of map) {
+      result.push({
+        categoryId,
+        categoryName: t("staff_building_detail.category_other"),
+        items,
+      });
+    }
+    return result;
+  }, [rawItems, categories, t]);
+
+  const devices: Device[] = useMemo(
+    () => rawItems.map(itemToDevice),
+    [rawItems, buildingName]
+  );
+  const loading = isLoading;
+
+  /** Category đang chọn: null = Tất cả, còn lại = chỉ hiển thị category đó. */
+  const [selectedCategoryId, setSelectedCategoryId] = useState<string | null>(null);
+  /** Chỉ lấy các block category cần hiển thị theo filter. */
+  const filteredDevicesByCategory = useMemo(() => {
+    if (selectedCategoryId === null) return devicesByCategory;
+    return devicesByCategory.filter((g) => g.categoryId === selectedCategoryId);
+  }, [devicesByCategory, selectedCategoryId]);
+
+  /** Mở màn Chi tiết thiết bị (cùng root stack với BuildingDetail). */
+  const openDeviceDetail = (item: AssetItemFromApi) => {
+    const device = itemToDevice(item);
+    navigation.navigate("DeviceDetail", { device });
+  };
 
   const getStatusStyle = (status: string) => {
     switch (status) {
@@ -161,84 +224,156 @@ export default function BuildingDetailScreen() {
           {t("staff_building_detail.devices_title", { count: devices.length })}
         </Text>
 
-        {devices.length === 0 ? (
+        {/* Thanh category cuộn ngang (giống StaffHomeScreen) */}
+        {devices.length > 0 && (
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={staffBuildingDetailStyles.categoryContent}
+            style={staffBuildingDetailStyles.categoryScroll}
+          >
+            <TouchableOpacity
+              style={[
+                staffBuildingDetailStyles.categoryChip,
+                selectedCategoryId === null && staffBuildingDetailStyles.categoryChipActive,
+              ]}
+              onPress={() => setSelectedCategoryId(null)}
+              activeOpacity={0.8}
+            >
+              <Text
+                style={[
+                  staffBuildingDetailStyles.categoryChipText,
+                  selectedCategoryId === null && staffBuildingDetailStyles.categoryChipTextActive,
+                ]}
+              >
+                {t("staff_home.all_devices_category_all")}
+              </Text>
+            </TouchableOpacity>
+            {devicesByCategory.map(({ categoryId, categoryName }) => {
+              const isActive = selectedCategoryId === categoryId;
+              return (
+                <TouchableOpacity
+                  key={categoryId}
+                  style={[
+                    staffBuildingDetailStyles.categoryChip,
+                    isActive && staffBuildingDetailStyles.categoryChipActive,
+                  ]}
+                  onPress={() => setSelectedCategoryId(categoryId)}
+                  activeOpacity={0.8}
+                >
+                  <Text
+                    style={[
+                      staffBuildingDetailStyles.categoryChipText,
+                      isActive && staffBuildingDetailStyles.categoryChipTextActive,
+                    ]}
+                    numberOfLines={1}
+                  >
+                    {categoryName}
+                  </Text>
+                </TouchableOpacity>
+              );
+            })}
+          </ScrollView>
+        )}
+
+        {devices.length === 0 && !loading ? (
           <View style={staffBuildingDetailStyles.emptyDevices}>
             <Text style={staffBuildingDetailStyles.emptyDevicesText}>
-              {t("staff_building_detail.no_devices")}
+              {isError
+                ? t("staff_building_detail.devices_load_error")
+                : t("staff_building_detail.no_devices")}
             </Text>
           </View>
         ) : (
-          devices.map((device) => {
-            const hasNfc = !!device.nfcTagId?.trim(); // nếu device.nfcTagId có giá trị và không phải là rỗng thì trả về true, ngược lại trả về false
-            const statusStyle = getStatusStyle(device.status);
-            const meta = device.metadata;
-            const metaStr = [
-              meta?.manufacturer,
-              meta?.model,
-              meta?.serialNumber,
-            ]
-              .filter(Boolean) 
-              .join(" • "); // nối các phần tử của mảng thành một chuỗi, phân tách bởi " • "
+          filteredDevicesByCategory.map(({ categoryId, categoryName, items }) => (
+            <View key={categoryId} style={staffBuildingDetailStyles.categoryBlock}>
+              <Text style={staffBuildingDetailStyles.categorySectionTitle}>
+                {categoryName}
+              </Text>
+              {items.map((item) => {
+                const device = itemToDevice(item);
+                const hasNfc = !!device.nfcTagId?.trim();
+                const statusStyle = getStatusStyle(device.status);
+                const meta = device.metadata;
+                const metaStr = [
+                  meta?.manufacturer,
+                  meta?.model,
+                  meta?.serialNumber,
+                ]
+                  .filter(Boolean)
+                  .join(" • ");
 
-            return (
-              <View key={device.id} style={staffBuildingDetailStyles.deviceCard}>
-                <View style={staffBuildingDetailStyles.deviceInfo}>
-                  <Text style={staffBuildingDetailStyles.deviceName}>{device.name}</Text>
-                  <Text style={staffBuildingDetailStyles.deviceLocation}>
-                    {device.location}
-                  </Text>
-                  {metaStr ? (
-                    <Text style={staffBuildingDetailStyles.deviceMeta} numberOfLines={1}>
-                      {metaStr}
-                    </Text>
-                  ) : null}
-                  <View
-                    style={[
-                      staffBuildingDetailStyles.nfcBadge,
-                      !hasNfc && staffBuildingDetailStyles.nfcBadgeEmpty,
-                    ]}
-                  >
-                    <Text
-                      style={[
-                        staffBuildingDetailStyles.nfcBadgeText,
-                        !hasNfc && staffBuildingDetailStyles.nfcBadgeEmptyText,
-                      ]}
-                    >
-                      {hasNfc
-                        ? t("staff_home.nfc_assigned")
-                        : t("staff_home.nfc_not_assigned")}
-                    </Text>
-                  </View>
-                  <View
-                    style={[
-                      staffBuildingDetailStyles.statusBadge,
-                      { backgroundColor: statusStyle.bg },
-                    ]}
-                  >
-                    <Text
-                      style={[
-                        staffBuildingDetailStyles.statusText,
-                        { color: statusStyle.color },
-                      ]}
-                    >
-                      {getStatusLabel(device.status)} • {getTypeLabel(device.type)}
-                    </Text>
-                  </View>
-                </View>
-                {!hasNfc && (
+                return (
                   <TouchableOpacity
-                    style={staffBuildingDetailStyles.assignNfcBtn}
-                    onPress={() => handleAssignNfc(device)}
+                    key={device.id}
+                    style={staffBuildingDetailStyles.deviceCard}
+                    onPress={() => openDeviceDetail(item)}
                     activeOpacity={0.8}
                   >
-                    <Text style={staffBuildingDetailStyles.assignNfcBtnText}>
-                      {t("staff_building_detail.assign_nfc")}
-                    </Text>
+                    <View style={staffBuildingDetailStyles.deviceInfo}>
+                      <Text style={staffBuildingDetailStyles.deviceName} numberOfLines={1}>
+                        {device.name}
+                      </Text>
+                      <Text style={staffBuildingDetailStyles.deviceLocation}>
+                        {device.location}
+                      </Text>
+                      {metaStr ? (
+                        <Text style={staffBuildingDetailStyles.deviceMeta} numberOfLines={1}>
+                          {metaStr}
+                        </Text>
+                      ) : null}
+                      <View
+                        style={[
+                          staffBuildingDetailStyles.nfcBadge,
+                          !hasNfc && staffBuildingDetailStyles.nfcBadgeEmpty,
+                        ]}
+                      >
+                        <Text
+                          style={[
+                            staffBuildingDetailStyles.nfcBadgeText,
+                            !hasNfc && staffBuildingDetailStyles.nfcBadgeEmptyText,
+                          ]}
+                        >
+                          {hasNfc
+                            ? t("staff_home.nfc_assigned")
+                            : t("staff_home.nfc_not_assigned")}
+                        </Text>
+                      </View>
+                      <View
+                        style={[
+                          staffBuildingDetailStyles.statusBadge,
+                          { backgroundColor: statusStyle.bg },
+                        ]}
+                      >
+                        <Text
+                          style={[
+                            staffBuildingDetailStyles.statusText,
+                            { color: statusStyle.color },
+                          ]}
+                        >
+                          {getStatusLabel(device.status)} • {getTypeLabel(device.type)}
+                        </Text>
+                      </View>
+                    </View>
+                    {!hasNfc && (
+                      <TouchableOpacity
+                        style={staffBuildingDetailStyles.assignNfcBtn}
+                        onPress={() => handleAssignNfc(device)}
+                        activeOpacity={0.8}
+                      >
+                        <Text style={staffBuildingDetailStyles.assignNfcBtnText}>
+                          {t("staff_building_detail.assign_nfc")}
+                        </Text>
+                      </TouchableOpacity>
+                    )}
+                    <View style={staffBuildingDetailStyles.deviceCardChevron}>
+                      <Icons.chevronForward size={20} color="#64748b" />
+                    </View>
                   </TouchableOpacity>
-                )}
-              </View>
-            );
-          })
+                );
+              })}
+            </View>
+          ))
         )}
       </ScrollView>
     </View>

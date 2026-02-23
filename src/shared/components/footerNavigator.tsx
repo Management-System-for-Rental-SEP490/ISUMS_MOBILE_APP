@@ -225,7 +225,12 @@ export const StaffTabs = () => {
       <Tab.Navigator screenOptions={createScreenOptions(insets.bottom)} initialRouteName="Dashboard">
         <Tab.Screen name="Ticket" component={TicketListScreen} />
         <Tab.Screen name="Calendar" component={CalendarScreen} />
-      <Tab.Screen name="Dashboard" component={StaffHomeScreen} />
+        {/* Khi nhấn tab Dashboard: mở Camera (quét QR/NFC) thay vì chuyển về Dashboard, giống Tenant */}
+        <Tab.Screen
+          name="Dashboard"
+          component={StaffHomeScreen}
+          listeners={DashboardListener}
+        />
         <Tab.Screen name="Notification" component={StaffNotificationScreen} />
         <Tab.Screen name="Profile" component={UserProfileScreen} />
       </Tab.Navigator>
