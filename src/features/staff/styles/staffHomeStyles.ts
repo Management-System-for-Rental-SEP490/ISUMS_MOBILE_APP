@@ -1,0 +1,199 @@
+import { StyleSheet } from "react-native";
+
+/**
+ * Styles cho màn hình Home của Staff.
+ * Đồng bộ với hệ thống: nền #F3F4F6, card trắng, accent #3bb582, chữ #1F2937 / #6B7280.
+ */
+export const staffHomeStyles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: "#F3F4F6",
+  },
+  listContent: {
+    paddingBottom: 100,
+  },
+  sectionTitle: {
+    fontSize: 16,
+    fontWeight: "700",
+    color: "#1F2937",
+    marginLeft: 16,
+    marginRight: 16,
+    marginBottom: 10,
+    marginTop: 16,
+  },
+  /** Card chứa bảng tóm tắt lịch (chỉ những slot có việc) */
+  scheduleCard: {
+    backgroundColor: "#fff",
+    marginHorizontal: 16,
+    marginTop: 16,
+    padding: 0,
+    borderRadius: 12,
+    overflow: "hidden",
+    borderWidth: 1,
+    borderColor: "#E5E7EB",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  scheduleTableHeader: {
+    flexDirection: "row",
+    borderBottomWidth: 2,
+    borderBottomColor: "#2563EB",
+    backgroundColor: "#f8fafc",
+    paddingVertical: 12,
+    paddingHorizontal: 12,
+  },
+  scheduleColTime: {
+    width: "30%",
+    fontSize: 12,
+    fontWeight: "700",
+    color: "#1F2937",
+    borderRightWidth: 1,
+    borderRightColor: "#e2e8f0",
+    paddingRight: 8,
+  },
+  scheduleColBuilding: {
+    flex: 1,
+    fontSize: 12,
+    fontWeight: "700",
+    color: "#1F2937",
+    borderRightWidth: 1,
+    borderRightColor: "#e2e8f0",
+    paddingHorizontal: 8,
+  },
+  scheduleColTask: {
+    flex: 1,
+    fontSize: 12,
+    fontWeight: "700",
+    color: "#1F2937",
+    paddingLeft: 8,
+  },
+  scheduleRow: {
+    flexDirection: "row",
+    paddingVertical: 12,
+    paddingHorizontal: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: "#e2e8f0",
+    alignItems: "center",
+  },
+  scheduleRowLast: {
+    borderBottomWidth: 0,
+  },
+  scheduleCellTime: {
+    width: "30%",
+    fontSize: 13,
+    color: "#374151",
+    borderRightWidth: 1,
+    borderRightColor: "#e2e8f0",
+    paddingRight: 8,
+  },
+  scheduleCellBuilding: {
+    flex: 1,
+    fontSize: 13,
+    color: "#374151",
+    borderRightWidth: 1,
+    borderRightColor: "#e2e8f0",
+    paddingHorizontal: 8,
+  },
+  scheduleCellTask: {
+    flex: 1,
+    fontSize: 13,
+    color: "#6B7280",
+    paddingLeft: 8,
+  },
+  /** Card một căn nhà + danh sách asset */
+  buildingCard: {
+    backgroundColor: "#fff",
+    marginHorizontal: 16,
+    marginBottom: 16,
+    borderRadius: 12,
+    overflow: "hidden",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  buildingHeader: {
+    backgroundColor: "#E8F5E9",
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    borderLeftWidth: 4,
+    borderLeftColor: "#2563EB",
+  },
+  buildingName: {
+    fontSize: 16,
+    fontWeight: "700",
+    color: "#1F2937",
+  },
+  buildingAddress: {
+    fontSize: 12,
+    color: "#6B7280",
+    marginTop: 4,
+  },
+  assetRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: "#F3F4F6",
+  },
+  assetRowLast: {
+    borderBottomWidth: 0,
+  },
+  assetInfo: {
+    flex: 1,
+  },
+  assetName: {
+    fontSize: 14,
+    fontWeight: "600",
+    color: "#111827",
+  },
+  assetLocation: {
+    fontSize: 12,
+    color: "#6B7280",
+    marginTop: 2,
+  },
+  assetMeta: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginTop: 4,
+    gap: 8,
+  },
+  nfcBadge: {
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 8,
+    backgroundColor: "#D1FAE5",
+  },
+  nfcBadgeEmpty: {
+    backgroundColor: "#FEF3C7",
+  },
+  nfcBadgeText: {
+    fontSize: 10,
+    fontWeight: "600",
+    color: "#065F46",
+  },
+  nfcBadgeEmptyText: {
+    color: "#92400E",
+  },
+  statusBadge: {
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 12,
+  },
+  statusText: {
+    fontSize: 11,
+    fontWeight: "600",
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    paddingVertical: 40,
+  },
+});

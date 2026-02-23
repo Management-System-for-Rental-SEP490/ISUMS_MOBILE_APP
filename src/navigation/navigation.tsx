@@ -2,13 +2,30 @@ import React, { useEffect, useState } from "react";
 import { View, ActivityIndicator } from "react-native";
 import { NavigationContainer } from "@react-navigation/native";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
-import Login from "../features/auth/screens/LoginScreen";
-import OnBoarding from "../features/auth/screens/onBoarding";
+import Login from "../features/screens/LoginScreen";
+import OnBoarding from "../features/screens/onBoarding";
 import { useAuthStore } from "../store/useAuthStore";
 import { RootStackParamList } from "../shared/types";
-import { TenantTabs, StaffTabs } from "../shared/components/footerNavigator";
-import CameraScreen from "../screens/modal/CameraScreen";
-import DeviceDetail from "../features/devices/deviceDetail";
+import {StaffTabs, TenantTabs } from "../shared/components/footerNavigator";
+import CameraScreen from "../features/modal/CameraScreen";
+import DeviceDetail from "../features/tenant/devices/deviceDetail";
+import TicketScreen from "../features/tenant/screens/ticket";
+import BuildingDetailScreen from "../features/staff/screens/BuildingDetailScreen";
+import TicketDetailScreen from "../features/staff/screens/TicketDetailScreen";
+import { StaffScheduleProvider } from "../features/staff/context/StaffScheduleContext";
+
+// Wrapper components để bọc Provider cho các screen cần useStaffSchedule
+const BuildingDetailScreenWrapper = () => (
+  <StaffScheduleProvider>
+    <BuildingDetailScreen />
+  </StaffScheduleProvider>
+);
+
+const TicketDetailScreenWrapper = () => (
+  <StaffScheduleProvider>
+    <TicketDetailScreen />
+  </StaffScheduleProvider>
+);
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
 
@@ -21,7 +38,7 @@ const RoleNavigator = () => {
   // if (role === "manager") {
   //   return <ManagerTabs />;
   // }
-  if (role === "Technical") {
+  if (role === "technical") {
     return <StaffTabs />;
   }
   return <TenantTabs />;
@@ -30,6 +47,7 @@ const RoleNavigator = () => {
 const Navigation = () => {
   const isLoggedIn = useAuthStore((state) => state.isLoggedIn);
   const user = useAuthStore((state) => state.user);
+  const role = useAuthStore((state) => state.role);
   const onboardedUsers = useAuthStore((state) => state.onboardedUsers);
   
   const [isReady, setIsReady] = useState(false);
@@ -78,6 +96,22 @@ const Navigation = () => {
                 options={{ presentation: "modal" }}
               />
               <Stack.Screen name="DeviceDetail" component={DeviceDetail} />
+              <Stack.Screen 
+                name="Ticket" 
+                component={TicketScreen}
+                options={{ presentation: "modal" }}
+              />
+              {role === "technical" ? (
+                <>
+                  <Stack.Screen name="BuildingDetail" component={BuildingDetailScreenWrapper} />
+                  <Stack.Screen name="TicketDetail" component={TicketDetailScreenWrapper} />
+                </>
+              ) : (
+                <>
+                  <Stack.Screen name="BuildingDetail" component={BuildingDetailScreen} />
+                  <Stack.Screen name="TicketDetail" component={TicketDetailScreen} />
+                </>
+              )}
             </>
           )
         ) : (

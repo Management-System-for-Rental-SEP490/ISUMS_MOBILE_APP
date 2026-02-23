@@ -7,7 +7,7 @@
 - **Project Code**: SP26SE118
 - **Group**: GSP26SE02
 - **Description**: Hệ thống quản lý nhà trọ thông minh tích hợp IoT để giám sát điện/nước theo thời gian thực, quản lý thiết bị/tài sản gắn liền với hợp đồng thuê, và hỗ trợ quy trình bảo trì/sửa chữa.
-- **Target Audience**: Chủ nhà trọ cá nhân (Landlord), Quản lý (Manager), Nhân viên kỹ thuật (Technical Staff), Người thuê (Tenant).
+- **Target Audience**: Chủ nhà trọ cá nhân (Landlord), Quản lý (Manager), Nhân viên kỹ thuật (technical Staff), Người thuê (tenant).
 
 ## 2. Technology Stack
 
@@ -26,8 +26,8 @@
 ### 3.1. Authentication & User Management (FE-01, FE-03)
 
 - **Login/Logout**: Tích hợp Keycloak.
-- **Role-based Access**: Tenant, Technical Staff, Manager, Landlord.
-- **Tenant Onboarding**: Thông tin người thuê, liên kết với hợp đồng.
+- **Role-based Access**: tenant, technical Staff, Manager, Landlord.
+- **tenant Onboarding**: Thông tin người thuê, liên kết với hợp đồng.
 
 ### 3.2. Utility Monitoring (FE-04, FE-05, FE-17)
 
@@ -45,8 +45,8 @@
 
 ### 3.4. Maintenance & Issue Reporting (FE-14 -> FE-16, FE-19 -> FE-21)
 
-- **Create Ticket**: Tenant quét NFC hoặc chọn thiết bị để báo hỏng.
-- **Inspection Checklist**: Technical Staff thực hiện kiểm tra định kỳ theo danh sách, tick chọn và upload ảnh hiện trạng.
+- **Create Ticket**: tenant quét NFC hoặc chọn thiết bị để báo hỏng.
+- **Inspection Checklist**: technical Staff thực hiện kiểm tra định kỳ theo danh sách, tick chọn và upload ảnh hiện trạng.
 - **Quotation**: Báo giá sửa chữa (theo danh sách giá hoặc báo giá riêng).
 - **Payment**: Thanh toán phí bảo trì qua VNPay hoặc tiền mặt.
 
@@ -68,10 +68,10 @@
 
 ### 4.2. Maintenance Ticket Flow
 
-1. Tenant phát hiện hỏng hóc -> Quét NFC thiết bị -> Tạo Ticket (kèm ảnh/mô tả).
+1. tenant phát hiện hỏng hóc -> Quét NFC thiết bị -> Tạo Ticket (kèm ảnh/mô tả).
 2. Manager tiếp nhận -> Phân công Staff (hoặc Staff tự nhận slot).
 3. Staff đến sửa -> Check-in -> Cập nhật kết quả sửa chữa -> Báo giá (nếu có phí).
-4. Tenant/Manager duyệt báo giá -> Thực hiện sửa.
+4. tenant/Manager duyệt báo giá -> Thực hiện sửa.
 5. Thanh toán (VNPay/Cash) -> Đóng Ticket.
 
 ## 5. Directory Structure Alignment
@@ -81,7 +81,7 @@ Current `src/` structure seems aligned with features:
 - `features/auth`: Login, Onboarding.
 - `features/consumption`: Electric/Water Usage Screens.
 - `features/devices`: Device Details (Need to implement NFC here).
-- `features/house`: Home, Tenants, Profile.
+- `features/house`: Home, tenants, Profile.
 - `features/billing`: Billing/Payment.
 - `shared/services/keycloakAuth.ts`: Auth Service.
 

@@ -56,8 +56,15 @@ const Icons = {
   chevronForward: ({ size = 24, color = 'black' }: IconProps = {}) => (
     <Ionicons name="chevron-forward" size={size} color={color} />
   ),
+  chevronBack: ({ size = 24, color = 'black' }: IconProps = {}) => (
+    <Ionicons name="chevron-back" size={size} color={color} />
+  ),
   logOut: ({ size = 24, color = 'black' }: IconProps = {}) => (
     <Ionicons name="log-out-outline" size={size} color={color} />
+  ),
+  /** Icon cho tab Ticket (danh sách phiếu báo sự cố của Staff) */
+  ticket: ({ size = 24, color = 'black' }: IconProps = {}) => (
+    <FontAwesome5 name="ticket-alt" size={size} color={color} />
   ),
 };
 

@@ -14,7 +14,7 @@
 
 ## 📋 Mô tả
 
-ISUMS (IoT-based Smart Utility Management System) là ứng dụng mobile được xây dựng bằng React Native và Expo Framework, phục vụ cho hệ thống quản lý tiện ích thông minh trong các căn hộ cho thuê. Ứng dụng hỗ trợ quản lý điện, nước, hóa đơn sửa chữa, báo cáo sự cố, quản lý thiết bị và cư dân cho các vai trò khác nhau (Tenant, Staff, Landlord, Manager).
+ISUMS (IoT-based Smart Utility Management System) là ứng dụng mobile được xây dựng bằng React Native và Expo Framework, phục vụ cho hệ thống quản lý tiện ích thông minh trong các căn hộ cho thuê. Ứng dụng hỗ trợ quản lý điện, nước, hóa đơn sửa chữa, báo cáo sự cố, quản lý thiết bị và cư dân cho các vai trò khác nhau (tenant, Staff, Landlord, Manager).
 
 ## 🚀 Công nghệ sử dụng
 
@@ -47,29 +47,31 @@ ISUMS (IoT-based Smart Utility Management System) là ứng dụng mobile đư�
 ISUMS_MOBILE_APP/
 ├── src/
 │   ├── features/
-│   │   ├── auth/             # Các màn hình, logic và hook dành cho đăng nhập/đăng 
-│   │   ├── house/            # Dashboard Tenant/landlord/manager, profile, danh 
-│   │   ├── consumption/      # Đặt mục tiêu tiêu thụ điện/nước
-│   │   ├── billing/          # Màn hình hóa đơn & thanh toán
-│   │   └── ...               # Các tính năng khác theo nghiệp vụ
+│   │   ├── screens/                    # Màn hình dùng chung        
+│   │   ├── tenant/                    # Tính năng dành cho role Người thuê (tenant)
+│   │   ├── staff/                     # Tính năng dành cho role Thợ kỹ thuật (Staff)
+│   │   ├── modal/                      # Màn hình chung: Camera (QR + NFC)
+│   │   └──
 │   ├── shared/
-│   │   ├── components/        # Component tái sử dụng như Footer navigator, modal
-│   │   ├── hooks/             # Custom hook dùng chung app
-│   │   ├── services/          # Mock API, axios, config
-│   │   ├── theme/             # Icon/theme helper
-│   │   ├── types/             # Định nghĩa TypeScript dùng chung
-│   │   └── utils/             # Hàm tiện ích (formatDate, validation...)
-│   ├── navigation/            # Cấu hình navigator
-│   ├── store/                 # Zustand/global state
-│   ├── styles/                # Style riêng cho từng màn hình
-├── assets/                    # Hình ảnh, icon, splash...
-│   ├── favicon.png
-│   ├── iconb.png
-├── App.tsx                    # Component gốc của ứng dụng
-├── index.ts                   # Entry point
-├── app.json                   # Cấu hình Expo
-├── package.json               # Dependencies và scripts
-└── tsconfig.json              # Cấu hình TypeScript
+│   │   ├── components/                # Footer navigator, Header
+│   │   ├── hooks/                     # useUserProfile, index
+│   │   ├── services/                  # deviceData, keycloakAuth, userApi, authData
+│   │   ├── api/                       # axiosClient
+│   │   ├── theme/                     # icon, LogoIcon
+│   │   ├── types/                     # Định nghĩa TypeScript (index, api)
+│   │   ├── styles/                    # headerStyles, iconStyles, footerStyles
+│   │   ├── i18n/                      # Đa ngôn ngữ
+│   │   ├── utils/                     # Hàm tiện ích
+│   │   └──
+│   ├── navigation/                   # Cấu hình Stack + Tab navigator
+│   ├── store/                        # Zustand (useAuthStore)
+├── assets/                           # Hình ảnh, icon, splash (favicon, logob...)
+├── docs/                             # Tài liệu (ISUMS_SPECIFICATION.md, ...)
+├── App.tsx                           # Component gốc
+├── index.ts                          # Entry point
+├── app.json                          # Cấu hình Expo
+├── package.json
+└── tsconfig.json
 ```
 
 ## 🛠️ Cài đặt và chạy
@@ -123,7 +125,7 @@ ISUMS_MOBILE_APP/
 
 ### Xác thực và Phân quyền
 - ✅ Đăng nhập / Đăng ký / Quên mật khẩu
-- ✅ Hỗ trợ nhiều vai trò: **Tenant**, **Staff**, **Landlord**, **Manager**
+- ✅ Hỗ trợ nhiều vai trò: **tenant**, **Staff**, **Landlord**, **Manager**
 - ✅ Quản lý session với token và refresh token
 
 ### Quản lý Thiết bị
