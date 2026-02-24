@@ -4,10 +4,10 @@ import { useNavigation, useFocusEffect } from "@react-navigation/native";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { LinearGradient } from "expo-linear-gradient";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import loginStyles from "./screenStyles/loginStyles";
-import { RootStackParamList } from "../../shared/types";
-import { useAuthStore } from "../../store/useAuthStore";
-import { openKeycloakLogin, handleKeycloakCallback, exchangeCodeForToken } from "../../shared/services/keycloakAuth";
+import loginStyles from "./loginStyles";
+import { RootStackParamList } from "../../../shared/types";
+import { useAuthStore } from "../../../store/useAuthStore";
+import { openKeycloakLogin, handleKeycloakCallback, exchangeCodeForToken } from "../../../shared/services/keycloakAuth";
 import { useTranslation } from "react-i18next";
 
 type LoginNavigationProp = NativeStackNavigationProp<RootStackParamList, "AuthLogin">; //đây là khai báo kiểu để useNavigation có type an toàn khi dùng trong LoginScreen.

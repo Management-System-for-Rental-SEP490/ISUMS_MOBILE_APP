@@ -1,8 +1,8 @@
 import React from "react";
 import { View, Text, TouchableOpacity, SafeAreaView, ScrollView } from "react-native";
 import { RouteProp, useNavigation, useRoute } from "@react-navigation/native";
-import { RootStackParamList } from "../../shared/types";
-import deviceDetailStyles from "./screenStyles/deviceDetailStyles";
+import { RootStackParamList } from "../../../../shared/types";
+import deviceDetailStyles from "./deviceDetailStyles";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { SafeAreaProvider, useSafeAreaInsets } from "react-native-safe-area-context";
 type DeviceDetailRouteProp = RouteProp<RootStackParamList, "DeviceDetail">;

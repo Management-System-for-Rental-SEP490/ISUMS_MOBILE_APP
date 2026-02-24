@@ -2,12 +2,12 @@ import { useNavigation } from "@react-navigation/native";
 import { Text, TouchableOpacity, View, Alert, StyleSheet } from "react-native";
 import { useEffect, useState, useRef } from "react";
 import { CameraView, useCameraPermissions } from "expo-camera";
-import { cameraStyles } from "./modalStyles/cameraStyles";
-import { getDeviceById, getDeviceByNfcTag } from "../../shared/services/deviceData";
+import { cameraStyles } from "../cameraStyles";
+import { getDeviceById, getDeviceByNfcTag } from "../../../shared/services/deviceData";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
-import { RootStackParamList } from "../../shared/types";
+import { RootStackParamList } from "../../../shared/types";
 import NfcManager, { NfcTech, Ndef } from "react-native-nfc-manager";
-import { ScanMode } from "../../shared/types";
+import { ScanMode } from "../../../shared/types";
 import { useTranslation } from "react-i18next";
 
 

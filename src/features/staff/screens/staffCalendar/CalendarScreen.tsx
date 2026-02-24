@@ -10,17 +10,17 @@ import {
   TouchableOpacity,
 } from "react-native";
 import { useTranslation } from "react-i18next";
-import Header from "../../../shared/components/header";
-import { getWorkScheduleThisWeek, WorkSlot, SlotType } from "../data/mockStaffData";
-import { useStaffSchedule } from "../context/StaffScheduleContext";
-import BookScheduleModal from "../modals/BookScheduleModal";
+import Header from "../../../../shared/components/header";
+import { getWorkScheduleThisWeek, WorkSlot, SlotType } from "../../data/mockStaffData";
+import { useStaffSchedule } from "../../context/StaffScheduleContext";
+import BookScheduleModal from "./modals/BookScheduleModal";
 import {
   staffCalendarStyles,
   HOUR_HEIGHT,
   TIMELINE_START_HOUR,
   TIMELINE_END_HOUR,
   SLOT_COLORS,
-} from "../styles/staffCalendarStyles";
+} from "./staffCalendarStyles";
 
 const HOURS_COUNT = TIMELINE_END_HOUR - TIMELINE_START_HOUR; // trả về số giờ từ 08:00 đến 18:00
 

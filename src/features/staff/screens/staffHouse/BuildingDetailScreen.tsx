@@ -15,11 +15,11 @@ import { useTranslation } from "react-i18next";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useNavigation, useRoute, RouteProp } from "@react-navigation/native";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
-import { RootStackParamList } from "../../../shared/types";
-import type { AssetItemFromApi, AssetCategoryFromApi } from "../../../shared/types/api";
-import Icons from "../../../shared/theme/icon";
-import { staffBuildingDetailStyles } from "../styles/staffBuildingDetailStyles";
-import { useAssetItems, useAssetCategories } from "../../../shared/hooks";
+import { RootStackParamList } from "../../../../shared/types";
+import type { AssetItemFromApi, AssetCategoryFromApi } from "../../../../shared/types/api";
+import Icons from "../../../../shared/theme/icon";
+import { staffBuildingDetailStyles } from "./staffBuildingDetailStyles";
+import { useAssetItems, useAssetCategories } from "../../../../shared/hooks";
 
 type BuildingDetailRouteProp = RouteProp<RootStackParamList, "BuildingDetail">;
 type NavProp = NativeStackNavigationProp<RootStackParamList, "BuildingDetail">;

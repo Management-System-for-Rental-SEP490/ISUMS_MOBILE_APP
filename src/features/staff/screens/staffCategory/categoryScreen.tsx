@@ -18,10 +18,10 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useTranslation } from "react-i18next";
 import { useNavigation } from "@react-navigation/native";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
-import { RootStackParamList } from "../../../shared/types";
-import Icons from "../../../shared/theme/icon";
-import { useCreateAssetCategory } from "../../../shared/hooks";
-import { categoryScreenStyles } from "../styles/categoryScreenStyles";
+import { RootStackParamList } from "../../../../shared/types";
+import Icons from "../../../../shared/theme/icon";
+import { useCreateAssetCategory } from "../../../../shared/hooks";
+import { categoryScreenStyles } from "../../styles/categoryScreenStyles";
 
 type CategoryNavProp = NativeStackNavigationProp<RootStackParamList, "Category">;
 

@@ -3,11 +3,11 @@ import { View, Text, TouchableOpacity, ScrollView, Alert, Platform } from "react
 import { useNavigation } from "@react-navigation/native";
 import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons } from "@expo/vector-icons";
-import userProfileStyles from "./screenStyles/UserProfileScreenStyles";
-import { useAuthStore } from "../../store/useAuthStore";
-import { logoutKeycloak, openChangePasswordPage } from "../../shared/services/keycloakAuth";
-import { UserProfileResponse } from "../../shared/types/api";
-import Icons from "../../shared/theme/icon";
+import userProfileStyles from "./UserProfileScreenStyles";
+import { useAuthStore } from "../../../store/useAuthStore";
+import { logoutKeycloak, openChangePasswordPage } from "../../../shared/services/keycloakAuth";
+import { UserProfileResponse } from "../../../shared/types/api";
+import Icons from "../../../shared/theme/icon";
 import { useTranslation } from "react-i18next";
 const UserProfileScreen = () => {
   const { t } = useTranslation();

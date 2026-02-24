@@ -8,8 +8,8 @@ import {
   TouchableOpacity,
   Dimensions,
 } from "react-native";
-import { useAuthStore } from "../../store/useAuthStore";
-import styles from "./screenStyles/onBoardingStyles";
+import { useAuthStore } from "../../../store/useAuthStore";
+import styles from "./onBoardingStyles";
 import { StatusBar } from "expo-status-bar";
 import { LinearGradient } from "expo-linear-gradient";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
