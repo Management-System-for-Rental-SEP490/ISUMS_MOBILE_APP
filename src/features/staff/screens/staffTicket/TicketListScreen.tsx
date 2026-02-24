@@ -10,10 +10,10 @@ import { useNavigation } from "@react-navigation/native";
 import type { CompositeNavigationProp } from "@react-navigation/native";
 import type { BottomTabNavigationProp } from "@react-navigation/bottom-tabs";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
-import { MainTabParamList, RootStackParamList } from "../../../shared/types";
-import Header from "../../../shared/components/header";
-import { MOCK_STAFF_TICKETS, StaffTicketListItem } from "../data/mockStaffData";
-import { ticketListStyles } from "../styles/ticketListStyles";
+import { MainTabParamList, RootStackParamList } from "../../../../shared/types";
+import Header from "../../../../shared/components/header";
+import { MOCK_STAFF_TICKETS, StaffTicketListItem } from "../../data/mockStaffData";
+import { ticketListStyles } from "./ticketListStyles";
 
 type TicketListNavProp = CompositeNavigationProp<
   BottomTabNavigationProp<MainTabParamList, "Ticket">,

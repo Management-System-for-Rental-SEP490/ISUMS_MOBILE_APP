@@ -14,16 +14,16 @@ import { useTranslation } from "react-i18next";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useRoute, useNavigation, RouteProp } from "@react-navigation/native";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
-import { RootStackParamList } from "../../../shared/types";
+import { RootStackParamList } from "../../../../shared/types";
 import {
   getTicketById,
   getFreeScheduleSlots,
   WorkSlot,
-} from "../data/mockStaffData";
-import { useStaffSchedule } from "../context/StaffScheduleContext";
-import Icons from "../../../shared/theme/icon";
-import { staffTicketDetailStyles } from "../styles/staffTicketDetailStyles";
-import ChooseScheduleSlotModal from "../modals/ChooseScheduleSlotModal";
+} from "../../data/mockStaffData";
+import { useStaffSchedule } from "../../context/StaffScheduleContext";
+import Icons from "../../../../shared/theme/icon";
+import { staffTicketDetailStyles } from "./staffTicketDetailStyles";
+import ChooseScheduleSlotModal from "../staffCalendar/modals/ChooseScheduleSlotModal";
 
 type TicketDetailRouteProp = RouteProp<RootStackParamList, "TicketDetail">;
 type NavProp = NativeStackNavigationProp<RootStackParamList, "TicketDetail">;

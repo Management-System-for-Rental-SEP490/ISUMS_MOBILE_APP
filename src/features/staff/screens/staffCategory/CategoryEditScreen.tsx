@@ -19,10 +19,10 @@ import { useTranslation } from "react-i18next";
 import { useNavigation, useRoute } from "@react-navigation/native";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import type { RouteProp } from "@react-navigation/native";
-import { RootStackParamList } from "../../../shared/types";
-import Icons from "../../../shared/theme/icon";
-import { useUpdateAssetCategory } from "../../../shared/hooks";
-import { categoryScreenStyles } from "../styles/categoryScreenStyles";
+import { RootStackParamList } from "../../../../shared/types";
+import Icons from "../../../../shared/theme/icon";
+import { useUpdateAssetCategory } from "../../../../shared/hooks";
+import { categoryScreenStyles } from "./categoryScreenStyles";
 
 type CategoryEditNavProp = NativeStackNavigationProp<RootStackParamList, "CategoryEdit">;
 type CategoryEditRouteProp = RouteProp<RootStackParamList, "CategoryEdit">;

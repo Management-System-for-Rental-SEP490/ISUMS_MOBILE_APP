@@ -12,9 +12,9 @@ import {
   ListRenderItem,
 } from "react-native";
 import { useTranslation } from "react-i18next";
-import Header from "../../../shared/components/header";
-import Icons from "../../../shared/theme/icon";
-import { staffNotificationStyles } from "../styles/staffNotificationStyles";
+import Header from "../../../../shared/components/header";
+import Icons from "../../../../shared/theme/icon";
+import { staffNotificationStyles } from "./staffNotificationStyles";
 
 /** Loại thông báo dành cho Staff */
 export type StaffNotificationType = "ticket_from_tenant" | "schedule_updated" | "ticket_assigned" | "inspection_reminder" | "system";

@@ -15,11 +15,11 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useTranslation } from "react-i18next";
 import { useNavigation, useFocusEffect } from "@react-navigation/native";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
-import { RootStackParamList } from "../../../shared/types";
-import Icons from "../../../shared/theme/icon";
-import { useAssetCategories } from "../../../shared/hooks";
-import { categoryScreenStyles } from "../styles/categoryScreenStyles";
-import type { AssetCategoryFromApi } from "../../../shared/types/api";
+import { RootStackParamList } from "../../../../shared/types";
+import Icons from "../../../../shared/theme/icon";
+import { useAssetCategories } from "../../../../shared/hooks";
+import { categoryScreenStyles } from "./categoryScreenStyles";
+import type { AssetCategoryFromApi } from "../../../../shared/types/api";
 
 type NavProp = NativeStackNavigationProp<RootStackParamList, "CategoryList">;
 

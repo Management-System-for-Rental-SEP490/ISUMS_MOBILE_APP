@@ -152,7 +152,7 @@ const LoginScreen = () => {
         <View style={loginStyles.logoContainer}>
           <View style={loginStyles.logoWrapper}>
             <Image
-              source={require("../../../assets/logob.png")}
+              source={require("../../../../assets/logob.png")}
               style={loginStyles.logoImage}
               accessibilityLabel="ISUMS logo" //đây là thuộc tính để đánh dấu logo ISUMS để screen reader có thể đọc.
             />

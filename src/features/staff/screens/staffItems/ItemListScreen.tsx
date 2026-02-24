@@ -15,11 +15,11 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useTranslation } from "react-i18next";
 import { useNavigation, useFocusEffect } from "@react-navigation/native";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
-import { RootStackParamList } from "../../../shared/types";
-import Icons from "../../../shared/theme/icon";
-import { useAssetCategories, useAssetItems, useHouses } from "../../../shared/hooks";
-import { itemScreenStyles } from "../styles/itemScreenStyles";
-import type { AssetItemFromApi } from "../../../shared/types/api";
+import { RootStackParamList } from "../../../../shared/types";
+import Icons from "../../../../shared/theme/icon";
+import { useAssetCategories, useAssetItems, useHouses } from "../../../../shared/hooks";
+import { itemScreenStyles } from "./itemScreenStyles";
+import type { AssetItemFromApi, HouseFromApi } from "../../../../shared/types/api";
 
 type NavProp = NativeStackNavigationProp<RootStackParamList, "ItemList">;
 
@@ -83,7 +83,7 @@ export default function ItemListScreen() {
   };
 
   const getHouseName = (houseId: string) =>
-    houses.find((h) => h.id === houseId)?.name ?? houseId;
+    houses.find((h: HouseFromApi) => h.id === houseId)?.name ?? houseId;
 
   if (isLoading) {
     return (

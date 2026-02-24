@@ -21,7 +21,7 @@ import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { RootStackParamList } from "../../../../shared/types";
 import Icons from "../../../../shared/theme/icon";
 import { useCreateAssetCategory } from "../../../../shared/hooks";
-import { categoryScreenStyles } from "../../styles/categoryScreenStyles";
+import { categoryScreenStyles } from "./categoryScreenStyles";
 
 type CategoryNavProp = NativeStackNavigationProp<RootStackParamList, "Category">;
 

@@ -8,8 +8,8 @@ import {
 } from "react-native";
 import { useTranslation } from "react-i18next";
 import Svg, { Path } from "react-native-svg";
-import Header from "../../../shared/components/header";
-import { waterUsageStyles } from "../styles/waterUsageStyles";
+import Header from "../../../../shared/components/header";
+import { waterUsageStyles } from "./waterUsageStyles";
 
 /** ID khu vực – khi có API sẽ map với zone/room từ backend */
 export type AreaId = "all" | "kitchen" | "living_room" | "bedroom" | "bathroom";

@@ -2,7 +2,7 @@ import { useNavigation } from "@react-navigation/native";
 import { Text, TouchableOpacity, View, Alert, StyleSheet } from "react-native";
 import { useEffect, useState, useRef } from "react";
 import { CameraView, useCameraPermissions } from "expo-camera";
-import { cameraStyles } from "../cameraStyles";
+import { cameraStyles } from "./cameraStyles";
 import { getDeviceById, getDeviceByNfcTag } from "../../../shared/services/deviceData";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { RootStackParamList } from "../../../shared/types";

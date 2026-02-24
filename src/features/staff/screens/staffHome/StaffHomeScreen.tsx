@@ -18,19 +18,19 @@ import { useNavigation } from "@react-navigation/native";
 import type { CompositeNavigationProp } from "@react-navigation/native";
 import type { BottomTabNavigationProp } from "@react-navigation/bottom-tabs";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
-import { MainTabParamList } from "../../../shared/types";
-import { RootStackParamList } from "../../../shared/types";
+import { MainTabParamList } from "../../../../shared/types";
+import { RootStackParamList } from "../../../../shared/types";
 import type {
   HouseFromApi,
   AssetCategoryFromApi,
   AssetItemFromApi,
-} from "../../../shared/types/api";
-import Header from "../../../shared/components/header";
-import { getWorkScheduleThisWeek, WorkSlot } from "../data/mockStaffData";
-import { useStaffSchedule } from "../context/StaffScheduleContext";
-import { useHouses, useAssetCategories, useAssetItems } from "../../../shared/hooks";
-import Icons from "../../../shared/theme/icon";
-import { staffHomeStyles } from "../styles/staffHomeStyles";
+} from "../../../../shared/types/api";
+import Header from "../../../../shared/components/header";
+import { getWorkScheduleThisWeek, WorkSlot } from "../../data/mockStaffData";
+import { useStaffSchedule } from "../../context/StaffScheduleContext";
+import { useHouses, useAssetCategories, useAssetItems } from "../../../../shared/hooks";
+import Icons from "../../../../shared/theme/icon";
+import { staffHomeStyles } from "./staffHomeStyles";
 
 type StaffHomeNavProp = CompositeNavigationProp<
   BottomTabNavigationProp<MainTabParamList, "Dashboard">,

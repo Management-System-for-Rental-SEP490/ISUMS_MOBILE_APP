@@ -14,8 +14,8 @@ import {
 } from "react-native";
 import { useTranslation } from "react-i18next";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { useStaffSchedule } from "../context/StaffScheduleContext";
-import { getThisWeekDatesForPicker } from "../data/mockStaffData";
+import { useStaffSchedule } from "../../../context/StaffScheduleContext";
+import { getThisWeekDatesForPicker } from "../../../data/mockStaffData";
 
 type BookScheduleModalProps = {
   visible: boolean;

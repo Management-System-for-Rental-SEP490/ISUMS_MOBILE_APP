@@ -7,9 +7,9 @@ import {
   ListRenderItem,
 } from "react-native";
 import { useTranslation } from "react-i18next";
-import Header from "../../../shared/components/header";
-import Icons from "../../../shared/theme/icon";
-import { notificationStyles } from "../styles/notificationStyles";
+import Header from "../../../../shared/components/header";
+import Icons from "../../../../shared/theme/icon";
+import { notificationStyles } from "./notificationStyles";
 
 /**
  * Loại thông báo: phiếu bảo trì hoặc cảnh báo AI (điện / nước).

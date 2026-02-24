@@ -18,10 +18,11 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useTranslation } from "react-i18next";
 import { useNavigation } from "@react-navigation/native";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
-import { RootStackParamList } from "../../../shared/types";
-import Icons from "../../../shared/theme/icon";
-import { useCreateAssetItem, useHouses, useAssetCategories } from "../../../shared/hooks";
-import { itemScreenStyles } from "../styles/itemScreenStyles";
+import { RootStackParamList } from "../../../../shared/types";
+import Icons from "../../../../shared/theme/icon";
+import { useCreateAssetItem, useHouses, useAssetCategories } from "../../../../shared/hooks";
+import { itemScreenStyles } from "./itemScreenStyles";
+import type { AssetCategoryFromApi, HouseFromApi } from "../../../../shared/types/api";
 
 type NavProp = NativeStackNavigationProp<RootStackParamList, "ItemCreate">;
 
@@ -115,7 +116,7 @@ export default function ItemCreateScreen() {
           <View style={itemScreenStyles.formCard}>
             <Text style={itemScreenStyles.label}>{t("staff_item_create.house_label")}</Text>
             <View style={itemScreenStyles.chipRow}>
-              {houses.map((h) => (
+              {houses.map((h: HouseFromApi) => (
                 <TouchableOpacity
                   key={h.id}
                   onPress={() => setHouseId(h.id)}
@@ -135,7 +136,7 @@ export default function ItemCreateScreen() {
             <View style={itemScreenStyles.fieldSpacer}>
               <Text style={itemScreenStyles.label}>{t("staff_item_create.category_label")}</Text>
               <View style={itemScreenStyles.chipRow}>
-                {categories.map((c) => (
+                {categories.map((c: AssetCategoryFromApi) => (
                   <TouchableOpacity
                     key={c.id}
                     onPress={() => setCategoryId(c.id)}
@@ -206,7 +207,7 @@ export default function ItemCreateScreen() {
             <View style={itemScreenStyles.fieldSpacer}>
               <Text style={itemScreenStyles.label}>{t("staff_item_create.status_label")}</Text>
               <View style={itemScreenStyles.statusRow}>
-                {STATUS_OPTIONS.map((s) => (
+                {STATUS_OPTIONS.map((s: string) => (
                   <TouchableOpacity
                     key={s}
                     onPress={() => setStatus(s)}

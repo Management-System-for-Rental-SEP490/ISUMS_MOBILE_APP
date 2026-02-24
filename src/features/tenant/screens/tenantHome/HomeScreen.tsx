@@ -1,14 +1,14 @@
 import React, { useEffect, useState } from 'react';
 import { View, Text, FlatList, ActivityIndicator, TouchableOpacity } from 'react-native';
-import { useAuthStore } from "../../../store/useAuthStore";
-import Header from "../../../shared/components/header";
-import { HomeScreenProps, RentalHouse, Device, RootStackParamList } from "../../../shared/types";
+import { useAuthStore } from "../../../../store/useAuthStore";
+import Header from "../../../../shared/components/header";
+import { HomeScreenProps, RentalHouse, Device, RootStackParamList } from "../../../../shared/types";
 import { useTranslation } from "react-i18next";
 import { NavigationProp } from "@react-navigation/native";
-import homeStyles from "../styles/homeStyles";
-import { gettenantHouseInfo } from "../../../shared/services/mockHouseService";
-import { getHouseDevices } from "../../../shared/services/deviceData";
-import Icons from "../../../shared/theme/icon"; // Import Icons để hiển thị icon cho thiết bị
+import homeStyles from "./homeStyles";
+import { gettenantHouseInfo } from "../../../../shared/services/mockHouseService";
+import { getHouseDevices } from "../../../../shared/services/deviceData";
+import Icons from "../../../../shared/theme/icon"; // Import Icons để hiển thị icon cho thiết bị
 
 const HomeScreen = ({ navigation }: HomeScreenProps) => {
   const { user, role } = useAuthStore();
