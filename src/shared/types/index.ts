@@ -1,4 +1,6 @@
 import { BottomTabScreenProps } from "@react-navigation/bottom-tabs";
+import type { AssetCategoryFromApi } from "./api";
+
 export type AuthStackParamList = {
   AuthLogin: undefined;
 };
@@ -40,6 +42,12 @@ export type RootStackParamList = AuthStackParamList & {
   };
   /** Chi tiết ticket cho Staff: thông tin, trạng thái, nút Nhận ticket (nếu pending) */
   TicketDetail: { ticketId: string };
+  /** Màn form tạo danh mục thiết bị (Staff). Không tham số. */
+  Category: undefined;
+  /** Màn danh sách danh mục thiết bị (Staff). Không tham số. */
+  CategoryList: undefined;
+  /** Màn chỉnh sửa danh mục (Staff), hiện dạng modal. Param: category cần sửa. */
+  CategoryEdit: { category: AssetCategoryFromApi };
 };
 
 export type IconProps = {
@@ -129,56 +137,18 @@ export interface RentalHouse {
   endDate: string; // Ngày kết thúc
 }
 
-/** Dữ liệu căn nhà trả về từ API GET /api/houses (dùng cho Staff). */
-export interface HouseFromApi {
-  id: string;
-  userRentalId: string | null;
-  name: string;
-  address: string;
-  ward?: string;
-  commune?: string;
-  city?: string;
-  description?: string;
-  status?: string; // VD: "AVAILABLE", "RENTED"
-}
-
-/** Response body của API GET /api/houses. */
-export interface HousesApiResponse {
-  data: HouseFromApi[];
-  message: string;
-  statusCode: number;
-  success: boolean;
-}
-
-/** Một danh mục thiết bị từ API GET /api/asset/categories (loại sản phẩm/thiết bị trong hệ thống). */
-export interface AssetCategoryFromApi {
-  id: string;
-  name: string;
-  compensationPercent: number;
-  description: string;
-}
-
-/** Response body của API GET /api/asset/categories. */
-export interface AssetCategoriesApiResponse {
-  data: AssetCategoryFromApi[];
-}
-
-/** Một thiết bị/item từ API GET /api/asset/items (có thể filter theo houseId, categoryId). */
-export interface AssetItemFromApi {
-  id: string;
-  houseId: string;
-  categoryId: string;
-  displayName: string;
-  serialNumber: string;
-  nfcId: string | null;
-  conditionPercent: number;
-  status: string; // VD: "AVAILABLE", "DISPOSED"
-}
-
-/** Response body của API GET /api/asset/items. */
-export interface AssetItemsApiResponse {
-  data: AssetItemFromApi[];
-}
+// Các kiểu dữ liệu liên quan đến API (HouseFromApi, AssetCategoryFromApi, AssetItemFromApi, ...)
+// đã được di chuyển sang file riêng `types/api.ts` cho dễ bảo trì.
+// Tại đây chỉ re-export lại để ai đang import từ "shared/types" vẫn dùng được.
+export type {
+  HouseFromApi,
+  HousesApiResponse,
+  AssetCategoryFromApi,
+  AssetCategoriesApiResponse,
+  AssetItemFromApi,
+  AssetItemsApiResponse,
+  UserProfileResponse,
+} from "./api";
 
 export type ScanMode = "qr" | "nfc";
 export type HomeScreenProps = BottomTabScreenProps<MainTabParamList, "Dashboard">; // HomeScreenProps là một type alias cho BottomTabScreenProps<MainTabParamList, "Dashboard">.

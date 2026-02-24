@@ -184,7 +184,33 @@ const resources = {
           "maintenance": "Bảo trì",
           "inactive": "Ngừng",
           "pending": "Chờ xử lý"
-        }
+        },
+        "add_menu_open": "Mở menu thêm",
+        "add_menu_create_category": "Tạo danh mục",
+        "add_menu_create_device": "Tạo thiết bị"
+      },
+      "staff_category": {
+        "title": "Tạo danh mục thiết bị",
+        "name_label": "Tên danh mục",
+        "name_placeholder": "Ví dụ: Máy lạnh, Bóng đèn",
+        "compensation_label": "Phần trăm bồi thường (%)",
+        "compensation_placeholder": "0–100",
+        "description_label": "Mô tả",
+        "description_placeholder": "Mô tả chi tiết về danh mục",
+        "submit": "Tạo danh mục",
+        "success_message": "Tạo danh mục thành công.",
+        "error_message": "Có lỗi. Vui lòng thử lại."
+      },
+      "staff_category_edit": {
+        "title": "Chỉnh sửa danh mục thiết bị",
+        "submit": "Cập nhật",
+        "success_message": "Đã cập nhật danh mục."
+      },
+      "staff_category_list": {
+        "title": "Danh sách danh mục thiết bị",
+        "empty": "Chưa có danh mục nào.",
+        "error": "Không tải được danh sách danh mục. Vui lòng thử lại.",
+        "compensation": "Bồi thường: {{percent}}%"
       },
       "staff_notification": {
         "tenant_sent_ticket_title": "Có ticket mới từ người thuê",
@@ -485,7 +511,33 @@ const resources = {
           "maintenance": "Maintenance",
           "inactive": "Inactive",
           "pending": "Pending"
-        }
+        },
+        "add_menu_open": "Open add menu",
+        "add_menu_create_category": "Create category",
+        "add_menu_create_device": "Create device"
+      },
+      "staff_category": {
+        "title": "Create asset category",
+        "name_label": "Category name",
+        "name_placeholder": "e.g. Air conditioner, Light bulb",
+        "compensation_label": "Compensation percent (%)",
+        "compensation_placeholder": "0–100",
+        "description_label": "Description",
+        "description_placeholder": "Detailed description of the category",
+        "submit": "Create category",
+        "success_message": "Category created successfully.",
+        "error_message": "Something went wrong. Please try again."
+      },
+      "staff_category_edit": {
+        "title": "Edit asset category",
+        "submit": "Update",
+        "success_message": "Category updated."
+      },
+      "staff_category_list": {
+        "title": "Asset categories",
+        "empty": "No categories yet.",
+        "error": "Could not load categories. Please try again.",
+        "compensation": "Compensation: {{percent}}%"
       },
       "staff_notification": {
         "tenant_sent_ticket_title": "New ticket from tenant",
@@ -786,7 +838,33 @@ const resources = {
           "maintenance": "メンテ中",
           "inactive": "停止",
           "pending": "保留"
-        }
+        },
+        "add_menu_open": "追加メニューを開く",
+        "add_menu_create_category": "カテゴリを作成",
+        "add_menu_create_device": "デバイスを作成"
+      },
+      "staff_category": {
+        "title": "資産カテゴリを作成",
+        "name_label": "カテゴリ名",
+        "name_placeholder": "例：エアコン、電球",
+        "compensation_label": "補償率（%）",
+        "compensation_placeholder": "0–100",
+        "description_label": "説明",
+        "description_placeholder": "カテゴリの詳細説明",
+        "submit": "カテゴリを作成",
+        "success_message": "カテゴリを作成しました。",
+        "error_message": "エラーが発生しました。もう一度お試しください。"
+      },
+      "staff_category_edit": {
+        "title": "資産カテゴリを編集",
+        "submit": "更新",
+        "success_message": "カテゴリを更新しました。"
+      },
+      "staff_category_list": {
+        "title": "資産カテゴリ一覧",
+        "empty": "カテゴリがまだありません。",
+        "error": "カテゴリ一覧を読み込めませんでした。もう一度お試しください。",
+        "compensation": "補償率: {{percent}}%"
       },
       "staff_notification": {
         "tenant_sent_ticket_title": "入居者からチケットが届きました",

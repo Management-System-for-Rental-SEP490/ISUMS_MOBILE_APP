@@ -15,12 +15,12 @@ import { useTranslation } from "react-i18next";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useNavigation, useRoute, RouteProp } from "@react-navigation/native";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
-import { useQuery } from "@tanstack/react-query";
 import { RootStackParamList } from "../../../shared/types";
-import type { Device, AssetItemFromApi, AssetCategoryFromApi } from "../../../shared/types";
-import { getAssetItems, getAssetCategories } from "../../../shared/services/houseApi";
+import type { Device } from "../../../shared/types";
+import type { AssetItemFromApi, AssetCategoryFromApi } from "../../../shared/types/api";
 import Icons from "../../../shared/theme/icon";
 import { staffBuildingDetailStyles } from "../styles/staffBuildingDetailStyles";
+import { useAssetItems, useAssetCategories } from "../../../shared/hooks";
 
 type BuildingDetailRouteProp = RouteProp<RootStackParamList, "BuildingDetail">;
 type NavProp = NativeStackNavigationProp<RootStackParamList, "BuildingDetail">;
@@ -42,17 +42,13 @@ export default function BuildingDetailScreen() {
   } = route.params;
 
   // Lấy thiết bị thuộc căn nhà này từ API GET /api/asset/items?houseId=...
-  const { data: itemsData, isLoading, isError } = useQuery({
-    queryKey: ["assetItems", "house", buildingId],
-    queryFn: () => getAssetItems({ houseId: buildingId }),
+  const { data: itemsData, isLoading, isError } = useAssetItems({
+    houseId: buildingId,
   });
   const rawItems: AssetItemFromApi[] = itemsData?.data ?? [];
 
   // Danh mục từ API để hiển thị tên và nhóm thiết bị theo category
-  const { data: categoriesData } = useQuery({
-    queryKey: ["assetCategories"],
-    queryFn: getAssetCategories,
-  });
+  const { data: categoriesData } = useAssetCategories();
   const categories: AssetCategoryFromApi[] = categoriesData?.data ?? [];
 
   /** Map item từ API sang Device (để dùng chung UI). */

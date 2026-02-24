@@ -10,29 +10,26 @@ import {
   ActivityIndicator,
   TouchableOpacity,
   ScrollView,
+  Modal,
+  Pressable,
 } from "react-native";
 import { useTranslation } from "react-i18next";
 import { useNavigation } from "@react-navigation/native";
 import type { CompositeNavigationProp } from "@react-navigation/native";
 import type { BottomTabNavigationProp } from "@react-navigation/bottom-tabs";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
-import { useQuery } from "@tanstack/react-query";
 import { MainTabParamList } from "../../../shared/types";
 import { RootStackParamList } from "../../../shared/types";
+import type { Device } from "../../../shared/types";
 import type {
   HouseFromApi,
   AssetCategoryFromApi,
   AssetItemFromApi,
-  Device,
-} from "../../../shared/types";
+} from "../../../shared/types/api";
 import Header from "../../../shared/components/header";
 import { getWorkScheduleThisWeek, WorkSlot } from "../data/mockStaffData";
 import { useStaffSchedule } from "../context/StaffScheduleContext";
-import {
-  getHouses,
-  getAssetCategories,
-  getAssetItems,
-} from "../../../shared/services/houseApi";
+import { useHouses, useAssetCategories, useAssetItems } from "../../../shared/hooks";
 import Icons from "../../../shared/theme/icon";
 import { staffHomeStyles } from "../styles/staffHomeStyles";
 
@@ -56,30 +53,20 @@ export default function StaffHomeScreen() {
   const navigation = useNavigation<StaffHomeNavProp>();
   const { dayOffList } = useStaffSchedule();
 
-  // React Query: gọi API GET /api/houses, cache key "houses", token tự gắn qua axiosClient
-  const { data, isLoading, isError, refetch } = useQuery({
-    queryKey: ["houses"],
-    queryFn: getHouses,
-  });
+  // React Query: gọi API GET /api/houses qua custom hook dùng chung.
+  const { data, isLoading, isError, refetch } = useHouses();
   const buildings: HouseFromApi[] = data?.data ?? [];
   const loading = isLoading;
 
-  // Danh mục thiết bị từ API GET /api/asset/categories (dùng cho thanh filter "Tất cả thiết bị")
-  const { data: categoriesData } = useQuery({
-    queryKey: ["assetCategories"],
-    queryFn: getAssetCategories,
-  });
+  // Danh mục thiết bị cho thanh filter "Tất cả thiết bị".
+  const { data: categoriesData } = useAssetCategories();
   const categories: AssetCategoryFromApi[] = categoriesData?.data ?? [];
   const [selectedCategoryId, setSelectedCategoryId] = useState<string | null>(null);
+  /** Menu "+" hiện 2 lựa chọn: Tạo danh mục / Tạo thiết bị */
+  const [addMenuVisible, setAddMenuVisible] = useState(false);
 
-  // Danh sách thiết bị từ GET /api/asset/items, filter theo category (và houseId nếu cần sau)
-  const { data: itemsData } = useQuery({
-    queryKey: ["assetItems", selectedCategoryId],
-    queryFn: () =>
-      getAssetItems({
-        categoryId: selectedCategoryId ?? undefined,
-      }),
-  });
+  // Danh sách thiết bị từ GET /api/asset/items, filter theo category.
+  const { data: itemsData } = useAssetItems({ categoryId: selectedCategoryId });
   const items: AssetItemFromApi[] = itemsData?.data ?? [];
 
   // Chỉ hiển thị các slot có việc (có ticketId) - tóm tắt lịch có việc
@@ -163,6 +150,21 @@ export default function StaffHomeScreen() {
     metadata: { serialNumber: item.serialNumber },
   });
 
+  /** Mở màn danh sách danh mục (CategoryList), đóng menu. */
+  const openCreateCategory = () => {
+    setAddMenuVisible(false);
+    const root = navigation.getParent?.();
+    if (root && "navigate" in root) {
+      (root as { navigate: (name: string) => void }).navigate("CategoryList");
+    }
+  };
+
+  /** Tạo thiết bị: chưa implement, chỉ đóng menu (có thể bổ sung sau). */
+  const openCreateDevice = () => {
+    setAddMenuVisible(false);
+    // TODO: navigate đến màn tạo thiết bị khi có màn hình
+  };
+
   const openDeviceDetail = (item: AssetItemFromApi) => {
     const houseName = buildings.find((b) => b.id === item.houseId)?.name;
     const device = assetItemToDevice(item, houseName);
@@ -194,9 +196,51 @@ export default function StaffHomeScreen() {
   // Footer: mục "Tất cả thiết bị" với thanh category (từ API) + danh sách items từ GET /api/asset/items
   const listFooter = (
     <View style={staffHomeStyles.devicesSection}>
-      <Text style={staffHomeStyles.sectionTitle}>
-        {t("staff_home.all_devices_title")}
-      </Text>
+      <View style={staffHomeStyles.sectionTitleRow}>
+        <Text style={staffHomeStyles.sectionTitleLeft}>
+          {t("staff_home.all_devices_title")}
+        </Text>
+        <TouchableOpacity
+          style={staffHomeStyles.addButton}
+          onPress={() => setAddMenuVisible(true)}
+          activeOpacity={0.8}
+          accessibilityLabel={t("staff_home.add_menu_open")}
+        >
+          <Icons.plus size={22} color="#fff" />
+        </TouchableOpacity>
+      </View>
+      <Modal
+        visible={addMenuVisible}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setAddMenuVisible(false)}
+      >
+        <Pressable
+          style={staffHomeStyles.addMenuOverlay}
+          onPress={() => setAddMenuVisible(false)}
+        >
+          <Pressable style={staffHomeStyles.addMenuBox} onPress={(e) => e.stopPropagation()}>
+            <TouchableOpacity
+              style={[staffHomeStyles.addMenuItem, staffHomeStyles.addMenuItemBorder]}
+              onPress={openCreateCategory}
+              activeOpacity={0.7}
+            >
+              <Text style={staffHomeStyles.addMenuItemText}>
+                {t("staff_home.add_menu_create_category")}
+              </Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={staffHomeStyles.addMenuItem}
+              onPress={openCreateDevice}
+              activeOpacity={0.7}
+            >
+              <Text style={staffHomeStyles.addMenuItemText}>
+                {t("staff_home.add_menu_create_device")}
+              </Text>
+            </TouchableOpacity>
+          </Pressable>
+        </Pressable>
+      </Modal>
       <ScrollView
         horizontal
         showsHorizontalScrollIndicator={false}

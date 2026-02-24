@@ -202,6 +202,69 @@ export const staffHomeStyles = StyleSheet.create({
     marginHorizontal: 16,
     marginBottom: 24,
   },
+  /** Hàng chứa tiêu đề "Tất cả thiết bị" và nút "+" (mở menu tạo danh mục / thiết bị) */
+  sectionTitleRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginLeft: 16,
+    marginRight: 16,
+    marginBottom: 10,
+    marginTop: 16,
+  },
+  /** Tiêu đề bên trái (Tất cả thiết bị) khi dùng trong sectionTitleRow */
+  sectionTitleLeft: {
+    fontSize: 16,
+    fontWeight: "700",
+    color: "#1F2937",
+    flex: 1,
+  },
+  /** Nút "+" bên phải để mở menu thêm danh mục / thiết bị */
+  addButton: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: "#2563EB",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  /** Modal menu: overlay tối phía sau */
+  addMenuOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(0,0,0,0.4)",
+    // Đưa khung lựa chọn ra giữa màn hình
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  /** Khung chứa 2 lựa chọn trong menu */
+  addMenuBox: {
+    backgroundColor: "#fff",
+    borderRadius: 12,
+    paddingVertical: 8,
+    paddingHorizontal: 4,
+    width: "80%",
+    maxWidth: 320,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.15,
+    shadowRadius: 8,
+    elevation: 5,
+  },
+  addMenuItem: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingVertical: 14,
+    paddingHorizontal: 16,
+  },
+  addMenuItemBorder: {
+    borderBottomWidth: 1,
+    borderBottomColor: "#E5E7EB",
+  },
+  addMenuItemText: {
+    fontSize: 15,
+    color: "#1F2937",
+    fontWeight: "500",
+  },
   /** Thanh cuộn ngang chọn danh mục (category) từ API asset/categories */
   categoryScroll: {
     marginTop: 12,
