@@ -16,7 +16,6 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useNavigation, useRoute, RouteProp } from "@react-navigation/native";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { RootStackParamList } from "../../../shared/types";
-import type { Device } from "../../../shared/types";
 import type { AssetItemFromApi, AssetCategoryFromApi } from "../../../shared/types/api";
 import Icons from "../../../shared/theme/icon";
 import { staffBuildingDetailStyles } from "../styles/staffBuildingDetailStyles";
@@ -51,22 +50,6 @@ export default function BuildingDetailScreen() {
   const { data: categoriesData } = useAssetCategories();
   const categories: AssetCategoryFromApi[] = categoriesData?.data ?? [];
 
-  /** Map item từ API sang Device (để dùng chung UI). */
-  const itemToDevice = (item: AssetItemFromApi): Device => ({
-    id: item.id,
-    name: item.displayName,
-    type: "other",
-    nfcTagId: item.nfcId ?? "",
-    location: buildingName ?? "-",
-    status:
-      item.status === "AVAILABLE"
-        ? "active"
-        : item.status === "DISPOSED"
-          ? "inactive"
-          : "pending",
-    metadata: { serialNumber: item.serialNumber },
-  });
-
   /** Nhóm thiết bị theo category: [{ categoryId, categoryName, items }], thứ tự theo danh sách category từ API. */
   const devicesByCategory = useMemo(() => {
     const map = new Map<string, AssetItemFromApi[]>();
@@ -95,11 +78,11 @@ export default function BuildingDetailScreen() {
     return result;
   }, [rawItems, categories, t]);
 
-  const devices: Device[] = useMemo(
-    () => rawItems.map(itemToDevice),
-    [rawItems, buildingName]
-  );
   const loading = isLoading;
+
+  /** Map trạng thái API (AVAILABLE, DISPOSED) sang nhãn hiển thị (active, inactive) dùng cho getStatusStyle/getStatusLabel. */
+  const getDisplayStatus = (apiStatus: string) =>
+    apiStatus === "AVAILABLE" ? "active" : apiStatus === "DISPOSED" ? "inactive" : "pending";
 
   /** Category đang chọn: null = Tất cả, còn lại = chỉ hiển thị category đó. */
   const [selectedCategoryId, setSelectedCategoryId] = useState<string | null>(null);
@@ -109,10 +92,9 @@ export default function BuildingDetailScreen() {
     return devicesByCategory.filter((g) => g.categoryId === selectedCategoryId);
   }, [devicesByCategory, selectedCategoryId]);
 
-  /** Mở màn Chi tiết thiết bị (cùng root stack với BuildingDetail). */
-  const openDeviceDetail = (item: AssetItemFromApi) => {
-    const device = itemToDevice(item);
-    navigation.navigate("DeviceDetail", { device });
+  /** Mở màn chỉnh sửa thiết bị (ItemEdit) khi nhấn vào 1 thiết bị trong nhà. */
+  const openItemEdit = (item: AssetItemFromApi) => {
+    navigation.navigate("ItemEdit", { item });
   };
 
   const getStatusStyle = (status: string) => {
@@ -163,7 +145,7 @@ export default function BuildingDetailScreen() {
     return t(`staff_building_detail.${key}`, { status: statusValue });
   };
 
-  const handleAssignNfc = (device: Device) => {
+  const handleAssignNfc = (device: AssetItemFromApi) => {
     // TODO: Mở luồng quét NFC / màn gán NFC khi có API
     // Có thể navigate sang Camera (chế độ NFC) hoặc màn AssignNfcScreen
     navigation.navigate("Camera");
@@ -217,11 +199,11 @@ export default function BuildingDetailScreen() {
         </View>
 
         <Text style={staffBuildingDetailStyles.sectionTitle}>
-          {t("staff_building_detail.devices_title", { count: devices.length })}
+          {t("staff_building_detail.devices_title", { count: rawItems.length })}
         </Text>
 
         {/* Thanh category cuộn ngang (giống StaffHomeScreen) */}
-        {devices.length > 0 && (
+        {rawItems.length > 0 && (
           <ScrollView
             horizontal
             showsHorizontalScrollIndicator={false}
@@ -272,7 +254,7 @@ export default function BuildingDetailScreen() {
           </ScrollView>
         )}
 
-        {devices.length === 0 && !loading ? (
+        {rawItems.length === 0 && !loading ? (
           <View style={staffBuildingDetailStyles.emptyDevices}>
             <Text style={staffBuildingDetailStyles.emptyDevicesText}>
               {isError
@@ -287,35 +269,30 @@ export default function BuildingDetailScreen() {
                 {categoryName}
               </Text>
               {items.map((item) => {
-                const device = itemToDevice(item);
-                const hasNfc = !!device.nfcTagId?.trim();
-                const statusStyle = getStatusStyle(device.status);
-                const meta = device.metadata;
-                const metaStr = [
-                  meta?.manufacturer,
-                  meta?.model,
-                  meta?.serialNumber,
-                ]
-                  .filter(Boolean)
-                  .join(" • ");
+                const hasNfc = !!item.nfcId?.trim();
+                const displayStatus = getDisplayStatus(item.status);
+                const statusStyle = getStatusStyle(displayStatus);
+                const categoryName = categories.find((c) => c.id === item.categoryId)?.name;
 
                 return (
                   <TouchableOpacity
-                    key={device.id}
+                    key={item.id}
                     style={staffBuildingDetailStyles.deviceCard}
-                    onPress={() => openDeviceDetail(item)}
+                    onPress={() => openItemEdit(item)}
                     activeOpacity={0.8}
                   >
                     <View style={staffBuildingDetailStyles.deviceInfo}>
                       <Text style={staffBuildingDetailStyles.deviceName} numberOfLines={1}>
-                        {device.name}
+                        {item.displayName}
                       </Text>
                       <Text style={staffBuildingDetailStyles.deviceLocation}>
-                        {device.location}
+                        {buildingName}
                       </Text>
-                      {metaStr ? (
+                      {(item.serialNumber || item.conditionPercent != null) ? (
                         <Text style={staffBuildingDetailStyles.deviceMeta} numberOfLines={1}>
-                          {metaStr}
+                          {[item.serialNumber, item.conditionPercent != null ? `${item.conditionPercent}%` : null]
+                            .filter(Boolean)
+                            .join(" • ")}
                         </Text>
                       ) : null}
                       <View
@@ -347,14 +324,15 @@ export default function BuildingDetailScreen() {
                             { color: statusStyle.color },
                           ]}
                         >
-                          {getStatusLabel(device.status)} • {getTypeLabel(device.type)}
+                          {getStatusLabel(displayStatus)}
+                          {categoryName ? ` • ${categoryName}` : ` • ${getTypeLabel("other")}`}
                         </Text>
                       </View>
                     </View>
                     {!hasNfc && (
                       <TouchableOpacity
                         style={staffBuildingDetailStyles.assignNfcBtn}
-                        onPress={() => handleAssignNfc(device)}
+                        onPress={() => handleAssignNfc(item)}
                         activeOpacity={0.8}
                       >
                         <Text style={staffBuildingDetailStyles.assignNfcBtnText}>

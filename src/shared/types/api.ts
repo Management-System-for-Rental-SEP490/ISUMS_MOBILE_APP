@@ -157,6 +157,41 @@ export interface AssetItemsApiResponse {
   data: AssetItemFromApi[];
 }
 
+/**
+ * Body gửi lên khi tạo thiết bị mới (POST /api/asset/items).
+ * Khớp API: houseId, categoryId, displayName, serialNumber, nfcId, conditionPercent, status.
+ */
+export interface CreateAssetItemRequest {
+  houseId: string;
+  categoryId: string;
+  displayName: string;
+  serialNumber: string;
+  /** Có thể chuỗi hoặc null nếu chưa gán NFC. */
+  nfcId: string | null;
+  conditionPercent: number;
+  /** VD "AVAILABLE", "DISPOSED". */
+  status: string;
+}
+
+/** Response body của API POST /api/asset/items (tạo thiết bị thành công). */
+export interface CreateAssetItemApiResponse {
+  data: AssetItemFromApi;
+  message: string;
+  statusCode: number;
+  success: boolean;
+}
+
+/** Body cập nhật thiết bị (PUT /api/asset/items/:id). Có thể dùng cùng cấu trúc create. */
+export type UpdateAssetItemRequest = CreateAssetItemRequest;
+
+/** Response PUT /api/asset/items/:id. */
+export interface UpdateAssetItemApiResponse {
+  data: AssetItemFromApi;
+  message: string;
+  statusCode: number;
+  success: boolean;
+}
+
 // Sau này có thêm API khác thì định nghĩa tiếp ở dưới
 // Ví dụ:
 // export interface DeviceResponse { ... }

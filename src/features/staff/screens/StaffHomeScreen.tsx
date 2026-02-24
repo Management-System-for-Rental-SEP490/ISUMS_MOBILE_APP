@@ -20,7 +20,6 @@ import type { BottomTabNavigationProp } from "@react-navigation/bottom-tabs";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { MainTabParamList } from "../../../shared/types";
 import { RootStackParamList } from "../../../shared/types";
-import type { Device } from "../../../shared/types";
 import type {
   HouseFromApi,
   AssetCategoryFromApi,
@@ -67,7 +66,15 @@ export default function StaffHomeScreen() {
 
   // Danh sách thiết bị từ GET /api/asset/items, filter theo category.
   const { data: itemsData } = useAssetItems({ categoryId: selectedCategoryId });
-  const items: AssetItemFromApi[] = itemsData?.data ?? [];
+  const rawItems: AssetItemFromApi[] = itemsData?.data ?? [];
+  /** Lọc theo danh mục đang chọn: "Tất cả" (null) thì hiển thị hết; chọn 1 danh mục thì chỉ hiển thị thiết bị thuộc danh mục đó (phòng trường hợp BE chưa filter theo query categoryId). */
+  const items = useMemo(
+    () =>
+      selectedCategoryId == null
+        ? rawItems
+        : rawItems.filter((item) => item.categoryId === selectedCategoryId),
+    [rawItems, selectedCategoryId]
+  );
 
   // Chỉ hiển thị các slot có việc (có ticketId) - tóm tắt lịch có việc
   const sortedSchedule = useMemo(
@@ -131,25 +138,6 @@ export default function StaffHomeScreen() {
     return { bg: "#F3F4F6", color: "#6B7280" };
   };
 
-  /** Chuyển AssetItemFromApi (API items) sang Device để màn DeviceDetail dùng chung. */
-  const assetItemToDevice = (
-    item: AssetItemFromApi,
-    houseName?: string
-  ): Device => ({
-    id: item.id,
-    name: item.displayName,
-    type: "other",
-    nfcTagId: item.nfcId ?? "",
-    location: houseName ?? "-",
-    status:
-      item.status === "AVAILABLE"
-        ? "active"
-        : item.status === "DISPOSED"
-          ? "inactive"
-          : "pending",
-    metadata: { serialNumber: item.serialNumber },
-  });
-
   /** Mở màn danh sách danh mục (CategoryList), đóng menu. */
   const openCreateCategory = () => {
     setAddMenuVisible(false);
@@ -159,20 +147,22 @@ export default function StaffHomeScreen() {
     }
   };
 
-  /** Tạo thiết bị: chưa implement, chỉ đóng menu (có thể bổ sung sau). */
+  /** Mở màn danh sách thiết bị (ItemList), từ đó nhấn "+" để thêm thiết bị. */
   const openCreateDevice = () => {
     setAddMenuVisible(false);
-    // TODO: navigate đến màn tạo thiết bị khi có màn hình
+    const root = navigation.getParent?.();
+    if (root && "navigate" in root) {
+      (root as { navigate: (name: string) => void }).navigate("ItemList");
+    }
   };
 
-  const openDeviceDetail = (item: AssetItemFromApi) => {
-    const houseName = buildings.find((b) => b.id === item.houseId)?.name;
-    const device = assetItemToDevice(item, houseName);
+  /** Mở màn chỉnh sửa thiết bị (ItemEdit) thay vì màn DeviceDetail cũ. */
+  const openItemEdit = (item: AssetItemFromApi) => {
     const root = navigation.getParent?.();
     if (root && "navigate" in root) {
       (root as { navigate: (name: string, params: object) => void }).navigate(
-        "DeviceDetail",
-        { device }
+        "ItemEdit",
+        { item }
       );
     }
   };
@@ -307,7 +297,7 @@ export default function StaffHomeScreen() {
               <TouchableOpacity
                 key={item.id}
                 style={staffHomeStyles.deviceItemCard}
-                onPress={() => openDeviceDetail(item)}
+                onPress={() => openItemEdit(item)}
                 activeOpacity={0.8}
               >
                 <View style={staffHomeStyles.deviceItemRow}>

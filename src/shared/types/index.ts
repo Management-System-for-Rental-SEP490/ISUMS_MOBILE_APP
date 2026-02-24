@@ -1,5 +1,5 @@
 import { BottomTabScreenProps } from "@react-navigation/bottom-tabs";
-import type { AssetCategoryFromApi } from "./api";
+import type { AssetCategoryFromApi, AssetItemFromApi } from "./api";
 
 export type AuthStackParamList = {
   AuthLogin: undefined;
@@ -48,6 +48,12 @@ export type RootStackParamList = AuthStackParamList & {
   CategoryList: undefined;
   /** Màn chỉnh sửa danh mục (Staff), hiện dạng modal. Param: category cần sửa. */
   CategoryEdit: { category: AssetCategoryFromApi };
+  /** Màn danh sách thiết bị (Staff), xếp theo category. */
+  ItemList: undefined;
+  /** Màn form thêm thiết bị (Staff). */
+  ItemCreate: undefined;
+  /** Màn chỉnh sửa thiết bị (Staff), hiện dạng modal. Param: item cần sửa. */
+  ItemEdit: { item: AssetItemFromApi };
 };
 
 export type IconProps = {

@@ -15,6 +15,9 @@ import TicketDetailScreen from "../features/staff/screens/TicketDetailScreen";
 import CategoryScreen from "../features/staff/screens/categoryScreen";
 import CategoryListScreen from "../features/staff/screens/CategoryListScreen";
 import CategoryEditScreen from "../features/staff/screens/CategoryEditScreen";
+import ItemListScreen from "../features/staff/screens/ItemListScreen";
+import ItemCreateScreen from "../features/staff/screens/ItemCreateScreen";
+import ItemEditScreen from "../features/staff/screens/ItemEditScreen";
 import { StaffScheduleProvider } from "../features/staff/context/StaffScheduleContext";
 
 // Wrapper components để bọc Provider cho các screen cần useStaffSchedule
@@ -113,6 +116,13 @@ const Navigation = () => {
                   <Stack.Screen
                     name="CategoryEdit"
                     component={CategoryEditScreen}
+                    options={{ presentation: "modal" }}
+                  />
+                  <Stack.Screen name="ItemList" component={ItemListScreen} />
+                  <Stack.Screen name="ItemCreate" component={ItemCreateScreen} />
+                  <Stack.Screen
+                    name="ItemEdit"
+                    component={ItemEditScreen}
                     options={{ presentation: "modal" }}
                   />
                 </>

@@ -1,6 +1,15 @@
-import { useQuery } from "@tanstack/react-query";
-import { getAssetItems } from "../services/assetItemApi";
-import type { AssetItemsApiResponse } from "../types/api";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import {
+  getAssetItems,
+  createAssetItem,
+  updateAssetItem,
+  deleteAssetItem,
+} from "../services/assetItemApi";
+import type {
+  AssetItemsApiResponse,
+  CreateAssetItemRequest,
+  UpdateAssetItemRequest,
+} from "../types/api";
 import type { AssetItemsParams } from "../services/assetItemApi";
 
 /**
@@ -54,13 +63,41 @@ export const useAssetItems = (params: UseAssetItemsParams = {}) => {
 
   return useQuery<AssetItemsApiResponse, unknown, AssetItemsApiResponse, ReturnType<typeof ASSET_ITEM_KEYS.byCategory> | ReturnType<typeof ASSET_ITEM_KEYS.byHouse>>({
     queryKey,
-    // Hàm gọi API thật sự (truyền houseId/categoryId nếu có).
     queryFn: () =>
       getAssetItems({
         houseId,
-        // Nếu categoryId là null => chuyển thành undefined để không gắn lên query string.
         categoryId: (categoryId ?? undefined) as AssetItemsParams["categoryId"],
       }),
+  });
+};
+
+/** Invalidate mọi query asset items (list, byHouse, byCategory) sau khi create/update/delete. */
+const invalidateAllAssetItems = (queryClient: ReturnType<typeof useQueryClient>) => {
+  queryClient.invalidateQueries({ queryKey: ASSET_ITEM_KEYS.base });
+};
+
+export const useCreateAssetItem = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (payload: CreateAssetItemRequest) => createAssetItem(payload),
+    onSuccess: () => invalidateAllAssetItems(queryClient),
+  });
+};
+
+export const useUpdateAssetItem = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, payload }: { id: string; payload: UpdateAssetItemRequest }) =>
+      updateAssetItem(id, payload),
+    onSuccess: () => invalidateAllAssetItems(queryClient),
+  });
+};
+
+export const useDeleteAssetItem = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => deleteAssetItem(id),
+    onSuccess: () => invalidateAllAssetItems(queryClient),
   });
 };
 

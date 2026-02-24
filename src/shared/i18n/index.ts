@@ -212,6 +212,41 @@ const resources = {
         "error": "Không tải được danh sách danh mục. Vui lòng thử lại.",
         "compensation": "Bồi thường: {{percent}}%"
       },
+      "staff_item_list": {
+        "title": "Danh sách thiết bị",
+        "empty": "Chưa có thiết bị nào.",
+        "error": "Không tải được danh sách thiết bị. Vui lòng thử lại.",
+        "category_other": "Khác",
+        "condition": "Tình trạng: {{percent}}%",
+        "status_available": "Sẵn sàng",
+        "status_disposed": "Đã thanh lý"
+      },
+      "staff_item_create": {
+        "title": "Thêm thiết bị",
+        "house_label": "Căn nhà",
+        "category_label": "Danh mục thiết bị",
+        "display_name_label": "Tên hiển thị",
+        "display_name_placeholder": "Ví dụ: Máy lạnh phòng khách",
+        "serial_number_label": "Số serial",
+        "serial_number_placeholder": "Ví dụ: AC-2025-003",
+        "nfc_id_label": "Mã NFC (tùy chọn)",
+        "nfc_id_placeholder": "Để trống nếu chưa gán",
+        "condition_label": "Tình trạng (%)",
+        "status_label": "Trạng thái",
+        "status_available": "Sẵn sàng",
+        "status_disposed": "Đã thanh lý",
+        "submit": "Thêm thiết bị",
+        "success_message": "Đã thêm thiết bị.",
+        "error_message": "Có lỗi. Vui lòng thử lại."
+      },
+      "staff_item_edit": {
+        "title": "Chỉnh sửa thiết bị",
+        "submit": "Cập nhật",
+        "success_message": "Đã cập nhật thiết bị.",
+        "delete_btn": "Xóa thiết bị",
+        "delete_confirm_title": "Xác nhận xóa",
+        "delete_confirm_message": "Bạn có chắc muốn xóa thiết bị này? Thao tác có thể không hoàn tác được."
+      },
       "staff_notification": {
         "tenant_sent_ticket_title": "Có ticket mới từ người thuê",
         "tenant_sent_ticket_body": "Người thuê tại {{house}} đã gửi ticket #{{id}}. Vui lòng xem và xử lý.",
@@ -539,6 +574,41 @@ const resources = {
         "error": "Could not load categories. Please try again.",
         "compensation": "Compensation: {{percent}}%"
       },
+      "staff_item_list": {
+        "title": "Device list",
+        "empty": "No devices yet.",
+        "error": "Could not load devices. Please try again.",
+        "category_other": "Other",
+        "condition": "Condition: {{percent}}%",
+        "status_available": "Available",
+        "status_disposed": "Disposed"
+      },
+      "staff_item_create": {
+        "title": "Add device",
+        "house_label": "House",
+        "category_label": "Category",
+        "display_name_label": "Display name",
+        "display_name_placeholder": "e.g. Living room AC",
+        "serial_number_label": "Serial number",
+        "serial_number_placeholder": "e.g. AC-2025-003",
+        "nfc_id_label": "NFC ID (optional)",
+        "nfc_id_placeholder": "Leave empty if not assigned",
+        "condition_label": "Condition (%)",
+        "status_label": "Status",
+        "status_available": "Available",
+        "status_disposed": "Disposed",
+        "submit": "Add device",
+        "success_message": "Device added.",
+        "error_message": "Something went wrong. Please try again."
+      },
+      "staff_item_edit": {
+        "title": "Edit device",
+        "submit": "Update",
+        "success_message": "Device updated.",
+        "delete_btn": "Delete device",
+        "delete_confirm_title": "Confirm delete",
+        "delete_confirm_message": "Are you sure you want to delete this device? This action may not be reversible."
+      },
       "staff_notification": {
         "tenant_sent_ticket_title": "New ticket from tenant",
         "tenant_sent_ticket_body": "A tenant at {{house}} submitted ticket #{{id}}. Please review and handle.",
@@ -865,6 +935,41 @@ const resources = {
         "empty": "カテゴリがまだありません。",
         "error": "カテゴリ一覧を読み込めませんでした。もう一度お試しください。",
         "compensation": "補償率: {{percent}}%"
+      },
+      "staff_item_list": {
+        "title": "デバイス一覧",
+        "empty": "デバイスがまだありません。",
+        "error": "デバイス一覧を読み込めませんでした。もう一度お試しください。",
+        "category_other": "その他",
+        "condition": "状態: {{percent}}%",
+        "status_available": "利用可能",
+        "status_disposed": "廃棄済み"
+      },
+      "staff_item_create": {
+        "title": "デバイスを追加",
+        "house_label": "建物",
+        "category_label": "カテゴリ",
+        "display_name_label": "表示名",
+        "display_name_placeholder": "例：リビングエアコン",
+        "serial_number_label": "シリアル番号",
+        "serial_number_placeholder": "例：AC-2025-003",
+        "nfc_id_label": "NFC ID（任意）",
+        "nfc_id_placeholder": "未割り当ての場合は空欄",
+        "condition_label": "状態（%）",
+        "status_label": "ステータス",
+        "status_available": "利用可能",
+        "status_disposed": "廃棄済み",
+        "submit": "追加",
+        "success_message": "デバイスを追加しました。",
+        "error_message": "エラーが発生しました。もう一度お試しください。"
+      },
+      "staff_item_edit": {
+        "title": "デバイスを編集",
+        "submit": "更新",
+        "success_message": "デバイスを更新しました。",
+        "delete_btn": "デバイスを削除",
+        "delete_confirm_title": "削除の確認",
+        "delete_confirm_message": "このデバイスを削除してもよろしいですか？元に戻せない場合があります。"
       },
       "staff_notification": {
         "tenant_sent_ticket_title": "入居者からチケットが届きました",
