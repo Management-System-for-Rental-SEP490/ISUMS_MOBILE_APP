@@ -21,7 +21,8 @@ export type HeaderVariant = "default" | "electric" | "water"; // định nghĩa 
 export type RootStackParamList = AuthStackParamList & {
   Main: undefined;
   OnBoarding: undefined;
-  Camera: undefined;
+  /** Quét QR/NFC. Tenant: hiện DeviceDetail. Staff: tra cứu thiết bị theo NFC hoặc gán NFC (khi truyền assignForDevice). */
+  Camera: undefined | { assignForDevice: AssetItemFromApi };
   DeviceDetail: { device: Device };
   Ticket: { device: Device };
   /** Chi tiết nhà cho Staff: danh sách thiết bị + nút gán NFC. Có thể truyền thêm thông tin từ API houses. */

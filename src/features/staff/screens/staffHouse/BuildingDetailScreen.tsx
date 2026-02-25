@@ -155,9 +155,8 @@ export default function BuildingDetailScreen() {
   };
 
   const handleAssignNfc = (device: AssetItemFromApi) => {
-    // TODO: Mở luồng quét NFC / màn gán NFC khi có API
-    // Có thể navigate sang Camera (chế độ NFC) hoặc màn AssignNfcScreen
-    navigation.navigate("Camera");
+    // Mở màn Camera (chế độ NFC) với thiết bị cần gán; sau khi quét thẻ, xác nhận và PUT cập nhật nfcId.
+    navigation.navigate("Camera", { assignForDevice: device });
   };
 
   if (loading) {

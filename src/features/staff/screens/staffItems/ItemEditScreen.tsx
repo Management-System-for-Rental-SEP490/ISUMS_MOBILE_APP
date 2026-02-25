@@ -24,6 +24,7 @@ import type { RouteProp } from "@react-navigation/native";
 import { RootStackParamList } from "../../../../shared/types";
 import Icons from "../../../../shared/theme/icon";
 import { useUpdateAssetItem, useHouses, useAssetCategories } from "../../../../shared/hooks";
+import { getAssetItemByNfcId } from "../../../../shared/services/assetItemApi";
 import { itemScreenStyles } from "./itemScreenStyles";
 import type { AssetCategoryFromApi, AssetItemFromApi } from "../../../../shared/types/api";
 import type { HouseFromApi } from "../../../../shared/types/api";
@@ -68,7 +69,7 @@ export default function ItemEditScreen() {
   const isSuccess = updateMutation.isSuccess;
   const error = updateMutation.error;
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     if (!houseId.trim() || !categoryId.trim() || !displayName.trim() || !serialNumber.trim()) {
       updateMutation.reset();
       return;
@@ -78,6 +79,24 @@ export default function ItemEditScreen() {
       updateMutation.reset();
       return;
     }
+    const trimmedNfcId = nfcId.trim();
+    if (trimmedNfcId.length > 0) {
+      try {
+        const existing = await getAssetItemByNfcId(trimmedNfcId);
+        if (existing && existing.id !== item.id) {
+          Alert.alert(
+            t("staff_item_edit.nfc_duplicate_title"),
+            t("staff_item_edit.nfc_duplicate_message", { name: existing.displayName })
+          );
+          updateMutation.reset();
+          return;
+        }
+      } catch (e) {
+        // có thể log nếu cần; tạm thời bỏ qua để không chặn lưu khi chỉ lỗi mạng nhẹ
+        console.log("Lỗi kiểm tra trùng NFC:", e);
+      }
+    }
+
     updateMutation.mutate(
       {
         id: item.id,
@@ -86,7 +105,9 @@ export default function ItemEditScreen() {
           categoryId: categoryId.trim(),
           displayName: displayName.trim(),
           serialNumber: serialNumber.trim(),
-          nfcId: nfcId.trim() || null,
+          // Nếu người dùng xóa hết -> gửi chuỗi rỗng "", giống cách anh đang test trên Postman.
+          // BE sẽ hiểu là gỡ gán NFC cho thiết bị này.
+          nfcId: nfcId.trim() || "",
           conditionPercent: percent,
           status: status || "AVAILABLE",
         },
@@ -115,7 +136,7 @@ export default function ItemEditScreen() {
                   categoryId: categoryId.trim(),
                   displayName: displayName.trim(),
                   serialNumber: serialNumber.trim(),
-                  nfcId: nfcId.trim() || null,
+                  nfcId: nfcId.trim() || "",
                   conditionPercent: Number.isNaN(percent) ? item.conditionPercent : percent,
                   status: "DISPOSED",
                 },

@@ -245,7 +245,9 @@ const resources = {
         "success_message": "Đã cập nhật thiết bị.",
         "delete_btn": "Xóa thiết bị",
         "delete_confirm_title": "Xác nhận xóa",
-        "delete_confirm_message": "Bạn có chắc muốn xóa thiết bị này? Thao tác có thể không hoàn tác được."
+        "delete_confirm_message": "Bạn có chắc muốn xóa thiết bị này? Thao tác có thể không hoàn tác được.",
+        "nfc_duplicate_title": "Mã NFC đã được gán",
+        "nfc_duplicate_message": "Mã NFC này đang được gán cho thiết bị \"{{name}}\". Mỗi mã chỉ được gán cho một thiết bị."
       },
       "staff_notification": {
         "tenant_sent_ticket_title": "Có ticket mới từ người thuê",
@@ -313,6 +315,21 @@ const resources = {
         "house_status_available": "Còn trống",
         "house_status_rented": "Đã cho thuê",
         "house_status_other": "{{status}}"
+      },
+      "staff_nfc": {
+        "nfc_id_not_assigned": "Mã NFC này chưa được gán cho thiết bị nào.",
+        "assign_to_empty_device": "Gán vào thiết bị trống",
+        "confirm_assign_title": "Xác nhận gán NFC",
+        "confirm_assign_message": "Gán mã NFC \"{{nfcId}}\" vào thiết bị \"{{displayName}}\"?",
+        "assign_success": "Gán NFC thành công.",
+        "assign_error": "Không thể gán NFC. Vui lòng thử lại.",
+        "select_device_to_assign": "Chọn thiết bị để gán mã NFC",
+        "no_empty_devices": "Không có thiết bị nào đang trống (chưa gán NFC).",
+        "device_found": "Đã tìm thấy thiết bị",
+        "section_house_category": "{{houseName}} · {{categoryName}}",
+        "house_other": "Khác",
+        "duplicate_title": "Mã NFC đã được gán",
+        "duplicate_message": "Mã NFC này đang được gán cho thiết bị \"{{name}}\". Mỗi thẻ chỉ được gán cho một thiết bị."
       },
       "staff_book_schedule_modal": {
         "title": "Đăng ký ngày nghỉ",
@@ -607,7 +624,9 @@ const resources = {
         "success_message": "Device updated.",
         "delete_btn": "Delete device",
         "delete_confirm_title": "Confirm delete",
-        "delete_confirm_message": "Are you sure you want to delete this device? This action may not be reversible."
+         "delete_confirm_message": "Are you sure you want to delete this device? This action may not be reversible.",
+         "nfc_duplicate_title": "NFC already assigned",
+         "nfc_duplicate_message": "This NFC ID is already assigned to device \"{{name}}\". Each NFC can only be linked to one device."
       },
       "staff_notification": {
         "tenant_sent_ticket_title": "New ticket from tenant",
@@ -675,6 +694,21 @@ const resources = {
         "house_status_available": "Available",
         "house_status_rented": "Rented",
         "house_status_other": "{{status}}"
+      },
+      "staff_nfc": {
+        "nfc_id_not_assigned": "This NFC ID is not assigned to any device.",
+        "assign_to_empty_device": "Assign to empty device",
+        "confirm_assign_title": "Confirm assign NFC",
+        "confirm_assign_message": "Assign NFC \"{{nfcId}}\" to device \"{{displayName}}\"?",
+        "assign_success": "NFC assigned successfully.",
+        "assign_error": "Failed to assign NFC. Please try again.",
+        "select_device_to_assign": "Select a device to assign NFC",
+        "no_empty_devices": "No devices without NFC.",
+        "device_found": "Device found",
+        "section_house_category": "{{houseName}} · {{categoryName}}",
+        "house_other": "Other",
+        "duplicate_title": "NFC already assigned",
+        "duplicate_message": "This NFC ID is already assigned to device \"{{name}}\". Each NFC can only be linked to one device."
       },
       "staff_book_schedule_modal": {
         "title": "Register day off",
@@ -969,7 +1003,9 @@ const resources = {
         "success_message": "デバイスを更新しました。",
         "delete_btn": "デバイスを削除",
         "delete_confirm_title": "削除の確認",
-        "delete_confirm_message": "このデバイスを削除してもよろしいですか？元に戻せない場合があります。"
+        "delete_confirm_message": "このデバイスを削除してもよろしいですか？元に戻せない場合があります。",
+        "nfc_duplicate_title": "NFCは既に割り当て済みです",
+        "nfc_duplicate_message": "このNFC IDはすでにデバイス「{{name}}」に割り当てられています。1つのNFCは1つのデバイスにのみ紐づけできます。"
       },
       "staff_notification": {
         "tenant_sent_ticket_title": "入居者からチケットが届きました",
@@ -1037,6 +1073,21 @@ const resources = {
         "house_status_available": "空き",
         "house_status_rented": "賃貸中",
         "house_status_other": "{{status}}"
+      },
+      "staff_nfc": {
+        "nfc_id_not_assigned": "このNFC IDはどのデバイスにも割り当てられていません。",
+        "assign_to_empty_device": "空きデバイスに割り当て",
+        "confirm_assign_title": "NFC割り当ての確認",
+        "confirm_assign_message": "NFC「{{nfcId}}」をデバイス「{{displayName}}」に割り当てますか？",
+        "assign_success": "NFCの割り当てに成功しました。",
+        "assign_error": "NFCの割り当てに失敗しました。もう一度お試しください。",
+        "select_device_to_assign": "NFCを割り当てるデバイスを選択",
+        "no_empty_devices": "NFC未割り当てのデバイスがありません。",
+        "device_found": "デバイスが見つかりました",
+        "section_house_category": "{{houseName}} · {{categoryName}}",
+        "house_other": "その他",
+        "duplicate_title": "NFCは既に割り当て済みです",
+        "duplicate_message": "このNFC IDはすでにデバイス「{{name}}」に割り当てられています。1つのNFCは1つのデバイスにのみ紐づけできます。"
       },
       "staff_book_schedule_modal": {
         "title": "休暇登録",

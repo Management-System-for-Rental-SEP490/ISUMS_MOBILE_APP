@@ -138,5 +138,36 @@ export const cameraStyles = StyleSheet.create({
           fontSize: 16,
           fontWeight: "600",
           textAlign: "center",
+          },
+        /** Danh sách thiết bị chưa gán NFC (Staff chọn để gán thẻ) */
+        nfcPickList: {
+          maxHeight: 320,
+          width: "100%",
+          marginTop: 12,
+        },
+        nfcPickSectionHeader: {
+          paddingVertical: 8,
+          paddingHorizontal: 4,
+          backgroundColor: "#e2e8f0",
+        },
+        nfcPickSectionHeaderText: {
+          fontWeight: "700",
+          fontSize: 14,
+          color: "#334155",
+        },
+        nfcPickItem: {
+          padding: 14,
+          backgroundColor: "#f1f5f9",
+          borderRadius: 8,
+          marginHorizontal: 4,
+          marginBottom: 8,
+        },
+        nfcPickItemTitle: {
+          fontWeight: "600",
+          fontSize: 15,
+        },
+        nfcPickItemSubtitle: {
+          color: "#64748b",
+          marginTop: 4,
         },
       });

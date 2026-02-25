@@ -5,6 +5,7 @@
 import axiosClient from "../api/axiosClient";
 import { BACKEND_API_BASE } from "../api/config";
 import type {
+  AssetItemFromApi,
   AssetItemsApiResponse,
   CreateAssetItemRequest,
   CreateAssetItemApiResponse,
@@ -12,12 +13,14 @@ import type {
   UpdateAssetItemApiResponse,
 } from "../types/api";
 
-/** Tham số filter cho GET /api/asset/items (tùy chọn theo nhà và/hoặc danh mục). */
+/** Tham số filter cho GET /api/asset/items (tùy chọn theo nhà, danh mục, hoặc NFC). */
 export type AssetItemsParams = {
   /** Lọc theo ID căn nhà. */
   houseId?: string;
   /** Lọc theo ID danh mục thiết bị. */
   categoryId?: string;
+  /** Lọc theo mã NFC đã gán (thường trả về tối đa 1 thiết bị). Một số BE hỗ trợ query ?nfcId=xxx. */
+  nfcId?: string;
 };
 
 /**
@@ -31,6 +34,7 @@ export const getAssetItems = async (
   const searchParams = new URLSearchParams();
   if (params?.houseId) searchParams.set("houseId", params.houseId);
   if (params?.categoryId) searchParams.set("categoryId", params.categoryId);
+  if (params?.nfcId) searchParams.set("nfcId", params.nfcId);
 
   const query = searchParams.toString();
   const url = query
@@ -39,6 +43,24 @@ export const getAssetItems = async (
 
   const response = await axiosClient.get<AssetItemsApiResponse>(url);
   return response.data;
+};
+
+/**
+ * Tìm thiết bị theo mã NFC đã gán.
+ * Gọi GET /api/asset/items lấy TOÀN BỘ danh sách, sau đó filter theo nfcId ở phía FE.
+ * Lý do: tránh phụ thuộc vào việc BE có implement đúng query ?nfcId hay không.
+ * @param nfcId - Mã NFC đã đọc từ thẻ (có thể có khoảng trắng, ví dụ "04 9C 59 A2 B2 19 90").
+ * @returns Promise<AssetItemFromApi | undefined> - Thiết bị tương ứng hoặc undefined nếu chưa gán.
+ */
+export const getAssetItemByNfcId = async (
+  nfcId: string
+): Promise<AssetItemFromApi | undefined> => {
+  const normalized = nfcId.trim();
+  const res = await getAssetItems();
+  const found = res.data.find(
+    (d) => (d.nfcId || "").trim() === normalized
+  );
+  return found ?? undefined;
 };
 
 /**
