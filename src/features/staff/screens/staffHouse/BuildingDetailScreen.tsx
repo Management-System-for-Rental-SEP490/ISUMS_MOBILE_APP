@@ -3,7 +3,7 @@
  * Hiển thị thông tin nhà + danh sách thiết bị từ API GET /api/asset/items (filter theo houseId).
  * Thiết bị chưa có NFC hiển thị nút "Gán mã NFC" (sau này mở luồng quét NFC).
  */
-import React, { useMemo, useState } from "react";
+import React, { useMemo } from "react";
 import {
   View,
   Text,
@@ -20,6 +20,7 @@ import type { AssetItemFromApi, AssetCategoryFromApi } from "../../../../shared/
 import Icons from "../../../../shared/theme/icon";
 import { staffBuildingDetailStyles } from "./staffBuildingDetailStyles";
 import { useAssetItems, useAssetCategories } from "../../../../shared/hooks";
+import { useCategoryFilterStore } from "../../../../store/useCategoryFilterStore";
 
 type BuildingDetailRouteProp = RouteProp<RootStackParamList, "BuildingDetail">;
 type NavProp = NativeStackNavigationProp<RootStackParamList, "BuildingDetail">;
@@ -84,8 +85,16 @@ export default function BuildingDetailScreen() {
   const getDisplayStatus = (apiStatus: string) =>
     apiStatus === "AVAILABLE" ? "active" : apiStatus === "DISPOSED" ? "inactive" : "pending";
 
-  /** Category đang chọn: null = Tất cả, còn lại = chỉ hiển thị category đó. */
-  const [selectedCategoryId, setSelectedCategoryId] = useState<string | null>(null);
+  /** Category đang chọn: lấy từ store theo buildingId, null = Tất cả. */
+  const buildingSelectedCategoryId = useCategoryFilterStore(
+    (s) => s.buildingSelectedCategoryId
+  );
+  const setBuildingSelectedCategoryId = useCategoryFilterStore(
+    (s) => s.setBuildingSelectedCategoryId
+  );
+  const selectedCategoryId = buildingSelectedCategoryId[buildingId] ?? null;
+  const setSelectedCategoryId = (categoryId: string | null) =>
+    setBuildingSelectedCategoryId(buildingId, categoryId);
   /** Chỉ lấy các block category cần hiển thị theo filter. */
   const filteredDevicesByCategory = useMemo(() => {
     if (selectedCategoryId === null) return devicesByCategory;

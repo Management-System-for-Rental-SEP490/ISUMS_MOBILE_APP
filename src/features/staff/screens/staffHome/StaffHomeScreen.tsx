@@ -29,6 +29,7 @@ import Header from "../../../../shared/components/header";
 import { getWorkScheduleThisWeek, WorkSlot } from "../../data/mockStaffData";
 import { useStaffSchedule } from "../../context/StaffScheduleContext";
 import { useHouses, useAssetCategories, useAssetItems } from "../../../../shared/hooks";
+import { useCategoryFilterStore } from "../../../../store/useCategoryFilterStore";
 import Icons from "../../../../shared/theme/icon";
 import { staffHomeStyles } from "./staffHomeStyles";
 
@@ -60,20 +61,20 @@ export default function StaffHomeScreen() {
   // Danh mục thiết bị cho thanh filter "Tất cả thiết bị".
   const { data: categoriesData } = useAssetCategories();
   const categories: AssetCategoryFromApi[] = categoriesData?.data ?? [];
-  const [selectedCategoryId, setSelectedCategoryId] = useState<string | null>(null);
+  const { homeSelectedCategoryId, setHomeSelectedCategoryId } = useCategoryFilterStore();
   /** Menu "+" hiện 2 lựa chọn: Tạo danh mục / Tạo thiết bị */
   const [addMenuVisible, setAddMenuVisible] = useState(false);
 
   // Danh sách thiết bị từ GET /api/asset/items, filter theo category.
-  const { data: itemsData } = useAssetItems({ categoryId: selectedCategoryId });
+  const { data: itemsData } = useAssetItems({ categoryId: homeSelectedCategoryId });
   const rawItems: AssetItemFromApi[] = itemsData?.data ?? [];
   /** Lọc theo danh mục đang chọn: "Tất cả" (null) thì hiển thị hết; chọn 1 danh mục thì chỉ hiển thị thiết bị thuộc danh mục đó (phòng trường hợp BE chưa filter theo query categoryId). */
   const items = useMemo(
     () =>
-      selectedCategoryId == null
+      homeSelectedCategoryId == null
         ? rawItems
-        : rawItems.filter((item) => item.categoryId === selectedCategoryId),
-    [rawItems, selectedCategoryId]
+        : rawItems.filter((item) => item.categoryId === homeSelectedCategoryId),
+    [rawItems, homeSelectedCategoryId]
   );
 
   // Chỉ hiển thị các slot có việc (có ticketId) - tóm tắt lịch có việc
@@ -240,22 +241,22 @@ export default function StaffHomeScreen() {
         <TouchableOpacity
           style={[
             staffHomeStyles.categoryChip,
-            selectedCategoryId === null && staffHomeStyles.categoryChipActive,
+            homeSelectedCategoryId === null && staffHomeStyles.categoryChipActive,
           ]}
-          onPress={() => setSelectedCategoryId(null)}
+          onPress={() => setHomeSelectedCategoryId(null)}
           activeOpacity={0.8}
         >
           <Text
             style={[
               staffHomeStyles.categoryChipText,
-              selectedCategoryId === null && staffHomeStyles.categoryChipTextActive,
+              homeSelectedCategoryId === null && staffHomeStyles.categoryChipTextActive,
             ]}
           >
             {t("staff_home.all_devices_category_all")}
           </Text>
         </TouchableOpacity>
         {categories.map((cat) => {
-          const isActive = selectedCategoryId === cat.id;
+          const isActive = homeSelectedCategoryId === cat.id;
           return (
             <TouchableOpacity
               key={cat.id}
@@ -263,7 +264,7 @@ export default function StaffHomeScreen() {
                 staffHomeStyles.categoryChip,
                 isActive && staffHomeStyles.categoryChipActive,
               ]}
-              onPress={() => setSelectedCategoryId(cat.id)}
+              onPress={() => setHomeSelectedCategoryId(cat.id)}
               activeOpacity={0.8}
             >
               <Text
