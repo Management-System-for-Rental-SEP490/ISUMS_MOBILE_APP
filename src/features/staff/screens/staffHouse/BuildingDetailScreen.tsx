@@ -16,7 +16,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useNavigation, useRoute, RouteProp } from "@react-navigation/native";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { RootStackParamList } from "../../../../shared/types";
-import type { AssetItemFromApi, AssetCategoryFromApi } from "../../../../shared/types/api";
+import type { AssetItemFromApi, AssetCategoryFromApi, FunctionalAreaFromApi } from "../../../../shared/types/api";
 import Icons from "../../../../shared/theme/icon";
 import { staffBuildingDetailStyles } from "./staffBuildingDetailStyles";
 import { useAssetItems, useAssetCategories } from "../../../../shared/hooks";
@@ -39,19 +39,36 @@ export default function BuildingDetailScreen() {
     commune,
     city,
     status,
+    functionalAreas: rawFunctionalAreas,
   } = route.params;
+
+  /** Danh sách khu vực chức năng trong nhà (từ API), sắp xếp theo tầng rồi tên. */
+  const functionalAreas = useMemo(() => {
+    const list = rawFunctionalAreas ?? [];
+    return [...list].sort((a, b) => {
+      const floorA = a.floorNo ?? "";
+      const floorB = b.floorNo ?? "";
+      if (floorA !== floorB) return String(floorA).localeCompare(String(floorB), undefined, { numeric: true });
+      return (a.name ?? "").localeCompare(b.name ?? "");
+    });
+  }, [rawFunctionalAreas]);
 
   // Lấy thiết bị thuộc căn nhà này từ API GET /api/asset/items?houseId=...
   const { data: itemsData, isLoading, isError } = useAssetItems({
     houseId: buildingId,
   });
-  const rawItems: AssetItemFromApi[] = itemsData?.data ?? [];
+  /** Chỉ hiển thị thiết bị có houseId đúng với căn nhà đang xem (lọc phía client phòng BE trả về nhầm nhà). */
+  const rawItems: AssetItemFromApi[] = useMemo(
+    () => (itemsData?.data ?? []).filter((item) => item.houseId === buildingId),
+    [itemsData?.data, buildingId]
+  );
 
   // Danh mục từ API để hiển thị tên và nhóm thiết bị theo category
   const { data: categoriesData } = useAssetCategories();
   const categories: AssetCategoryFromApi[] = categoriesData?.data ?? [];
 
-  /** Nhóm thiết bị theo category: [{ categoryId, categoryName, items }], thứ tự theo danh sách category từ API. */
+  /** Nhóm thiết bị theo category: [{ categoryId, categoryName, items }], thứ tự theo danh sách category từ API.
+   * Trong mỗi nhóm, thiết bị được sắp xếp theo displayName để dễ tìm. */
   const devicesByCategory = useMemo(() => {
     const map = new Map<string, AssetItemFromApi[]>();
     for (const item of rawItems) {
@@ -64,16 +81,22 @@ export default function BuildingDetailScreen() {
     for (const cat of categories) {
       const items = map.get(cat.id);
       if (items?.length) {
-        result.push({ categoryId: cat.id, categoryName: cat.name, items });
+        const sorted = [...items].sort((a, b) =>
+          (a.displayName ?? "").localeCompare(b.displayName ?? "", undefined, { sensitivity: "base" })
+        );
+        result.push({ categoryId: cat.id, categoryName: cat.name, items: sorted });
         map.delete(cat.id);
       }
     }
     // Phần còn lại (categoryId không có trong danh sách category) gom vào "Khác"
     for (const [categoryId, items] of map) {
+      const sorted = [...items].sort((a, b) =>
+        (a.displayName ?? "").localeCompare(b.displayName ?? "", undefined, { sensitivity: "base" })
+      );
       result.push({
         categoryId,
         categoryName: t("staff_building_detail.category_other"),
-        items,
+        items: sorted,
       });
     }
     return result;
@@ -154,6 +177,14 @@ export default function BuildingDetailScreen() {
     return t(`staff_building_detail.${key}`, { status: statusValue });
   };
 
+  /** Dịch loại khu vực (LIVINGROOM, KITCHEN, BATHROOM, HALLWAY, BEDROOM...) từ API. */
+  const getAreaTypeLabel = (areaType: string) => {
+    const key = `staff_building_detail.area_type_${areaType}`;
+    const translated = t(key);
+    if (translated === key) return t("staff_building_detail.area_type_OTHER");
+    return translated;
+  };
+
   const handleAssignNfc = (device: AssetItemFromApi) => {
     // Mở màn Camera (chế độ NFC) với thiết bị cần gán; sau khi quét thẻ, xác nhận và PUT cập nhật nfcId.
     navigation.navigate("Camera", { assignForDevice: device });
@@ -204,6 +235,42 @@ export default function BuildingDetailScreen() {
           {description ? (
             <Text style={staffBuildingDetailStyles.buildingDescription}>{description}</Text>
           ) : null}
+        </View>
+
+        {/* Khu vực chức năng trong nhà (từ API functionalAreas) */}
+        <View style={staffBuildingDetailStyles.functionalAreasSection}>
+          <Text style={staffBuildingDetailStyles.sectionTitle}>
+            {t("staff_building_detail.functional_areas_title")}
+          </Text>
+          {functionalAreas.length === 0 ? (
+            <View style={staffBuildingDetailStyles.functionalAreasEmpty}>
+              <Text style={staffBuildingDetailStyles.functionalAreasEmptyText}>
+                {t("staff_building_detail.functional_areas_empty")}
+              </Text>
+            </View>
+          ) : (
+            functionalAreas.map((area: FunctionalAreaFromApi) => (
+              <View key={area.id} style={staffBuildingDetailStyles.functionalAreaCard}>
+                <Text style={staffBuildingDetailStyles.functionalAreaName} numberOfLines={1}>
+                  {area.name}
+                </Text>
+                <Text style={staffBuildingDetailStyles.functionalAreaMeta}>
+                  {t("staff_building_detail.functional_area_floor", {
+                    floor: area.floorNo ?? "-",
+                  })}{" "}
+                  · {getAreaTypeLabel(area.areaType)}
+                </Text>
+                {area.description ? (
+                  <Text
+                    style={staffBuildingDetailStyles.functionalAreaDescription}
+                    numberOfLines={3}
+                  >
+                    {area.description}
+                  </Text>
+                ) : null}
+              </View>
+            ))
+          )}
         </View>
 
         <Text style={staffBuildingDetailStyles.sectionTitle}>

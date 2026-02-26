@@ -28,7 +28,7 @@ import type {
 import Header from "../../../../shared/components/header";
 import { getWorkScheduleThisWeek, WorkSlot } from "../../data/mockStaffData";
 import { useStaffSchedule } from "../../context/StaffScheduleContext";
-import { useHouses, useAssetCategories, useAssetItems } from "../../../../shared/hooks";
+import { useHouses, useAssetCategories, useAssetItemsAllHouses } from "../../../../shared/hooks";
 import { useCategoryFilterStore } from "../../../../store/useCategoryFilterStore";
 import Icons from "../../../../shared/theme/icon";
 import { staffHomeStyles } from "./staffHomeStyles";
@@ -65,16 +65,26 @@ export default function StaffHomeScreen() {
   /** Menu "+" hiện 2 lựa chọn: Tạo danh mục / Tạo thiết bị */
   const [addMenuVisible, setAddMenuVisible] = useState(false);
 
-  // Danh sách thiết bị từ GET /api/asset/items, filter theo category.
-  const { data: itemsData } = useAssetItems({ categoryId: homeSelectedCategoryId });
+  // Danh sách thiết bị: lấy từ TẤT CẢ các nhà (mỗi nhà một request rồi gộp) để hiển thị hết, không bị giới hạn một nhà.
+  const houseIds = useMemo(() => buildings.map((b) => b.id), [buildings]);
+  const { data: itemsData } = useAssetItemsAllHouses(houseIds, homeSelectedCategoryId);
   const rawItems: AssetItemFromApi[] = itemsData?.data ?? [];
   /** Lọc theo danh mục đang chọn: "Tất cả" (null) thì hiển thị hết; chọn 1 danh mục thì chỉ hiển thị thiết bị thuộc danh mục đó (phòng trường hợp BE chưa filter theo query categoryId). */
   const items = useMemo(
-    () =>
-      homeSelectedCategoryId == null
-        ? rawItems
-        : rawItems.filter((item) => item.categoryId === homeSelectedCategoryId),
-    [rawItems, homeSelectedCategoryId]
+    () => {
+      const list =
+        homeSelectedCategoryId == null
+          ? rawItems
+          : rawItems.filter((item) => item.categoryId === homeSelectedCategoryId);
+      // Sắp xếp theo tên nhà rồi tên thiết bị để dễ đọc (nhóm thiết bị theo căn nhà).
+      return [...list].sort((a, b) => {
+        const nameA = buildings.find((x) => x.id === a.houseId)?.name ?? "";
+        const nameB = buildings.find((x) => x.id === b.houseId)?.name ?? "";
+        if (nameA !== nameB) return nameA.localeCompare(nameB);
+        return (a.displayName ?? "").localeCompare(b.displayName ?? "");
+      });
+    },
+    [rawItems, homeSelectedCategoryId, buildings]
   );
 
   // Chỉ hiển thị các slot có việc (có ticketId) - tóm tắt lịch có việc
@@ -119,6 +129,7 @@ export default function StaffHomeScreen() {
           commune: house.commune,
           city: house.city,
           status: house.status,
+          functionalAreas: house.functionalAreas ?? [],
         }
       );
     }

@@ -314,7 +314,16 @@ const resources = {
         "status_pending": "Chờ xử lý",
         "house_status_available": "Còn trống",
         "house_status_rented": "Đã cho thuê",
-        "house_status_other": "{{status}}"
+        "house_status_other": "{{status}}",
+        "functional_areas_title": "Khu vực trong nhà",
+        "functional_areas_empty": "Chưa có khu vực nào",
+        "functional_area_floor": "Tầng {{floor}}",
+        "area_type_LIVINGROOM": "Phòng khách",
+        "area_type_KITCHEN": "Bếp",
+        "area_type_BATHROOM": "Phòng tắm",
+        "area_type_HALLWAY": "Hành lang",
+        "area_type_BEDROOM": "Phòng ngủ",
+        "area_type_OTHER": "Khác"
       },
       "staff_nfc": {
         "nfc_id_not_assigned": "Mã NFC này chưa được gán cho thiết bị nào.",
@@ -693,7 +702,16 @@ const resources = {
         "status_pending": "Pending",
         "house_status_available": "Available",
         "house_status_rented": "Rented",
-        "house_status_other": "{{status}}"
+        "house_status_other": "{{status}}",
+        "functional_areas_title": "Functional areas",
+        "functional_areas_empty": "No functional areas",
+        "functional_area_floor": "Floor {{floor}}",
+        "area_type_LIVINGROOM": "Living room",
+        "area_type_KITCHEN": "Kitchen",
+        "area_type_BATHROOM": "Bathroom",
+        "area_type_HALLWAY": "Hallway",
+        "area_type_BEDROOM": "Bedroom",
+        "area_type_OTHER": "Other"
       },
       "staff_nfc": {
         "nfc_id_not_assigned": "This NFC ID is not assigned to any device.",
@@ -1072,7 +1090,16 @@ const resources = {
         "status_pending": "保留",
         "house_status_available": "空き",
         "house_status_rented": "賃貸中",
-        "house_status_other": "{{status}}"
+        "house_status_other": "{{status}}",
+        "functional_areas_title": "家内の機能エリア",
+        "functional_areas_empty": "機能エリアがありません",
+        "functional_area_floor": "{{floor}}階",
+        "area_type_LIVINGROOM": "リビング",
+        "area_type_KITCHEN": "キッチン",
+        "area_type_BATHROOM": "浴室",
+        "area_type_HALLWAY": "廊下",
+        "area_type_BEDROOM": "寝室",
+        "area_type_OTHER": "その他"
       },
       "staff_nfc": {
         "nfc_id_not_assigned": "このNFC IDはどのデバイスにも割り当てられていません。",

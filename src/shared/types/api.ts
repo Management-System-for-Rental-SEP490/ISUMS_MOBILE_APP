@@ -27,12 +27,34 @@ export interface UserProfileResponse {
 // Houses API (/api/houses)
 // =========================================================
 
+/** Một khu vực chức năng trong nhà (phòng khách, bếp, phòng tắm, hành lang...) từ API GET /api/houses. */
+export interface FunctionalAreaFromApi {
+  /** ID khu vực. */
+  id: string;
+  /** ID căn nhà chứa khu vực này. */
+  houseId: string;
+  /** Tên hiển thị (VD: Phòng khách, Bếp, Phòng tắm tầng 2). */
+  name: string;
+  /** Loại khu vực: LIVINGROOM, KITCHEN, BATHROOM, HALLWAY, BEDROOM, ... */
+  areaType: string;
+  /** Số tầng (chuỗi do BE trả về, VD: "1", "2"). */
+  floorNo: string;
+  /** Mô tả (có thể null). */
+  description: string | null;
+  /** Trạng thái (VD: NORMAL). */
+  status?: string;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
 /** Dữ liệu căn nhà trả về từ API GET /api/houses (dùng cho Staff). */
 export interface HouseFromApi {
   /** ID căn nhà. */
   id: string;
   /** ID user đang thuê (nếu có), null nếu nhà đang trống. */
   userRentalId: string | null;
+  /** ID khu vực (region), có thể null. */
+  regionId?: string | null;
   /** Tên hiển thị của căn nhà (ví dụ: Phòng 101, Căn A2). */
   name: string;
   /** Địa chỉ đầy đủ dạng text do BE trả về. */
@@ -47,6 +69,8 @@ export interface HouseFromApi {
   description?: string;
   /** Trạng thái: ví dụ "AVAILABLE", "RENTED", ... */
   status?: string;
+  /** Danh sách khu vực chức năng trong nhà (phòng khách, bếp, phòng tắm...). */
+  functionalAreas?: FunctionalAreaFromApi[];
 }
 
 /** Response body của API GET /api/houses. */

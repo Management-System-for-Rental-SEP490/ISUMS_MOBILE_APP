@@ -17,7 +17,7 @@ import { useNavigation, useFocusEffect } from "@react-navigation/native";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { RootStackParamList } from "../../../../shared/types";
 import Icons from "../../../../shared/theme/icon";
-import { useAssetCategories, useAssetItems, useHouses } from "../../../../shared/hooks";
+import { useAssetCategories, useAssetItemsAllHouses, useHouses } from "../../../../shared/hooks";
 import { itemScreenStyles } from "./itemScreenStyles";
 import type { AssetItemFromApi, HouseFromApi } from "../../../../shared/types/api";
 
@@ -31,17 +31,17 @@ export default function ItemListScreen() {
   const { data: categoriesData, refetch: refetchCategories } = useAssetCategories();
   const categories = categoriesData?.data ?? [];
 
-  const { data: itemsData, isLoading, isError, refetch } = useAssetItems({});
-  const rawItems: AssetItemFromApi[] = itemsData?.data ?? [];
-
   const { data: housesData } = useHouses();
   const houses = housesData?.data ?? [];
+  const houseIds = useMemo(() => houses.map((h: HouseFromApi) => h.id), [houses]);
+  const { data: itemsData, isLoading, isError, refetch } = useAssetItemsAllHouses(houseIds, null);
+  const rawItems: AssetItemFromApi[] = itemsData?.data ?? [];
 
   const openCreateItem = () => {
     navigation.navigate("ItemCreate");
   };
 
-  /** Nhóm thiết bị theo category (giống BuildingDetailScreen). */
+  /** Nhóm thiết bị theo category (giống BuildingDetailScreen). Trong mỗi nhóm, sắp xếp theo tên nhà rồi tên thiết bị. */
   const itemsByCategory = useMemo(() => {
     const map = new Map<string, AssetItemFromApi[]>();
     for (const item of rawItems) {
@@ -53,19 +53,31 @@ export default function ItemListScreen() {
     for (const cat of categories) {
       const items = map.get(cat.id);
       if (items?.length) {
-        result.push({ categoryId: cat.id, categoryName: cat.name, items });
+        const sorted = [...items].sort((a, b) => {
+          const nameA = houses.find((h: HouseFromApi) => h.id === a.houseId)?.name ?? "";
+          const nameB = houses.find((h: HouseFromApi) => h.id === b.houseId)?.name ?? "";
+          if (nameA !== nameB) return nameA.localeCompare(nameB);
+          return (a.displayName ?? "").localeCompare(b.displayName ?? "", undefined, { sensitivity: "base" });
+        });
+        result.push({ categoryId: cat.id, categoryName: cat.name, items: sorted });
         map.delete(cat.id);
       }
     }
     for (const [categoryId, items] of map) {
+      const sorted = [...items].sort((a, b) => {
+        const nameA = houses.find((h: HouseFromApi) => h.id === a.houseId)?.name ?? "";
+        const nameB = houses.find((h: HouseFromApi) => h.id === b.houseId)?.name ?? "";
+        if (nameA !== nameB) return nameA.localeCompare(nameB);
+        return (a.displayName ?? "").localeCompare(b.displayName ?? "", undefined, { sensitivity: "base" });
+      });
       result.push({
         categoryId,
         categoryName: t("staff_item_list.category_other"),
-        items,
+        items: sorted,
       });
     }
     return result;
-  }, [rawItems, categories, t]);
+  }, [rawItems, categories, houses, t]);
 
   const safeStyle = { paddingTop: insets.top, paddingBottom: insets.bottom };
 

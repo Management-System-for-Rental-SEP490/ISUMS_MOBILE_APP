@@ -83,6 +83,52 @@ export const staffBuildingDetailStyles = StyleSheet.create({
     lineHeight: 20,
     marginTop: 10,
   },
+  /** Section khu vực chức năng trong nhà. */
+  functionalAreasSection: {
+    marginTop: 8,
+  },
+  functionalAreaCard: {
+    backgroundColor: "#fff",
+    marginHorizontal: 16,
+    marginBottom: 10,
+    padding: 14,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: "#E5E7EB",
+    borderLeftWidth: 3,
+    borderLeftColor: "#93C5FD",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 3,
+    elevation: 2,
+  },
+  functionalAreaName: {
+    fontSize: 15,
+    fontWeight: "600",
+    color: "#1F2937",
+    marginBottom: 4,
+  },
+  functionalAreaMeta: {
+    fontSize: 12,
+    color: "#6B7280",
+    marginBottom: 4,
+  },
+  functionalAreaDescription: {
+    fontSize: 13,
+    color: "#9CA3AF",
+    lineHeight: 18,
+    marginTop: 4,
+  },
+  functionalAreasEmpty: {
+    paddingVertical: 16,
+    paddingHorizontal: 16,
+    alignItems: "center",
+  },
+  functionalAreasEmptyText: {
+    fontSize: 14,
+    color: "#94a3b8",
+  },
   sectionTitle: {
     fontSize: 16,
     fontWeight: "700",

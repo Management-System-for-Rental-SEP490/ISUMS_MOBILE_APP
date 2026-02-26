@@ -1,5 +1,5 @@
 import { BottomTabScreenProps } from "@react-navigation/bottom-tabs";
-import type { AssetCategoryFromApi, AssetItemFromApi } from "./api";
+import type { AssetCategoryFromApi, AssetItemFromApi, FunctionalAreaFromApi } from "./api";
 
 export type AuthStackParamList = {
   AuthLogin: undefined;
@@ -40,6 +40,8 @@ export type RootStackParamList = AuthStackParamList & {
     city?: string;
     /** Trạng thái: AVAILABLE, RENTED, ... (từ API) */
     status?: string;
+    /** Danh sách khu vực chức năng trong nhà (từ API houses.functionalAreas). */
+    functionalAreas?: FunctionalAreaFromApi[];
   };
   /** Chi tiết ticket cho Staff: thông tin, trạng thái, nút Nhận ticket (nếu pending) */
   TicketDetail: { ticketId: string };
@@ -150,6 +152,7 @@ export interface RentalHouse {
 export type {
   HouseFromApi,
   HousesApiResponse,
+  FunctionalAreaFromApi,
   AssetCategoryFromApi,
   AssetCategoriesApiResponse,
   AssetItemFromApi,

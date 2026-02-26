@@ -19,15 +19,17 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useTranslation } from "react-i18next";
 import { useNavigation, useRoute } from "@react-navigation/native";
+import { useQueryClient } from "@tanstack/react-query";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import type { RouteProp } from "@react-navigation/native";
 import { RootStackParamList } from "../../../../shared/types";
 import Icons from "../../../../shared/theme/icon";
-import { useUpdateAssetItem, useHouses, useAssetCategories } from "../../../../shared/hooks";
+import { useUpdateAssetItem, useHouses, useAssetCategories, ASSET_ITEM_KEYS } from "../../../../shared/hooks";
 import { getAssetItemByNfcId } from "../../../../shared/services/assetItemApi";
 import { itemScreenStyles } from "./itemScreenStyles";
 import type { AssetCategoryFromApi, AssetItemFromApi } from "../../../../shared/types/api";
 import type { HouseFromApi } from "../../../../shared/types/api";
+import type { UpdateAssetItemRequest } from "../../../../shared/types/api";
 
 type NavProp = NativeStackNavigationProp<RootStackParamList, "ItemEdit">;
 type ItemEditRouteProp = RouteProp<RootStackParamList, "ItemEdit">;
@@ -39,6 +41,7 @@ export default function ItemEditScreen() {
   const insets = useSafeAreaInsets();
   const navigation = useNavigation<NavProp>();
   const route = useRoute<ItemEditRouteProp>();
+  const queryClient = useQueryClient();
   const item = route.params.item as AssetItemFromApi;
 
   const [houseId, setHouseId] = useState(item.houseId);
@@ -97,22 +100,29 @@ export default function ItemEditScreen() {
       }
     }
 
+    // Payload đầy đủ cho PUT /api/asset/items/:id — BE phải cập nhật TẤT CẢ các trường gửi lên, không chỉ nfcId.
+    const payload: UpdateAssetItemRequest = {
+      houseId: houseId.trim(),
+      categoryId: categoryId.trim(),
+      displayName: displayName.trim(),
+      serialNumber: serialNumber.trim(),
+      nfcId: trimmedNfcId.length > 0 ? trimmedNfcId : "",
+      conditionPercent: percent,
+      status: status || "AVAILABLE",
+    };
+
     updateMutation.mutate(
       {
         id: item.id,
-        payload: {
-          houseId: houseId.trim(),
-          categoryId: categoryId.trim(),
-          displayName: displayName.trim(),
-          serialNumber: serialNumber.trim(),
-          // Nếu người dùng xóa hết -> gửi chuỗi rỗng "", giống cách anh đang test trên Postman.
-          // BE sẽ hiểu là gỡ gán NFC cho thiết bị này.
-          nfcId: nfcId.trim() || "",
-          conditionPercent: percent,
-          status: status || "AVAILABLE",
-        },
+        payload,
       },
-      { onSuccess: () => navigation.goBack() }
+      {
+        onSuccess: async () => {
+          // Refetch toàn bộ danh sách thiết bị (mọi nhà) trước khi goBack, để Staff Home / BuildingDetail hiển thị đúng sau khi đổi nhà.
+          await queryClient.refetchQueries({ queryKey: ASSET_ITEM_KEYS.base });
+          navigation.goBack();
+        },
+      }
     );
   };
 
@@ -128,20 +138,23 @@ export default function ItemEditScreen() {
           onPress: () => {
             // Xóa mềm: chỉ cập nhật status sang DISPOSED, giữ lại mọi thông tin khác.
             const percent = parseInt(conditionPercent, 10);
+            const payload: UpdateAssetItemRequest = {
+              houseId: houseId.trim(),
+              categoryId: categoryId.trim(),
+              displayName: displayName.trim(),
+              serialNumber: serialNumber.trim(),
+              nfcId: nfcId.trim() ? nfcId.trim() : "",
+              conditionPercent: Number.isNaN(percent) ? item.conditionPercent : percent,
+              status: "DISPOSED",
+            };
             updateMutation.mutate(
+              { id: item.id, payload },
               {
-                id: item.id,
-                payload: {
-                  houseId: houseId.trim(),
-                  categoryId: categoryId.trim(),
-                  displayName: displayName.trim(),
-                  serialNumber: serialNumber.trim(),
-                  nfcId: nfcId.trim() || "",
-                  conditionPercent: Number.isNaN(percent) ? item.conditionPercent : percent,
-                  status: "DISPOSED",
+                onSuccess: async () => {
+                  await queryClient.refetchQueries({ queryKey: ASSET_ITEM_KEYS.base });
+                  navigation.goBack();
                 },
-              },
-              { onSuccess: () => navigation.goBack() }
+              }
             );
           },
         },
@@ -192,13 +205,11 @@ export default function ItemEditScreen() {
         >
           <View style={itemScreenStyles.formCard}>
             <Text style={itemScreenStyles.label}>{t("staff_item_create.house_label")}</Text>
-            <View style={itemScreenStyles.chipRow}>
+            <View style={[itemScreenStyles.chipRow, { opacity: 0.7 }]} pointerEvents="none">
               {houses.map((h: HouseFromApi) => (
-                <TouchableOpacity
+                <View
                   key={h.id}
-                  onPress={() => setHouseId(h.id)}
                   style={[itemScreenStyles.chip, houseId === h.id && itemScreenStyles.chipSelected]}
-                  activeOpacity={0.8}
                 >
                   <Text
                     style={[itemScreenStyles.chipText, houseId === h.id && itemScreenStyles.chipTextSelected]}
@@ -206,19 +217,17 @@ export default function ItemEditScreen() {
                   >
                     {h.name}
                   </Text>
-                </TouchableOpacity>
+                </View>
               ))}
             </View>
 
             <View style={itemScreenStyles.fieldSpacer}>
               <Text style={itemScreenStyles.label}>{t("staff_item_create.category_label")}</Text>
-              <View style={itemScreenStyles.chipRow}>
+              <View style={[itemScreenStyles.chipRow, { opacity: 0.7 }]} pointerEvents="none">
                 {categories.map((c: AssetCategoryFromApi) => (
-                  <TouchableOpacity
+                  <View
                     key={c.id}
-                    onPress={() => setCategoryId(c.id)}
                     style={[itemScreenStyles.chip, categoryId === c.id && itemScreenStyles.chipSelected]}
-                    activeOpacity={0.8}
                   >
                     <Text
                       style={[itemScreenStyles.chipText, categoryId === c.id && itemScreenStyles.chipTextSelected]}
@@ -226,7 +235,7 @@ export default function ItemEditScreen() {
                     >
                       {c.name}
                     </Text>
-                  </TouchableOpacity>
+                  </View>
                 ))}
               </View>
             </View>

@@ -1,4 +1,4 @@
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient, useQueries } from "@tanstack/react-query";
 import {
   getAssetItems,
   createAssetItem,
@@ -7,6 +7,7 @@ import {
 } from "../services/assetItemApi";
 import type {
   AssetItemsApiResponse,
+  AssetItemFromApi,
   CreateAssetItemRequest,
   UpdateAssetItemRequest,
 } from "../types/api";
@@ -74,6 +75,58 @@ export const useAssetItems = (params: UseAssetItemsParams = {}) => {
 /** Invalidate mọi query asset items (list, byHouse, byCategory) sau khi create/update/delete. */
 const invalidateAllAssetItems = (queryClient: ReturnType<typeof useQueryClient>) => {
   queryClient.invalidateQueries({ queryKey: ASSET_ITEM_KEYS.base });
+};
+
+/**
+ * Key khi lấy thiết bị từ TẤT CẢ các nhà (gộp nhiều house), dùng cho màn Staff Home "Tất cả thiết bị".
+ */
+export const ASSET_ITEM_KEYS_ALL_HOUSES = {
+  allHouses: (houseIds: string[], categoryId: string | null | undefined) =>
+    [...ASSET_ITEM_KEYS.base, "allHouses", houseIds.slice().sort(), categoryId ?? null] as const,
+};
+
+/**
+ * Hook lấy thiết bị từ TẤT CẢ các nhà (mỗi nhà gọi một request rồi gộp lại).
+ * Dùng cho màn Staff Home phần "Tất cả thiết bị" để đảm bảo hiển thị hết thiết bị của mọi nhà,
+ * không phụ thuộc vào việc BE có trả về hết khi không gửi houseId hay không.
+ *
+ * @param houseIds - Mảng ID các nhà (từ GET /api/houses).
+ * @param categoryId - Lọc theo danh mục (null = tất cả).
+ */
+export const useAssetItemsAllHouses = (
+  houseIds: string[],
+  categoryId: string | null | undefined
+) => {
+  const queries = useQueries({
+    queries: houseIds.map((houseId) => ({
+      queryKey: ASSET_ITEM_KEYS.byHouse(houseId, categoryId),
+      queryFn: () =>
+        getAssetItems({
+          houseId,
+          categoryId: (categoryId ?? undefined) as AssetItemsParams["categoryId"],
+        }),
+    })),
+  });
+
+  const merged: AssetItemFromApi[] = (() => {
+    const byId = new Map<string, AssetItemFromApi>();
+    for (const q of queries) {
+      const list = q.data?.data ?? [];
+      for (const item of list) byId.set(item.id, item);
+    }
+    return Array.from(byId.values());
+  })();
+
+  const isLoading = queries.some((q) => q.isLoading);
+  const isError = queries.some((q) => q.isError);
+  const refetch = () => queries.forEach((q) => q.refetch());
+
+  return {
+    data: { data: merged } as AssetItemsApiResponse,
+    isLoading,
+    isError,
+    refetch,
+  };
 };
 
 export const useCreateAssetItem = () => {

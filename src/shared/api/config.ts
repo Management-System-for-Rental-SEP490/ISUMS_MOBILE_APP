@@ -14,3 +14,7 @@ export const BACKEND_API_BASE =
     ? process.env.EXPO_PUBLIC_HOUSES_API_BASE
     : "https://unrestrictable-lan-syzygial.ngrok-free.dev/api";
 
+/** true = gửi body PUT /api/asset/items/:id dạng snake_case (house_id, category_id...) để BE map được. */
+export const ASSET_PUT_BODY_SNAKE_CASE =
+  typeof process !== "undefined" && process.env?.EXPO_PUBLIC_ASSET_PUT_BODY_SNAKE_CASE === "true";
+

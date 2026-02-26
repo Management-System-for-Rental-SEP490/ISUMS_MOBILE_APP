@@ -76,16 +76,41 @@ export const createAssetItem = async (
   return response.data;
 };
 
+/** Gửi body PUT asset item dạng snake_case (house_id, category_id...) — bật bằng EXPO_PUBLIC_ASSET_PUT_BODY_SNAKE_CASE=true */
+const useSnakeCasePutBody =
+  typeof process !== "undefined" && process.env?.EXPO_PUBLIC_ASSET_PUT_BODY_SNAKE_CASE === "true";
+
 /**
  * Cập nhật thiết bị (PUT /api/asset/items/:id).
+ * Body đủ 7 trường. Mặc định camelCase; nếu EXPO_PUBLIC_ASSET_PUT_BODY_SNAKE_CASE=true thì gửi snake_case.
+ * Backend phải map cả houseId/house_id và categoryId/category_id thì mới cập nhật được nhà/danh mục.
  */
 export const updateAssetItem = async (
   id: string,
   payload: UpdateAssetItemRequest
 ): Promise<UpdateAssetItemApiResponse> => {
+  const body = useSnakeCasePutBody
+    ? {
+        house_id: payload.houseId,
+        category_id: payload.categoryId,
+        display_name: payload.displayName,
+        serial_number: payload.serialNumber,
+        nfc_id: payload.nfcId ?? "",
+        condition_percent: payload.conditionPercent,
+        status: payload.status,
+      }
+    : {
+        houseId: payload.houseId,
+        categoryId: payload.categoryId,
+        displayName: payload.displayName,
+        serialNumber: payload.serialNumber,
+        nfcId: payload.nfcId ?? "",
+        conditionPercent: payload.conditionPercent,
+        status: payload.status,
+      };
   const response = await axiosClient.put<UpdateAssetItemApiResponse>(
     `${BACKEND_API_BASE}/asset/items/${id}`,
-    payload
+    body
   );
   return response.data;
 };
