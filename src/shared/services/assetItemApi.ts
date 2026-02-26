@@ -116,6 +116,21 @@ export const updateAssetItem = async (
 };
 
 /**
+ * Đổi nhà cho thiết bị (PUT /api/asset/items/:id/transfer).
+ * Body: { newHouseId }. BE sẽ cập nhật houseId và trả lại thiết bị sau khi chuyển.
+ */
+export const transferAssetItemHouse = async (
+  id: string,
+  newHouseId: string
+): Promise<UpdateAssetItemApiResponse> => {
+  const response = await axiosClient.put<UpdateAssetItemApiResponse>(
+    `${BACKEND_API_BASE}/asset/items/${id}/transfer`,
+    { newHouseId }
+  );
+  return response.data;
+};
+
+/**
  * Xóa thiết bị (DELETE /api/asset/items/:id).
  */
 export const deleteAssetItem = async (id: string): Promise<{ success: boolean; message?: string }> => {

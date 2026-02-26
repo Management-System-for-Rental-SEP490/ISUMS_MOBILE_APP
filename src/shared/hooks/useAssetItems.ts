@@ -4,6 +4,7 @@ import {
   createAssetItem,
   updateAssetItem,
   deleteAssetItem,
+  transferAssetItemHouse,
 } from "../services/assetItemApi";
 import type {
   AssetItemsApiResponse,
@@ -150,6 +151,19 @@ export const useDeleteAssetItem = () => {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (id: string) => deleteAssetItem(id),
+    onSuccess: () => invalidateAllAssetItems(queryClient),
+  });
+};
+//useMutation: nghĩa là hook mutation, dùng để thực hiện mutation (cập nhật, xóa, thêm)
+/**
+ * Hook đổi nhà cho thiết bị (gọi /api/asset/items/:id/transfer).
+ * - Dùng trên màn ItemEdit khi người dùng chọn lại nhà.
+ */
+export const useTransferAssetItemHouse = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, newHouseId }: { id: string; newHouseId: string }) =>
+      transferAssetItemHouse(id, newHouseId),
     onSuccess: () => invalidateAllAssetItems(queryClient),
   });
 };

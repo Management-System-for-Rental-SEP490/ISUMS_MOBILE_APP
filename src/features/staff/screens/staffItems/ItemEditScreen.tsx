@@ -24,7 +24,13 @@ import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import type { RouteProp } from "@react-navigation/native";
 import { RootStackParamList } from "../../../../shared/types";
 import Icons from "../../../../shared/theme/icon";
-import { useUpdateAssetItem, useHouses, useAssetCategories, ASSET_ITEM_KEYS } from "../../../../shared/hooks";
+import {
+  useUpdateAssetItem,
+  useHouses,
+  useAssetCategories,
+  ASSET_ITEM_KEYS,
+  useTransferAssetItemHouse,
+} from "../../../../shared/hooks";
 import { getAssetItemByNfcId } from "../../../../shared/services/assetItemApi";
 import { itemScreenStyles } from "./itemScreenStyles";
 import type { AssetCategoryFromApi, AssetItemFromApi } from "../../../../shared/types/api";
@@ -43,6 +49,7 @@ export default function ItemEditScreen() {
   const route = useRoute<ItemEditRouteProp>();
   const queryClient = useQueryClient();
   const item = route.params.item as AssetItemFromApi;
+  const transferHouseMutation = useTransferAssetItemHouse();
 
   const [houseId, setHouseId] = useState(item.houseId);
   const [categoryId, setCategoryId] = useState(item.categoryId);
@@ -100,7 +107,7 @@ export default function ItemEditScreen() {
       }
     }
 
-    // Payload đầy đủ cho PUT /api/asset/items/:id — BE phải cập nhật TẤT CẢ các trường gửi lên, không chỉ nfcId.
+    // Payload đầy đủ cho PUT /api/asset/items/:id — BE cập nhật các thông tin thiết bị (không bao gồm logic chuyển nhà).
     const payload: UpdateAssetItemRequest = {
       houseId: houseId.trim(),
       categoryId: categoryId.trim(),
@@ -111,19 +118,28 @@ export default function ItemEditScreen() {
       status: status || "AVAILABLE",
     };
 
-    updateMutation.mutate(
-      {
+    try {
+      // Nếu user đổi nhà, gọi API transfer riêng trước.
+      const trimmedHouseId = houseId.trim();
+      if (trimmedHouseId !== item.houseId) {
+        await transferHouseMutation.mutateAsync({
+          id: item.id,
+          newHouseId: trimmedHouseId,
+        });
+      }
+
+      await updateMutation.mutateAsync({
         id: item.id,
         payload,
-      },
-      {
-        onSuccess: async () => {
-          // Refetch toàn bộ danh sách thiết bị (mọi nhà) trước khi goBack, để Staff Home / BuildingDetail hiển thị đúng sau khi đổi nhà.
-          await queryClient.refetchQueries({ queryKey: ASSET_ITEM_KEYS.base });
-          navigation.goBack();
-        },
-      }
-    );
+      });
+
+      // Refetch toàn bộ danh sách thiết bị (mọi nhà) trước khi goBack,
+      // để Staff Home / BuildingDetail hiển thị đúng sau khi đổi nhà.
+      await queryClient.refetchQueries({ queryKey: ASSET_ITEM_KEYS.base });
+      navigation.goBack();
+    } catch (e) {
+      console.log("Lỗi cập nhật thiết bị:", e);
+    }
   };
 
   const handleDeletePress = () => {
@@ -205,11 +221,13 @@ export default function ItemEditScreen() {
         >
           <View style={itemScreenStyles.formCard}>
             <Text style={itemScreenStyles.label}>{t("staff_item_create.house_label")}</Text>
-            <View style={[itemScreenStyles.chipRow, { opacity: 0.7 }]} pointerEvents="none">
+            <View style={itemScreenStyles.chipRow}>
               {houses.map((h: HouseFromApi) => (
-                <View
+                <TouchableOpacity
                   key={h.id}
+                  onPress={() => setHouseId(h.id)}
                   style={[itemScreenStyles.chip, houseId === h.id && itemScreenStyles.chipSelected]}
+                  activeOpacity={0.8}
                 >
                   <Text
                     style={[itemScreenStyles.chipText, houseId === h.id && itemScreenStyles.chipTextSelected]}
@@ -217,7 +235,7 @@ export default function ItemEditScreen() {
                   >
                     {h.name}
                   </Text>
-                </View>
+                </TouchableOpacity>
               ))}
             </View>
 
