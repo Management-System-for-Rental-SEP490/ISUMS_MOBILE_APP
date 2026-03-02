@@ -104,6 +104,7 @@ Khi bắt đầu tích hợp API và kết nối với BE, AI agent **phải** t
 
 *   **Đảm bảo đúng cấu trúc code** đã xây dựng (folder features, shared, screens, components, styles, data/context, v.v.).
 *   Khi thêm API layer hoặc store, đặt đúng vị trí theo cấu trúc dự án (vd: `shared/services`, `shared/api`, store trong từng feature hoặc shared tùy doc).
+*   **Zustand:** Mọi store Zustand (state global phía client, hook dạng `useXxxStore`) **phải** đặt trong thư mục **`src/store/`**. Các phần có thể dùng Zustand (filter, selection, UI state chia sẻ, v.v.) khi implement cần tạo hoặc mở rộng store trong `src/store/`.
 
 ### 8.3. File mới / tài nguyên mới – gợi ý, người dùng tự tạo
 
@@ -130,6 +131,7 @@ Khi bắt đầu tích hợp API và kết nối với BE, AI agent **phải** t
 
 *   **Đảm bảo dùng React Query và Zustand** đúng như tài liệu dự án (docx / spec) yêu cầu.
 *   Gọi API qua React Query (useQuery, useMutation, v.v.); state global/client (vd user, session, cache nghiệp vụ) dùng Zustand theo quy ước đã định.
+*   **Vị trí store Zustand:** Tất cả store Zustand đặt trong **`src/store/`** (xem mục 8.2).
 
 ### 8.8. Gen code trong chat: đầy đủ để code tay theo
 

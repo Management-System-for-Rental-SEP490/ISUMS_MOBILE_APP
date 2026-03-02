@@ -5,17 +5,17 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import Icons from "../theme/icon";
 import { IconProps, MainTabParamList, RootStackParamList } from "../types";
 import { NavigationProp, RouteProp } from "@react-navigation/native";
-import HomeScreen from "../../features/tenant/screens/HomeScreen";
-import ElectricUsageScreen from "../../features/tenant/screens/ElectricUsageScreen";
-import WaterUsageScreen from "../../features/tenant/screens/WaterUsageScreen";
-import UserProfileScreen from "../../features/screens/UserProfileScreen";
+import HomeScreen from "../../features/tenant/screens/tenantHome/HomeScreen";
+import ElectricUsageScreen from "../../features/tenant/screens/tenantConsumption/ElectricUsageScreen";
+import WaterUsageScreen from "../../features/tenant/screens/tenantConsumption/WaterUsageScreen";
+import UserProfileScreen from "../../features/screens/user/UserProfileScreen";
 import { iconStyles } from "../styles/iconStyles";
 import footerStyles from "../styles/footerStyles";
-import CalendarScreen from "../../features/staff/screens/CalendarScreen";
-import NotificationScreen from "../../features/tenant/screens/NotificationScreen";
-import StaffHomeScreen from "../../features/staff/screens/StaffHomeScreen";
-import StaffNotificationScreen from "../../features/staff/screens/StaffNotificationScreen";
-import TicketListScreen from "../../features/staff/screens/TicketListScreen";
+import CalendarScreen from "../../features/staff/screens/staffCalendar/CalendarScreen";
+import NotificationScreen from "../../features/tenant/screens/tenantNotification/NotificationScreen";
+import StaffHomeScreen from "../../features/staff/screens/staffHome/StaffHomeScreen";
+import StaffNotificationScreen from "../../features/staff/screens/staffnotification/StaffNotificationScreen";
+import TicketListScreen from "../../features/staff/screens/staffTicket/TicketListScreen";
 import { StaffScheduleProvider } from "../../features/staff/context/StaffScheduleContext";
 import i18next from "i18next";
 import { useTranslation } from "react-i18next";
@@ -110,10 +110,13 @@ const createScreenOptions = (bottomInset: number) => ({
   }: {
     navigation: NavigationProp<MainTabParamList>;
   }) => ({
-    tabPress: (e: { preventDefault: () => void }) => {
-      e.preventDefault();
-      navigation.getParent<NavigationProp<RootStackParamList>>()?.navigate("Camera");
-    }, 
+  tabPress: (e: { preventDefault: () => void }) => {
+    e.preventDefault();
+    navigation.getParent<NavigationProp<RootStackParamList>>()?.navigate("Camera", {
+      mode: "lookup",
+      assignForDevice: undefined,
+    });
+  },
   });
 
   Giải thích chi tiết:
@@ -225,7 +228,12 @@ export const StaffTabs = () => {
       <Tab.Navigator screenOptions={createScreenOptions(insets.bottom)} initialRouteName="Dashboard">
         <Tab.Screen name="Ticket" component={TicketListScreen} />
         <Tab.Screen name="Calendar" component={CalendarScreen} />
-      <Tab.Screen name="Dashboard" component={StaffHomeScreen} />
+        {/* Khi nhấn tab Dashboard: mở Camera (quét QR/NFC) thay vì chuyển về Dashboard, giống Tenant */}
+        <Tab.Screen
+          name="Dashboard"
+          component={StaffHomeScreen}
+          listeners={DashboardListener}
+        />
         <Tab.Screen name="Notification" component={StaffNotificationScreen} />
         <Tab.Screen name="Profile" component={UserProfileScreen} />
       </Tab.Navigator>

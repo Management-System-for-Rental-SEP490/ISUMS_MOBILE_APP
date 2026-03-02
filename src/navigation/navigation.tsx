@@ -2,16 +2,23 @@ import React, { useEffect, useState } from "react";
 import { View, ActivityIndicator } from "react-native";
 import { NavigationContainer } from "@react-navigation/native";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
-import Login from "../features/screens/LoginScreen";
-import OnBoarding from "../features/screens/onBoarding";
+import Login from "../features/screens/authentication/LoginScreen";
+import OnBoarding from "../features/screens/onBoarding/onBoarding";
 import { useAuthStore } from "../store/useAuthStore";
 import { RootStackParamList } from "../shared/types";
 import {StaffTabs, TenantTabs } from "../shared/components/footerNavigator";
-import CameraScreen from "../features/modal/CameraScreen";
-import DeviceDetail from "../features/tenant/devices/deviceDetail";
-import TicketScreen from "../features/tenant/screens/ticket";
-import BuildingDetailScreen from "../features/staff/screens/BuildingDetailScreen";
-import TicketDetailScreen from "../features/staff/screens/TicketDetailScreen";
+import CameraScreen from "../features/modal/camera/CameraScreen";
+import DeviceDetail from "../features/tenant/screens/tenantItem/deviceDetail";
+import TicketScreen from "../features/tenant/screens/tenantTicket/ticket";
+import BuildingDetailScreen from "../features/staff/screens/staffHouse/BuildingDetailScreen";
+import TicketDetailScreen from "../features/staff/screens/staffTicket/TicketDetailScreen";
+import CategoryScreen from "../features/staff/screens/staffCategory/categoryScreen";
+import CategoryListScreen from "../features/staff/screens/staffCategory/CategoryListScreen";
+import CategoryEditScreen from "../features/staff/screens/staffCategory/CategoryEditScreen";
+import ItemListScreen from "../features/staff/screens/staffItems/ItemListScreen";
+import ItemCreateScreen from "../features/staff/screens/staffItems/ItemCreateScreen";
+import ItemEditScreen from "../features/staff/screens/staffItems/ItemEditScreen";
+import ItemDescriptionScreen from "../features/staff/screens/staffItems/itemDescription";
 import { StaffScheduleProvider } from "../features/staff/context/StaffScheduleContext";
 
 // Wrapper components để bọc Provider cho các screen cần useStaffSchedule
@@ -105,6 +112,25 @@ const Navigation = () => {
                 <>
                   <Stack.Screen name="BuildingDetail" component={BuildingDetailScreenWrapper} />
                   <Stack.Screen name="TicketDetail" component={TicketDetailScreenWrapper} />
+                  <Stack.Screen name="CategoryList" component={CategoryListScreen} />
+                  <Stack.Screen name="Category" component={CategoryScreen} />
+                  <Stack.Screen
+                    name="CategoryEdit"
+                    component={CategoryEditScreen}
+                    options={{ presentation: "modal" }}
+                  />
+                  <Stack.Screen name="ItemList" component={ItemListScreen} />
+                  <Stack.Screen name="ItemCreate" component={ItemCreateScreen} />
+                  <Stack.Screen
+                    name="ItemEdit"
+                    component={ItemEditScreen}
+                    options={{ presentation: "modal" }}
+                  />
+                  <Stack.Screen
+                    name="ItemDescription"
+                    component={ItemDescriptionScreen}
+                    options={{ presentation: "modal" }}
+                  />
                 </>
               ) : (
                 <>

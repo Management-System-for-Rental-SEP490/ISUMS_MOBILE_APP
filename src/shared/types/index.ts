@@ -1,4 +1,6 @@
 import { BottomTabScreenProps } from "@react-navigation/bottom-tabs";
+import type { AssetCategoryFromApi, AssetItemFromApi, FunctionalAreaFromApi } from "./api";
+
 export type AuthStackParamList = {
   AuthLogin: undefined;
 };
@@ -19,17 +21,46 @@ export type HeaderVariant = "default" | "electric" | "water"; // định nghĩa 
 export type RootStackParamList = AuthStackParamList & {
   Main: undefined;
   OnBoarding: undefined;
-  Camera: undefined;
+  /** Quét QR/NFC. Tenant: hiện DeviceDetail. Staff: tra cứu thiết bị theo NFC (chỉ mã đã gán) hoặc gán NFC (khi mode assign hoặc assignForDevice). */
+  Camera:
+    | undefined
+    | { assignForDevice?: AssetItemFromApi; /** "assign" = từ menu + Gán NFC: quét thẻ mới để gán; không truyền = từ footer: chỉ tra cứu mã đã gán */ mode?: "lookup" | "assign" };
   DeviceDetail: { device: Device };
   Ticket: { device: Device };
-  /** Chi tiết nhà cho Staff: danh sách thiết bị + nút gán NFC */
+  /** Chi tiết nhà cho Staff: danh sách thiết bị + nút gán NFC. Có thể truyền thêm thông tin từ API houses. */
   BuildingDetail: {
     buildingId: string;
     buildingName: string;
     buildingAddress: string;
+    /** Mô tả căn nhà (từ API) */
+    description?: string;
+    /** Phường (từ API) */
+    ward?: string;
+    /** Quận (từ API) */
+    commune?: string;
+    /** Thành phố (từ API) */
+    city?: string;
+    /** Trạng thái: AVAILABLE, RENTED, ... (từ API) */
+    status?: string;
+    /** Danh sách khu vực chức năng trong nhà (từ API houses.functionalAreas). */
+    functionalAreas?: FunctionalAreaFromApi[];
   };
   /** Chi tiết ticket cho Staff: thông tin, trạng thái, nút Nhận ticket (nếu pending) */
   TicketDetail: { ticketId: string };
+  /** Màn form tạo danh mục thiết bị (Staff). Không tham số. */
+  Category: undefined;
+  /** Màn danh sách danh mục thiết bị (Staff). Không tham số. */
+  CategoryList: undefined;
+  /** Màn chỉnh sửa danh mục (Staff), hiện dạng modal. Param: category cần sửa. */
+  CategoryEdit: { category: AssetCategoryFromApi };
+  /** Màn danh sách thiết bị (Staff), xếp theo category. */
+  ItemList: undefined;
+  /** Màn form thêm thiết bị (Staff). */
+  ItemCreate: undefined;
+  /** Màn chỉnh sửa thiết bị (Staff), hiện dạng modal. Param: item cần sửa. */
+  ItemEdit: { item: AssetItemFromApi };
+  /** Màn chỉ xem thông tin thiết bị (Staff), khi thợ quét NFC bằng nút Quét ở footer. Param: item. */
+  ItemDescription: { item: AssetItemFromApi };
 };
 
 export type IconProps = {
@@ -118,5 +149,20 @@ export interface RentalHouse {
   startDate: string; // Ngày bắt đầu thuê
   endDate: string; // Ngày kết thúc
 }
+
+// Các kiểu dữ liệu liên quan đến API (HouseFromApi, AssetCategoryFromApi, AssetItemFromApi, ...)
+// đã được di chuyển sang file riêng `types/api.ts` cho dễ bảo trì.
+// Tại đây chỉ re-export lại để ai đang import từ "shared/types" vẫn dùng được.
+export type {
+  HouseFromApi,
+  HousesApiResponse,
+  FunctionalAreaFromApi,
+  AssetCategoryFromApi,
+  AssetCategoriesApiResponse,
+  AssetItemFromApi,
+  AssetItemsApiResponse,
+  UserProfileResponse,
+} from "./api";
+
 export type ScanMode = "qr" | "nfc";
 export type HomeScreenProps = BottomTabScreenProps<MainTabParamList, "Dashboard">; // HomeScreenProps là một type alias cho BottomTabScreenProps<MainTabParamList, "Dashboard">.

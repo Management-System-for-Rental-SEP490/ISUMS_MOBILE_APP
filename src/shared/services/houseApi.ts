@@ -1,0 +1,21 @@
+/**
+ * API lấy danh sách nhà (houses) từ Backend chung.
+ * Dùng axiosClient để tự động gắn Bearer token (từ useAuthStore)
+ * và xử lý refresh token khi 401.
+ */
+import axiosClient from "../api/axiosClient";
+import { BACKEND_API_BASE } from "../api/config";
+import type { HousesApiResponse } from "../types/api";
+
+/**
+ * Lấy danh sách tất cả căn nhà (GET /api/houses).
+ * Request tự động có header Authorization: Bearer <access_token> nhờ interceptor của axiosClient.
+ * @returns Promise<HousesApiResponse> - data là mảng HouseFromApi, success/message/statusCode từ BE.
+ */
+export const getHouses = async (): Promise<HousesApiResponse> => {
+  const response = await axiosClient.get<HousesApiResponse>(
+    `${BACKEND_API_BASE}/houses`
+  );
+  return response.data;
+};
+

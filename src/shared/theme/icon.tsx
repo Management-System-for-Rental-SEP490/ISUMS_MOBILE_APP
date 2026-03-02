@@ -66,6 +66,10 @@ const Icons = {
   ticket: ({ size = 24, color = 'black' }: IconProps = {}) => (
     <FontAwesome5 name="ticket-alt" size={size} color={color} />
   ),
+  /** Icon dấu cộng (thêm danh mục / thêm thiết bị). */
+  plus: ({ size = 24, color = 'black' }: IconProps = {}) => (
+    <AntDesign name="plus" size={size} color={color} />
+  ),
 };
 
 export default Icons;
