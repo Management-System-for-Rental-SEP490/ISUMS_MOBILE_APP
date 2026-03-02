@@ -167,8 +167,8 @@ export interface AssetItemFromApi {
   displayName: string;
   /** Số serial (do nhà sản xuất). */
   serialNumber: string;
-  /** NFC ID gắn với thiết bị, null nếu chưa gán. */
-  nfcId: string | null;
+  /** NFC tag ID gắn với thiết bị (từ bảng asset tags), null nếu chưa gán. */
+  nfcTag: string | null;
   /** Tình trạng còn lại (%), ví dụ 80 = còn tốt 80%. */
   conditionPercent: number;
   /** Trạng thái: VD "AVAILABLE", "DISPOSED", ... */
@@ -183,7 +183,7 @@ export interface AssetItemsApiResponse {
 
 /**
  * Body gửi lên khi tạo thiết bị mới (POST /api/asset/items).
- * Khớp API: houseId, categoryId, displayName, serialNumber, nfcId, conditionPercent, status.
+ * Khớp API: houseId, categoryId, displayName, serialNumber, nfcTag, conditionPercent, status.
  */
 export interface CreateAssetItemRequest {
   houseId: string;
@@ -191,7 +191,7 @@ export interface CreateAssetItemRequest {
   displayName: string;
   serialNumber: string;
   /** Có thể chuỗi hoặc null nếu chưa gán NFC. */
-  nfcId: string | null;
+  nfcTag: string | null;
   conditionPercent: number;
   /** VD "AVAILABLE", "DISPOSED". */
   status: string;
@@ -214,6 +214,51 @@ export interface UpdateAssetItemApiResponse {
   message: string;
   statusCode: number;
   success: boolean;
+}
+
+// =========================================================
+// Asset Tags API (POST /api/asset/tags — gán NFC vào thiết bị)
+// =========================================================
+
+/** Body gửi lên khi gán tag NFC vào thiết bị (POST /api/asset/tags). */
+export interface AttachAssetTagRequest {
+  /** ID thiết bị (asset item) cần gán tag. */
+  assetId: string;
+  /** Giá trị mã NFC (ví dụ "010101010" hoặc "04 9C 59 A2 B2 19 90"). */
+  tagValue: string;
+  /** Loại tag, thường là "NFC". */
+  tagType: "NFC";
+}
+
+/** Dữ liệu tag trả về từ POST /api/asset/tags khi gán thành công. */
+export interface AssetTagFromApi {
+  id: string;
+  tagValue: string;
+  tagType: string;
+  assetId: string;
+  houseId: string;
+  activatedAt: string;
+  isActive: boolean;
+}
+
+/** Response body của API POST /api/asset/tags (gán tag thành công, statusCode 201). */
+export interface AttachAssetTagApiResponse {
+  statusCode: number;
+  success: boolean;
+  message: string;
+  data: AssetTagFromApi;
+}
+
+/** Response body của API PUT /api/asset/tags/detach/{tagValue} (gỡ tag NFC khỏi thiết bị). */
+export type DetachAssetTagApiResponse = AttachAssetTagApiResponse;
+
+/** Response body của API GET /api/asset/tags/asset/{tagValue} (lấy thiết bị từ mã NFC). */
+export interface GetAssetByTagValueApiResponse {
+  statusCode: number;
+  success: boolean;
+  message: string;
+  /** BE trả về mảng (thường 1 phần tử) HOẶC 1 object thiết bị khớp với tagValue. */
+  data: AssetItemFromApi[] | AssetItemFromApi;
 }
 
 // Sau này có thêm API khác thì định nghĩa tiếp ở dưới

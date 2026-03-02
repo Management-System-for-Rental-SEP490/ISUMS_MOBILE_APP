@@ -21,8 +21,10 @@ export type HeaderVariant = "default" | "electric" | "water"; // định nghĩa 
 export type RootStackParamList = AuthStackParamList & {
   Main: undefined;
   OnBoarding: undefined;
-  /** Quét QR/NFC. Tenant: hiện DeviceDetail. Staff: tra cứu thiết bị theo NFC hoặc gán NFC (khi truyền assignForDevice). */
-  Camera: undefined | { assignForDevice: AssetItemFromApi };
+  /** Quét QR/NFC. Tenant: hiện DeviceDetail. Staff: tra cứu thiết bị theo NFC (chỉ mã đã gán) hoặc gán NFC (khi mode assign hoặc assignForDevice). */
+  Camera:
+    | undefined
+    | { assignForDevice?: AssetItemFromApi; /** "assign" = từ menu + Gán NFC: quét thẻ mới để gán; không truyền = từ footer: chỉ tra cứu mã đã gán */ mode?: "lookup" | "assign" };
   DeviceDetail: { device: Device };
   Ticket: { device: Device };
   /** Chi tiết nhà cho Staff: danh sách thiết bị + nút gán NFC. Có thể truyền thêm thông tin từ API houses. */
@@ -57,6 +59,8 @@ export type RootStackParamList = AuthStackParamList & {
   ItemCreate: undefined;
   /** Màn chỉnh sửa thiết bị (Staff), hiện dạng modal. Param: item cần sửa. */
   ItemEdit: { item: AssetItemFromApi };
+  /** Màn chỉ xem thông tin thiết bị (Staff), khi thợ quét NFC bằng nút Quét ở footer. Param: item. */
+  ItemDescription: { item: AssetItemFromApi };
 };
 
 export type IconProps = {

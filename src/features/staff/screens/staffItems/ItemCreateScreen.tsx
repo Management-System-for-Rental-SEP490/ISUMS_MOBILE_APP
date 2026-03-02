@@ -1,6 +1,6 @@
 /**
  * Màn hình thêm thiết bị (Staff).
- * Form: Chọn nhà, chọn danh mục, displayName, serialNumber, nfcId (tùy chọn), conditionPercent, status.
+ * Form: Chọn nhà, chọn danh mục, displayName, serialNumber, NFC tag (tùy chọn), conditionPercent, status.
  * POST /api/asset/items qua useCreateAssetItem. Thành công → goBack về ItemList.
  */
 import React, { useState } from "react";
@@ -26,7 +26,7 @@ import type { AssetCategoryFromApi, HouseFromApi } from "../../../../shared/type
 
 type NavProp = NativeStackNavigationProp<RootStackParamList, "ItemCreate">;
 
-const STATUS_OPTIONS = ["AVAILABLE", "DISPOSED"] as const;
+const STATUS_OPTIONS = ["AVAILABLE", "IN_USE", "DISPOSED"] as const;
 
 export default function ItemCreateScreen() {
   const { t } = useTranslation();
@@ -67,7 +67,7 @@ export default function ItemCreateScreen() {
         categoryId: categoryId.trim(),
         displayName: displayName.trim(),
         serialNumber: serialNumber.trim(),
-        nfcId: nfcId.trim() || null,
+        nfcTag: nfcId.trim() || null,
         conditionPercent: percent,
         status: status || "AVAILABLE",
       },
@@ -215,9 +215,16 @@ export default function ItemCreateScreen() {
                     activeOpacity={0.8}
                   >
                     <Text
-                      style={[itemScreenStyles.statusBtnText, status === s && itemScreenStyles.statusBtnTextSelected]}
+                      style={[
+                        itemScreenStyles.statusBtnText,
+                        status === s && itemScreenStyles.statusBtnTextSelected,
+                      ]}
                     >
-                      {s === "AVAILABLE" ? t("staff_item_create.status_available") : t("staff_item_create.status_disposed")}
+                      {s === "AVAILABLE"
+                        ? t("staff_item_create.status_available")
+                        : s === "IN_USE"
+                        ? t("staff_item_create.status_in_use")
+                        : t("staff_item_create.status_disposed")}
                     </Text>
                   </TouchableOpacity>
                 ))}

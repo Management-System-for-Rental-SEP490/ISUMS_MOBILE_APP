@@ -4,7 +4,7 @@
  * - Form pre-fill; PUT /api/asset/items/:id qua useUpdateAssetItem.
  * - Nút "Xóa thiết bị": Alert xác nhận → cập nhật status từ "AVAILABLE" → "DISPOSED" (xóa mềm) → goBack.
  */
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useCallback } from "react";
 import {
   View,
   Text,
@@ -18,7 +18,7 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useTranslation } from "react-i18next";
-import { useNavigation, useRoute } from "@react-navigation/native";
+import { useNavigation, useRoute, useFocusEffect } from "@react-navigation/native";
 import { useQueryClient } from "@tanstack/react-query";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import type { RouteProp } from "@react-navigation/native";
@@ -30,8 +30,9 @@ import {
   useAssetCategories,
   ASSET_ITEM_KEYS,
   useTransferAssetItemHouse,
+  useDetachAssetTag,
 } from "../../../../shared/hooks";
-import { getAssetItemByNfcId } from "../../../../shared/services/assetItemApi";
+import { getAssetItemByNfcId, getAssetItemById } from "../../../../shared/services/assetItemApi";
 import { itemScreenStyles } from "./itemScreenStyles";
 import type { AssetCategoryFromApi, AssetItemFromApi } from "../../../../shared/types/api";
 import type { HouseFromApi } from "../../../../shared/types/api";
@@ -40,7 +41,7 @@ import type { UpdateAssetItemRequest } from "../../../../shared/types/api";
 type NavProp = NativeStackNavigationProp<RootStackParamList, "ItemEdit">;
 type ItemEditRouteProp = RouteProp<RootStackParamList, "ItemEdit">;
 
-const STATUS_OPTIONS = ["AVAILABLE", "DISPOSED"] as const;
+const STATUS_OPTIONS = ["AVAILABLE", "IN_USE", "DISPOSED"] as const;
 
 export default function ItemEditScreen() {
   const { t } = useTranslation();
@@ -50,24 +51,66 @@ export default function ItemEditScreen() {
   const queryClient = useQueryClient();
   const item = route.params.item as AssetItemFromApi;
   const transferHouseMutation = useTransferAssetItemHouse();
+  const detachNfcMutation = useDetachAssetTag();
 
-  const [houseId, setHouseId] = useState(item.houseId);
-  const [categoryId, setCategoryId] = useState(item.categoryId);
-  const [displayName, setDisplayName] = useState(item.displayName);
-  const [serialNumber, setSerialNumber] = useState(item.serialNumber);
-  const [nfcId, setNfcId] = useState(item.nfcId ?? "");
-  const [conditionPercent, setConditionPercent] = useState(String(item.conditionPercent));
-  const [status, setStatus] = useState<string>(item.status || STATUS_OPTIONS[0]);
+  const [latestItem, setLatestItem] = useState<AssetItemFromApi>(item);
+
+  // Cập nhật lại item mỗi khi màn hình focus (để lấy nfcTag mới nếu vừa đi Camera về)
+  useFocusEffect(
+    useCallback(() => {
+      let isActive = true;
+      const fetchLatest = async () => {
+        try {
+          const newItem = await getAssetItemById(item.id);
+          if (isActive && newItem) {
+            // Nếu API trả về nfcTag null (do lỗi BE hoặc chưa sync) nhưng item ban đầu (từ params) có nfcTag,
+            // thì ưu tiên hiển thị mã thẻ từ params (đặc biệt khi vừa quay lại từ Camera).
+            if (!newItem.nfcTag && item.nfcTag) {
+              newItem.nfcTag = item.nfcTag;
+            }
+            setLatestItem(newItem);
+          }
+        } catch (e) {
+          console.log("Error fetching latest item:", e);
+        }
+      };
+      fetchLatest();
+      return () => { isActive = false; };
+    }, [item.id, item.nfcTag])
+  );
+
+  const [houseId, setHouseId] = useState(latestItem.houseId);
+  const [categoryId, setCategoryId] = useState(latestItem.categoryId);
+  const [displayName, setDisplayName] = useState(latestItem.displayName);
+  const [serialNumber, setSerialNumber] = useState(latestItem.serialNumber);
+  const [nfcId, setNfcId] = useState(latestItem.nfcTag ?? "");
+  const [conditionPercent, setConditionPercent] = useState(String(latestItem.conditionPercent));
+  const [status, setStatus] = useState<string>(latestItem.status || STATUS_OPTIONS[0]);
 
   useEffect(() => {
-    setHouseId(item.houseId);
-    setCategoryId(item.categoryId);
-    setDisplayName(item.displayName);
-    setSerialNumber(item.serialNumber);
-    setNfcId(item.nfcId ?? "");
-    setConditionPercent(String(item.conditionPercent));
-    setStatus(item.status || STATUS_OPTIONS[0]);
-  }, [item.id]);
+    setHouseId(latestItem.houseId);
+    setCategoryId(latestItem.categoryId);
+    setDisplayName(latestItem.displayName);
+    setSerialNumber(latestItem.serialNumber);
+    setNfcId(latestItem.nfcTag ?? "");
+    setConditionPercent(String(latestItem.conditionPercent));
+    setStatus(latestItem.status || STATUS_OPTIONS[0]);
+  }, [latestItem]);
+
+  // Tự động cập nhật status dựa trên conditionPercent
+  useEffect(() => {
+    const percent = parseInt(conditionPercent, 10);
+    if (!Number.isNaN(percent)) {
+      if (percent === 100) {
+        // Nếu 100% -> AVAILABLE
+        setStatus("AVAILABLE");
+      } else if (percent < 100 && status === "AVAILABLE") {
+        // Nếu < 100% và đang là AVAILABLE -> chuyển sang IN_USE
+        // (Giữ nguyên nếu đang là DISPOSED hoặc đã là IN_USE)
+        setStatus("IN_USE");
+      }
+    }
+  }, [conditionPercent]);
 
   const { data: housesData } = useHouses();
   const houses = housesData?.data ?? [];
@@ -113,10 +156,20 @@ export default function ItemEditScreen() {
       categoryId: categoryId.trim(),
       displayName: displayName.trim(),
       serialNumber: serialNumber.trim(),
-      nfcId: trimmedNfcId.length > 0 ? trimmedNfcId : "",
+      nfcTag: trimmedNfcId.length > 0 ? trimmedNfcId : null,
       conditionPercent: percent,
       status: status || "AVAILABLE",
     };
+
+    // Validation logic mới: Chặn nếu 100% mà chọn IN_USE
+    if (percent === 100 && payload.status === "IN_USE") {
+      Alert.alert(
+        t("common.error"),
+        t("staff_item_edit.error_100_percent_in_use")
+      );
+      updateMutation.reset();
+      return;
+    }
 
     try {
       // Nếu user đổi nhà, gọi API transfer riêng trước.
@@ -159,7 +212,7 @@ export default function ItemEditScreen() {
               categoryId: categoryId.trim(),
               displayName: displayName.trim(),
               serialNumber: serialNumber.trim(),
-              nfcId: nfcId.trim() ? nfcId.trim() : "",
+              nfcTag: nfcId.trim() ? nfcId.trim() : null,
               conditionPercent: Number.isNaN(percent) ? item.conditionPercent : percent,
               status: "DISPOSED",
             };
@@ -188,6 +241,46 @@ export default function ItemEditScreen() {
 
   // Chỉ cho phép "xóa" khi thiết bị chưa ở trạng thái DISPOSED.
   const canDelete = status !== "DISPOSED";
+
+  const handleDetachNfc = () => {
+    const trimmed = nfcId.trim();
+    if (!trimmed) return;
+    Alert.alert(
+      t("staff_item_edit.remove_nfc_confirm_title"),
+      t("staff_item_edit.remove_nfc_confirm_message"),
+      [
+        { text: t("profile.cancel"), style: "cancel" },
+        {
+          text: t("staff_item_edit.remove_nfc_btn"),
+          onPress: async () => {
+            try {
+              await detachNfcMutation.mutateAsync({ tagValue: trimmed });
+              setNfcId("");
+              await queryClient.refetchQueries({ queryKey: ASSET_ITEM_KEYS.base });
+              Alert.alert(
+                t("common.success"),
+                t("staff_item_edit.remove_nfc_success"),
+                [
+                  {
+                    text: t("common.close"),
+                    onPress: () => {
+                      (navigation as any).navigate("Main", { screen: "Dashboard" });
+                    },
+                  },
+                ]
+              );
+            } catch (e) {
+              console.log("Lỗi gỡ NFC:", e);
+              Alert.alert(
+                t("camera.error_title"),
+                t("staff_item_edit.remove_nfc_error")
+              );
+            }
+          },
+        },
+      ]
+    );
+  };
 
   const safeStyle = { paddingTop: insets.top, paddingBottom: insets.bottom };
 
@@ -285,14 +378,49 @@ export default function ItemEditScreen() {
             <View style={itemScreenStyles.fieldSpacer}>
               <Text style={itemScreenStyles.label}>{t("staff_item_create.nfc_id_label")}</Text>
               <TextInput
-                style={itemScreenStyles.input}
+                style={[
+                  itemScreenStyles.input,
+                  { backgroundColor: "#F9FAFB", color: "#6B7280" }
+                ]}
                 value={nfcId}
-                onChangeText={setNfcId}
                 placeholder={t("staff_item_create.nfc_id_placeholder")}
                 placeholderTextColor="#9CA3AF"
-                editable={!isPending}
+                editable={false}
               />
             </View>
+            
+            {!nfcId.trim() ? (
+              <TouchableOpacity
+                style={[
+                  itemScreenStyles.detachNfcBtn,
+                  { backgroundColor: "#2563EB", borderColor: "#2563EB", marginTop: 10 }
+                ]}
+                onPress={() => navigation.navigate("Camera", { assignForDevice: latestItem, mode: "assign" })}
+                activeOpacity={0.8}
+              >
+                <Text style={[itemScreenStyles.detachNfcBtnText, { color: "#fff" }]}>
+                  {t("staff_building_detail.assign_nfc") || "Gán NFC"}
+                </Text>
+              </TouchableOpacity>
+            ) : (
+              <TouchableOpacity
+                style={[
+                  itemScreenStyles.detachNfcBtn,
+                  detachNfcMutation.isPending && itemScreenStyles.detachNfcBtnDisabled,
+                ]}
+                onPress={handleDetachNfc}
+                disabled={detachNfcMutation.isPending}
+                activeOpacity={0.8}
+              >
+                {detachNfcMutation.isPending ? (
+                  <ActivityIndicator size="small" color="#111827" />
+                ) : (
+                  <Text style={itemScreenStyles.detachNfcBtnText}>
+                    {t("staff_item_edit.remove_nfc_btn")}
+                  </Text>
+                )}
+              </TouchableOpacity>
+            )}
 
             <View style={itemScreenStyles.fieldSpacer}>
               <Text style={itemScreenStyles.label}>{t("staff_item_create.condition_label")}</Text>
@@ -321,16 +449,18 @@ export default function ItemEditScreen() {
                     ]}
                     activeOpacity={0.8}
                   >
-                    <Text
-                      style={[
-                        itemScreenStyles.statusBtnText,
-                        status === s && itemScreenStyles.statusBtnTextSelected,
-                      ]}
-                    >
-                      {s === "AVAILABLE"
-                        ? t("staff_item_create.status_available")
-                        : t("staff_item_create.status_disposed")}
-                    </Text>
+                  <Text
+                    style={[
+                      itemScreenStyles.statusBtnText,
+                      status === s && itemScreenStyles.statusBtnTextSelected,
+                    ]}
+                  >
+                    {s === "AVAILABLE"
+                      ? t("staff_item_create.status_available")
+                      : s === "IN_USE"
+                      ? t("staff_item_create.status_in_use")
+                      : t("staff_item_create.status_disposed")}
+                  </Text>
                   </TouchableOpacity>
                 ))}
               </View>

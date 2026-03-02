@@ -344,7 +344,7 @@ export default function BuildingDetailScreen() {
                 {categoryName}
               </Text>
               {items.map((item) => {
-                const hasNfc = !!item.nfcId?.trim();
+                const hasNfc = !!item.nfcTag?.trim();
                 const displayStatus = getDisplayStatus(item.status);
                 const statusStyle = getStatusStyle(displayStatus);
                 const categoryName = categories.find((c) => c.id === item.categoryId)?.name;

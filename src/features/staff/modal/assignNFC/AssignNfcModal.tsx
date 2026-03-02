@@ -18,7 +18,7 @@ import type {
 
 type AssignNfcModalProps = {
   visible: boolean;
-  /** NFC ID vừa quét được; có thể null trong lúc reset state. */
+  /** NFC tag vừa quét được; có thể null trong lúc reset state. */
   nfcId: string | null;
   onClose: () => void;
   /** Khi chọn 1 thiết bị để gán NFC. */
@@ -45,9 +45,9 @@ export const AssignNfcModal: React.FC<AssignNfcModalProps> = ({
   const [selectedHouseId, setSelectedHouseId] = useState<string | null>(null);
   const [selectedCategoryId, setSelectedCategoryId] = useState<string | null>(null);
 
-  /** Thiết bị chưa có NFC. */
+  /** Thiết bị chưa có NFC (chưa có nfcTag). */
   const devicesWithoutNfc = useMemo(
-    () => allItems.filter((i) => !(i.nfcId || "").trim()),
+    () => allItems.filter((i) => !(i.nfcTag || "").trim()),
     [allItems]
   );
 

@@ -135,6 +135,7 @@ const resources = {
           "id_error": "Không thể đọc ID từ thẻ NFC.",
           "not_found_title": "Không tìm thấy",
           "not_found_nfc": "Không tìm thấy thiết bị với NFC ID: {{id}}",
+          "lookup_no_device_nfc": "Không có thiết bị nào gắn mã NFC này.",
           "not_found_qr": "Không tìm thấy thiết bị với mã: {{id}}",
           "rescan": "Quét lại"
       },
@@ -174,6 +175,7 @@ const resources = {
         "all_devices_items_placeholder": "Danh sách thiết bị sẽ hiển thị khi có API items.",
         "all_devices_no_items": "Không có thiết bị nào.",
         "all_devices_status_available": "Sẵn sàng",
+        "all_devices_status_in_use": "Đang sử dụng",
         "all_devices_status_disposed": "Đã thanh lý",
         "all_devices_status_other": "{{status}}",
         "asset_condition_label": "Tình trạng: {{percent}}%",
@@ -187,7 +189,8 @@ const resources = {
         },
         "add_menu_open": "Mở menu thêm",
         "add_menu_create_category": "Tạo danh mục",
-        "add_menu_create_device": "Tạo thiết bị"
+        "add_menu_create_device": "Tạo thiết bị",
+        "add_menu_assign_nfc": "Gán NFC"
       },
       "staff_category": {
         "title": "Tạo danh mục thiết bị",
@@ -219,6 +222,7 @@ const resources = {
         "category_other": "Khác",
         "condition": "Tình trạng: {{percent}}%",
         "status_available": "Sẵn sàng",
+        "status_in_use": "Đang sử dụng",
         "status_disposed": "Đã thanh lý"
       },
       "staff_item_create": {
@@ -234,6 +238,7 @@ const resources = {
         "condition_label": "Tình trạng (%)",
         "status_label": "Trạng thái",
         "status_available": "Sẵn sàng",
+        "status_in_use": "Đang sử dụng",
         "status_disposed": "Đã thanh lý",
         "submit": "Thêm thiết bị",
         "success_message": "Đã thêm thiết bị.",
@@ -247,7 +252,17 @@ const resources = {
         "delete_confirm_title": "Xác nhận xóa",
         "delete_confirm_message": "Bạn có chắc muốn xóa thiết bị này? Thao tác có thể không hoàn tác được.",
         "nfc_duplicate_title": "Mã NFC đã được gán",
-        "nfc_duplicate_message": "Mã NFC này đang được gán cho thiết bị \"{{name}}\". Mỗi mã chỉ được gán cho một thiết bị."
+        "nfc_duplicate_message": "Mã NFC này đang được gán cho thiết bị \"{{name}}\". Mỗi mã chỉ được gán cho một thiết bị.",
+        "remove_nfc_btn": "Gỡ gán NFC",
+        "remove_nfc_confirm_title": "Gỡ thẻ NFC",
+        "remove_nfc_confirm_message": "Bạn có chắc muốn gỡ thẻ NFC này khỏi thiết bị?",
+        "remove_nfc_success": "Đã gỡ thẻ NFC khỏi thiết bị.",
+        "remove_nfc_error": "Không thể gỡ thẻ NFC. Vui lòng thử lại.",
+        "error_100_percent_in_use": "Thiết bị có tình trạng 100% không thể để trạng thái Đang sử dụng (IN_USE)."
+      },
+      "staff_item_description": {
+        "title": "Thông tin thiết bị",
+        "edit_btn": "Chỉnh sửa"
       },
       "staff_notification": {
         "tenant_sent_ticket_title": "Có ticket mới từ người thuê",
@@ -523,6 +538,7 @@ const resources = {
           "id_error": "Cannot read ID from NFC tag.",
           "not_found_title": "Not Found",
           "not_found_nfc": "Device not found with NFC ID: {{id}}",
+          "lookup_no_device_nfc": "No device is assigned to this NFC code.",
           "not_found_qr": "Device not found with code: {{id}}",
           "rescan": "Rescan"
       },
@@ -562,6 +578,7 @@ const resources = {
         "all_devices_items_placeholder": "Device list will appear when items API is available.",
         "all_devices_no_items": "No devices.",
         "all_devices_status_available": "Available",
+        "all_devices_status_in_use": "In use",
         "all_devices_status_disposed": "Disposed",
         "all_devices_status_other": "{{status}}",
         "asset_condition_label": "Condition: {{percent}}%",
@@ -575,7 +592,8 @@ const resources = {
         },
         "add_menu_open": "Open add menu",
         "add_menu_create_category": "Create category",
-        "add_menu_create_device": "Create device"
+        "add_menu_create_device": "Create device",
+        "add_menu_assign_nfc": "Assign NFC"
       },
       "staff_category": {
         "title": "Create asset category",
@@ -607,6 +625,7 @@ const resources = {
         "category_other": "Other",
         "condition": "Condition: {{percent}}%",
         "status_available": "Available",
+        "status_in_use": "In use",
         "status_disposed": "Disposed"
       },
       "staff_item_create": {
@@ -622,6 +641,7 @@ const resources = {
         "condition_label": "Condition (%)",
         "status_label": "Status",
         "status_available": "Available",
+        "status_in_use": "In use",
         "status_disposed": "Disposed",
         "submit": "Add device",
         "success_message": "Device added.",
@@ -633,9 +653,19 @@ const resources = {
         "success_message": "Device updated.",
         "delete_btn": "Delete device",
         "delete_confirm_title": "Confirm delete",
-         "delete_confirm_message": "Are you sure you want to delete this device? This action may not be reversible.",
-         "nfc_duplicate_title": "NFC already assigned",
-         "nfc_duplicate_message": "This NFC ID is already assigned to device \"{{name}}\". Each NFC can only be linked to one device."
+        "delete_confirm_message": "Are you sure you want to delete this device? This action may not be reversible.",
+        "nfc_duplicate_title": "NFC already assigned",
+        "nfc_duplicate_message": "This NFC ID is already assigned to device \"{{name}}\". Each NFC can only be linked to one device.",
+        "remove_nfc_btn": "Detach NFC",
+        "remove_nfc_confirm_title": "Detach NFC tag",
+        "remove_nfc_confirm_message": "Are you sure you want to detach this NFC tag from the device?",
+        "remove_nfc_success": "NFC tag detached from device.",
+        "remove_nfc_error": "Failed to detach NFC tag. Please try again.",
+        "error_100_percent_in_use": "Device with 100% condition cannot be set to In Use status."
+      },
+      "staff_item_description": {
+        "title": "Device information",
+        "edit_btn": "Edit"
       },
       "staff_notification": {
         "tenant_sent_ticket_title": "New ticket from tenant",
@@ -911,6 +941,7 @@ const resources = {
           "id_error": "NFCタグからIDを読み取れません。",
           "not_found_title": "見つかりません",
           "not_found_nfc": "NFC ID: {{id}} のデバイスが見つかりません",
+          "lookup_no_device_nfc": "このNFCコードが割り当てられたデバイスはありません。",
           "not_found_qr": "コード: {{id}} のデバイスが見つかりません",
           "rescan": "再スキャン"
       },
@@ -950,6 +981,7 @@ const resources = {
         "all_devices_items_placeholder": "アイテムAPI連携後にデバイス一覧を表示します。",
         "all_devices_no_items": "デバイスがありません。",
         "all_devices_status_available": "利用可能",
+        "all_devices_status_in_use": "使用中",
         "all_devices_status_disposed": "廃棄済み",
         "all_devices_status_other": "{{status}}",
         "asset_condition_label": "状態: {{percent}}%",
@@ -963,7 +995,8 @@ const resources = {
         },
         "add_menu_open": "追加メニューを開く",
         "add_menu_create_category": "カテゴリを作成",
-        "add_menu_create_device": "デバイスを作成"
+        "add_menu_create_device": "デバイスを作成",
+        "add_menu_assign_nfc": "NFCを割り当て"
       },
       "staff_category": {
         "title": "資産カテゴリを作成",
@@ -995,6 +1028,7 @@ const resources = {
         "category_other": "その他",
         "condition": "状態: {{percent}}%",
         "status_available": "利用可能",
+        "status_in_use": "使用中",
         "status_disposed": "廃棄済み"
       },
       "staff_item_create": {
@@ -1010,6 +1044,7 @@ const resources = {
         "condition_label": "状態（%）",
         "status_label": "ステータス",
         "status_available": "利用可能",
+        "status_in_use": "使用中",
         "status_disposed": "廃棄済み",
         "submit": "追加",
         "success_message": "デバイスを追加しました。",
@@ -1023,7 +1058,17 @@ const resources = {
         "delete_confirm_title": "削除の確認",
         "delete_confirm_message": "このデバイスを削除してもよろしいですか？元に戻せない場合があります。",
         "nfc_duplicate_title": "NFCは既に割り当て済みです",
-        "nfc_duplicate_message": "このNFC IDはすでにデバイス「{{name}}」に割り当てられています。1つのNFCは1つのデバイスにのみ紐づけできます。"
+        "nfc_duplicate_message": "このNFC IDはすでにデバイス「{{name}}」に割り当てられています。1つのNFCは1つのデバイスにのみ紐づけできます。",
+        "remove_nfc_btn": "NFCを解除",
+        "remove_nfc_confirm_title": "NFCタグの解除",
+        "remove_nfc_confirm_message": "このNFCタグをデバイスから解除してもよろしいですか？",
+        "remove_nfc_success": "NFCタグをデバイスから解除しました。",
+        "remove_nfc_error": "NFCタグの解除に失敗しました。もう一度お試しください。",
+        "error_100_percent_in_use": "状態が100%のデバイスは「使用中」に設定できません。"
+      },
+      "staff_item_description": {
+        "title": "デバイス情報",
+        "edit_btn": "編集"
       },
       "staff_notification": {
         "tenant_sent_ticket_title": "入居者からチケットが届きました",

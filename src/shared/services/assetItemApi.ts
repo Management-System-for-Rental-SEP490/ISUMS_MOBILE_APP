@@ -11,6 +11,10 @@ import type {
   CreateAssetItemApiResponse,
   UpdateAssetItemRequest,
   UpdateAssetItemApiResponse,
+  AttachAssetTagRequest,
+  AttachAssetTagApiResponse,
+  DetachAssetTagApiResponse,
+  GetAssetByTagValueApiResponse,
 } from "../types/api";
 
 /** Tham số filter cho GET /api/asset/items (tùy chọn theo nhà, danh mục, hoặc NFC). */
@@ -22,6 +26,22 @@ export type AssetItemsParams = {
   /** Lọc theo mã NFC đã gán (thường trả về tối đa 1 thiết bị). Một số BE hỗ trợ query ?nfcId=xxx. */
   nfcId?: string;
 };
+
+/**
+ * Chuẩn hóa tagValue trước khi gửi lên BE.
+ * - Giữ nguyên cấu trúc có khoảng trắng giữa các byte (\"04 9C 59 A2 ...\")
+ * - Chỉ trim hai đầu, KHÔNG xóa khoảng trắng, KHÔNG tự ý đổi format.
+ * Lý do: BE chấp nhận ID thẻ NFC với hoặc không với khoảng trắng, và logic so khớp nằm phía BE.
+ */
+const normalizeTagValueForApi = (raw: string) => raw.trim();
+
+/**
+ * Chuẩn hóa tagValue để so sánh trên FE (fallback).
+ * - Bỏ hết khoảng trắng và chuyển sang UPPERCASE.
+ * - Dùng khi cần so sánh hai mã NFC bất kể đang được lưu dính liền hay có khoảng trắng.
+ */
+const normalizeTagValueForCompare = (raw: string) =>
+  raw.replace(/\s+/g, "").toUpperCase();
 
 /**
  * Lấy danh sách thiết bị (GET /api/asset/items), có thể lọc theo houseId và/hoặc categoryId.
@@ -46,21 +66,71 @@ export const getAssetItems = async (
 };
 
 /**
- * Tìm thiết bị theo mã NFC đã gán.
- * Gọi GET /api/asset/items lấy TOÀN BỘ danh sách, sau đó filter theo nfcId ở phía FE.
- * Lý do: tránh phụ thuộc vào việc BE có implement đúng query ?nfcId hay không.
- * @param nfcId - Mã NFC đã đọc từ thẻ (có thể có khoảng trắng, ví dụ "04 9C 59 A2 B2 19 90").
- * @returns Promise<AssetItemFromApi | undefined> - Thiết bị tương ứng hoặc undefined nếu chưa gán.
+ * Lấy chi tiết thiết bị theo ID (GET /api/asset/items/:id).
  */
+export const getAssetItemById = async (id: string): Promise<AssetItemFromApi | undefined> => {
+  try {
+    const response = await axiosClient.get<UpdateAssetItemApiResponse>(
+      `${BACKEND_API_BASE}/asset/items/${id}`
+    );
+    // Response thường trả về { data: item, ... } hoặc { ...item } tùy BE,
+    // nhưng ở trên updateAssetItem trả về UpdateAssetItemApiResponse (có data).
+    // Giả sử GET cũng trả về cấu trúc tương tự.
+    return response.data.data;
+  } catch (error) {
+    console.log("Lỗi lấy chi tiết thiết bị:", error);
+    return undefined;
+  }
+};
+
+
 export const getAssetItemByNfcId = async (
   nfcId: string
 ): Promise<AssetItemFromApi | undefined> => {
-  const normalized = nfcId.trim();
-  const res = await getAssetItems();
-  const found = res.data.find(
-    (d) => (d.nfcId || "").trim() === normalized
-  );
-  return found ?? undefined;
+  const normalized = nfcId.trim(); 
+  if (!normalized) return undefined;
+  const apiTagValue = normalizeTagValueForApi(normalized);
+
+  try {
+    // Gọi API mới: GET /api/asset/tags/asset/{tagValue}
+    const response = await axiosClient.get<GetAssetByTagValueApiResponse>(
+      `${BACKEND_API_BASE}/asset/tags/asset/${encodeURIComponent(apiTagValue)}`
+    );
+    
+    // Xử lý response.data.data có thể là Object (theo Postman) hoặc Array (theo code cũ)
+    const responseData = response.data.data;
+    
+    let raw: AssetItemFromApi | undefined;
+
+    if (Array.isArray(responseData)) {
+      raw = responseData[0];
+    } else if (responseData && typeof responseData === "object") {
+      // BE trả về object
+      raw = responseData as AssetItemFromApi;
+    }
+
+    if (!raw) return undefined;
+
+    // Đảm bảo FE luôn có nfcTag để hiển thị dù BE có thể trả null.
+    return {
+      ...raw,
+      nfcTag: raw.nfcTag ?? apiTagValue,
+    };
+  } catch (error) {
+    console.log("Lỗi gọi GET /asset/tags/asset/{tagValue}, fallback getAssetItems:", error);
+    try {
+      const res = await getAssetItems();
+      const found = res.data.find(
+        (d) =>
+          normalizeTagValueForCompare(d.nfcTag || "") ===
+          normalizeTagValueForCompare(apiTagValue)
+      );
+      return found ?? undefined;
+    } catch (e2) {
+      console.log("Lỗi fallback GET /asset/items khi tìm theo NFC:", e2);
+      return undefined;
+    }
+  }
 };
 
 /**
@@ -95,7 +165,7 @@ export const updateAssetItem = async (
         category_id: payload.categoryId,
         display_name: payload.displayName,
         serial_number: payload.serialNumber,
-        nfc_id: payload.nfcId ?? "",
+        nfc_tag: payload.nfcTag,
         condition_percent: payload.conditionPercent,
         status: payload.status,
       }
@@ -104,7 +174,7 @@ export const updateAssetItem = async (
         categoryId: payload.categoryId,
         displayName: payload.displayName,
         serialNumber: payload.serialNumber,
-        nfcId: payload.nfcId ?? "",
+        nfcTag: payload.nfcTag,
         conditionPercent: payload.conditionPercent,
         status: payload.status,
       };
@@ -136,6 +206,38 @@ export const transferAssetItemHouse = async (
 export const deleteAssetItem = async (id: string): Promise<{ success: boolean; message?: string }> => {
   const response = await axiosClient.delete<{ success: boolean; message?: string }>(
     `${BACKEND_API_BASE}/asset/items/${id}`
+  );
+  return response.data;
+};
+
+/**
+ * Gán một tag NFC vào thiết bị (POST /api/asset/tags).
+ * BE tạo bản ghi tag và liên kết với asset item; response 201 khi thành công.
+ * @param payload - assetId (ID thiết bị), tagValue (mã NFC đọc từ thẻ), tagType: "NFC".
+ */
+export const attachAssetTag = async (
+  payload: AttachAssetTagRequest
+): Promise<AttachAssetTagApiResponse> => {
+  const response = await axiosClient.post<AttachAssetTagApiResponse>(
+    `${BACKEND_API_BASE}/asset/tags`,
+    {
+      ...payload,
+      tagValue: normalizeTagValueForApi(payload.tagValue),
+    }
+  );
+  return response.data;
+};
+
+/**
+ * Gỡ tag NFC khỏi thiết bị (PUT /api/asset/tags/detach/{tagValue}).
+ * @param tagValue - Giá trị mã NFC (tagValue) cần gỡ.
+ */
+export const detachAssetTag = async (
+  tagValue: string
+): Promise<DetachAssetTagApiResponse> => {
+  const normalized = normalizeTagValueForApi(tagValue.trim());
+  const response = await axiosClient.put<DetachAssetTagApiResponse>(
+    `${BACKEND_API_BASE}/asset/tags/detach/${encodeURIComponent(normalized)}`
   );
   return response.data;
 };

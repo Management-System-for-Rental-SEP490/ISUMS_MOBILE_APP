@@ -110,10 +110,13 @@ const createScreenOptions = (bottomInset: number) => ({
   }: {
     navigation: NavigationProp<MainTabParamList>;
   }) => ({
-    tabPress: (e: { preventDefault: () => void }) => {
-      e.preventDefault();
-      navigation.getParent<NavigationProp<RootStackParamList>>()?.navigate("Camera");
-    }, 
+  tabPress: (e: { preventDefault: () => void }) => {
+    e.preventDefault();
+    navigation.getParent<NavigationProp<RootStackParamList>>()?.navigate("Camera", {
+      mode: "lookup",
+      assignForDevice: undefined,
+    });
+  },
   });
 
   Giải thích chi tiết:

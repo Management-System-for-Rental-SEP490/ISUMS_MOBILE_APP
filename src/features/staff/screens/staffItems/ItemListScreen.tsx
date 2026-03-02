@@ -90,6 +90,7 @@ export default function ItemListScreen() {
 
   const getStatusLabel = (status: string) => {
     if (status === "AVAILABLE") return t("staff_item_list.status_available");
+    if (status === "IN_USE") return t("staff_item_list.status_in_use");
     if (status === "DISPOSED") return t("staff_item_list.status_disposed");
     return status;
   };

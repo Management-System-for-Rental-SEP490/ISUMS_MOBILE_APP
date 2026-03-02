@@ -152,6 +152,25 @@ export const itemScreenStyles = StyleSheet.create({
     fontWeight: "600",
     color: "#fff",
   },
+  /** Nút gỡ NFC (nhẹ hơn nút xóa) */
+  detachNfcBtn: {
+    marginTop: 10,
+    borderRadius: 10,
+    paddingVertical: 10,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "#F9FAFB",
+    borderWidth: 1,
+    borderColor: "#D1D5DB",
+  },
+  detachNfcBtnDisabled: {
+    opacity: 0.5,
+  },
+  detachNfcBtnText: {
+    fontSize: 14,
+    fontWeight: "500",
+    color: "#111827",
+  },
   successText: {
     marginTop: 12,
     fontSize: 14,
@@ -216,5 +235,81 @@ export const itemScreenStyles = StyleSheet.create({
   itemCardCondition: {
     fontSize: 13,
     color: "#6B7280",
+  },
+  // ---------- ItemDescriptionScreen (chỉ xem thông tin thiết bị khi quét NFC) ----------
+  descriptionCard: {
+    backgroundColor: "#fff",
+    borderRadius: 12,
+    padding: 20,
+    borderWidth: 1,
+    borderColor: "#E5E7EB",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  descriptionTitle: {
+    fontSize: 20,
+    fontWeight: "700",
+    color: "#111827",
+    marginBottom: 16,
+    paddingBottom: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: "#E5E7EB",
+  },
+  descriptionRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "flex-start",
+    paddingVertical: 10,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: "#E5E7EB",
+  },
+  descriptionRowLast: {
+    borderBottomWidth: 0,
+  },
+  descriptionLabel: {
+    fontSize: 14,
+    color: "#6B7280",
+    flex: 0.4,
+  },
+  descriptionValue: {
+    fontSize: 15,
+    fontWeight: "500",
+    color: "#1F2937",
+    flex: 0.6,
+    textAlign: "right",
+  },
+  descriptionStatusBadge: {
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 8,
+    alignSelf: "flex-end",
+  },
+  descriptionStatusAvailable: {
+    backgroundColor: "#D1FAE5",
+  },
+  descriptionStatusInUse: {
+    backgroundColor: "#FEF3C7",
+  },
+  descriptionStatusDisposed: {
+    backgroundColor: "#FEE2E2",
+  },
+  descriptionStatusOther: {
+    backgroundColor: "#F3F4F6",
+  },
+  descriptionEditBtn: {
+    marginTop: 24,
+    backgroundColor: "#2563EB",
+    borderRadius: 10,
+    paddingVertical: 14,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  descriptionEditBtnText: {
+    fontSize: 16,
+    fontWeight: "600",
+    color: "#fff",
   },
 });

@@ -5,6 +5,8 @@ import {
   updateAssetItem,
   deleteAssetItem,
   transferAssetItemHouse,
+  attachAssetTag,
+  detachAssetTag,
 } from "../services/assetItemApi";
 import type {
   AssetItemsApiResponse,
@@ -164,6 +166,36 @@ export const useTransferAssetItemHouse = () => {
   return useMutation({
     mutationFn: ({ id, newHouseId }: { id: string; newHouseId: string }) =>
       transferAssetItemHouse(id, newHouseId),
+    onSuccess: () => invalidateAllAssetItems(queryClient),
+  });
+};
+
+/**
+ * Hook gán tag NFC vào thiết bị (POST /api/asset/tags).
+ * Sau khi gán thành công, invalidate cache danh sách thiết bị để màn hình cập nhật (item có nfcId/tag).
+ */
+export const useAttachAssetTag = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (payload: { assetId: string; tagValue: string; tagType: "NFC" }) =>
+      attachAssetTag({
+        assetId: payload.assetId,
+        tagValue: payload.tagValue.trim(),
+        tagType: "NFC",
+      }),
+    onSuccess: () => invalidateAllAssetItems(queryClient),
+  });
+};
+
+/**
+ * Hook gỡ tag NFC khỏi thiết bị (PUT /api/asset/tags/detach/{tagValue}).
+ * Sau khi gỡ thành công, invalidate cache danh sách thiết bị để trạng thái NFC cập nhật.
+ */
+export const useDetachAssetTag = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ tagValue }: { tagValue: string }) =>
+      detachAssetTag(tagValue.trim()),
     onSuccess: () => invalidateAllAssetItems(queryClient),
   });
 };

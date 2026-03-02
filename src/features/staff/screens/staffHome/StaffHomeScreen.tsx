@@ -135,9 +135,10 @@ export default function StaffHomeScreen() {
     }
   };
 
-  /** Dịch trạng thái thiết bị từ API (AVAILABLE, DISPOSED, ...). */
+  /** Dịch trạng thái thiết bị từ API (AVAILABLE, IN_USE, DISPOSED, ...). */
   const getItemStatusLabel = (statusValue: string) => {
     if (statusValue === "AVAILABLE") return t("staff_home.all_devices_status_available");
+    if (statusValue === "IN_USE") return t("staff_home.all_devices_status_in_use");
     if (statusValue === "DISPOSED") return t("staff_home.all_devices_status_disposed");
     return t("staff_home.all_devices_status_other", { status: statusValue });
   };
@@ -145,6 +146,8 @@ export default function StaffHomeScreen() {
   const getItemStatusStyle = (statusValue: string) => {
     if (statusValue === "AVAILABLE")
       return { bg: "#D1FAE5", color: "#059669" };
+    if (statusValue === "IN_USE")
+      return { bg: "#FEF3C7", color: "#92400E" };
     if (statusValue === "DISPOSED")
       return { bg: "#FEE2E2", color: "#DC2626" };
     return { bg: "#F3F4F6", color: "#6B7280" };
@@ -165,6 +168,17 @@ export default function StaffHomeScreen() {
     const root = navigation.getParent?.();
     if (root && "navigate" in root) {
       (root as { navigate: (name: string) => void }).navigate("ItemList");
+    }
+  };
+
+  /** Mở luồng gán NFC: Camera với mode "assign" — quét thẻ mới thì chọn thiết bị chưa có NFC để gán; thẻ đã gán thì báo lỗi. */
+  const openAssignNfc = () => {
+    setAddMenuVisible(false);
+    const root = navigation.getParent?.();
+    if (root && "navigate" in root) {
+      (root as { navigate: (name: string, params: object) => void }).navigate("Camera", {
+        mode: "assign",
+      });
     }
   };
 
@@ -238,6 +252,15 @@ export default function StaffHomeScreen() {
             >
               <Text style={staffHomeStyles.addMenuItemText}>
                 {t("staff_home.add_menu_create_device")}
+              </Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[staffHomeStyles.addMenuItem, staffHomeStyles.addMenuItemBorder]}
+              onPress={openAssignNfc}
+              activeOpacity={0.7}
+            >
+              <Text style={staffHomeStyles.addMenuItemText}>
+                {t("staff_home.add_menu_assign_nfc")}
               </Text>
             </TouchableOpacity>
           </Pressable>
