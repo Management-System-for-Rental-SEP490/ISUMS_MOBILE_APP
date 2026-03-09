@@ -168,6 +168,8 @@ export interface AssetItemFromApi {
   serialNumber: string;
   /** NFC tag ID gắn với thiết bị (từ bảng asset tags), null nếu chưa gán. */
   nfcTag: string | null;
+  /** QR tag ID gắn với thiết bị, null nếu chưa gán. */
+  qrTag: string | null;
   /** Danh sách tags (NFC, QR, ...) gắn với thiết bị (nếu BE hỗ trợ trả về). */
   tags?: AssetTagFromApi[];
   /** Tình trạng còn lại (%), ví dụ 80 = còn tốt 80%. */
@@ -193,6 +195,8 @@ export interface CreateAssetItemRequest {
   serialNumber: string;
   /** Có thể chuỗi hoặc null nếu chưa gán NFC. */
   nfcTag: string | null;
+  /** Có thể chuỗi hoặc null nếu chưa gán QR. */
+  qrTag: string | null;
   conditionPercent: number;
   /** VD "AVAILABLE", "DISPOSED". */
   status: string;

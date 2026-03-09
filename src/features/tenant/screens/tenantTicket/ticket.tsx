@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { SafeAreaProvider, useSafeAreaInsets } from "react-native-safe-area-context";
-import { View, Text, TextInput, TouchableOpacity, ScrollView, Alert } from "react-native";
+import { View, Text, TextInput, TouchableOpacity, ScrollView } from "react-native";
+import { CustomAlert as Alert } from "../../../../shared/components/alert";
 import { RouteProp, useNavigation, useRoute } from "@react-navigation/native";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { RootStackParamList } from "../../../../shared/types";

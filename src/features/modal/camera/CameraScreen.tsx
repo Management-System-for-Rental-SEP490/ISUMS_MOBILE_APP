@@ -1,5 +1,6 @@
 import { useNavigation, useRoute, RouteProp } from "@react-navigation/native";
-import { Text, TouchableOpacity, View, Alert, ActivityIndicator } from "react-native";
+import { Text, TouchableOpacity, View, ActivityIndicator } from "react-native";
+import { CustomAlert as Alert } from "../../../shared/components/alert";
 import { useEffect, useState, useRef } from "react";
 import { CameraView, useCameraPermissions } from "expo-camera";
 import { cameraStyles } from "./cameraStyles";
@@ -571,6 +572,7 @@ const CameraScreen = () => {
       <AssignNfcModal
         visible={assignModalVisible}
         nfcId={scannedNfcId}
+        tagType={scannedTagType}
         onClose={() => {
           setAssignModalVisible(false);
           setScannedNfcId(null);

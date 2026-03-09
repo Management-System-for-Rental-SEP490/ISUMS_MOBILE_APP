@@ -14,8 +14,8 @@ import {
   KeyboardAvoidingView,
   Platform,
   ActivityIndicator,
-  Alert,
 } from "react-native";
+import { CustomAlert as Alert } from "../../../../shared/components/alert";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useTranslation } from "react-i18next";
 import { useNavigation, useRoute, useFocusEffect } from "@react-navigation/native";
@@ -53,14 +53,9 @@ export default function ItemEditScreen() {
   const transferHouseMutation = useTransferAssetItemHouse();
   const detachNfcMutation = useDetachAssetTag();
 
-  const isQrCode = (tag: string) => {
-    if (!tag) return false;
-    return /[^0-9A-Fa-f\s:]/.test(tag);
-  };
-
   const [latestItem, setLatestItem] = useState<AssetItemFromApi>(item);
 
-  // Cập nhật lại item mỗi khi màn hình focus (để lấy nfcTag mới nếu vừa đi Camera về)
+  // Cập nhật lại item mỗi khi màn hình focus (để lấy nfcTag/qrTag mới nếu vừa đi Camera về)
   useFocusEffect(
     useCallback(() => {
       let isActive = true;
@@ -68,10 +63,13 @@ export default function ItemEditScreen() {
         try {
           const newItem = await getAssetItemById(item.id);
           if (isActive && newItem) {
-            // Nếu API trả về nfcTag null (do lỗi BE hoặc chưa sync) nhưng item ban đầu (từ params) có nfcTag,
+            // Nếu API trả về nfcTag/qrTag null (do lỗi BE hoặc chưa sync) nhưng item ban đầu (từ params) có,
             // thì ưu tiên hiển thị mã thẻ từ params (đặc biệt khi vừa quay lại từ Camera).
             if (!newItem.nfcTag && item.nfcTag) {
               newItem.nfcTag = item.nfcTag;
+            }
+            if (!newItem.qrTag && item.qrTag) {
+              newItem.qrTag = item.qrTag;
             }
             setLatestItem(newItem);
           }
@@ -81,7 +79,7 @@ export default function ItemEditScreen() {
       };
       fetchLatest();
       return () => { isActive = false; };
-    }, [item.id, item.nfcTag])
+    }, [item.id, item.nfcTag, item.qrTag])
   );
 
   const [houseId, setHouseId] = useState(latestItem.houseId);
@@ -89,6 +87,7 @@ export default function ItemEditScreen() {
   const [displayName, setDisplayName] = useState(latestItem.displayName);
   const [serialNumber, setSerialNumber] = useState(latestItem.serialNumber);
   const [nfcId, setNfcId] = useState(latestItem.nfcTag ?? "");
+  const [qrId, setQrId] = useState(latestItem.qrTag ?? "");
   const [conditionPercent, setConditionPercent] = useState(String(latestItem.conditionPercent));
   const [status, setStatus] = useState<string>(latestItem.status || STATUS_OPTIONS[0]);
 
@@ -98,6 +97,7 @@ export default function ItemEditScreen() {
     setDisplayName(latestItem.displayName);
     setSerialNumber(latestItem.serialNumber);
     setNfcId(latestItem.nfcTag ?? "");
+    setQrId(latestItem.qrTag ?? "");
     setConditionPercent(String(latestItem.conditionPercent));
     setStatus(latestItem.status || STATUS_OPTIONS[0]);
   }, [latestItem]);
@@ -138,6 +138,9 @@ export default function ItemEditScreen() {
       return;
     }
     const trimmedNfcId = nfcId.trim();
+    const trimmedQrId = qrId.trim();
+
+    // Kiểm tra trùng NFC tag (nếu có nhập)
     if (trimmedNfcId.length > 0) {
       try {
         const existing = await getAssetItemByNfcId(trimmedNfcId);
@@ -155,6 +158,23 @@ export default function ItemEditScreen() {
       }
     }
 
+    // Kiểm tra trùng QR tag (nếu có nhập)
+    if (trimmedQrId.length > 0) {
+      try {
+        const existingQr = await getAssetItemByNfcId(trimmedQrId);
+        if (existingQr && existingQr.id !== item.id) {
+          Alert.alert(
+            t("staff_item_edit.nfc_duplicate_title"),
+            t("staff_item_edit.nfc_duplicate_message", { name: existingQr.displayName })
+          );
+          updateMutation.reset();
+          return;
+        }
+      } catch (e) {
+        console.log("Lỗi kiểm tra trùng QR:", e);
+      }
+    }
+
     // Payload đầy đủ cho PUT /api/asset/items/:id — BE cập nhật các thông tin thiết bị (không bao gồm logic chuyển nhà).
     const payload: UpdateAssetItemRequest = {
       houseId: houseId.trim(),
@@ -162,6 +182,7 @@ export default function ItemEditScreen() {
       displayName: displayName.trim(),
       serialNumber: serialNumber.trim(),
       nfcTag: trimmedNfcId.length > 0 ? trimmedNfcId : null,
+      qrTag: trimmedQrId.length > 0 ? trimmedQrId : null,
       conditionPercent: percent,
       status: status || "AVAILABLE",
     };
@@ -218,6 +239,7 @@ export default function ItemEditScreen() {
               displayName: displayName.trim(),
               serialNumber: serialNumber.trim(),
               nfcTag: nfcId.trim() ? nfcId.trim() : null,
+              qrTag: qrId.trim() ? qrId.trim() : null,
               conditionPercent: Number.isNaN(percent) ? item.conditionPercent : percent,
               status: "DISPOSED",
             };
@@ -276,6 +298,46 @@ export default function ItemEditScreen() {
               );
             } catch (e) {
               console.log("Lỗi gỡ NFC:", e);
+              Alert.alert(
+                t("camera.error_title"),
+                t("staff_item_edit.remove_nfc_error")
+              );
+            }
+          },
+        },
+      ]
+    );
+  };
+
+  const handleDetachQr = () => {
+    const trimmed = qrId.trim();
+    if (!trimmed) return;
+    Alert.alert(
+      t("staff_item_edit.remove_nfc_confirm_title"),
+      t("staff_item_edit.remove_nfc_confirm_message"),
+      [
+        { text: t("profile.cancel"), style: "cancel" },
+        {
+          text: t("staff_item_edit.remove_qr_btn"),
+          onPress: async () => {
+            try {
+              await detachNfcMutation.mutateAsync({ tagValue: trimmed });
+              setQrId("");
+              await queryClient.refetchQueries({ queryKey: ASSET_ITEM_KEYS.base });
+              Alert.alert(
+                t("common.success"),
+                t("staff_item_edit.remove_nfc_success"),
+                [
+                  {
+                    text: t("common.close"),
+                    onPress: () => {
+                      (navigation as any).navigate("Main", { screen: "Dashboard" });
+                    },
+                  },
+                ]
+              );
+            } catch (e) {
+              console.log("Lỗi gỡ QR:", e);
               Alert.alert(
                 t("camera.error_title"),
                 t("staff_item_edit.remove_nfc_error")
@@ -387,7 +449,7 @@ export default function ItemEditScreen() {
                   itemScreenStyles.input,
                   { backgroundColor: "#F9FAFB", color: "#6B7280" }
                 ]}
-                value={nfcId && !isQrCode(nfcId) ? nfcId : ""}
+                value={nfcId || ""}
                 placeholder={t("staff_item_create.nfc_id_placeholder")}
                 placeholderTextColor="#9CA3AF"
                 editable={false}
@@ -401,14 +463,15 @@ export default function ItemEditScreen() {
                   itemScreenStyles.input,
                   { backgroundColor: "#F9FAFB", color: "#6B7280" }
                 ]}
-                value={nfcId && isQrCode(nfcId) ? nfcId : ""}
+                value={qrId || ""}
                 placeholder={t("staff_item_create.nfc_id_placeholder")}
                 placeholderTextColor="#9CA3AF"
                 editable={false}
               />
             </View>
-            
-            {!nfcId.trim() ? (
+          
+            {/* Nếu chưa có cả NFC & QR -> hiện nút gán; nếu đã có thì cho phép gỡ từng loại */}
+            {!nfcId.trim() && !qrId.trim() ? (
               <TouchableOpacity
                 style={[
                   itemScreenStyles.detachNfcBtn,
@@ -422,23 +485,46 @@ export default function ItemEditScreen() {
                 </Text>
               </TouchableOpacity>
             ) : (
-              <TouchableOpacity
-                style={[
-                  itemScreenStyles.detachNfcBtn,
-                  detachNfcMutation.isPending && itemScreenStyles.detachNfcBtnDisabled,
-                ]}
-                onPress={handleDetachNfc}
-                disabled={detachNfcMutation.isPending}
-                activeOpacity={0.8}
-              >
-                {detachNfcMutation.isPending ? (
-                  <ActivityIndicator size="small" color="#111827" />
-                ) : (
-                  <Text style={itemScreenStyles.detachNfcBtnText}>
-                    {isQrCode(nfcId) ? t("staff_item_edit.remove_qr_btn") : t("staff_item_edit.remove_nfc_btn")}
-                  </Text>
+              <>
+                {!!nfcId.trim() && (
+                  <TouchableOpacity
+                    style={[
+                      itemScreenStyles.detachNfcBtn,
+                      detachNfcMutation.isPending && itemScreenStyles.detachNfcBtnDisabled,
+                    ]}
+                    onPress={handleDetachNfc}
+                    disabled={detachNfcMutation.isPending}
+                    activeOpacity={0.8}
+                  >
+                    {detachNfcMutation.isPending ? (
+                      <ActivityIndicator size="small" color="#111827" />
+                    ) : (
+                      <Text style={itemScreenStyles.detachNfcBtnText}>
+                        {t("staff_item_edit.remove_nfc_btn")}
+                      </Text>
+                    )}
+                  </TouchableOpacity>
                 )}
-              </TouchableOpacity>
+                {!!qrId.trim() && (
+                  <TouchableOpacity
+                    style={[
+                      itemScreenStyles.detachNfcBtn,
+                      detachNfcMutation.isPending && itemScreenStyles.detachNfcBtnDisabled,
+                    ]}
+                    onPress={handleDetachQr}
+                    disabled={detachNfcMutation.isPending}
+                    activeOpacity={0.8}
+                  >
+                    {detachNfcMutation.isPending ? (
+                      <ActivityIndicator size="small" color="#111827" />
+                    ) : (
+                      <Text style={itemScreenStyles.detachNfcBtnText}>
+                        {t("staff_item_edit.remove_qr_btn")}
+                      </Text>
+                    )}
+                  </TouchableOpacity>
+                )}
+              </>
             )}
 
             <View style={itemScreenStyles.fieldSpacer}>

@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from "react";
-import { View, Text, TouchableOpacity, ScrollView, Alert, Platform } from "react-native";
+import { View, Text, TouchableOpacity, ScrollView, Platform } from "react-native";
+import { CustomAlert as Alert } from "../../../shared/components/alert";
 import { useNavigation } from "@react-navigation/native";
 import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons } from "@expo/vector-icons";

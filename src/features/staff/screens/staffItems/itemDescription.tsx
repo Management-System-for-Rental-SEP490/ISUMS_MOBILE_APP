@@ -4,7 +4,8 @@
  * Có nút "Chỉnh sửa" để chuyển sang ItemEdit nếu cần cập nhật.
  */
 import React, { useCallback, useState } from "react";
-import { View, Text, TouchableOpacity, ScrollView, ActivityIndicator, Alert } from "react-native";
+import { View, Text, TouchableOpacity, ScrollView, ActivityIndicator } from "react-native";
+import { CustomAlert as Alert } from "../../../../shared/components/alert";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useTranslation } from "react-i18next";
 import { useNavigation, useRoute, useFocusEffect } from "@react-navigation/native";
@@ -51,10 +52,13 @@ export default function ItemDescriptionScreen() {
           setLoading(true);
           const latest = await getAssetItemById(initialItem.id);
           if (isActive && latest) {
-            // Nếu API trả về nfcTag null (do lỗi BE hoặc chưa sync) nhưng ta vừa quét được thẻ (initialItem.nfcTag),
-            // thì ưu tiên hiển thị mã thẻ vừa quét.
+            // Nếu API trả về nfcTag/qrTag null (do BE chưa sync) nhưng item ban đầu (từ params) có,
+            // thì ưu tiên hiển thị mã thẻ vừa quét (giống logic đang dùng cho NFC).
             if (!latest.nfcTag && initialItem.nfcTag) {
               latest.nfcTag = initialItem.nfcTag;
+            }
+            if (!latest.qrTag && initialItem.qrTag) {
+              latest.qrTag = initialItem.qrTag;
             }
             setItem(latest);
           }
@@ -135,27 +139,18 @@ export default function ItemDescriptionScreen() {
   };
 
   // Logic to determine display values for NFC and QR
-  // Prioritize "tags" array if available (from BE updated model)
-  // Fallback to "nfcTag" field if "tags" is missing
-  let nfcValue = "";
-  let qrValue = "";
+  // Ưu tiên dùng trường nfcTag và qrTag trực tiếp từ item
+  let nfcValue = (item.nfcTag || "").trim();
+  let qrValue = (item.qrTag || "").trim();
 
-  if (item.tags && item.tags.length > 0) {
-    const nfcObj = item.tags.find(t => t.tagType === "NFC");
-    const qrObj = item.tags.find(t => t.tagType === "QR_CODE");
+  // Fallback nếu nfcTag/qrTag rỗng nhưng có trong mảng tags (nếu BE trả về)
+  if (!nfcValue && !qrValue && item.tags && item.tags.length > 0) {
+    const nfcObj = item.tags.find((t) => t.tagType === "NFC");
+    const qrObj = item.tags.find((t) => t.tagType === "QR_CODE");
     if (nfcObj) nfcValue = nfcObj.tagValue;
     if (qrObj) qrValue = qrObj.tagValue;
-  } else {
-    // Fallback: use nfcTag string and guess type
-    const val = (item.nfcTag || "").trim();
-    if (val) {
-      if (isQrCode(val)) {
-        qrValue = val;
-      } else {
-        nfcValue = val;
-      }
-    }
   }
+
 
   const rows: { label: string; value: string }[] = [
     { label: t("staff_item_create.house_label"), value: houseName },

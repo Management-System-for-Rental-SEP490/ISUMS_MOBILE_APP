@@ -170,3 +170,22 @@ export type {
 
 export type ScanMode = "qr" | "nfc";
 export type HomeScreenProps = BottomTabScreenProps<MainTabParamList, "Dashboard">; // HomeScreenProps là một type alias cho BottomTabScreenProps<MainTabParamList, "Dashboard">.
+
+// Alert Types
+export type AlertType = 'success' | 'error' | 'warning' | 'info';
+
+export interface AlertButton {
+  text: string;
+  onPress?: () => void;
+  style?: 'default' | 'cancel' | 'destructive';
+}
+
+export interface AlertState {
+  visible: boolean;
+  title: string;
+  message?: string;
+  buttons: AlertButton[];
+  type: AlertType;
+  show: (title: string, message?: string, buttons?: AlertButton[], type?: AlertType) => void;
+  hide: () => void;
+}
