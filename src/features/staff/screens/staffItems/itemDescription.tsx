@@ -128,14 +128,47 @@ export default function ItemDescriptionScreen() {
     return item.status ?? "—";
   };
 
+  // Helper to detect if string is likely a QR code (not pure Hex)
+  const isQrCode = (tag: string | undefined | null) => {
+    if (!tag) return false;
+    return /[^0-9A-Fa-f\s:]/.test(tag);
+  };
+
+  // Logic to determine display values for NFC and QR
+  // Prioritize "tags" array if available (from BE updated model)
+  // Fallback to "nfcTag" field if "tags" is missing
+  let nfcValue = "";
+  let qrValue = "";
+
+  if (item.tags && item.tags.length > 0) {
+    const nfcObj = item.tags.find(t => t.tagType === "NFC");
+    const qrObj = item.tags.find(t => t.tagType === "QR_CODE");
+    if (nfcObj) nfcValue = nfcObj.tagValue;
+    if (qrObj) qrValue = qrObj.tagValue;
+  } else {
+    // Fallback: use nfcTag string and guess type
+    const val = (item.nfcTag || "").trim();
+    if (val) {
+      if (isQrCode(val)) {
+        qrValue = val;
+      } else {
+        nfcValue = val;
+      }
+    }
+  }
+
   const rows: { label: string; value: string }[] = [
     { label: t("staff_item_create.house_label"), value: houseName },
     { label: t("staff_item_create.category_label"), value: categoryName },
     { label: t("staff_item_create.display_name_label"), value: item.displayName ?? "—" },
     { label: t("staff_item_create.serial_number_label"), value: item.serialNumber ?? "—" },
     {
-      label: t("staff_item_create.nfc_id_label"),
-      value: (item.nfcTag || "").trim() || "—",
+      label: t("device_detail.nfc_tag_id"),
+      value: nfcValue || "—",
+    },
+    {
+      label: t("device_detail.qr_code_id"),
+      value: qrValue || "—",
     },
     {
       label: t("staff_item_create.condition_label"),

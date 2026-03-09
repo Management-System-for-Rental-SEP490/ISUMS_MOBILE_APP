@@ -177,11 +177,11 @@ export const useTransferAssetItemHouse = () => {
 export const useAttachAssetTag = () => {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (payload: { assetId: string; tagValue: string; tagType: "NFC" }) =>
+    mutationFn: (payload: { assetId: string; tagValue: string; tagType: "NFC" | "QR_CODE" }) =>
       attachAssetTag({
         assetId: payload.assetId,
         tagValue: payload.tagValue.trim(),
-        tagType: "NFC",
+        tagType: payload.tagType,
       }),
     onSuccess: () => invalidateAllAssetItems(queryClient),
   });

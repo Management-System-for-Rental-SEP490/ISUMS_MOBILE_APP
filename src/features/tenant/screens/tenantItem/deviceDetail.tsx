@@ -36,6 +36,12 @@ const DeviceDetail = () => {
       }
   }
 
+  const isQrCode = (tag: string | undefined | null) => {
+    if (!tag) return false;
+    // Nếu chứa ký tự không phải Hex/Space/Colon -> QR
+    return /[^0-9A-Fa-f\s:]/.test(tag);
+  };
+
   return (
     <SafeAreaProvider style={deviceDetailStyles.background}>
       <ScrollView 
@@ -63,7 +69,17 @@ const DeviceDetail = () => {
           <DetailItem label={t('device_detail.type')} value={getDeviceTypeLabel(device.type)} />
           <DetailItem label={t('device_detail.location')} value={device.location} />
           <DetailItem label={t('device_detail.status')} value={getStatusText(device.status)} />
-          <DetailItem label={t('device_detail.nfc_tag_id')} value={device.nfcTagId} />
+          
+          {/* Hiển thị riêng biệt NFC và QR */}
+          <DetailItem 
+            label={t('device_detail.nfc_tag_id')} 
+            value={!isQrCode(device.nfcTagId) ? device.nfcTagId : ""} 
+          />
+          <DetailItem 
+            label={t('device_detail.qr_code_id')} 
+            value={isQrCode(device.nfcTagId) ? device.nfcTagId : ""} 
+          />
+
           {/* Nếu thiết bị có trường metadata (thông tin kỹ thuật bổ sung), thì mới hiển thị các thông tin sau: */}
           {device.metadata && ( 
             <>

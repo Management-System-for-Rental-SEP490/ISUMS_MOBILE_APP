@@ -12,13 +12,20 @@ const getKeycloakBaseUrl = (): string => {
   if (Platform.OS === 'web') {
     return "http://localhost:8080";
   }
-  //const MOBILE_KEYCLOAK_IP = process.env.EXPO_PUBLIC_KEYCLOAK_IP || "192.168.1.182";
+  // Cho phép override bằng biến môi trường nếu cần
+  if (process.env.EXPO_PUBLIC_KEYCLOAK_BASE_URL) {
+      return process.env.EXPO_PUBLIC_KEYCLOAK_BASE_URL;
+  }
+  
+  // Mặc định dùng Local IP cho Docker Keycloak (thay vì sso.isums.pro)
+  // const MOBILE_KEYCLOAK_IP = process.env.EXPO_PUBLIC_KEYCLOAK_IP || "192.168.1.80";
+  // return `http://${MOBILE_KEYCLOAK_IP}:8080`;
   //hotpot của lap
-  // const MOBILE_KEYCLOAK_IP = process.env.EXPO_PUBLIC_KEYCLOAK_IP || "192.168.137.1";
-// return `http://${MOBILE_KEYCLOAK_IP}:8080`;
+const MOBILE_KEYCLOAK_IP = process.env.EXPO_PUBLIC_KEYCLOAK_IP || "https://sso-dev.isums.pro";
+return `http://${MOBILE_KEYCLOAK_IP}:8080`;
   // Nếu dùng chung cho mọi nền tảng
   //return "https://sso.isums.pro";
- return process.env.EXPO_PUBLIC_KEYCLOAK_BASE_URL || "https://sso.isums.pro";
+ //return process.env.EXPO_PUBLIC_KEYCLOAK_BASE_URL || "https://sso.isums.pro";
 };
 
 // Cấu hình Keycloak
@@ -75,15 +82,36 @@ export const exchangeCodeForToken = async (code: string): Promise<AuthPayload> =
     );
 
     const { access_token, refresh_token, id_token } = response.data; // Lấy thêm id_token
+
+    // --- DEBUG LOG ---
+    console.log("====== KEYCLOAK TOKEN DEBUG ======");
+    console.log("Access Token nhận được từ App:", access_token);
+    const debugClaims = decodeJWT(access_token);
+    console.log("Token Issuer (iss):", debugClaims?.iss);
+    console.log("Token Audience (aud):", debugClaims?.aud);
+    console.log("User config IP:", getKeycloakBaseUrl());
+    console.log("==================================");
+    // -----------------
+
     const userInfo = await getUserInfo(access_token);
     const role = determineUserRole(userInfo, access_token);
     
+    // Extract houseId from attributes (Keycloak usually returns attributes as arrays)
+    let houseId: string | undefined;
+    const rawHouseId = userInfo.attributes?.houseId || userInfo.houseId;
+    if (Array.isArray(rawHouseId)) {
+      houseId = rawHouseId[0];
+    } else if (typeof rawHouseId === "string") {
+      houseId = rawHouseId;
+    }
+
     return {
       username: userInfo.preferred_username || userInfo.name || "user",
       role: role,
       token: access_token,
       refreshToken: refresh_token,
       idToken: id_token, // Trả về idToken
+      houseId: houseId,
     };
   } catch (error: any) {
     const errorMessage = error.response?.data?.error_description 
@@ -207,6 +235,15 @@ export const refreshAccessToken = async (refreshToken: string): Promise<AuthPayl
     const userInfo = await getUserInfo(access_token);
     const role = determineUserRole(userInfo, access_token);
 
+    // Extract houseId
+    let houseId: string | undefined;
+    const rawHouseId = userInfo.attributes?.houseId || userInfo.houseId;
+    if (Array.isArray(rawHouseId)) {
+      houseId = rawHouseId[0];
+    } else if (typeof rawHouseId === "string") {
+      houseId = rawHouseId;
+    }
+
     return {
       username: userInfo.preferred_username || userInfo.name || "user",
       role: role,
@@ -215,6 +252,7 @@ export const refreshAccessToken = async (refreshToken: string): Promise<AuthPayl
       // Nếu không có mới, dùng lại cái cũ
       refreshToken: new_refresh_token || refreshToken,
       idToken: id_token,
+      houseId: houseId,
     };
   } catch (error: any) {
     const errorMessage = error.response?.data?.error_description

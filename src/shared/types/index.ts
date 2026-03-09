@@ -24,7 +24,7 @@ export type RootStackParamList = AuthStackParamList & {
   /** Quét QR/NFC. Tenant: hiện DeviceDetail. Staff: tra cứu thiết bị theo NFC (chỉ mã đã gán) hoặc gán NFC (khi mode assign hoặc assignForDevice). */
   Camera:
     | undefined
-    | { assignForDevice?: AssetItemFromApi; /** "assign" = từ menu + Gán NFC: quét thẻ mới để gán; không truyền = từ footer: chỉ tra cứu mã đã gán */ mode?: "lookup" | "assign" };
+    | { assignForDevice?: AssetItemFromApi; /** "assign" = từ menu + Gán NFC: quét thẻ mới để gán; không truyền = từ footer: chỉ tra cứu mã đã gán */ mode?: "lookup" | "assign"; initialScanMode?: "qr" | "nfc" };
   DeviceDetail: { device: Device };
   Ticket: { device: Device };
   /** Chi tiết nhà cho Staff: danh sách thiết bị + nút gán NFC. Có thể truyền thêm thông tin từ API houses. */
@@ -82,6 +82,8 @@ export type AuthPayload = {
   // refreshToken là một chuỗi (string) được sử dụng để lấy lại (làm mới) access token khi access token hết hạn. 
   // Nó giúp người dùng không cần đăng nhập lại mỗi khi phiên làm việc (session) bị timeout.
   refreshToken?: string;
+  /** ID căn nhà mà user (tenant) đang thuê. */
+  houseId?: string;
 };
 
 export type AuthState = {
@@ -90,6 +92,8 @@ export type AuthState = {
   token: string | null;
   idToken: string | null; // Thêm vào state
   refreshToken: string | null;
+  /** ID căn nhà của tenant (nếu có). */
+  houseId: string | null;
   isLoggedIn: boolean;
   onboardedUsers: string[]; // Danh sách username đã xem onboarding
   login: (data: AuthPayload) => void;

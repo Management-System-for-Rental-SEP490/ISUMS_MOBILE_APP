@@ -84,10 +84,10 @@ export const getAssetItemById = async (id: string): Promise<AssetItemFromApi | u
 };
 
 
-export const getAssetItemByNfcId = async (
-  nfcId: string
+export const getAssetItemByTag = async (
+  tagValue: string
 ): Promise<AssetItemFromApi | undefined> => {
-  const normalized = nfcId.trim(); 
+  const normalized = tagValue.trim(); 
   if (!normalized) return undefined;
   const apiTagValue = normalizeTagValueForApi(normalized);
 
@@ -132,6 +132,9 @@ export const getAssetItemByNfcId = async (
     }
   }
 };
+
+/** Alias cho backward compatibility nếu cần, hoặc dùng trực tiếp getAssetItemByTag */
+export const getAssetItemByNfcId = getAssetItemByTag;
 
 /**
  * Tạo thiết bị mới (POST /api/asset/items).

@@ -53,6 +53,11 @@ export default function ItemEditScreen() {
   const transferHouseMutation = useTransferAssetItemHouse();
   const detachNfcMutation = useDetachAssetTag();
 
+  const isQrCode = (tag: string) => {
+    if (!tag) return false;
+    return /[^0-9A-Fa-f\s:]/.test(tag);
+  };
+
   const [latestItem, setLatestItem] = useState<AssetItemFromApi>(item);
 
   // Cập nhật lại item mỗi khi màn hình focus (để lấy nfcTag mới nếu vừa đi Camera về)
@@ -376,13 +381,27 @@ export default function ItemEditScreen() {
             </View>
 
             <View style={itemScreenStyles.fieldSpacer}>
-              <Text style={itemScreenStyles.label}>{t("staff_item_create.nfc_id_label")}</Text>
+              <Text style={itemScreenStyles.label}>{t("device_detail.nfc_tag_id")}</Text>
               <TextInput
                 style={[
                   itemScreenStyles.input,
                   { backgroundColor: "#F9FAFB", color: "#6B7280" }
                 ]}
-                value={nfcId}
+                value={nfcId && !isQrCode(nfcId) ? nfcId : ""}
+                placeholder={t("staff_item_create.nfc_id_placeholder")}
+                placeholderTextColor="#9CA3AF"
+                editable={false}
+              />
+            </View>
+
+            <View style={itemScreenStyles.fieldSpacer}>
+              <Text style={itemScreenStyles.label}>{t("device_detail.qr_code_id")}</Text>
+              <TextInput
+                style={[
+                  itemScreenStyles.input,
+                  { backgroundColor: "#F9FAFB", color: "#6B7280" }
+                ]}
+                value={nfcId && isQrCode(nfcId) ? nfcId : ""}
                 placeholder={t("staff_item_create.nfc_id_placeholder")}
                 placeholderTextColor="#9CA3AF"
                 editable={false}
@@ -399,7 +418,7 @@ export default function ItemEditScreen() {
                 activeOpacity={0.8}
               >
                 <Text style={[itemScreenStyles.detachNfcBtnText, { color: "#fff" }]}>
-                  {t("staff_building_detail.assign_nfc") || "Gán NFC"}
+                  {t("staff_building_detail.assign_nfc") || "Gán NFC/QR"}
                 </Text>
               </TouchableOpacity>
             ) : (
@@ -416,7 +435,7 @@ export default function ItemEditScreen() {
                   <ActivityIndicator size="small" color="#111827" />
                 ) : (
                   <Text style={itemScreenStyles.detachNfcBtnText}>
-                    {t("staff_item_edit.remove_nfc_btn")}
+                    {isQrCode(nfcId) ? t("staff_item_edit.remove_qr_btn") : t("staff_item_edit.remove_nfc_btn")}
                   </Text>
                 )}
               </TouchableOpacity>

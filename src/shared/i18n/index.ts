@@ -59,6 +59,7 @@ const resources = {
           "location": "Vị trí",
           "status": "Trạng thái",
           "nfc_tag_id": "NFC Tag ID",
+          "qr_code_id": "QR Code ID",
           "technical_info": "Thông tin kỹ thuật",
           "serial_number": "Số sê-ri",
           "manufacturer": "Nhà sản xuất",
@@ -190,7 +191,8 @@ const resources = {
         "add_menu_open": "Mở menu thêm",
         "add_menu_create_category": "Tạo danh mục",
         "add_menu_create_device": "Tạo thiết bị",
-        "add_menu_assign_nfc": "Gán NFC"
+        "add_menu_assign_nfc": "Gán NFC",
+        "add_menu_assign_qr": "Gán QR Code"
       },
       "staff_category": {
         "title": "Tạo danh mục thiết bị",
@@ -254,6 +256,7 @@ const resources = {
         "nfc_duplicate_title": "Mã NFC đã được gán",
         "nfc_duplicate_message": "Mã NFC này đang được gán cho thiết bị \"{{name}}\". Mỗi mã chỉ được gán cho một thiết bị.",
         "remove_nfc_btn": "Gỡ gán NFC",
+        "remove_qr_btn": "Gỡ gán QR Code",
         "remove_nfc_confirm_title": "Gỡ thẻ NFC",
         "remove_nfc_confirm_message": "Bạn có chắc muốn gỡ thẻ NFC này khỏi thiết bị?",
         "remove_nfc_success": "Đã gỡ thẻ NFC khỏi thiết bị.",
@@ -346,6 +349,7 @@ const resources = {
         "confirm_assign_title": "Xác nhận gán NFC",
         "confirm_assign_message": "Gán mã NFC \"{{nfcId}}\" vào thiết bị \"{{displayName}}\"?",
         "assign_success": "Gán NFC thành công.",
+        "assign_success_qr": "Gán QR Code thành công.",
         "assign_error": "Không thể gán NFC. Vui lòng thử lại.",
         "select_device_to_assign": "Chọn thiết bị để gán mã NFC",
         "no_empty_devices": "Không có thiết bị nào đang trống (chưa gán NFC).",
@@ -462,6 +466,7 @@ const resources = {
           "location": "Location",
           "status": "Status",
           "nfc_tag_id": "NFC Tag ID",
+          "qr_code_id": "QR Code ID",
           "technical_info": "technical Information",
           "serial_number": "Serial Number",
           "manufacturer": "Manufacturer",
@@ -593,7 +598,8 @@ const resources = {
         "add_menu_open": "Open add menu",
         "add_menu_create_category": "Create category",
         "add_menu_create_device": "Create device",
-        "add_menu_assign_nfc": "Assign NFC"
+        "add_menu_assign_nfc": "Assign NFC",
+        "add_menu_assign_qr": "Assign QR Code"
       },
       "staff_category": {
         "title": "Create asset category",
@@ -657,6 +663,7 @@ const resources = {
         "nfc_duplicate_title": "NFC already assigned",
         "nfc_duplicate_message": "This NFC ID is already assigned to device \"{{name}}\". Each NFC can only be linked to one device.",
         "remove_nfc_btn": "Detach NFC",
+        "remove_qr_btn": "Detach QR Code",
         "remove_nfc_confirm_title": "Detach NFC tag",
         "remove_nfc_confirm_message": "Are you sure you want to detach this NFC tag from the device?",
         "remove_nfc_success": "NFC tag detached from device.",
@@ -749,6 +756,7 @@ const resources = {
         "confirm_assign_title": "Confirm assign NFC",
         "confirm_assign_message": "Assign NFC \"{{nfcId}}\" to device \"{{displayName}}\"?",
         "assign_success": "NFC assigned successfully.",
+        "assign_success_qr": "QR Code assigned successfully.",
         "assign_error": "Failed to assign NFC. Please try again.",
         "select_device_to_assign": "Select a device to assign NFC",
         "no_empty_devices": "No devices without NFC.",
@@ -865,6 +873,7 @@ const resources = {
           "location": "場所",
           "status": "ステータス",
           "nfc_tag_id": "NFCタグID",
+          "qr_code_id": "QRコードID",
           "technical_info": "技術情報",
           "serial_number": "シリアル番号",
           "manufacturer": "メーカー",
@@ -996,7 +1005,8 @@ const resources = {
         "add_menu_open": "追加メニューを開く",
         "add_menu_create_category": "カテゴリを作成",
         "add_menu_create_device": "デバイスを作成",
-        "add_menu_assign_nfc": "NFCを割り当て"
+        "add_menu_assign_nfc": "NFCを割り当て",
+        "add_menu_assign_qr": "QRコードを割り当て"
       },
       "staff_category": {
         "title": "資産カテゴリを作成",
@@ -1060,6 +1070,7 @@ const resources = {
         "nfc_duplicate_title": "NFCは既に割り当て済みです",
         "nfc_duplicate_message": "このNFC IDはすでにデバイス「{{name}}」に割り当てられています。1つのNFCは1つのデバイスにのみ紐づけできます。",
         "remove_nfc_btn": "NFCを解除",
+        "remove_qr_btn": "QRコードを解除",
         "remove_nfc_confirm_title": "NFCタグの解除",
         "remove_nfc_confirm_message": "このNFCタグをデバイスから解除してもよろしいですか？",
         "remove_nfc_success": "NFCタグをデバイスから解除しました。",
@@ -1152,6 +1163,7 @@ const resources = {
         "confirm_assign_title": "NFC割り当ての確認",
         "confirm_assign_message": "NFC「{{nfcId}}」をデバイス「{{displayName}}」に割り当てますか？",
         "assign_success": "NFCの割り当てに成功しました。",
+        "assign_success_qr": "QRコードの割り当てに成功しました。",
         "assign_error": "NFCの割り当てに失敗しました。もう一度お試しください。",
         "select_device_to_assign": "NFCを割り当てるデバイスを選択",
         "no_empty_devices": "NFC未割り当てのデバイスがありません。",
