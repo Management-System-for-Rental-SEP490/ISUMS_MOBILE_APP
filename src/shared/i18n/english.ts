@@ -360,6 +360,7 @@ export default {
         "loading_data": "Loading data...",
         "house_info": {
             "address": "Address:",
+            "description": "Description:",
             "contract": "Contract:",
             "duration": "Duration:",
             "status": "Status:",

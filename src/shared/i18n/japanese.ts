@@ -360,6 +360,7 @@ export default {
         "loading_data": "データを読み込んでいます...",
         "house_info": {
             "address": "住所:",
+            "description": "説明:",
             "contract": "契約:",
             "duration": "期間:",
             "status": "状態:",

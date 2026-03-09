@@ -360,6 +360,7 @@ export default {
         "loading_data": "Đang tải dữ liệu...",
         "house_info": {
             "address": "Địa chỉ:",
+            "description": "Mô tả:",
             "contract": "Hợp đồng:",
             "duration": "Thời hạn:",
             "status": "Trạng thái:",
