@@ -11,7 +11,8 @@ export default {
         "close": "Đóng",
         "cancel": "Hủy",
         "try_again": "Thử lại",
-        "save": "Lưu"
+        "save": "Lưu",
+        "warning_different_house": "Cảnh báo: Thiết bị này thuộc về {{houseName}}, không phải nhà đang chọn."
     },
     "device_detail": {
         "title": "Chi tiết thiết bị",
@@ -100,7 +101,7 @@ export default {
         "not_found_nfc": "Không tìm thấy thiết bị với NFC ID: {{id}}",
         "lookup_no_device_nfc": "Không có thiết bị nào gắn mã NFC này.",
         "not_found_qr": "Không tìm thấy thiết bị với mã: {{id}}",
-        "device_not_in_your_house": "Thiết bị này không thuộc nhà của bạn. Chỉ xem được thiết bị trong nhà bạn đang thuê.",
+        "device_not_in_your_house": "Thiết bị này không thuộc căn nhà đang chọn. Vui lòng đổi nhà hoặc quét thiết bị thuộc nhà hiện tại.",
         "rescan": "Quét lại"
     },
     "billing": {

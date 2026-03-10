@@ -21,6 +21,7 @@ const CameraScreen = () => {
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const route = useRoute<RouteProp<RootStackParamList, "Camera">>();
   const role = useAuthStore((s) => s.role);
+  const currentHouseId = useAuthStore((s) => s.houseId);
   /** Nhà của tenant (để kiểm tra thiết bị quét có thuộc nhà mình không). */
   const { data: tenantHousesData } = useTenantHouses();
   const tenantHouseIds = (tenantHousesData?.data ?? []).map((h) => h.id);
@@ -365,16 +366,20 @@ const CameraScreen = () => {
       const assetItem = await getAssetItemByNfcId(tagValue);
 
       if (assetItem) {
-        const isMyHouse = tenantHouseIds.length > 0 && tenantHouseIds.includes(assetItem.houseId);
-        if (isMyHouse) {
+        // Yêu cầu mới: Chỉ cho phép quét thiết bị thuộc CĂN NHÀ ĐANG CHỌN (currentHouseId).
+        // Nếu assetItem.houseId trùng với currentHouseId thì mới cho phép.
+        const isCurrentHouseDevice = currentHouseId && assetItem.houseId === currentHouseId;
+
+        if (isCurrentHouseDevice) {
           navigation.replace("TenantItemDetail", { item: assetItem });
           return;
         }
-        // Thiết bị không thuộc nhà tenant
+
+        // Thiết bị không thuộc nhà đang chọn (dù có thể thuộc nhà khác của tenant)
         if (!isMounted.current) return;
         Alert.alert(
           t("camera.not_found_title"),
-          t("camera.device_not_in_your_house"),
+          t("camera.device_not_in_your_house"), // Có thể cần sửa lại câu thông báo cho chính xác hơn "Thiết bị không thuộc nhà đang chọn"
           [
             {
               text: t("camera.rescan"),

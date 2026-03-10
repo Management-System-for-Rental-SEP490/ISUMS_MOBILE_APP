@@ -11,7 +11,8 @@ export default {
         "close": "Close",
         "cancel": "Cancel",
         "try_again": "Try again",
-        "save": "Save"
+        "save": "Save",
+        "warning_different_house": "Warning: This device belongs to {{houseName}}, not the currently selected house."
     },
     "device_detail": {
         "title": "Device Details",
@@ -100,7 +101,7 @@ export default {
         "not_found_nfc": "Device not found with NFC ID: {{id}}",
         "lookup_no_device_nfc": "No device is assigned to this NFC code.",
         "not_found_qr": "Device not found with code: {{id}}",
-        "device_not_in_your_house": "This device is not in your house. You can only view devices in the house you are renting.",
+        "device_not_in_your_house": "This device is not in the currently selected house. Please switch house or scan a device in the current house.",
         "rescan": "Rescan"
     },
     "billing": {

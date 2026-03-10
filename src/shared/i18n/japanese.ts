@@ -11,7 +11,8 @@ export default {
         "close": "閉じる",
         "cancel": "キャンセル",
         "try_again": "再試行",
-        "save": "保存"
+        "save": "保存",
+        "warning_different_house": "警告：このデバイスは{{houseName}}に属しており、現在選択されている家ではありません。"
     },
     "device_detail": {
         "title": "デバイス詳細",
@@ -100,7 +101,7 @@ export default {
         "not_found_nfc": "NFC ID: {{id}} のデバイスが見つかりません",
         "lookup_no_device_nfc": "このNFCコードが割り当てられたデバイスはありません。",
         "not_found_qr": "コード: {{id}} のデバイスが見つかりません",
-        "device_not_in_your_house": "このデバイスはお住まいの家に属していません。お借りしている家のデバイスのみ表示できます。",
+        "device_not_in_your_house": "このデバイスは現在選択されている家にありません。家を切り替えるか、現在の家のデバイスをスキャンしてください。",
         "rescan": "再スキャン"
     },
     "billing": {

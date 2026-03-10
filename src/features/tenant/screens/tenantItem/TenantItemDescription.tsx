@@ -136,6 +136,7 @@ export default function TenantItemDescriptionScreen() {
   ];
 
   const safeStyle = { paddingTop: insets.top, paddingBottom: insets.bottom };
+  const isDifferentHouse = house && item.houseId !== house.id;
 
   return (
     <View style={[itemScreenStyles.container, safeStyle]}>
@@ -151,6 +152,14 @@ export default function TenantItemDescriptionScreen() {
           {t("device_detail.title")}
         </Text>
       </View>
+
+      {isDifferentHouse && (
+        <View style={{ backgroundColor: '#FEF2F2', padding: 12, marginHorizontal: 16, marginTop: 12, borderRadius: 8, borderWidth: 1, borderColor: '#FECACA' }}>
+          <Text style={{ color: '#B91C1C', fontSize: 13, fontWeight: '500' }}>
+            {t("common.warning_different_house", { houseName: houseName || item.houseId })}
+          </Text>
+        </View>
+      )}
 
       {loading ? (
         <View style={{ flex: 1, justifyContent: "center", alignItems: "center" }}>
