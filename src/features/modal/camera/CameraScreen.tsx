@@ -11,7 +11,7 @@ import { ScanMode } from "../../../shared/types";
 import { useTranslation } from "react-i18next";
 import { useAuthStore } from "../../../store/useAuthStore";
 import { getAssetItemByNfcId } from "../../../shared/services/assetItemApi";
-import { useAttachAssetTag } from "../../../shared/hooks";
+import { useAttachAssetTag, useTenantHouses } from "../../../shared/hooks";
 import type { AssetItemFromApi } from "../../../shared/types/api";
 import { AssignNfcModal } from "../../staff/modal/assignNFC/AssignNfcModal";
 
@@ -21,6 +21,9 @@ const CameraScreen = () => {
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const route = useRoute<RouteProp<RootStackParamList, "Camera">>();
   const role = useAuthStore((s) => s.role);
+  /** Nhà của tenant (để kiểm tra thiết bị quét có thuộc nhà mình không). */
+  const { data: tenantHousesData } = useTenantHouses();
+  const tenantHouseIds = (tenantHousesData?.data ?? []).map((h) => h.id);
   /** Từ BuildingDetail: gán NFC cho thiết bị đã chọn. */
   const assignForDevice = route.params?.assignForDevice;
   /** "assign" = từ menu + Gán NFC; "lookup" (hoặc undefined) = tra cứu. */
@@ -357,13 +360,32 @@ const CameraScreen = () => {
       return;
     }
 
-    // --- Luồng Tenant: tra cứu thiết bị bằng dữ liệu thật từ BE ---
+    // --- Luồng Tenant: quét NFC/QR → mở trang chi tiết thiết bị (TenantItemDetail) nếu thiết bị thuộc nhà mình ---
     try {
       const assetItem = await getAssetItemByNfcId(tagValue);
 
       if (assetItem) {
-        const device = mapAssetItemToDevice(assetItem);
-        navigation.replace("DeviceDetail", { device });
+        const isMyHouse = tenantHouseIds.length > 0 && tenantHouseIds.includes(assetItem.houseId);
+        if (isMyHouse) {
+          navigation.replace("TenantItemDetail", { item: assetItem });
+          return;
+        }
+        // Thiết bị không thuộc nhà tenant
+        if (!isMounted.current) return;
+        Alert.alert(
+          t("camera.not_found_title"),
+          t("camera.device_not_in_your_house"),
+          [
+            {
+              text: t("camera.rescan"),
+              onPress: () => {
+                setScanned(false);
+                if (type === "NFC") startNfcScan();
+              },
+            },
+            { text: t("common.close"), onPress: () => navigation.goBack() },
+          ]
+        );
         return;
       }
 

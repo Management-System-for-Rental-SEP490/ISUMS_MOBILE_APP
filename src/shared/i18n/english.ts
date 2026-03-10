@@ -100,6 +100,7 @@ export default {
         "not_found_nfc": "Device not found with NFC ID: {{id}}",
         "lookup_no_device_nfc": "No device is assigned to this NFC code.",
         "not_found_qr": "Device not found with code: {{id}}",
+        "device_not_in_your_house": "This device is not in your house. You can only view devices in the house you are renting.",
         "rescan": "Rescan"
     },
     "billing": {
@@ -292,7 +293,7 @@ export default {
         "status_maintenance": "Maintenance",
         "status_inactive": "Inactive",
         "status_pending": "Pending",
-        "house_status_available": "Available",
+        "house_status_available": "In use",
         "house_status_rented": "Rented",
         "house_status_other": "{{status}}",
         "functional_areas_title": "Functional areas",
@@ -385,9 +386,18 @@ export default {
         "chart_title_water": "Weekly water consumption",
         "unit_kwh": "kWh",
         "unit_m3": "m³",
+        "unit_L": "L",
         "period_week": "This week",
+        "period_day": "Today",
+        "period_month": "This month",
         "day_label": "Day {{n}}",
-        "chart_title_pie": "Distribution by area"
+        "chart_title_pie": "Distribution by area",
+        "no_data_area": "No data for this area yet",
+        "iot_live": "LIVE",
+        "iot_offline": "OFFLINE",
+        "summary_title": "Usage overview",
+        "electric_summary": "Electricity",
+        "water_summary": "Water"
     },
     "notification": {
         "empty": "No notifications yet",

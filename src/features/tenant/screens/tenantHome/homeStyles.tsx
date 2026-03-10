@@ -154,6 +154,73 @@ export const homeStyles = StyleSheet.create({
         color: "#94a3b8",
         textAlign: "center",
     },
+    /** Block tổng quan tiêu thụ IoT (điện + nước) trên Home */
+    usageSummarySection: {
+        marginHorizontal: 16,
+        marginTop: 12,
+        marginBottom: 4,
+    },
+    usageSummaryHeader: {
+        flexDirection: "row",
+        justifyContent: "space-between",
+        alignItems: "center",
+        marginBottom: 10,
+    },
+    usageSummaryTitle: {
+        fontSize: 16,
+        fontWeight: "700",
+        color: "#1F2937",
+    },
+    usageSummaryLiveChip: {
+        flexDirection: "row",
+        alignItems: "center",
+        gap: 6,
+        paddingHorizontal: 10,
+        paddingVertical: 5,
+        borderRadius: 8,
+        borderWidth: 1,
+    },
+    usageSummaryLiveDot: {
+        width: 6,
+        height: 6,
+        borderRadius: 3,
+    },
+    usageSummaryLiveText: {
+        fontSize: 11,
+        fontWeight: "700",
+        letterSpacing: 0.5,
+    },
+    usageSummaryCards: {
+        flexDirection: "row",
+        gap: 12,
+    },
+    usageSummaryCard: {
+        flex: 1,
+        backgroundColor: "white",
+        padding: 12,
+        borderRadius: 10,
+        borderLeftWidth: 4,
+        shadowColor: "#000",
+        shadowOffset: { width: 0, height: 1 },
+        shadowOpacity: 0.06,
+        shadowRadius: 3,
+        elevation: 2,
+    },
+    usageSummaryCardTitle: {
+        fontSize: 14,
+        fontWeight: "700",
+        color: "#374151",
+        marginBottom: 8,
+    },
+    usageSummaryCardRow: {
+        fontSize: 12,
+        color: "#6B7280",
+        marginBottom: 4,
+    },
+    usageSummaryCardMonth: {
+        fontWeight: "600",
+        color: "#1F2937",
+    },
 });
 
 export default homeStyles;

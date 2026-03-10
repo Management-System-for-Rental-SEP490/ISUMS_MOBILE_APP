@@ -44,6 +44,23 @@ const normalizeTagValueForCompare = (raw: string) =>
   raw.replace(/\s+/g, "").toUpperCase();
 
 /**
+ * Chuẩn hóa một item từ BE: đảm bảo nfcTag, qrTag có giá trị dù BE trả về camelCase hay snake_case.
+ * API GET /api/assets/items/house/:houseId đã được cập nhật trả về đầy đủ nfcTag, qrTag;
+ * nếu BE trả snake_case (nfc_tag, qr_tag) thì map sang camelCase để màn danh sách & chi tiết hiển thị đúng.
+ */
+function normalizeAssetItemFromResponse(
+  raw: AssetItemFromApi & { nfc_tag?: string | null; qr_tag?: string | null }
+): AssetItemFromApi {
+  const nfc = raw.nfcTag ?? raw.nfc_tag ?? null;
+  const qr = raw.qrTag ?? raw.qr_tag ?? null;
+  return {
+    ...raw,
+    nfcTag: nfc != null ? String(nfc) : null,
+    qrTag: qr != null ? String(qr) : null,
+  };
+}
+
+/**
  * Lấy danh sách thiết bị (GET /api/asset/items), có thể lọc theo houseId và/hoặc categoryId.
  * @param params - houseId, categoryId (optional); không truyền = lấy tất cả.
  * @returns Promise<AssetItemsApiResponse> - data là mảng AssetItemFromApi.
@@ -66,16 +83,38 @@ export const getAssetItems = async (
 };
 
 /**
- * Lấy chi tiết thiết bị theo ID (GET /api/asset/items/:id).
+ * Lấy danh sách thiết bị theo houseId (GET /api/assets/items/house/:houseId).
+ * Dùng cho tenant: lấy toàn bộ thiết bị thuộc nhà đang thuê.
+ * BE đã cập nhật trả về đầy đủ từng item (gồm nfcTag, qrTag) để màn danh sách và chi tiết hiển thị đúng.
+ * Response format { data: AssetItemFromApi[], message?, ... }; mảng data được chuẩn hóa (hỗ trợ cả snake_case từ BE).
+ */
+export const getAssetItemsByHouseId = async (
+  houseId: string
+): Promise<AssetItemsApiResponse> => {
+  const response = await axiosClient.get<AssetItemsApiResponse>(
+    `${BACKEND_API_BASE}/assets/items/house/${encodeURIComponent(houseId)}`
+  );
+  const data = response.data;
+  if (Array.isArray(data.data)) {
+    return {
+      ...data,
+      data: data.data.map((i) =>
+        normalizeAssetItemFromResponse(i as AssetItemFromApi & { nfc_tag?: string | null; qr_tag?: string | null })
+      ),
+    };
+  }
+  return data;
+};
+
+/**
+ * Lấy chi tiết thiết bị theo ID (GET /api/assets/items/:id).
+ * Dùng path /assets/... thống nhất với GET /api/assets/items/house/:houseId.
  */
 export const getAssetItemById = async (id: string): Promise<AssetItemFromApi | undefined> => {
   try {
     const response = await axiosClient.get<UpdateAssetItemApiResponse>(
-      `${BACKEND_API_BASE}/asset/items/${id}`
+      `${BACKEND_API_BASE}/assets/items/${id}`
     );
-    // Response thường trả về { data: item, ... } hoặc { ...item } tùy BE,
-    // nhưng ở trên updateAssetItem trả về UpdateAssetItemApiResponse (có data).
-    // Giả sử GET cũng trả về cấu trúc tương tự.
     return response.data.data;
   } catch (error) {
     console.log("Lỗi lấy chi tiết thiết bị:", error);
@@ -94,7 +133,7 @@ export const getAssetItemByTag = async (
   try {
     // Gọi API mới: GET /api/asset/tags/asset/{tagValue}
     const response = await axiosClient.get<GetAssetByTagValueApiResponse>(
-      `${BACKEND_API_BASE}/asset/tags/asset/${encodeURIComponent(apiTagValue)}`
+      `${BACKEND_API_BASE}/assets/tags/asset/${encodeURIComponent(apiTagValue)}`
     );
     
     // Xử lý response.data.data có thể là Object (theo Postman) hoặc Array (theo code cũ)
@@ -117,7 +156,7 @@ export const getAssetItemByTag = async (
     // - Nếu quét QR: qrTag chứa ID QR, nfcTag (nếu có) chứa ID NFC của cùng thiết bị.
     return raw;
   } catch (error) {
-    console.log("Lỗi gọi GET /asset/tags/asset/{tagValue}, fallback getAssetItems:", error);
+    console.log("Lỗi gọi GET /assets/tags/asset/{tagValue}, fallback getAssetItems:", error);
     try {
       const res = await getAssetItems();
       const found = res.data.find(
@@ -127,7 +166,7 @@ export const getAssetItemByTag = async (
       );
       return found ?? undefined;
     } catch (e2) {
-      console.log("Lỗi fallback GET /asset/items khi tìm theo NFC:", e2);
+      console.log("Lỗi fallback GET /assets/items khi tìm theo NFC:", e2);
       return undefined;
     }
   }
@@ -143,7 +182,7 @@ export const createAssetItem = async (
   payload: CreateAssetItemRequest
 ): Promise<CreateAssetItemApiResponse> => {
   const response = await axiosClient.post<CreateAssetItemApiResponse>(
-    `${BACKEND_API_BASE}/asset/items`,
+    `${BACKEND_API_BASE}/assets/items`,
     payload
   );
   return response.data;
@@ -184,7 +223,7 @@ export const updateAssetItem = async (
         status: payload.status,
       };
   const response = await axiosClient.put<UpdateAssetItemApiResponse>(
-    `${BACKEND_API_BASE}/asset/items/${id}`,
+    `${BACKEND_API_BASE}/assets/items/${id}`,
     body
   );
   return response.data;
@@ -199,7 +238,7 @@ export const transferAssetItemHouse = async (
   newHouseId: string
 ): Promise<UpdateAssetItemApiResponse> => {
   const response = await axiosClient.put<UpdateAssetItemApiResponse>(
-    `${BACKEND_API_BASE}/asset/items/${id}/transfer`,
+    `${BACKEND_API_BASE}/assets/items/${id}/transfer`,
     { newHouseId }
   );
   return response.data;
@@ -210,7 +249,7 @@ export const transferAssetItemHouse = async (
  */
 export const deleteAssetItem = async (id: string): Promise<{ success: boolean; message?: string }> => {
   const response = await axiosClient.delete<{ success: boolean; message?: string }>(
-    `${BACKEND_API_BASE}/asset/items/${id}`
+    `${BACKEND_API_BASE}/assets/items/${id}`
   );
   return response.data;
 };
@@ -224,7 +263,7 @@ export const attachAssetTag = async (
   payload: AttachAssetTagRequest
 ): Promise<AttachAssetTagApiResponse> => {
   const response = await axiosClient.post<AttachAssetTagApiResponse>(
-    `${BACKEND_API_BASE}/asset/tags`,
+    `${BACKEND_API_BASE}/assets/tags`,
     {
       ...payload,
       tagValue: normalizeTagValueForApi(payload.tagValue),
@@ -242,7 +281,7 @@ export const detachAssetTag = async (
 ): Promise<DetachAssetTagApiResponse> => {
   const normalized = normalizeTagValueForApi(tagValue.trim());
   const response = await axiosClient.put<DetachAssetTagApiResponse>(
-    `${BACKEND_API_BASE}/asset/tags/detach/${encodeURIComponent(normalized)}`
+    `${BACKEND_API_BASE}/assets/tags/detach/${encodeURIComponent(normalized)}`
   );
   return response.data;
 };

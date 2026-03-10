@@ -100,6 +100,7 @@ export default {
         "not_found_nfc": "NFC ID: {{id}} のデバイスが見つかりません",
         "lookup_no_device_nfc": "このNFCコードが割り当てられたデバイスはありません。",
         "not_found_qr": "コード: {{id}} のデバイスが見つかりません",
+        "device_not_in_your_house": "このデバイスはお住まいの家に属していません。お借りしている家のデバイスのみ表示できます。",
         "rescan": "再スキャン"
     },
     "billing": {
@@ -292,7 +293,7 @@ export default {
         "status_maintenance": "メンテ中",
         "status_inactive": "停止",
         "status_pending": "保留",
-        "house_status_available": "空き",
+        "house_status_available": "使用中",
         "house_status_rented": "賃貸中",
         "house_status_other": "{{status}}",
         "functional_areas_title": "家内の機能エリア",
@@ -385,9 +386,18 @@ export default {
         "chart_title_water": "週間水道消費",
         "unit_kwh": "kWh",
         "unit_m3": "m³",
+        "unit_L": "L",
         "period_week": "今週",
+        "period_day": "今日",
+        "period_month": "今月",
         "day_label": "{{n}}日",
-        "chart_title_pie": "エリア別割合"
+        "chart_title_pie": "エリア別割合",
+        "no_data_area": "このエリアのデータはまだありません",
+        "iot_live": "LIVE",
+        "iot_offline": "OFFLINE",
+        "summary_title": "使用量概要",
+        "electric_summary": "電気",
+        "water_summary": "水道"
     },
     "notification": {
         "empty": "通知はありません",

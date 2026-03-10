@@ -88,16 +88,18 @@ export interface HousesApiResponse {
 // Asset Categories API (/api/asset/categories)
 // =========================================================
 
-/** Một danh mục thiết bị từ API GET /api/asset/categories (loại sản phẩm/thiết bị trong hệ thống). */
+/** Một danh mục thiết bị từ API GET /api/assets/categories (loại sản phẩm/thiết bị trong hệ thống). */
 export interface AssetCategoryFromApi {
   /** ID danh mục. */
   id: string;
-  /** Tên danh mục (ví dụ: Máy lạnh, Bóng đèn, Router...). */
+  /** Tên danh mục (ví dụ: IoT, Furniture, IT Equipment...). */
   name: string;
   /** Phần trăm bồi thường khi hư hỏng (do BE quy định). */
   compensationPercent: number;
   /** Mô tả chi tiết về danh mục. */
   description: string;
+  /** Loại phát hiện (BE có thể trả về, ví dụ: EIF, NONI). */
+  detectionType?: string;
 }
 
 /** Response body của API GET /api/asset/categories. */

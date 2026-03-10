@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient, useQueries } from "@tanstack/react-query";
 import {
   getAssetItems,
+  getAssetItemsByHouseId,
   createAssetItem,
   updateAssetItem,
   deleteAssetItem,
@@ -52,9 +53,9 @@ export const ASSET_ITEM_KEYS = {
  * Cách dùng:
  * - Chỉ filter theo category:
  *   `useAssetItems({ categoryId: selectedCategoryId })`
- * - Filter theo house:
+ * - Filter theo house (dùng API GET /api/assets/items/house/:houseId):
  *   `useAssetItems({ houseId })`
- * - Filter cả house + category:
+ * - Filter cả house + category (lấy theo house rồi lọc category phía client):
  *   `useAssetItems({ houseId, categoryId })`
  */
 export const useAssetItems = (params: UseAssetItemsParams = {}) => {
@@ -67,11 +68,18 @@ export const useAssetItems = (params: UseAssetItemsParams = {}) => {
 
   return useQuery<AssetItemsApiResponse, unknown, AssetItemsApiResponse, ReturnType<typeof ASSET_ITEM_KEYS.byCategory> | ReturnType<typeof ASSET_ITEM_KEYS.byHouse>>({
     queryKey,
-    queryFn: () =>
-      getAssetItems({
-        houseId,
+    queryFn: async () => {
+      if (houseId) {
+        const res = await getAssetItemsByHouseId(houseId);
+        if (categoryId && res.data) {
+          res.data = res.data.filter((item) => item.categoryId === categoryId);
+        }
+        return res;
+      }
+      return getAssetItems({
         categoryId: (categoryId ?? undefined) as AssetItemsParams["categoryId"],
-      }),
+      });
+    },
   });
 };
 

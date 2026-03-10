@@ -100,6 +100,7 @@ export default {
         "not_found_nfc": "Không tìm thấy thiết bị với NFC ID: {{id}}",
         "lookup_no_device_nfc": "Không có thiết bị nào gắn mã NFC này.",
         "not_found_qr": "Không tìm thấy thiết bị với mã: {{id}}",
+        "device_not_in_your_house": "Thiết bị này không thuộc nhà của bạn. Chỉ xem được thiết bị trong nhà bạn đang thuê.",
         "rescan": "Quét lại"
     },
     "billing": {
@@ -292,7 +293,7 @@ export default {
         "status_maintenance": "Bảo trì",
         "status_inactive": "Ngừng",
         "status_pending": "Chờ xử lý",
-        "house_status_available": "Còn trống",
+        "house_status_available": "Đang sử dụng",
         "house_status_rented": "Đã cho thuê",
         "house_status_other": "{{status}}",
         "functional_areas_title": "Khu vực trong nhà",
@@ -385,9 +386,18 @@ export default {
         "chart_title_water": "Tiêu thụ nước theo tuần",
         "unit_kwh": "kWh",
         "unit_m3": "m³",
+        "unit_L": "L",
         "period_week": "Tuần này",
+        "period_day": "Hôm nay",
+        "period_month": "Tháng này",
         "day_label": "T{{n}}",
-        "chart_title_pie": "Phân bố theo khu vực"
+        "chart_title_pie": "Phân bố theo khu vực",
+        "no_data_area": "Chưa có dữ liệu cho khu vực này",
+        "iot_live": "LIVE",
+        "iot_offline": "OFFLINE",
+        "summary_title": "Tổng quan tiêu thụ",
+        "electric_summary": "Điện",
+        "water_summary": "Nước"
     },
     "notification": {
         "empty": "Chưa có thông báo nào",

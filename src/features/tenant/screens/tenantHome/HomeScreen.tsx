@@ -10,64 +10,17 @@ import {
 } from "react-native";
 import { useAuthStore } from "../../../../store/useAuthStore";
 import Header from "../../../../shared/components/header";
-import { Device, DeviceStatus, HomeScreenProps, RootStackParamList } from "../../../../shared/types";
+import { HomeScreenProps, RootStackParamList } from "../../../../shared/types";
 import { useTranslation } from "react-i18next";
 import { NavigationProp } from "@react-navigation/native";
 import homeStyles from "./homeStyles";
-import { useTenantHouses, useAssetItems, useAssetCategories } from "../../../../shared/hooks";
+import { useTenantHouses, useAssetItems, useAssetCategories, useTenantContext } from "../../../../shared/hooks";
+import { useTenantIoTConnection, useTenantUsage } from "../../hooks/useTenantIoT";
 import type {
   AssetItemFromApi,
   HouseFromApi,
   AssetCategoryFromApi,
 } from "../../../../shared/types/api";
-
-/**
- * Hàm map trạng thái từ API (AVAILABLE, IN_USE, DISPOSED, MAINTENANCE, ...)
- * sang trạng thái DeviceStatus dùng trong UI (active/inactive/maintenance/pending).
- */
-const mapApiStatusToDeviceStatus = (apiStatus: string): DeviceStatus => {
-  switch (apiStatus) {
-    case "AVAILABLE":
-    case "IN_USE":
-      return "active";
-    case "DISPOSED":
-      return "inactive";
-    case "MAINTENANCE":
-      return "maintenance";
-    default:
-      return "pending";
-  }
-};
-
-/**
- * Chuyển dữ liệu thiết bị từ API (AssetItemFromApi) về dạng Device
- * để tái sử dụng màn DeviceDetail/Ticket cũ mà không cần sửa nhiều.
- */
-const mapAssetItemToDevice = (
-  item: AssetItemFromApi,
-  houseName?: string | null
-): Device => {
-  return {
-    id: item.id,
-    // Tên hiển thị: ưu tiên displayName từ API.
-    name: item.displayName,
-    // Hiện tại chưa phân loại theo category nên gán "other".
-    type: "other",
-    // Nếu chưa gán NFC thì để chuỗi rỗng.
-    nfcTagId: item.nfcTag ?? "",
-    // Vị trí hiển thị đơn giản là tên nhà đang thuê.
-    location: houseName ?? "",
-    status: mapApiStatusToDeviceStatus(item.status),
-    metadata: {
-      // SerialNumber có sẵn trong API.
-      serialNumber: item.serialNumber,
-      // Các thông tin khác Backend chưa trả về nên để trống.
-      manufacturer: "",
-      model: "",
-      installationDate: "",
-    },
-  };
-};
 
 const HomeScreen = ({ navigation }: HomeScreenProps) => {
   const { houseId } = useAuthStore();
@@ -110,9 +63,21 @@ const HomeScreen = ({ navigation }: HomeScreenProps) => {
     [itemsData?.data, myHouse]
   );
 
-  // 3. Lấy danh mục để hiển thị tên loại thiết bị
-  const { data: categoriesData } = useAssetCategories();
+  // 3. Lấy danh mục để hiển thị tên loại thiết bị (GET /api/assets/categories)
+  const { data: categoriesData, refetch: refetchCategories } = useAssetCategories();
   const categories: AssetCategoryFromApi[] = categoriesData?.data ?? [];
+
+  // 4. Ngữ cảnh IoT tenant (houseId, thingId) và dữ liệu usage từ AWS
+  const { houseId: tenantHouseId, thingId } = useTenantContext();
+  const iotConnected = useTenantIoTConnection(thingId);
+  const electricUsage = useTenantUsage({
+    houseId: tenantHouseId,
+    metric: "electricity",
+  });
+  const waterUsage = useTenantUsage({
+    houseId: tenantHouseId,
+    metric: "water",
+  });
 
   const loading = loadingHouses || loadingItems;
 
@@ -132,6 +97,7 @@ const HomeScreen = ({ navigation }: HomeScreenProps) => {
   const onRefresh = () => {
     refetchHouses();
     refetchItems();
+    refetchCategories();
   };
 
   /**
@@ -222,11 +188,10 @@ const HomeScreen = ({ navigation }: HomeScreenProps) => {
       <TouchableOpacity
         style={homeStyles.deviceCard}
         onPress={() => {
-          // Navigate lên stack root để mở màn DeviceDetail (tenantItem) với dữ liệu thật từ API.
+          // Mở màn chi tiết thiết bị (TenantItemDetail): truyền item từ API, màn hình sẽ fetch lại theo id và hiển thị giống ItemDescription.
           const parentNav =
             navigation.getParent<NavigationProp<RootStackParamList>>();
-          const mappedDevice = mapAssetItemToDevice(item, myHouse?.name);
-          parentNav?.navigate("DeviceDetail", { device: mappedDevice });
+          parentNav?.navigate("TenantItemDetail", { item });
         }}
       >
         <View style={homeStyles.deviceLeft}>
@@ -330,12 +295,95 @@ const HomeScreen = ({ navigation }: HomeScreenProps) => {
           </View>
         </TouchableOpacity>
 
-        {/* Tiêu đề danh sách thiết bị */}
+        {/* Tổng quan tiêu thụ điện/nước từ IoT AWS – tổng theo tháng, nhấn xem chi tiết */}
+        <View style={homeStyles.usageSummarySection}>
+          <View style={homeStyles.usageSummaryHeader}>
+            <Text style={homeStyles.usageSummaryTitle}>
+              {t("consumption.summary_title")}
+            </Text>
+            <View
+              style={[
+                homeStyles.usageSummaryLiveChip,
+                {
+                  backgroundColor: iotConnected ? "rgba(74,222,128,0.15)" : "rgba(248,113,113,0.15)",
+                  borderColor: iotConnected ? "rgba(74,222,128,0.5)" : "rgba(248,113,113,0.5)",
+                },
+              ]}
+            >
+              <View
+                style={[
+                  homeStyles.usageSummaryLiveDot,
+                  { backgroundColor: iotConnected ? "#4ADE80" : "#F87171" },
+                ]}
+              />
+              <Text
+                style={[
+                  homeStyles.usageSummaryLiveText,
+                  { color: iotConnected ? "#16a34a" : "#dc2626" },
+                ]}
+              >
+                {iotConnected ? t("consumption.iot_live") : t("consumption.iot_offline")}
+              </Text>
+            </View>
+          </View>
+          <View style={homeStyles.usageSummaryCards}>
+            <TouchableOpacity
+              style={[homeStyles.usageSummaryCard, { borderLeftColor: "#2563EB" }]}
+              onPress={() => navigation.navigate("ElectricUsage")}
+              activeOpacity={0.8}
+            >
+              <Text style={homeStyles.usageSummaryCardTitle}>
+                {t("consumption.electric_summary")}
+              </Text>
+              {electricUsage.loading ? (
+                <ActivityIndicator size="small" color="#2563EB" style={{ marginVertical: 8 }} />
+              ) : (
+                <>
+                  <Text style={homeStyles.usageSummaryCardRow}>
+                    {t("consumption.period_day")}: {electricUsage.dayVal.toFixed(2)} {electricUsage.unit}
+                  </Text>
+                  <Text style={homeStyles.usageSummaryCardRow}>
+                    {t("consumption.period_week")}: {electricUsage.weekVal.toFixed(2)} {electricUsage.unit}
+                  </Text>
+                  <Text style={[homeStyles.usageSummaryCardRow, homeStyles.usageSummaryCardMonth]}>
+                    {t("consumption.period_month")}: {electricUsage.monthVal.toFixed(2)} {electricUsage.unit}
+                  </Text>
+                </>
+              )}
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[homeStyles.usageSummaryCard, { borderLeftColor: "#0D9488" }]}
+              onPress={() => navigation.navigate("WaterUsage")}
+              activeOpacity={0.8}
+            >
+              <Text style={homeStyles.usageSummaryCardTitle}>
+                {t("consumption.water_summary")}
+              </Text>
+              {waterUsage.loading ? (
+                <ActivityIndicator size="small" color="#0D9488" style={{ marginVertical: 8 }} />
+              ) : (
+                <>
+                  <Text style={homeStyles.usageSummaryCardRow}>
+                    {t("consumption.period_day")}: {waterUsage.dayVal.toFixed(2)} {waterUsage.unit}
+                  </Text>
+                  <Text style={homeStyles.usageSummaryCardRow}>
+                    {t("consumption.period_week")}: {waterUsage.weekVal.toFixed(2)} {waterUsage.unit}
+                  </Text>
+                  <Text style={[homeStyles.usageSummaryCardRow, homeStyles.usageSummaryCardMonth]}>
+                    {t("consumption.period_month")}: {waterUsage.monthVal.toFixed(2)} {waterUsage.unit}
+                  </Text>
+                </>
+              )}
+            </TouchableOpacity>
+          </View>
+        </View>
+
+        {/* Tiêu đề danh sách thiết bị – hiển thị số thiết bị sau khi lọc theo danh mục */}
         <Text style={homeStyles.sectionTitle}>
-          {t("home.device_list.title", { count: devices.length })}
+          {t("home.device_list.title", { count: filteredDevices.length })}
         </Text>
 
-        {/* Thanh category ngang: filter danh sách thiết bị theo danh mục (giống Staff Home) */}
+        {/* Thanh category ngang: Tất cả + các danh mục có thiết bị trong nhà (từ API categories) */}
         <ScrollView
           horizontal
           showsHorizontalScrollIndicator={false}

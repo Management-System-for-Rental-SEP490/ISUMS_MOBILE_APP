@@ -9,6 +9,7 @@ import { RootStackParamList } from "../shared/types";
 import {StaffTabs, TenantTabs } from "../shared/components/footerNavigator";
 import CameraScreen from "../features/modal/camera/CameraScreen";
 import DeviceDetail from "../features/tenant/screens/tenantItem/deviceDetail";
+import TenantItemDescriptionScreen from "../features/tenant/screens/tenantItem/TenantItemDescription";
 import TicketScreen from "../features/tenant/screens/tenantTicket/ticket";
 import BuildingDetailScreen from "../features/staff/screens/staffHouse/BuildingDetailScreen";
 import TicketDetailScreen from "../features/staff/screens/staffTicket/TicketDetailScreen";
@@ -104,6 +105,10 @@ const Navigation = () => {
                 options={{ presentation: "modal" }}
               />
               <Stack.Screen name="DeviceDetail" component={DeviceDetail} />
+              <Stack.Screen
+                name="TenantItemDetail"
+                component={TenantItemDescriptionScreen}
+              />
               <Stack.Screen 
                 name="Ticket" 
                 component={TicketScreen}
