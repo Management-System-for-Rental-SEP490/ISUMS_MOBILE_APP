@@ -10,17 +10,16 @@
 export interface UserProfileResponse {
   /** ID duy nhất của user trong hệ thống. */
   id: string;
-  /** Username dùng để đăng nhập. */
-  username: string;
+  /** Tên hiển thị. */
+  name: string;
   /** Email của user. */
   email: string;
-  /** Họ tên đầy đủ. */
-  fullName: string;
-  /** Số điện thoại (tùy chọn, có thể null/undefined). */
-  phoneNumber?: string;
-  /** URL ảnh avatar (tùy chọn). */
-  avatarUrl?: string;
-  // Có thể bổ sung thêm field khác khi BE mở rộng response.
+  /** Số CMND/CCCD. */
+  identityNumber: string;
+  /** Số điện thoại. */
+  phoneNumber: string;
+  /** Danh sách roles (VD: ["TENANT", "ADMIN"]). */
+  roles: string[];
 }
 
 // =========================================================
@@ -169,6 +168,10 @@ export interface AssetItemFromApi {
   serialNumber: string;
   /** NFC tag ID gắn với thiết bị (từ bảng asset tags), null nếu chưa gán. */
   nfcTag: string | null;
+  /** QR tag ID gắn với thiết bị, null nếu chưa gán. */
+  qrTag: string | null;
+  /** Danh sách tags (NFC, QR, ...) gắn với thiết bị (nếu BE hỗ trợ trả về). */
+  tags?: AssetTagFromApi[];
   /** Tình trạng còn lại (%), ví dụ 80 = còn tốt 80%. */
   conditionPercent: number;
   /** Trạng thái: VD "AVAILABLE", "DISPOSED", ... */
@@ -192,6 +195,8 @@ export interface CreateAssetItemRequest {
   serialNumber: string;
   /** Có thể chuỗi hoặc null nếu chưa gán NFC. */
   nfcTag: string | null;
+  /** Có thể chuỗi hoặc null nếu chưa gán QR. */
+  qrTag: string | null;
   conditionPercent: number;
   /** VD "AVAILABLE", "DISPOSED". */
   status: string;
@@ -226,8 +231,8 @@ export interface AttachAssetTagRequest {
   assetId: string;
   /** Giá trị mã NFC (ví dụ "010101010" hoặc "04 9C 59 A2 B2 19 90"). */
   tagValue: string;
-  /** Loại tag, thường là "NFC". */
-  tagType: "NFC";
+  /** Loại tag, thường là "NFC" hoặc "QR_CODE". */
+  tagType: "NFC" | "QR_CODE";
 }
 
 /** Dữ liệu tag trả về từ POST /api/asset/tags khi gán thành công. */

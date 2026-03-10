@@ -84,10 +84,10 @@ export const getAssetItemById = async (id: string): Promise<AssetItemFromApi | u
 };
 
 
-export const getAssetItemByNfcId = async (
-  nfcId: string
+export const getAssetItemByTag = async (
+  tagValue: string
 ): Promise<AssetItemFromApi | undefined> => {
-  const normalized = nfcId.trim(); 
+  const normalized = tagValue.trim(); 
   if (!normalized) return undefined;
   const apiTagValue = normalizeTagValueForApi(normalized);
 
@@ -111,11 +111,11 @@ export const getAssetItemByNfcId = async (
 
     if (!raw) return undefined;
 
-    // Đảm bảo FE luôn có nfcTag để hiển thị dù BE có thể trả null.
-    return {
-      ...raw,
-      nfcTag: raw.nfcTag ?? apiTagValue,
-    };
+    // Trả nguyên object từ BE để giữ đúng cặp nfcTag / qrTag.
+    // BE đã đảm bảo rằng:
+    // - Nếu quét NFC: nfcTag chứa ID thẻ NFC, qrTag (nếu có) chứa ID QR của cùng thiết bị.
+    // - Nếu quét QR: qrTag chứa ID QR, nfcTag (nếu có) chứa ID NFC của cùng thiết bị.
+    return raw;
   } catch (error) {
     console.log("Lỗi gọi GET /asset/tags/asset/{tagValue}, fallback getAssetItems:", error);
     try {
@@ -132,6 +132,9 @@ export const getAssetItemByNfcId = async (
     }
   }
 };
+
+/** Alias cho backward compatibility nếu cần, hoặc dùng trực tiếp getAssetItemByTag */
+export const getAssetItemByNfcId = getAssetItemByTag;
 
 /**
  * Tạo thiết bị mới (POST /api/asset/items).
@@ -166,6 +169,7 @@ export const updateAssetItem = async (
         display_name: payload.displayName,
         serial_number: payload.serialNumber,
         nfc_tag: payload.nfcTag,
+        qr_tag: payload.qrTag,
         condition_percent: payload.conditionPercent,
         status: payload.status,
       }
@@ -175,6 +179,7 @@ export const updateAssetItem = async (
         displayName: payload.displayName,
         serialNumber: payload.serialNumber,
         nfcTag: payload.nfcTag,
+        qrTag: payload.qrTag,
         conditionPercent: payload.conditionPercent,
         status: payload.status,
       };

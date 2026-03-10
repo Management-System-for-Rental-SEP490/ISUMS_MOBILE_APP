@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from "react";
-import { View, Text, TouchableOpacity, Alert, Linking, Image, ActivityIndicator } from "react-native";
+import { View, Text, TouchableOpacity, Linking, Image, ActivityIndicator } from "react-native";
+import { CustomAlert as Alert } from "../../../shared/components/alert";
 import { useNavigation, useFocusEffect } from "@react-navigation/native";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { LinearGradient } from "expo-linear-gradient";

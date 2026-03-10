@@ -1,11 +1,11 @@
 import { useNavigation, useRoute, RouteProp } from "@react-navigation/native";
-import { Text, TouchableOpacity, View, Alert, ActivityIndicator } from "react-native";
+import { Text, TouchableOpacity, View, ActivityIndicator } from "react-native";
+import { CustomAlert as Alert } from "../../../shared/components/alert";
 import { useEffect, useState, useRef } from "react";
 import { CameraView, useCameraPermissions } from "expo-camera";
 import { cameraStyles } from "./cameraStyles";
-import { getDeviceById, getDeviceByNfcTag } from "../../../shared/services/deviceData";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
-import { RootStackParamList } from "../../../shared/types";
+import { Device, RootStackParamList, DeviceStatus } from "../../../shared/types";
 import NfcManager, { NfcTech, Ndef } from "react-native-nfc-manager";
 import { ScanMode } from "../../../shared/types";
 import { useTranslation } from "react-i18next";
@@ -25,15 +25,17 @@ const CameraScreen = () => {
   const assignForDevice = route.params?.assignForDevice;
   /** "assign" = từ menu + Gán NFC; "lookup" (hoặc undefined) = tra cứu. */
   const cameraMode = route.params?.mode;
+  const initialScanMode = route.params?.initialScanMode;
 
   // Debug params
   useEffect(() => {
-    console.log("CameraScreen params:", { mode: cameraMode, assignForDevice: assignForDevice?.id, role });
+    console.log("CameraScreen params:", { mode: cameraMode, assignForDevice: assignForDevice?.id, role, initialScanMode });
   }, [route.params]);
 
   const [permission, requestPermission] = useCameraPermissions(); 
   const [scanned, setScanned] = useState(false);
   const [scanMode, setScanMode] = useState<ScanMode>(() => {
+    if (initialScanMode) return initialScanMode;
     if (assignForDevice || cameraMode === "assign") return "nfc";
     if (role === "technical") return "nfc";
     return "qr";
@@ -43,10 +45,21 @@ const CameraScreen = () => {
   /** Điều khiển hiển thị modal chọn thiết bị trống để gán NFC. */
   const [assignModalVisible, setAssignModalVisible] = useState(false);
 
+  const [scannedTagType, setScannedTagType] = useState<"NFC" | "QR_CODE">("NFC");
+
   const nfcTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
-  /** Gán NFC vào thiết bị qua POST /api/asset/tags (thay vì PUT item). */
+  /** Gán NFC/QR vào thiết bị qua POST /api/asset/tags. */
   const { mutateAsync: attachAssetTag } = useAttachAssetTag();
+
+  const isMounted = useRef(true);
+
+  useEffect(() => {
+    isMounted.current = true;
+    return () => {
+      isMounted.current = false;
+    };
+  }, []);
 
   //[]: Chỉ chạy một lần khi mount.
   //[value]: Chạy lại khi value thay đổi.
@@ -82,6 +95,47 @@ const CameraScreen = () => {
     }
   }, [scanMode]);
 
+  /**
+   * Map trạng thái từ API (AVAILABLE, IN_USE, DISPOSED, MAINTENANCE, ...)
+   * sang DeviceStatus để tái sử dụng màn DeviceDetail/Ticket cũ.
+   */
+  const mapApiStatusToDeviceStatus = (apiStatus: string): DeviceStatus => {
+    switch (apiStatus) {
+      case "AVAILABLE":
+      case "IN_USE":
+        return "active";
+      case "DISPOSED":
+        return "inactive";
+      case "MAINTENANCE":
+        return "maintenance";
+      default:
+        return "pending";
+    }
+  };
+
+  /**
+   * Chuyển AssetItemFromApi (dữ liệu thật từ BE) về kiểu Device
+   * để truyền sang màn DeviceDetail/Ticket hiện tại.
+   */
+  const mapAssetItemToDevice = (item: AssetItemFromApi): Device => {
+    return {
+      id: item.id,
+      name: item.displayName,
+      type: "other",
+      nfcTagId: item.nfcTag ?? "",
+      // Camera chỉ biết thiết bị nào được quét, không biết rõ phòng/tầng,
+      // nên location tạm để chuỗi rỗng, DeviceDetail sẽ hiển thị "no_data".
+      location: "",
+      status: mapApiStatusToDeviceStatus(item.status),
+      metadata: {
+        serialNumber: item.serialNumber,
+        manufacturer: "",
+        model: "",
+        installationDate: "",
+      },
+    };
+  };
+
   const startNfcScan = async () => {
     if (nfcScanning || scanned) return;
     
@@ -109,6 +163,7 @@ const CameraScreen = () => {
       
       // Đặt timeout để tránh scan quá lâu
       nfcTimeoutRef.current = setTimeout(() => {
+        if (!isMounted.current) return;
         stopNfcScan();
         Alert.alert(
           t('camera.timeout_title'),
@@ -130,6 +185,7 @@ const CameraScreen = () => {
         handleNfcScanned(tag);
       }
     } catch (err: any) {
+      if (!isMounted.current) return;
       console.log("Lỗi scan NFC:", err);
       if (err.message !== "User cancelled") { //Chỉ hiển thị Alert nếu không phải lỗi do người dùng hủy.
         Alert.alert(
@@ -164,53 +220,226 @@ const CameraScreen = () => {
     setNfcScanning(false);
   };
 
+  // Common logic for both NFC and QR
+  const handleTagScanned = async (tagValue: string, type: "NFC" | "QR_CODE") => {
+    console.log(`Scanned ${type}:`, tagValue);
+
+    // --- Luồng Staff: Gán Tag cho thiết bị đã chọn (từ màn BuildingDetail) ---
+    if (assignForDevice) {
+      // Đảm bảo 1 Tag chỉ gán cho 1 thiết bị
+      try {
+        const existing = await getAssetItemByNfcId(tagValue);
+        if (existing && existing.id !== assignForDevice.id) {
+          Alert.alert(
+            t("staff_nfc.duplicate_title"),
+            t("staff_nfc.duplicate_message", { name: existing.displayName }),
+            [
+              {
+                text: t("common.close"),
+                onPress: () => {
+                  setScanned(false);
+                  if (type === "NFC") startNfcScan();
+                },
+              },
+            ]
+          );
+          return;
+        }
+      } catch (e) {
+        console.log("Lỗi kiểm tra trùng Tag khi gán từ BuildingDetail:", e);
+      }
+
+      Alert.alert(
+        t("staff_nfc.confirm_assign_title"),
+        t("staff_nfc.confirm_assign_message", {
+          nfcId: tagValue,
+          displayName: assignForDevice.displayName,
+        }),
+        [
+          { text: t("common.cancel"), onPress: () => { setScanned(false); if (type === "NFC") startNfcScan(); }, style: "cancel" as const },
+          {
+            text: t("common.save"),
+            onPress: async () => {
+              try {
+                await attachAssetTag({
+                  assetId: assignForDevice.id,
+                  tagValue: tagValue,
+                  tagType: type,
+                });
+                Alert.alert(t("common.success"), 
+                  type === "QR_CODE" 
+                    ? t("staff_nfc.assign_success_qr") 
+                    : t("staff_nfc.assign_success"), 
+                  [
+                  { text: t("common.close"), onPress: () => navigation.goBack() },
+                ]);
+              } catch {
+                Alert.alert(t("camera.error_title"), t("staff_nfc.assign_error"), [
+                  { text: t("common.close"), onPress: () => navigation.goBack() },
+                ]);
+              }
+            },
+          },
+        ]
+      );
+      return;
+    }
+
+    // --- Luồng Staff: Quét Tag từ footer (chỉ tra cứu mã đã gán) ---
+    if (role === "technical" && cameraMode !== "assign" && !assignForDevice) {
+      try {
+        const device = await getAssetItemByNfcId(tagValue);
+        if (device) {
+          navigation.replace("ItemDescription", { item: device });
+          return;
+        }
+        
+        // Nếu không tìm thấy
+        Alert.alert(
+          t("camera.not_found_title"),
+          type === "QR_CODE" 
+            ? t("camera.not_found_qr", { id: tagValue })
+            : t("camera.lookup_no_device_nfc", { id: tagValue }),
+          [
+            { text: t("camera.rescan"), onPress: () => { setScanned(false); if (type === "NFC") startNfcScan(); } },
+            { text: t("common.close"), onPress: () => navigation.goBack() },
+          ]
+        );
+      } catch (error) {
+        console.log("Lỗi tra cứu thiết bị:", error);
+        Alert.alert(
+          t("camera.not_found_title"),
+          type === "QR_CODE" 
+            ? t("camera.not_found_qr", { id: tagValue })
+            : t("camera.lookup_no_device_nfc", { id: tagValue }),
+          [
+            { text: t("camera.rescan"), onPress: () => { setScanned(false); if (type === "NFC") startNfcScan(); } },
+            { text: t("common.close"), onPress: () => navigation.goBack() },
+          ]
+        );
+      }
+      return;
+    }
+
+    // --- Luồng Staff: Từ menu "+" → Gán Tag: quét mã mới thì mở modal chọn thiết bị; mã đã gán thì báo lỗi ---
+    if (role === "technical" && cameraMode === "assign") {
+      try {
+        const existing = await getAssetItemByNfcId(tagValue);
+        if (existing) {
+          Alert.alert(
+            t("staff_nfc.duplicate_title"),
+            t("staff_nfc.duplicate_message", { name: existing.displayName ?? existing.id }),
+            [
+              {
+                text: t("common.close"),
+                onPress: () => {
+                  setScanned(false);
+                  if (type === "NFC") startNfcScan();
+                },
+              },
+            ]
+          );
+          return;
+        }
+        setScannedNfcId(tagValue);
+        setScannedTagType(type);
+        setAssignModalVisible(true);
+      } catch {
+        Alert.alert(
+          t("camera.not_found_title"),
+          t("camera.not_found_nfc", { id: tagValue }),
+          [
+            { text: t("camera.rescan"), onPress: () => { setScanned(false); if (type === "NFC") startNfcScan(); } },
+            { text: t("common.close"), onPress: () => navigation.goBack() },
+          ]
+        );
+      }
+      return;
+    }
+
+    // --- Luồng Tenant: tra cứu thiết bị bằng dữ liệu thật từ BE ---
+    try {
+      const assetItem = await getAssetItemByNfcId(tagValue);
+
+      if (assetItem) {
+        const device = mapAssetItemToDevice(assetItem);
+        navigation.replace("DeviceDetail", { device });
+        return;
+      }
+
+      // Không tìm thấy thiết bị tương ứng với Tag vừa quét.
+      if (!isMounted.current) return;
+      Alert.alert(
+        t("camera.not_found_title"),
+        type === "QR_CODE"
+          ? t("camera.not_found_qr", { id: tagValue })
+          : t("camera.not_found_nfc", { id: tagValue }),
+        [
+          {
+            text: t("camera.rescan"),
+            onPress: () => {
+              setScanned(false);
+              if (type === "NFC") startNfcScan();
+            },
+          },
+          {
+            text: t("common.close"),
+            onPress: () => navigation.goBack(),
+          },
+        ]
+      );
+    } catch (error) {
+      console.log("Lỗi tra cứu thiết bị cho tenant:", error);
+      if (!isMounted.current) return;
+      Alert.alert(
+        t("camera.error_title"),
+        t("camera.read_error"),
+        [
+          {
+            text: t("camera.rescan"),
+            onPress: () => {
+              setScanned(false);
+              if (type === "NFC") startNfcScan();
+            },
+          },
+          {
+            text: t("common.close"),
+            onPress: () => navigation.goBack(),
+          },
+        ]
+      );
+    }
+  };
+
   const handleNfcScanned = async (tag: any) => {
     if (scanned) return;
     setScanned(true);
-    await stopNfcScan();//await: chờ cho đến khi stopNfcScan hoàn thành.
+    await stopNfcScan();
 
-    // Lấy ID của thẻ NFC
-    // Format ID có thể khác nhau tùy loại thẻ, thử nhiều cách
     let nfcId = "";
+    // ... Parsing logic ...
+    console.log("NFC Tag object:", JSON.stringify(tag, null, 2));
     
-    // Debug: log tag để xem cấu trúc
-    console.log("NFC Tag object:", JSON.stringify(tag, null, 2)); //
-    
-    // Thử đọc từ idBytes trước (đây là cách đúng nhất cho NTAG213)
     if (tag.idBytes && Array.isArray(tag.idBytes)) {
-      // Với NTAG213, UID thường là 7 bytes đầu tiên
-      const uidBytes = tag.idBytes.slice(0, 7);//slice(start, end): lấy phần tử từ start đến end. lấy 7 phần tử đầu tiên.
+      const uidBytes = tag.idBytes.slice(0, 7);
       nfcId = uidBytes
         .map((byte: number) => {
-          if (typeof byte !== "number" || isNaN(byte) || byte < 0 || byte > 255) { //isNaN: kiểm tra xem byte có phải là số không.
-            return null;
-          }
-          return byte.toString(16).padStart(2, "0").toUpperCase(); //padStart(length, "0"): đệm 0 vào đầu string để đảm bảo độ dài là length.
+          if (typeof byte !== "number" || isNaN(byte) || byte < 0 || byte > 255) return null;
+          return byte.toString(16).padStart(2, "0").toUpperCase();
         })
-        .filter((hex: string | null) => hex !== null) //filter(callback): lọc các phần tử của mảng, chỉ lấy các phần tử không phải null.
-        .join(" "); //join(" "): nối các phần tử của mảng thành một string, cách nhau bởi dấu cách.
-    }
-    // Nếu không có idBytes, thử đọc từ id (có thể là string hex hoặc array)
-    else if (tag.id) {
-      if (typeof tag.id === "string") {
-        // Nếu id là string hex (ví dụ: "049C59A2B21990" hoặc "04:9C:59:A2:B2:19:90")
-        // Loại bỏ tất cả ký tự không phải hex
-        let cleanedId = tag.id.replace(/[^0-9A-Fa-f]/g, ""); //replace(pattern, replacement): thay thế tất cả ký tự không phải hex bằng "", tức là xóa hết. /g: global, thay thế tất cả ký tự không phải hex.
-        // Nếu có dấu hai chấm hoặc khoảng trắng, giữ lại format
+        .filter((hex: string | null) => hex !== null)
+        .join(" ");
+    } else if (tag.id) {
+       if (typeof tag.id === "string") {
+        let cleanedId = tag.id.replace(/[^0-9A-Fa-f]/g, "");
         if (tag.id.includes(":") || tag.id.includes(" ")) {
-          cleanedId = tag.id.replace(/[^0-9A-Fa-f\s:]/gi, ""); //gi: global, case insensitive, thay thế tất cả ký tự(có viết hoa và viết thường) không phải hex bằng "", tức là xóa hết.
-          // Chuyển đổi về format có khoảng trắng
-          cleanedId = cleanedId.replace(/:/g, " ").replace(/\s+/g, " ").trim();///:/g: tìm tất cả dấu hai chấm.Thay bằng " " ,/\s+/g: khớp một hoặc nhiều khoảng trắng liên tiếp. Thay bằng " " ,trim(): xóa khoảng trắng ở đầu và cuối string.
+          cleanedId = tag.id.replace(/[^0-9A-Fa-f\s:]/gi, "");
+          cleanedId = cleanedId.replace(/:/g, " ").replace(/\s+/g, " ").trim();
           nfcId = cleanedId.toUpperCase();
         } else {
-          // Chuyển đổi thành format "XX XX XX..."
-          nfcId = cleanedId.match(/.{1,2}/g)?.slice(0, 7).join(" ").toUpperCase() || ""; //match(pattern): tìm tất cả ký tự phù hợp với pattern. slice(start, end): lấy phần tử từ start đến end. join(" "): nối các phần tử của mảng thành một string, cách nhau bởi dấu cách.
+          nfcId = cleanedId.match(/.{1,2}/g)?.slice(0, 7).join(" ").toUpperCase() || "";
         }
-//const cleanedId = "049C59A2B21990";
-//cleanedId.match(/.{1,2}/g)?.slice(0, 7).join(" ").toUpperCase()
-// Kết quả: ["04", "9C", "59", "A2", "B2", "19", "90"]
       } else if (Array.isArray(tag.id)) {
-        // Nếu id là array, lấy 7 bytes đầu (UID của NTAG213)
         const uidArray = tag.id.slice(0, 7);
         nfcId = uidArray
           .map((byte: unknown) => {
@@ -221,13 +450,12 @@ const CameraScreen = () => {
           .filter((hex: string | null) => hex !== null)
           .join(" ");
       } else {
-        // Thử convert sang array
         try {
           const idArray = Array.from(tag.id as ArrayLike<unknown>);
           const uidArray = idArray.slice(0, 7);
           nfcId = uidArray
             .map((byte: unknown) => {
-              const num = typeof byte === "number" ? byte : parseInt(String(byte), 10); // nếu byte là số thì lấy byte, nếu không thì convert byte thành số.
+              const num = typeof byte === "number" ? byte : parseInt(String(byte), 10);
               if (isNaN(num) || num < 0 || num > 255) return null;
               return num.toString(16).padStart(2, "0").toUpperCase();
             })
@@ -262,179 +490,14 @@ const CameraScreen = () => {
       return;
     }
 
-    // --- Luồng Staff: Gán NFC cho thiết bị đã chọn (từ màn BuildingDetail) ---
-    if (assignForDevice) {
-      // Đảm bảo 1 NFC chỉ gán cho 1 thiết bị: kiểm tra xem NFC này đã thuộc về thiết bị khác chưa.
-      try {
-        const existing = await getAssetItemByNfcId(nfcId);
-        if (existing && existing.id !== assignForDevice.id) {
-          Alert.alert(
-            t("staff_nfc.duplicate_title"),
-            t("staff_nfc.duplicate_message", { name: existing.displayName }),
-            [
-              {
-                text: t("common.close"),
-                onPress: () => {
-                  setScanned(false);
-                  startNfcScan();
-                },
-              },
-            ]
-          );
-          return;
-        }
-      } catch (e) {
-        console.log("Lỗi kiểm tra trùng NFC khi gán từ BuildingDetail:", e);
-      }
-
-      Alert.alert(
-        t("staff_nfc.confirm_assign_title"),
-        t("staff_nfc.confirm_assign_message", {
-          nfcId,
-          displayName: assignForDevice.displayName,
-        }),
-        [
-          { text: t("common.cancel"), onPress: () => { setScanned(false); startNfcScan(); }, style: "cancel" as const },
-          {
-            text: t("common.save"),
-            onPress: async () => {
-              try {
-                await attachAssetTag({
-                  assetId: assignForDevice.id,
-                  tagValue: nfcId,
-                  tagType: "NFC",
-                });
-                Alert.alert(t("common.success"), t("staff_nfc.assign_success"), [
-                  { text: t("common.close"), onPress: () => navigation.goBack() },
-                ]);
-              } catch {
-                Alert.alert(t("camera.error_title"), t("staff_nfc.assign_error"), [
-                  { text: t("common.close"), onPress: () => navigation.goBack() },
-                ]);
-              }
-            },
-          },
-        ]
-      );
-      return;
-    }
-
-    // --- Luồng Staff: Quét NFC từ footer (chỉ tra cứu mã đã gán) ---
-    if (role === "technical" && cameraMode !== "assign" && !assignForDevice) {
-      try {
-        const device = await getAssetItemByNfcId(nfcId);
-        if (device) {
-          navigation.replace("ItemDescription", { item: device });
-          return;
-        }
-        Alert.alert(
-          t("camera.not_found_title"),
-          t("camera.lookup_no_device_nfc", { id: nfcId }),
-          [
-            { text: t("camera.rescan"), onPress: () => { setScanned(false); startNfcScan(); } },
-            { text: t("common.close"), onPress: () => navigation.goBack() },
-          ]
-        );
-      } catch {
-        Alert.alert(
-          t("camera.not_found_title"),
-          t("camera.lookup_no_device_nfc", { id: nfcId }),
-          [
-            { text: t("camera.rescan"), onPress: () => { setScanned(false); startNfcScan(); } },
-            { text: t("common.close"), onPress: () => navigation.goBack() },
-          ]
-        );
-      }
-      return;
-    }
-
-    // --- Luồng Staff: Từ menu "+" → Gán NFC: quét thẻ mới thì mở modal chọn thiết bị; thẻ đã gán thì báo lỗi ---
-    if (role === "technical" && cameraMode === "assign") {
-      try {
-        const existing = await getAssetItemByNfcId(nfcId);
-        if (existing) {
-          Alert.alert(
-            t("staff_nfc.duplicate_title"),
-            t("staff_nfc.duplicate_message", { name: existing.displayName ?? existing.id }),
-            [
-              {
-                text: t("common.close"),
-                onPress: () => {
-                  setScanned(false);
-                  startNfcScan();
-                },
-              },
-            ]
-          );
-          return;
-        }
-        setScannedNfcId(nfcId);
-        setAssignModalVisible(true);
-      } catch {
-        Alert.alert(
-          t("camera.not_found_title"),
-          t("camera.not_found_nfc", { id: nfcId }),
-          [
-            { text: t("camera.rescan"), onPress: () => { setScanned(false); startNfcScan(); } },
-            { text: t("common.close"), onPress: () => navigation.goBack() },
-          ]
-        );
-      }
-      return;
-    }
-
-    // --- Luồng Tenant: tra cứu thiết bị từ mock (getDeviceByNfcTag) ---
-    const device = getDeviceByNfcTag(nfcId);
-
-    if (device) {
-      navigation.replace("DeviceDetail", { device });
-    } else {
-      Alert.alert(
-        t('camera.not_found_title'),
-        t('camera.not_found_nfc', { id: nfcId }),
-        [
-          {
-            text: t('camera.rescan'),
-            onPress: () => {
-              setScanned(false);
-              startNfcScan();
-            },
-          },
-          {
-            text: t('common.close'),
-            onPress: () => navigation.goBack(),
-          },
-        ]
-      );
-    }
+    handleTagScanned(nfcId, "NFC");
   };
 
-// logic scan QR code
-
+  // logic scan QR code
   const handleBarCodeScanned = ({ data }: { data: string }) => {
     if (scanned || scanMode !== "qr") return;
     setScanned(true);
-
-    const device = getDeviceById(data);
-
-    if (device) {
-      navigation.replace("DeviceDetail", { device });
-    } else {
-      Alert.alert(
-        t('camera.not_found_title'),
-        t('camera.not_found_qr', { id: data }),
-        [
-          {
-            text: t('camera.rescan'),
-            onPress: () => setScanned(false),
-          },
-          {
-            text: t('common.close'),
-            onPress: () => navigation.goBack(),
-          },
-        ]
-      );
-    }
+    handleTagScanned(data, "QR_CODE");
   };
 
   if (!permission) { 
@@ -566,6 +629,7 @@ const CameraScreen = () => {
       <AssignNfcModal
         visible={assignModalVisible}
         nfcId={scannedNfcId}
+        tagType={scannedTagType}
         onClose={() => {
           setAssignModalVisible(false);
           setScannedNfcId(null);
@@ -588,12 +652,14 @@ const CameraScreen = () => {
                 await attachAssetTag({
                   assetId: device.id,
                   tagValue: scannedNfcId,
-                  tagType: "NFC",
+                  tagType: scannedTagType,
                 });
                 setAssignModalVisible(false);
                 Alert.alert(
                   t("common.success"),
-                  t("staff_nfc.assign_success"),
+                  scannedTagType === "QR_CODE" 
+                    ? t("staff_nfc.assign_success_qr") 
+                    : t("staff_nfc.assign_success"),
                   [{ text: t("common.close"), onPress: () => navigation.goBack() }]
                 );
               } catch (error: any) {

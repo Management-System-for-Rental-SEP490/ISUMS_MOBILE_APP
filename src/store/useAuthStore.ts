@@ -40,6 +40,7 @@ const useAuthStore = create<AuthState>()(
       token: null,
       idToken: null,
       refreshToken: null,
+      houseId: null,
       isLoggedIn: false,
       onboardedUsers: [], // Danh sách các user đã xem Intro
 
@@ -50,6 +51,7 @@ const useAuthStore = create<AuthState>()(
           token: data.token,
           idToken: data.idToken ?? null,
           refreshToken: data.refreshToken ?? null,
+          houseId: data.houseId ?? null,
           isLoggedIn: true,
           // Giữ nguyên onboardedUsers
           onboardedUsers: state.onboardedUsers, 
@@ -62,6 +64,7 @@ const useAuthStore = create<AuthState>()(
           token: null,
           idToken: null,
           refreshToken: null,
+          houseId: null,
           isLoggedIn: false,
           // KHÔNG reset onboardedUsers để ghi nhớ lịch sử của các user trên máy này
           onboardedUsers: state.onboardedUsers, 
@@ -89,6 +92,7 @@ const useAuthStore = create<AuthState>()(
         token: state.token,
         idToken: state.idToken,
         refreshToken: state.refreshToken,
+        houseId: state.houseId,
         isLoggedIn: state.isLoggedIn,
         onboardedUsers: state.onboardedUsers, // lưu xuống ổ cứng
       }),

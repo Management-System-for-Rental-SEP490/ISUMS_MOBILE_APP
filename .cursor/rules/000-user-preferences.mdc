@@ -46,8 +46,12 @@ Mọi đoạn code được sinh ra phải đi kèm với chú thích và giải
 *   **KHÔNG ĐƯỢC** hardcode text trực tiếp vào code (ví dụ: `"Xin chào"`, `"Submit"`, `"Cancel"`).
 *   **PHẢI** sử dụng hệ thống i18n (internationalization) có sẵn trong dự án cho mọi text hiển thị cho người dùng:
     *   Sử dụng các hàm dịch từ thư viện i18n (ví dụ: `t()`, `translate()`, hoặc các hàm tương tự).
-    *   Kiểm tra file i18n hiện có để xem các key đã tồn tại trước khi tạo key mới.
-    *   Nếu cần tạo key mới, phải thêm vào **TẤT CẢ** các file ngôn ngữ (3 ngôn ngữ).
+    *   **Vị trí lưu trữ bản dịch**:
+        *   Tiếng Việt: `src/shared/i18n/vietnamese.ts`
+        *   Tiếng Anh: `src/shared/i18n/english.ts`
+        *   Tiếng Nhật: `src/shared/i18n/japanese.ts`
+        *   File `src/shared/i18n/index.ts` chỉ dùng để config chung, **KHÔNG** thêm text trực tiếp vào đây.
+    *   Nếu cần tạo key mới, phải thêm vào **TẤT CẢ** các file ngôn ngữ (3 ngôn ngữ) tại các đường dẫn trên.
 *   **Áp dụng cho**:
     *   Tất cả các label, button text, placeholder, error messages.
     *   Các thông báo, alert, toast messages.
@@ -158,3 +162,25 @@ Khi bắt đầu tích hợp API và kết nối với BE, AI agent **phải** t
 *   **Đọc lại tài liệu** dự án (vd `docs/ISUMS_SPECIFICATION.md`, tài liệu API, docx yêu cầu React Query/Zustand) **trước khi** thực hiện thay đổi hoặc gợi ý code.
 *   Đảm bảo gợi ý và code khớp với spec và quy ước đã ghi.
 
+## 9. Quy định về Alert (Cập nhật mới)
+
+*   **KHÔNG** sử dụng `Alert.alert` mặc định của React Native cho các thông báo hệ thống.
+*   **PHẢI** sử dụng hệ thống **CustomAlert** đã được xây dựng để đảm bảo tính thẩm mỹ và đồng bộ.
+*   **Cách sử dụng**:
+    1.  Import `CustomAlert` từ `src/shared/components/alert` (có thể alias là `Alert`):
+        ```typescript
+        import { CustomAlert as Alert } from "path/to/src/shared/components/alert"; 
+        ```
+    2.  Sử dụng cú pháp tương tự `Alert.alert` gốc:
+        ```typescript
+        Alert.alert("Tiêu đề", "Nội dung thông báo");
+        ```
+    3.  Hoặc sử dụng các options nâng cao (type: success/error/warning):
+        ```typescript
+        Alert.alert("Thành công", "Đã lưu dữ liệu", [], { type: "success" });
+        ```
+*   **Cấu trúc file Alert**:
+    *   Component: `src/shared/components/alert.tsx` (Chứa logic GlobalAlert và Helper)
+    *   Styles: `src/shared/styles/alertStyles.tsx`
+    *   Store (Zustand): `src/store/useAlertStore.ts`
+    *   Types: `src/shared/types/index.ts`

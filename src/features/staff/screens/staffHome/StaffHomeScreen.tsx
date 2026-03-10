@@ -178,6 +178,19 @@ export default function StaffHomeScreen() {
     if (root && "navigate" in root) {
       (root as { navigate: (name: string, params: object) => void }).navigate("Camera", {
         mode: "assign",
+        initialScanMode: "nfc",
+      });
+    }
+  };
+
+  /** Mở luồng gán QR: Camera với mode "assign" — quét QR mới thì chọn thiết bị chưa có QR để gán; mã đã gán thì báo lỗi. */
+  const openAssignQr = () => {
+    setAddMenuVisible(false);
+    const root = navigation.getParent?.();
+    if (root && "navigate" in root) {
+      (root as { navigate: (name: string, params: object) => void }).navigate("Camera", {
+        mode: "assign",
+        initialScanMode: "qr",
       });
     }
   };
@@ -261,6 +274,15 @@ export default function StaffHomeScreen() {
             >
               <Text style={staffHomeStyles.addMenuItemText}>
                 {t("staff_home.add_menu_assign_nfc")}
+              </Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[staffHomeStyles.addMenuItem, staffHomeStyles.addMenuItemBorder]}
+              onPress={openAssignQr}
+              activeOpacity={0.7}
+            >
+              <Text style={staffHomeStyles.addMenuItemText}>
+                {t("staff_home.add_menu_assign_qr")}
               </Text>
             </TouchableOpacity>
           </Pressable>

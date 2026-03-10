@@ -1,5 +1,6 @@
-import React from "react";
-import { View, Text, TouchableOpacity, ScrollView, Alert, Platform } from "react-native";
+import React, { useEffect, useState } from "react";
+import { View, Text, TouchableOpacity, ScrollView, Platform } from "react-native";
+import { CustomAlert as Alert } from "../../../shared/components/alert";
 import { useNavigation } from "@react-navigation/native";
 import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons } from "@expo/vector-icons";
@@ -7,19 +8,25 @@ import userProfileStyles from "./UserProfileScreenStyles";
 import { useAuthStore } from "../../../store/useAuthStore";
 import { logoutKeycloak, openChangePasswordPage } from "../../../shared/services/keycloakAuth";
 import { UserProfileResponse } from "../../../shared/types/api";
+import { getUserProfile } from "../../../shared/services/userApi";
 import Icons from "../../../shared/theme/icon";
 import { useTranslation } from "react-i18next";
+
 const UserProfileScreen = () => {
   const { t } = useTranslation();
   const navigation = useNavigation<any>();
   const { user, role, idToken, logout } = useAuthStore();
+  const [userInfo, setUserInfo] = useState<UserProfileResponse | null>(null);
 
-  // Mock data hoặc lấy từ Store/API sau này
-  const userInfo: Partial<UserProfileResponse> = {
-    fullName: user || t('profile.role_guest'),
-    email: `${user}@example.com`, // Thay bằng email thật từ token/API
-    phoneNumber: "0987654321", // Thay bằng phone thật
-  };
+  useEffect(() => {
+    const fetchProfile = async () => {
+      const data = await getUserProfile();
+      if (data) {
+        setUserInfo(data);
+      }
+    };
+    fetchProfile();
+  }, []);
 
   const handleLogout = () => {
     Alert.alert(
@@ -39,15 +46,33 @@ const UserProfileScreen = () => {
     );
   };
 
-  const getRoleDisplayName = (role: string | null) => {
-    if (role === "technical") return t('profile.role_technical');
-    if (role === "tenant") return t('profile.role_tenant');
+  const getRoleDisplayName = (roleStr: string | null) => {
+    if (roleStr === "technical") return t('profile.role_technical');
+    if (roleStr === "tenant") return t('profile.role_tenant');
     return t('profile.role_guest');
   };
-// hàm lấy khi tự đầu tiên của tên là hình nền
+
+  // Logic hiển thị role: ưu tiên từ API (userInfo.roles), nếu không có thì fallback về store (role)
+  const displayRole = () => {
+    if (userInfo?.roles && userInfo.roles.length > 0) {
+      // Giả sử lấy role đầu tiên để hiển thị, có thể map lại nếu cần
+      const apiRole = userInfo.roles[0].toLowerCase();
+      // Map các role từ API về key hiển thị (nếu giống store thì dùng lại logic cũ)
+      if (apiRole.includes("technical") || apiRole.includes("staff")) return t('profile.role_technical');
+      if (apiRole.includes("tenant") || apiRole.includes("user")) return t('profile.role_tenant');
+      return apiRole; 
+    }
+    return getRoleDisplayName(role);
+  };
+
+  // hàm lấy khi tự đầu tiên của tên là hình nền
   const getAvatarInitials = (name: string | null) => {
     return name ? name.charAt(0).toUpperCase() : "U";
   };
+
+  const displayName = userInfo?.name || user || t('profile.role_guest');
+  const displayEmail = userInfo?.email || "";
+  const displayPhone = userInfo?.phoneNumber || "";
 
   return (
     <View style={userProfileStyles.container}>
@@ -65,11 +90,11 @@ const UserProfileScreen = () => {
         {/* Profile Card */}
         <View style={userProfileStyles.profileCard}>
           <View style={userProfileStyles.avatarContainer}>
-            <Text style={userProfileStyles.avatarText}>{getAvatarInitials(userInfo.fullName || "")}</Text>
+            <Text style={userProfileStyles.avatarText}>{getAvatarInitials(displayName)}</Text>
           </View>
-          <Text style={userProfileStyles.userName}>{userInfo.fullName}</Text>
+          <Text style={userProfileStyles.userName}>{displayName}</Text>
           <View style={userProfileStyles.userRoleContainer}>
-            <Text style={userProfileStyles.userRole}>{getRoleDisplayName(role)}</Text>
+            <Text style={userProfileStyles.userRole}>{displayRole()}</Text>
           </View>
         </View>
 
@@ -83,7 +108,7 @@ const UserProfileScreen = () => {
             </View>
             <View style={userProfileStyles.infoContent}>
                 <Text style={userProfileStyles.infoLabel}>{t('profile.email')}</Text>
-                <Text style={userProfileStyles.infoValue}>{userInfo.email}</Text>
+                <Text style={userProfileStyles.infoValue}>{displayEmail}</Text>
             </View>
           </View>
 
@@ -93,7 +118,7 @@ const UserProfileScreen = () => {
             </View>
             <View style={userProfileStyles.infoContent}>
                 <Text style={userProfileStyles.infoLabel}>{t('profile.phone')}</Text>
-                <Text style={userProfileStyles.infoValue}>{userInfo.phoneNumber}</Text>
+                <Text style={userProfileStyles.infoValue}>{displayPhone}</Text>
             </View>
           </View>
         </View>

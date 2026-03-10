@@ -105,6 +105,55 @@ export const homeStyles = StyleSheet.create({
         fontSize: 11,
         fontWeight: "600",
     },
+    /** Thanh cuộn ngang chọn danh mục (category) từ API asset/categories */
+    categoryScroll: {
+        marginTop: 4,
+        marginBottom: 10, // tạo khoảng cách giữa thanh category và danh sách thiết bị
+    },
+    categoryContent: {
+        flexDirection: "row",
+        alignItems: "center",
+        paddingRight: 16,
+        paddingLeft: 16,
+        paddingBottom: 4,
+    },
+    categoryChip: {
+        marginRight: 10,
+        paddingHorizontal: 14,
+        paddingVertical: 8,
+        borderRadius: 20,
+        backgroundColor: "#fff",
+        borderWidth: 1,
+        borderColor: "#E5E7EB",
+    },
+    categoryChipActive: {
+        backgroundColor: "#2563EB",
+        borderColor: "#2563EB",
+    },
+    categoryChipText: {
+        fontSize: 13,
+        fontWeight: "600",
+        color: "#6B7280",
+    },
+    categoryChipTextActive: {
+        color: "#fff",
+    },
+    // Nhóm theo danh mục
+    devicesEmpty: {
+        marginTop: 16,
+        paddingVertical: 24,
+        paddingHorizontal: 16,
+        backgroundColor: "#fff",
+        borderRadius: 12,
+        borderWidth: 1,
+        borderColor: "#E5E7EB",
+        alignItems: "center",
+    },
+    devicesEmptyText: {
+        fontSize: 14,
+        color: "#94a3b8",
+        textAlign: "center",
+    },
 });
 
 export default homeStyles;
