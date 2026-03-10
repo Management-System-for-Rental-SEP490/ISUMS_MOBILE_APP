@@ -7,6 +7,8 @@ import {
   TouchableOpacity,
   RefreshControl,
   ScrollView,
+  Modal,
+  TouchableWithoutFeedback,
 } from "react-native";
 import { useAuthStore } from "../../../../store/useAuthStore";
 import Header from "../../../../shared/components/header";
@@ -23,8 +25,9 @@ import type {
 } from "../../../../shared/types/api";
 
 const HomeScreen = ({ navigation }: HomeScreenProps) => {
-  const { houseId } = useAuthStore();
+  const { houseId, setHouseId } = useAuthStore();
   const { t } = useTranslation();
+  const [houseModalVisible, setHouseModalVisible] = useState(false);
 
   // 1. Lấy danh sách nhà GẮN VỚI TENANT hiện tại (API mới /api/houses/house)
   const {
@@ -34,16 +37,8 @@ const HomeScreen = ({ navigation }: HomeScreenProps) => {
   } = useTenantHouses();
   const tenantHouses: HouseFromApi[] = housesData?.data ?? [];
 
-  // Tìm nhà của tenant:
-  // - Nếu store có sẵn houseId thì ưu tiên tìm theo id đó.
-  // - Nếu không có, lấy căn nhà đầu tiên trong danh sách BE trả về.
-  const myHouse = useMemo<HouseFromApi | null>(() => {
-    if (!tenantHouses.length) return null;
-    if (houseId) {
-      return tenantHouses.find((h) => h.id === houseId) || tenantHouses[0];
-    }
-    return tenantHouses[0];
-  }, [tenantHouses, houseId]);
+  // Sử dụng context để lấy nhà hiện tại (đồng bộ với houseId trong store)
+  const { house: myHouse, houseId: tenantHouseId, thingId } = useTenantContext();
 
   // 2. Lấy danh sách thiết bị của nhà đó
   const {
@@ -68,7 +63,7 @@ const HomeScreen = ({ navigation }: HomeScreenProps) => {
   const categories: AssetCategoryFromApi[] = categoriesData?.data ?? [];
 
   // 4. Ngữ cảnh IoT tenant (houseId, thingId) và dữ liệu usage từ AWS
-  const { houseId: tenantHouseId, thingId } = useTenantContext();
+  // const { houseId: tenantHouseId, thingId } = useTenantContext(); // Đã lấy ở trên
   const iotConnected = useTenantIoTConnection(thingId);
   const electricUsage = useTenantUsage({
     houseId: tenantHouseId,
@@ -248,12 +243,24 @@ const HomeScreen = ({ navigation }: HomeScreenProps) => {
             }
           }}
         >
-          <View style={homeStyles.houseInfoCard}>
-            <Text style={homeStyles.houseTitle}>
-              {myHouse?.name || t("home.loading_data")}
-            </Text>
+            <View style={homeStyles.houseInfoCard}>
+              <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+                <Text style={[homeStyles.houseTitle, { flex: 1 }]}>
+                  {myHouse?.name || t("home.loading_data")}
+                </Text>
+                {tenantHouses.length > 1 && (
+                  <TouchableOpacity
+                    style={homeStyles.switchHouseButton}
+                    onPress={() => setHouseModalVisible(true)}
+                  >
+                    <Text style={homeStyles.switchHouseText}>
+                      {t("home.switch_house") || "Đổi nhà"}
+                    </Text>
+                  </TouchableOpacity>
+                )}
+              </View>
 
-            <View style={homeStyles.houseDetailRow}>
+              <View style={homeStyles.houseDetailRow}>
               <Text style={homeStyles.houseLabel}>
                 {t("home.house_info.address")}
               </Text>
@@ -472,6 +479,53 @@ const HomeScreen = ({ navigation }: HomeScreenProps) => {
           }
         />
       )}
+      
+      {/* Modal chọn nhà */}
+      <Modal
+        visible={houseModalVisible}
+        transparent={true}
+        animationType="fade"
+        onRequestClose={() => setHouseModalVisible(false)}
+      >
+        <TouchableWithoutFeedback onPress={() => setHouseModalVisible(false)}>
+          <View style={homeStyles.modalOverlay}>
+            <TouchableWithoutFeedback>
+              <View style={homeStyles.modalContent}>
+                <Text style={homeStyles.modalTitle}>{t("home.select_house") || "Chọn nhà"}</Text>
+                <FlatList
+                  data={tenantHouses}
+                  keyExtractor={(item) => item.id}
+                  renderItem={({ item }) => (
+                    <TouchableOpacity
+                      style={[
+                        homeStyles.houseItem,
+                        item.id === myHouse?.id && homeStyles.houseItemActive
+                      ]}
+                      onPress={() => {
+                        setHouseId(item.id);
+                        setHouseModalVisible(false);
+                        // Refresh data khi đổi nhà
+                        setTimeout(() => onRefresh(), 100);
+                      }}
+                    >
+                      <Text style={[
+                        homeStyles.houseItemText,
+                        item.id === myHouse?.id && homeStyles.houseItemTextActive
+                      ]}>
+                        {item.name}
+                      </Text>
+                      {item.id === myHouse?.id && (
+                        <Text style={{ color: '#3B82F6', fontWeight: 'bold' }}>✓</Text>
+                      )}
+                    </TouchableOpacity>
+                  )}
+                  ItemSeparatorComponent={() => <View style={homeStyles.separator} />}
+                />
+              </View>
+            </TouchableWithoutFeedback>
+          </View>
+        </TouchableWithoutFeedback>
+      </Modal>
     </View>
   );
 };

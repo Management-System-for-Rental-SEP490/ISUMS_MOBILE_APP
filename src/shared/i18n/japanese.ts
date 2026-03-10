@@ -359,6 +359,8 @@ export default {
     "home": {
         "welcome_role": "あなたは{{role}}です",
         "loading_data": "データを読み込んでいます...",
+        "switch_house": "家の切り替え",
+        "select_house": "家を選択",
         "house_info": {
             "address": "住所:",
             "description": "説明:",

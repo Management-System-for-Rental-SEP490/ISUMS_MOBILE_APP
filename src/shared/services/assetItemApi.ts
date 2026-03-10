@@ -7,6 +7,7 @@ import { BACKEND_API_BASE } from "../api/config";
 import type {
   AssetItemFromApi,
   AssetItemsApiResponse,
+  AssetItemsParams,
   CreateAssetItemRequest,
   CreateAssetItemApiResponse,
   UpdateAssetItemRequest,
@@ -16,16 +17,6 @@ import type {
   DetachAssetTagApiResponse,
   GetAssetByTagValueApiResponse,
 } from "../types/api";
-
-/** Tham số filter cho GET /api/asset/items (tùy chọn theo nhà, danh mục, hoặc NFC). */
-export type AssetItemsParams = {
-  /** Lọc theo ID căn nhà. */
-  houseId?: string;
-  /** Lọc theo ID danh mục thiết bị. */
-  categoryId?: string;
-  /** Lọc theo mã NFC đã gán (thường trả về tối đa 1 thiết bị). Một số BE hỗ trợ query ?nfcId=xxx. */
-  nfcId?: string;
-};
 
 /**
  * Chuẩn hóa tagValue trước khi gửi lên BE.

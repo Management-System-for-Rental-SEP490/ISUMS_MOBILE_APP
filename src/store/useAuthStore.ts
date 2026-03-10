@@ -44,6 +44,8 @@ const useAuthStore = create<AuthState>()(
       isLoggedIn: false,
       onboardedUsers: [], // Danh sách các user đã xem Intro
 
+      setHouseId: (id: string | null) => set({ houseId: id }),
+
       login: (data) =>
         set((state) => ({
           user: data.username,
@@ -82,6 +84,8 @@ const useAuthStore = create<AuthState>()(
           });
         }
       },
+
+      setHouseId: (id: string | null) => set({ houseId: id }),
     }),
     {
       name: "auth-storage-v2", // Đổi tên key để reset data cũ (tránh lỗi conflict type)

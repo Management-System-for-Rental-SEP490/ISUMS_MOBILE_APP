@@ -221,6 +221,68 @@ export const homeStyles = StyleSheet.create({
         fontWeight: "600",
         color: "#1F2937",
     },
+    
+    // Styles cho Modal chọn nhà
+    modalOverlay: {
+        flex: 1,
+        backgroundColor: 'rgba(0,0,0,0.5)',
+        justifyContent: 'center',
+        alignItems: 'center',
+        padding: 20,
+    },
+    modalContent: {
+        backgroundColor: 'white',
+        borderRadius: 12,
+        width: '100%',
+        maxHeight: '60%',
+        padding: 20,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.25,
+        shadowRadius: 4,
+        elevation: 5,
+    },
+    modalTitle: {
+        fontSize: 18,
+        fontWeight: 'bold',
+        marginBottom: 16,
+        color: '#1F2937',
+        textAlign: 'center',
+    },
+    houseItem: {
+        paddingVertical: 12,
+        paddingHorizontal: 8,
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        borderRadius: 8,
+    },
+    houseItemActive: {
+        backgroundColor: '#EFF6FF',
+    },
+    houseItemText: {
+        fontSize: 16,
+        color: '#374151',
+    },
+    houseItemTextActive: {
+        color: '#2563EB',
+        fontWeight: '600',
+    },
+    separator: {
+        height: 1,
+        backgroundColor: '#E5E7EB',
+    },
+    switchHouseButton: {
+        paddingHorizontal: 8, 
+        paddingVertical: 4, 
+        backgroundColor: '#E0F2FE', 
+        borderRadius: 6,
+    },
+    switchHouseText: {
+        color: '#0284C7', 
+        fontSize: 12, 
+        fontWeight: '600',
+    }
 });
 
 export default homeStyles;

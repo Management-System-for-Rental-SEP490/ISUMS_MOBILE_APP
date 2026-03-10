@@ -4,51 +4,8 @@
  * Không gán cứng houseId/areaId/thingId; các giá trị đó lấy từ useTenantContext hoặc param.
  */
 import { EventEmitter } from "eventemitter3";
-
-/** URL WebSocket AWS API Gateway (production) – nhận telemetry realtime. */
-const WS_URL =
-  "wss://a98erfaotg.execute-api.ap-southeast-1.amazonaws.com/production/";
-/** Base URL REST API AWS – dùng cho endpoint usage (day/week/month). */
-const REST_BASE =
-  "https://m0etrbg5l2.execute-api.ap-southeast-1.amazonaws.com/dev";
-
-/**
- * Tin nhắn telemetry từ WebSocket (điện hoặc nước).
- * thing: ID thiết bị IoT; houseId/areaId: nhà và khu vực; stream: "power" | "water".
- */
-export interface TelemetryMessage {
-  type: "telemetry";
-  thing: string;
-  houseId: string;
-  areaId: string;
-  stream: "power" | "water";
-  ts: number;
-  features: {
-    v?: number;
-    i?: number;
-    p?: number;
-    kwh?: number;
-    d_kwh?: number;
-    hz?: number;
-    pf?: number;
-    w_lpm?: number;
-    w_tot?: number;
-    d_w_tot?: number;
-    dt?: number;
-  };
-  usage: number;
-}
-
-/**
- * Dữ liệu tiêu thụ tổng hợp từ REST GET /usage (theo ngày/tuần/tháng).
- */
-export interface UsageData {
-  pk: string;
-  bucket: string;
-  value: number;
-  unit: string;
-  updatedAt: number;
-}
+import { IOT_WS_URL, IOT_REST_BASE } from "../api/config";
+import type { TelemetryMessage, UsageData } from "../types/iot";
 
 class IotClient extends EventEmitter {
   private ws: WebSocket | null = null;
@@ -91,7 +48,7 @@ class IotClient extends EventEmitter {
     value: string
   ): Promise<UsageData | null> {
     try {
-      const url = `${REST_BASE}/usage?pk=${encodeURIComponent(pk)}&period=${period}&value=${encodeURIComponent(value)}`;
+      const url = `${IOT_REST_BASE}/usage?pk=${encodeURIComponent(pk)}&period=${period}&value=${encodeURIComponent(value)}`;
       const res = await fetch(url);
       if (!res.ok) return null;
       return await res.json();
@@ -102,7 +59,7 @@ class IotClient extends EventEmitter {
 
   private _connect(): void {
     if (this.ws?.readyState === WebSocket.OPEN) return;
-    this.ws = new WebSocket(WS_URL);
+    this.ws = new WebSocket(IOT_WS_URL);
 
     this.ws.onopen = () => {
       this.emit("connected");

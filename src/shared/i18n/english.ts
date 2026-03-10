@@ -359,6 +359,8 @@ export default {
     "home": {
         "welcome_role": "You are a {{role}}",
         "loading_data": "Loading data...",
+        "switch_house": "Switch House",
+        "select_house": "Select House",
         "house_info": {
             "address": "Address:",
             "description": "Description:",

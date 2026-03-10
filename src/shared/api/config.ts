@@ -29,3 +29,25 @@ export const USER_API_BASE =
 export const ASSET_PUT_BODY_SNAKE_CASE =
   typeof process !== "undefined" && process.env?.EXPO_PUBLIC_ASSET_PUT_BODY_SNAKE_CASE === "true";
 
+// =========================================================
+// AWS IoT API (telemetry WebSocket + usage REST)
+// =========================================================
+
+/**
+ * URL WebSocket AWS API Gateway – nhận telemetry điện/nước realtime.
+ * Ưu tiên biến môi trường EXPO_PUBLIC_IOT_WS_URL; không có thì dùng production.
+ */
+export const IOT_WS_URL =
+  typeof process !== "undefined" && process.env?.EXPO_PUBLIC_IOT_WS_URL
+    ? process.env.EXPO_PUBLIC_IOT_WS_URL
+    : "wss://a98erfaotg.execute-api.ap-southeast-1.amazonaws.com/production/";
+
+/**
+ * Base URL REST API AWS – endpoint usage (day/week/month) cho điện/nước.
+ * Ưu tiên biến môi trường EXPO_PUBLIC_IOT_REST_BASE; không có thì dùng dev.
+ */
+export const IOT_REST_BASE =
+  typeof process !== "undefined" && process.env?.EXPO_PUBLIC_IOT_REST_BASE
+    ? process.env.EXPO_PUBLIC_IOT_REST_BASE
+    : "https://m0etrbg5l2.execute-api.ap-southeast-1.amazonaws.com/dev";
+

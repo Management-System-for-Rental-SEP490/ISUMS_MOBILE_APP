@@ -3,6 +3,23 @@
 // để dễ bảo trì, tìm kiếm và tái sử dụng.
 
 // =========================================================
+// Response wrapper chung (User API / các BE cùng format Swagger)
+// =========================================================
+
+/** Wrapper chuẩn response từ BE (statusCode, success, message, errors, data). Dùng cho GET /api/users/me và các API cùng format. */
+export interface ApiResponse<T> {
+  statusCode: number;
+  success: boolean;
+  message: string;
+  errors: Array<{
+    code: string;
+    field: string;
+    message: string;
+  }>;
+  data: T;
+}
+
+// =========================================================
 // User API
 // =========================================================
 
@@ -155,6 +172,16 @@ export interface UpdateAssetCategoryApiResponse {
 // =========================================================
 // Asset Items API (/api/asset/items)
 // =========================================================
+
+/** Tham số filter cho GET /api/asset/items (tùy chọn theo nhà, danh mục, hoặc NFC). */
+export type AssetItemsParams = {
+  /** Lọc theo ID căn nhà. */
+  houseId?: string;
+  /** Lọc theo ID danh mục thiết bị. */
+  categoryId?: string;
+  /** Lọc theo mã NFC đã gán (thường trả về tối đa 1 thiết bị). Một số BE hỗ trợ query ?nfcId=xxx. */
+  nfcId?: string;
+};
 
 /** Một thiết bị/item từ API GET /api/asset/items (có thể filter theo houseId, categoryId). */
 export interface AssetItemFromApi {

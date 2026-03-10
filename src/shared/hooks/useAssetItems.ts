@@ -12,10 +12,10 @@ import {
 import type {
   AssetItemsApiResponse,
   AssetItemFromApi,
+  AssetItemsParams,
   CreateAssetItemRequest,
   UpdateAssetItemRequest,
 } from "../types/api";
-import type { AssetItemsParams } from "../services/assetItemApi";
 
 /**
  * Tham số cho hook useAssetItems.

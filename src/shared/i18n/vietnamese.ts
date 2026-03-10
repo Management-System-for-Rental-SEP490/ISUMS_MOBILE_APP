@@ -359,6 +359,8 @@ export default {
     "home": {
         "welcome_role": "Bạn đang là {{role}}",
         "loading_data": "Đang tải dữ liệu...",
+        "switch_house": "Đổi nhà",
+        "select_house": "Chọn nhà",
         "house_info": {
             "address": "Địa chỉ:",
             "description": "Mô tả:",

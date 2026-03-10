@@ -3,7 +3,8 @@
  * Dùng iotClient từ shared/services/iotClient; houseId/thingId lấy từ useTenantContext hoặc param.
  */
 import { useCallback, useEffect, useState } from "react";
-import { iotClient, type TelemetryMessage } from "../../../shared/services/iotClient";
+import { iotClient } from "../../../shared/services/iotClient";
+import type { TelemetryMessage } from "../../../shared/types";
 
 /**
  * Trả về trạng thái kết nối WebSocket tới AWS (LIVE/OFFLINE).

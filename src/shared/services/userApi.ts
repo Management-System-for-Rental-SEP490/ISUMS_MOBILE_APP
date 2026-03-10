@@ -1,19 +1,6 @@
 import axiosClient from "../api/axiosClient";
 import { USER_API_BASE } from "../api/config";
-import type { UserProfileResponse } from "../types/api";
-
-// Response wrapper chuẩn của BE này (dựa theo ảnh Swagger)
-interface ApiResponse<T> {
-  statusCode: number;
-  success: boolean;
-  message: string;
-  errors: Array<{
-    code: string;
-    field: string;
-    message: string;
-  }>;
-  data: T;
-}
+import type { ApiResponse, UserProfileResponse } from "../types/api";
 
 /**
  * Lấy thông tin chi tiết user hiện tại (GET /api/users/me).

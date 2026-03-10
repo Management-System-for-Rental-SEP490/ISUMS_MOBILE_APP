@@ -101,6 +101,7 @@ export type AuthState = {
   login: (data: AuthPayload) => void;
   logout: () => void;
   completeOnboarding: () => void; // Hàm xác nhận user hiện tại đã xem xong
+  setHouseId: (id: string | null) => void;
 };
 export type RegisterState = {
   username: string;
@@ -160,15 +161,19 @@ export interface RentalHouse {
 // đã được di chuyển sang file riêng `types/api.ts` cho dễ bảo trì.
 // Tại đây chỉ re-export lại để ai đang import từ "shared/types" vẫn dùng được.
 export type {
+  ApiResponse,
   HouseFromApi,
   HousesApiResponse,
   FunctionalAreaFromApi,
   AssetCategoryFromApi,
   AssetCategoriesApiResponse,
+  AssetItemsParams,
   AssetItemFromApi,
   AssetItemsApiResponse,
   UserProfileResponse,
 } from "./api";
+
+export type { TelemetryMessage, UsageData } from "./iot";
 
 export type ScanMode = "qr" | "nfc";
 export type HomeScreenProps = BottomTabScreenProps<MainTabParamList, "Dashboard">; // HomeScreenProps là một type alias cho BottomTabScreenProps<MainTabParamList, "Dashboard">.
