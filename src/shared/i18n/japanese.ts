@@ -381,6 +381,10 @@ export default {
     },
     "consumption": {
         "area_all": "すべて",
+        "floor_label": "{{floor}}階",
+        "floor_all_areas": "{{floor}}階すべて",
+        "select_floor": "階を選択",
+        "select_area": "エリアを選択",
         "area_kitchen": "キッチン",
         "area_living_room": "リビング",
         "area_bedroom": "寝室",

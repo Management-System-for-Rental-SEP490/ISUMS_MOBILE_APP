@@ -26,7 +26,64 @@ export const waterUsageStyles = StyleSheet.create({
     marginBottom: 16,
   },
   categoryScroll: {
+    marginBottom: 8,
+  },
+  areaSelectorWrapper: {
     marginBottom: 20,
+  },
+  areaDropdownBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    borderRadius: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    backgroundColor: "#fff",
+    borderWidth: 1,
+    borderColor: "#e2e8f0",
+    marginTop: 6,
+  },
+  areaDropdownLabel: {
+    fontSize: 11,
+    color: "#94a3b8",
+    marginBottom: 1,
+  },
+  areaDropdownValue: {
+    fontSize: 13,
+    fontWeight: "600",
+    color: "#334155",
+  },
+  areaChipScroll: {
+    marginTop: 8,
+    marginBottom: 4,
+  },
+  areaChipContent: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    paddingRight: 16,
+  },
+  areaChip: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 16,
+    backgroundColor: "#f8fafc",
+    borderWidth: 1,
+    borderColor: "#e2e8f0",
+    minHeight: 32,
+    justifyContent: "center",
+  },
+  areaChipActive: {
+    backgroundColor: "#20B8EB",
+    borderColor: "#20B8EB",
+  },
+  areaChipText: {
+    fontSize: 12,
+    fontWeight: "500",
+    color: "#64748b",
+  },
+  areaChipTextActive: {
+    color: "#fff",
   },
   categoryContent: {
     flexDirection: "row",

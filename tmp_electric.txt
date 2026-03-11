@@ -16,7 +16,7 @@ import { electricUsageStyles } from "./electricUsageStyles";
 import { useTenantContext } from "../../../../shared/hooks";
 import { useTenantIoTConnection, useTenantUsage } from "../../hooks/useTenantIoT";
 
-/** ID khu v·ª±c: "all" = t·ªïng c·∫£ nh√† (d·ªØ li·ªáu th·∫≠t t·ª´ AWS), c√≤n l·∫°i = id t·ª´ functionalAreas (ch∆∞a c√≥ d·ªØ li·ªáu). */
+/** ID khu v†ØÒc: "all" = t†Øng c†ßú nhAˇ (d†Ø_ li†Øÿu th†ß-t t†ØÆ AWS), cA˝n l†ß≠i = id t†ØÆ functionalAreas (chí¯a cA3 d†Ø_ li†Øÿu). */
 export type AreaId = string;
 
 const MAX_BAR_HEIGHT = 180;
@@ -25,25 +25,32 @@ const ELECTRIC_ACCENT = "#82A762";
 const ElectricUsageScreen = () => {
   const { t } = useTranslation();
   const { width: screenWidth } = useWindowDimensions();
-  const { houseId, functionalAreas, thingId } = useTenantContext();
-  const safeFunctionalAreas = Array.isArray(functionalAreas) ? functionalAreas : [];
+  const { houseId, functionalAreas: rawAreas, thingId } = useTenantContext();
+  /** DA1ng d†Ø_ li†Øÿu m†ßÆu khi API tr†ßú v†Ø? r†Ø-ng é`†Øü UI luA'n hi†Øün th†Ø< (B†ß®p, PhA˝ng khA≠ch t†ßng 1, PhA˝ng t†ß_m t†ßng 2, HAˇnh lang t†ßng 3). */
+  const functionalAreas = useMemo(() => {
+    if (rawAreas.length > 0) return rawAreas;
+    return [
+      { id: "demo-1", houseId: houseId ?? "", name: "B†ß®p", areaType: "KITCHEN", floorNo: "1", description: null, status: "NORMAL" },
+      { id: "demo-2", houseId: houseId ?? "", name: "PhA˝ng khA≠ch", areaType: "LIVINGROOM", floorNo: "1", description: null, status: "NORMAL" },
+      { id: "demo-3", houseId: houseId ?? "", name: "PhA˝ng t†ß_m", areaType: "BATHROOM", floorNo: "2", description: null, status: "NORMAL" },
+      { id: "demo-4", houseId: houseId ?? "", name: "HAˇnh lang", areaType: "HALLWAY", floorNo: "3", description: null, status: "NORMAL" },
+    ] as typeof rawAreas;
+  }, [rawAreas, houseId]);
   const iotConnected = useTenantIoTConnection(thingId);
   const usage = useTenantUsage({ houseId, metric: "electricity" });
 
-  /** Chu·ªói t√¨m ki·∫øm ng√†y t·ª´ Header. */
+  /** Chu†Ø-i tA™m ki†ß®m ngAˇy t†ØÆ Header. */
   const [searchQuery, setSearchQuery] = useState("");
-  /** Ng√†y ƒëang ƒë∆∞·ª£c ch·ªçn ƒë·ªÉ xem (d·∫°ng "DD/MM/YYYY"), null = kh√¥ng l·ªçc theo ng√†y. */
+  /** NgAˇy é`ang é`í¯†Øúc ch†Ø?n é`†Øü xem (d†ß≠ng "DD/MM/YYYY"), null = khA'ng l†Ø?c theo ngAˇy. */
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
 
-  /** T·∫ßng ƒëang ch·ªçn: "all" = t·ªïng nh√†, "1" | "2" | ... = t·∫ßng c·ª• th·ªÉ. */
+  /** T†ßng é`ang ch†Ø?n: "all" = t†Øng nhAˇ, "1" | "2" | ... = t†ßng c†Øù th†Øü. */
   const [selectedFloor, setSelectedFloor] = useState<string>("all");
-  /** Khu v·ª±c ƒëang ch·ªçn: "all" ho·∫∑c areaId. */
+  /** Khu v†ØÒc é`ang ch†Ø?n: "all" ho†ß˙c areaId. */
   const [selectedArea, setSelectedArea] = useState<string>("all");
-  /** Hi·ªán/·∫©n danh s√°ch chip khu v·ª±c. */
-  const [showAreaFilter, setShowAreaFilter] = useState(false);
 
   /**
-   * G·ª£i √Ω ng√†y: l·∫•y 30 ng√†y g·∫ßn nh·∫•t v√† l·ªçc theo chu·ªói ng∆∞·ªùi d√πng nh·∫≠p.
+   * G†Øúi A´ ngAˇy: l†ßùy 30 ngAˇy g†ßn nh†ßùt vAˇ l†Ø?c theo chu†Ø-i ngí¯†Ø?i dA1ng nh†ß-p.
    */
   const dateSuggestions = useMemo<Suggestion[]>(() => {
     const q = searchQuery.trim();
@@ -64,50 +71,39 @@ const ElectricUsageScreen = () => {
       .map((date) => ({ id: date, label: date, typeLabel: t("search.type_date") }));
   }, [searchQuery, t]);
 
-  /** Danh s√°ch t·∫ßng unique t·ª´ functionalAreas. */
+  /** Danh sA≠ch t†ßng unique t†ØÆ functionalAreas. */
   const floorOptions = useMemo(() => {
-    const floors = new Set(safeFunctionalAreas.map((a) => a.floorNo).filter(Boolean));
+    const floors = new Set(functionalAreas.map((a) => a.floorNo).filter(Boolean));
     return Array.from(floors).sort((a, b) => parseInt(a, 10) - parseInt(b, 10));
-  }, [safeFunctionalAreas]);
+  }, [functionalAreas]);
 
-  /** Khu v·ª±c theo t·∫ßng ƒëang ch·ªçn. Khi "all" ‚Üí t·∫•t c·∫£ areas; khi ch·ªçn t·∫ßng ‚Üí "T·∫•t c·∫£ t·∫ßng X" + areas c·ªßa t·∫ßng ƒë√≥. */
+  /** Khu v†ØÒc theo t†ßng é`ang ch†Ø?n. Khi "all" É+' t†ßùt c†ßú areas; khi ch†Ø?n t†ßng É+' "T†ßùt c†ßú t†ßng X" + areas c†Øa t†ßng é`A3. */
   const areaOptions = useMemo(() => {
     if (selectedFloor === "all") {
       return [
         { id: "all", label: t("consumption.area_all") },
-        ...safeFunctionalAreas.map((a) => ({ id: a.id, label: a.name })),
+        ...functionalAreas.map((a) => ({ id: a.id, label: a.name })),
       ];
     }
-    const areasOfFloor = safeFunctionalAreas.filter((a) => a.floorNo === selectedFloor);
+    const areasOfFloor = functionalAreas.filter((a) => a.floorNo === selectedFloor);
     return [
       { id: "all", label: t("consumption.floor_all_areas", { floor: selectedFloor }) },
       ...areasOfFloor.map((a) => ({ id: a.id, label: a.name })),
     ];
-  }, [safeFunctionalAreas, selectedFloor, t]);
+  }, [functionalAreas, selectedFloor, t]);
 
-  /** Nh√£n hi·ªÉn th·ªã tr√™n n√∫t ch·ªçn khu v·ª±c (ƒë·∫∑t sau areaOptions). */
-  const selectedAreaLabel = useMemo(() => {
-    if (selectedArea === "all") {
-      return areaOptions[0]?.label ?? t("consumption.area_all");
-    }
-    return (
-      areaOptions.find((a) => a.id === selectedArea)?.label ??
-      t("consumption.area_all")
-    );
-  }, [areaOptions, selectedArea, t]);
-
-  /** Khi ƒë·ªïi t·∫ßng: reset v·ªÅ "all" ho·∫∑c gi·ªØ area n·∫øu v·∫´n thu·ªôc t·∫ßng m·ªõi. */
+  /** Khi é`†Øi t†ßng: reset v†Ø? "all" ho†ß˙c gi†Ø_ area n†ß®u v†ßÆn thu†ØTc t†ßng m†Ø>i. */
   useEffect(() => {
     if (selectedFloor === "all") {
       setSelectedArea("all");
       return;
     }
-    const areasOfFloor = safeFunctionalAreas.filter((a) => a.floorNo === selectedFloor);
+    const areasOfFloor = functionalAreas.filter((a) => a.floorNo === selectedFloor);
     const stillInFloor = areasOfFloor.some((a) => a.id === selectedArea);
     if (!stillInFloor) setSelectedArea("all");
-  }, [selectedFloor, safeFunctionalAreas]);
+  }, [selectedFloor, functionalAreas]);
 
-  /** D·ªØ li·ªáu cho bi·ªÉu ƒë·ªì "T·∫•t c·∫£": 3 c·ªôt Day / Week / Month t·ª´ AWS. */
+  /** D†Ø_ li†Øÿu cho bi†Øüu é`†Ø" "T†ßùt c†ßú": 3 c†ØTt Day / Week / Month t†ØÆ AWS. */
   const summaryBars = useMemo(
     () => [
       { key: "day", label: t("consumption.period_day"), value: usage.dayVal },
@@ -141,7 +137,7 @@ const ElectricUsageScreen = () => {
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
       >
-        {/* Badge ng√†y ƒëang xem */}
+        {/* Badge ngAˇy é`ang xem */}
         {selectedDate && (
           <View style={{
             flexDirection: "row",
@@ -199,7 +195,7 @@ const ElectricUsageScreen = () => {
           </View>
         </View>
 
-        {/* H√†ng ch·ªçn t·∫ßng: T·∫•t c·∫£ | T·∫ßng 1 | T·∫ßng 2 | ... */}
+        {/* HAˇng ch†Ø?n t†ßng: T†ßùt c†ßú | T†ßng 1 | T†ßng 2 | ... */}
         <Text style={{ fontSize: 13, fontWeight: "600", color: "#475569", marginBottom: 8 }}>
           {t("consumption.select_floor")}
         </Text>
@@ -253,73 +249,54 @@ const ElectricUsageScreen = () => {
           })}
         </ScrollView>
 
-        {/* H√†ng ch·ªçn khu v·ª±c: n√∫t s·ªï xu·ªëng nh·ªè g·ªçn, c√°ch xa s∆° ƒë·ªì */}
-        <View style={electricUsageStyles.areaSelectorWrapper}>
-          <TouchableOpacity
-            activeOpacity={0.8}
-            onPress={() => setShowAreaFilter((v) => !v)}
-            style={electricUsageStyles.areaDropdownBtn}
-          >
-            <View>
-              <Text style={electricUsageStyles.areaDropdownLabel}>
-                {t("consumption.select_area")}
-              </Text>
-              <Text style={electricUsageStyles.areaDropdownValue} numberOfLines={1}>
-                {selectedAreaLabel}
-              </Text>
-            </View>
-            <Text style={{ fontSize: 12, color: "#94a3b8" }}>
-              {showAreaFilter ? "‚ñ≤" : "‚ñº"}
-            </Text>
-          </TouchableOpacity>
+        {/* HAˇng ch†Ø?n khu v†ØÒc: T†ßùt c†ßú (t†ßng) + cA≠c khu v†ØÒc trong t†ßng */}
+        <Text style={{ fontSize: 13, fontWeight: "600", color: "#475569", marginBottom: 8, marginTop: 4 }}>
+          {t("consumption.select_area")}
+        </Text>
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          style={electricUsageStyles.categoryScroll}
+          contentContainerStyle={electricUsageStyles.categoryContent}
+        >
+          {areaOptions.map((area) => {
+            const isActive = selectedArea === area.id;
+            return (
+              <TouchableOpacity
+                key={area.id}
+                activeOpacity={0.7}
+                style={[
+                  electricUsageStyles.categoryChip,
+                  isActive && electricUsageStyles.categoryChipActive,
+                ]}
+                onPress={() => setSelectedArea(area.id)}
+              >
+                <Text
+                  style={[
+                    electricUsageStyles.categoryChipText,
+                    isActive && electricUsageStyles.categoryChipTextActive,
+                  ]}
+                  numberOfLines={1}
+                >
+                  {area.label}
+                </Text>
+              </TouchableOpacity>
+            );
+          })}
+        </ScrollView>
 
-          {showAreaFilter && (
-            <ScrollView
-              horizontal
-              showsHorizontalScrollIndicator={false}
-              style={electricUsageStyles.areaChipScroll}
-              contentContainerStyle={electricUsageStyles.areaChipContent}
-            >
-              {areaOptions.map((area) => {
-                const isActive = selectedArea === area.id;
-                return (
-                  <TouchableOpacity
-                    key={area.id}
-                    activeOpacity={0.7}
-                    style={[
-                      electricUsageStyles.areaChip,
-                      isActive && electricUsageStyles.areaChipActive,
-                    ]}
-                    onPress={() => setSelectedArea(area.id)}
-                  >
-                    <Text
-                      style={[
-                        electricUsageStyles.areaChipText,
-                        isActive && electricUsageStyles.areaChipTextActive,
-                      ]}
-                      numberOfLines={1}
-                    >
-                      {area.label}
-                    </Text>
-                  </TouchableOpacity>
-                );
-              })}
-            </ScrollView>
-          )}
-        </View>
-
-        {/* S∆° ƒë·ªì nh√†: ch·ªâ hi·ªán khi ch·ªçn t·∫ßng c·ª• th·ªÉ (T·∫•t c·∫£ = ·∫©n) */}
+        {/* Sí≠ é`†Ø" nhAˇ: icon khi T†ßùt c†ßú, sí≠ é`†Ø" t†ßng khi ch†Ø?n t†ßng */}
         <FloorPlanView
           selectedFloor={selectedFloor}
           selectedAreaId={selectedArea}
-          functionalAreas={safeFunctionalAreas}
+          functionalAreas={functionalAreas}
           onSelectArea={setSelectedArea}
           accentColor={ELECTRIC_ACCENT}
         />
 
         {isAllArea ? (
           <>
-            {/* Tab "T·∫•t c·∫£": bi·ªÉu ƒë·ªì 3 c·ªôt Day / Week / Month t·ª´ AWS */}
+            {/* Tab "T†ßùt c†ßú": bi†Øüu é`†Ø" 3 c†ØTt Day / Week / Month t†ØÆ AWS */}
             <View style={electricUsageStyles.chartCard}>
               <Text style={electricUsageStyles.chartTitle}>
                 {t("consumption.chart_title_electric")}
@@ -366,7 +343,7 @@ const ElectricUsageScreen = () => {
               </Text>
             </View>
 
-            {/* Pie: hi·ªán ch∆∞a c√≥ d·ªØ li·ªáu theo khu v·ª±c t·ª´ AWS, ch·ªâ ƒë·ªÉ s·∫µn UI */}
+            {/* Pie: hi†Øÿn chí¯a cA3 d†Ø_ li†Øÿu theo khu v†ØÒc t†ØÆ AWS, ch†Ø% é`†Øü s†ßÊn UI */}
             <View style={electricUsageStyles.chartCard}>
               <Text style={electricUsageStyles.chartTitle}>
                 {t("consumption.chart_title_pie")}
@@ -377,7 +354,7 @@ const ElectricUsageScreen = () => {
             </View>
           </>
         ) : (
-          /* Khu v·ª±c c·ª• th·ªÉ: ch∆∞a c√≥ d·ªØ li·ªáu */
+          /* Khu v†ØÒc c†Øù th†Øü: chí¯a cA3 d†Ø_ li†Øÿu */
           <View style={electricUsageStyles.chartCard}>
             <Text style={electricUsageStyles.chartTitle}>
               {areaOptions.find((a) => a.id === selectedArea)?.label ?? selectedArea}

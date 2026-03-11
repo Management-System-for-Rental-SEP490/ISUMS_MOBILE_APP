@@ -27,7 +27,67 @@ export const electricUsageStyles = StyleSheet.create({
   },
   /** Thanh category chọn khu vực (horizontal scroll) – không giới hạn chiều cao để chữ không bị cắt */
   categoryScroll: {
+    marginBottom: 8,
+  },
+  /** Wrapper thanh chọn khu vực – cách xa sơ đồ bên dưới */
+  areaSelectorWrapper: {
     marginBottom: 20,
+  },
+  /** Nút dropdown chọn khu vực – thu nhỏ, gọn */
+  areaDropdownBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    borderRadius: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    backgroundColor: "#fff",
+    borderWidth: 1,
+    borderColor: "#e2e8f0",
+    marginTop: 6,
+  },
+  areaDropdownLabel: {
+    fontSize: 11,
+    color: "#94a3b8",
+    marginBottom: 1,
+  },
+  areaDropdownValue: {
+    fontSize: 13,
+    fontWeight: "600",
+    color: "#334155",
+  },
+  /** Chip khu vực khi mở – nhỏ, gọn */
+  areaChipScroll: {
+    marginTop: 8,
+    marginBottom: 4,
+  },
+  areaChipContent: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    paddingRight: 16,
+  },
+  areaChip: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 16,
+    backgroundColor: "#f8fafc",
+    borderWidth: 1,
+    borderColor: "#e2e8f0",
+    minHeight: 32,
+    justifyContent: "center",
+  },
+  areaChipActive: {
+    backgroundColor: "#82A762",
+    borderColor: "#82A762",
+  },
+  areaChipText: {
+    fontSize: 12,
+    fontWeight: "500",
+    color: "#64748b",
+  },
+  areaChipTextActive: {
+    color: "#fff",
   },
   categoryContent: {
     flexDirection: "row",

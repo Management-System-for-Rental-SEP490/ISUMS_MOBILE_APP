@@ -381,6 +381,10 @@ export default {
     },
     "consumption": {
         "area_all": "Tất cả",
+        "floor_label": "Tầng {{floor}}",
+        "floor_all_areas": "Tất cả tầng {{floor}}",
+        "select_floor": "Chọn tầng",
+        "select_area": "Chọn khu vực",
         "area_kitchen": "Bếp",
         "area_living_room": "Phòng khách",
         "area_bedroom": "Phòng ngủ",

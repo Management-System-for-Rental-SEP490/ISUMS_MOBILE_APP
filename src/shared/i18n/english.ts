@@ -381,6 +381,10 @@ export default {
     },
     "consumption": {
         "area_all": "All",
+        "floor_label": "Floor {{floor}}",
+        "floor_all_areas": "All floor {{floor}}",
+        "select_floor": "Select floor",
+        "select_area": "Select area",
         "area_kitchen": "Kitchen",
         "area_living_room": "Living room",
         "area_bedroom": "Bedroom",

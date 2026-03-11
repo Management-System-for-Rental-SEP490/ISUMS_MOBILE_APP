@@ -32,7 +32,12 @@ export interface TenantContextValue {
 export function useTenantContext(): TenantContextValue {
   const { houseId: authHouseId } = useAuthStore();
   const { data: housesData, isLoading } = useTenantHouses();
-  const tenantHouses: HouseFromApi[] = housesData?.data ?? [];
+  const rawData = housesData?.data;
+  const tenantHouses: HouseFromApi[] = Array.isArray(rawData)
+    ? rawData
+    : rawData && typeof rawData === "object"
+      ? [rawData as HouseFromApi]
+      : [];
 
   const house = useMemo<HouseFromApi | null>(() => {
     if (!tenantHouses.length) return null;
