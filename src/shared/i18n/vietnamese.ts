@@ -420,5 +420,16 @@ export default {
         "time_minutes": "{{n}} phút trước",
         "time_hours": "{{n}} giờ trước",
         "time_days": "{{n}} ngày trước"
+    },
+    "search": {
+        "placeholder_default": "Tìm kiếm...",
+        "placeholder_staff": "Tìm nhà, thiết bị, serial...",
+        "placeholder_tenant": "Tìm thiết bị, loại thiết bị...",
+        "placeholder_date": "Tìm theo ngày (VD: 01/03)...",
+        "type_house": "Nhà",
+        "type_item": "Thiết bị",
+        "type_date": "Ngày",
+        "no_result": "Không có kết quả cho \"{{query}}\"",
+        "viewing_date": "Xem ngày: {{date}}"
     }
 }

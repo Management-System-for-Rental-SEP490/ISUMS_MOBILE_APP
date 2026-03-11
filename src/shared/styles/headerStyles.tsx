@@ -58,8 +58,17 @@ const headerStyles = StyleSheet.create({
     shadowOpacity: 0.12,
     shadowRadius: 8,
     elevation: 3,
-    flex: 1, // Tự động điều chỉnh chiều rộng để vừa với không gian còn lại
-    minWidth: 0, // Cho phép thu nhỏ xuống dưới 0 để flex hoạt động đúng
+    flex: 1,
+    minWidth: 0,
+  },
+  /** Nút xóa nội dung ô search (×), hiện khi có text. */
+  clearBtn: {
+    marginLeft: 6,
+    padding: 2,
+    borderRadius: 10,
+    backgroundColor: "#e2e8f0",
+    alignItems: "center",
+    justifyContent: "center",
   },
 });
 

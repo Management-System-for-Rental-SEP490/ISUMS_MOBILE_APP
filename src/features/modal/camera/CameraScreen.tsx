@@ -30,10 +30,11 @@ const CameraScreen = () => {
   /** "assign" = từ menu + Gán NFC; "lookup" (hoặc undefined) = tra cứu. */
   const cameraMode = route.params?.mode;
   const initialScanMode = route.params?.initialScanMode;
+  const navigateOnSuccess = route.params?.navigateOnSuccess;
 
   // Debug params
   useEffect(() => {
-    console.log("CameraScreen params:", { mode: cameraMode, assignForDevice: assignForDevice?.id, role, initialScanMode });
+    console.log("CameraScreen params:", { mode: cameraMode, assignForDevice: assignForDevice?.id, role, initialScanMode, navigateOnSuccess });
   }, [route.params]);
 
   const [permission, requestPermission] = useCameraPermissions(); 
@@ -275,7 +276,17 @@ const CameraScreen = () => {
                     ? t("staff_nfc.assign_success_qr") 
                     : t("staff_nfc.assign_success"), 
                   [
-                  { text: t("common.close"), onPress: () => navigation.goBack() },
+                  { 
+                    text: t("common.close"), 
+                    onPress: () => {
+                      if (navigateOnSuccess) {
+                        // Nếu có chỉ định màn hình đích, điều hướng tới đó (ví dụ về Main)
+                        (navigation as any).navigate(navigateOnSuccess);
+                      } else {
+                        navigation.goBack();
+                      }
+                    } 
+                  },
                 ]);
               } catch {
                 Alert.alert(t("camera.error_title"), t("staff_nfc.assign_error"), [

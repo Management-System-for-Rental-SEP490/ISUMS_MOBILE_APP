@@ -26,6 +26,7 @@ import type {
   AssetItemFromApi,
 } from "../../../../shared/types/api";
 import Header from "../../../../shared/components/header";
+import SuggestionDropdown, { Suggestion } from "../../../../shared/components/SuggestionDropdown";
 import { getWorkScheduleThisWeek, WorkSlot } from "../../data/mockStaffData";
 import { useStaffSchedule } from "../../context/StaffScheduleContext";
 import { useHouses, useAssetCategories, useAssetItemsAllHouses } from "../../../../shared/hooks";
@@ -64,6 +65,8 @@ export default function StaffHomeScreen() {
   const { homeSelectedCategoryId, setHomeSelectedCategoryId } = useCategoryFilterStore();
   /** Menu "+" hiện 2 lựa chọn: Tạo danh mục / Tạo thiết bị */
   const [addMenuVisible, setAddMenuVisible] = useState(false);
+  /** Chuỗi tìm kiếm từ ô search trên Header. */
+  const [searchQuery, setSearchQuery] = useState("");
 
   // Danh sách thiết bị: lấy từ TẤT CẢ các nhà (mỗi nhà một request rồi gộp) để hiển thị hết, không bị giới hạn một nhà.
   const houseIds = useMemo(() => buildings.map((b) => b.id), [buildings]);
@@ -86,6 +89,66 @@ export default function StaffHomeScreen() {
     },
     [rawItems, homeSelectedCategoryId, buildings]
   );
+
+  /** Lọc danh sách nhà theo từ khoá tìm kiếm (tên / địa chỉ / phường / quận / thành phố). */
+  const filteredBuildings = useMemo(() => {
+    const q = searchQuery.trim().toLowerCase();
+    if (!q) return buildings;
+    return buildings.filter(
+      (b) =>
+        b.name.toLowerCase().includes(q) ||
+        b.address.toLowerCase().includes(q) ||
+        (b.ward ?? "").toLowerCase().includes(q) ||
+        (b.commune ?? "").toLowerCase().includes(q) ||
+        (b.city ?? "").toLowerCase().includes(q)
+    );
+  }, [buildings, searchQuery]);
+
+  /** Lọc danh sách thiết bị (đã lọc category) theo từ khoá tìm kiếm (tên / serial / tên nhà). */
+  const searchFilteredItems = useMemo(() => {
+    const q = searchQuery.trim().toLowerCase();
+    if (!q) return items;
+    return items.filter((item) => {
+      const houseName = buildings.find((b) => b.id === item.houseId)?.name ?? "";
+      return (
+        (item.displayName ?? "").toLowerCase().includes(q) ||
+        (item.serialNumber ?? "").toLowerCase().includes(q) ||
+        houseName.toLowerCase().includes(q)
+      );
+    });
+  }, [items, buildings, searchQuery]);
+
+  /** Gợi ý tìm kiếm: tối đa 3 nhà + 3 thiết bị khớp với searchQuery. */
+  const suggestions = useMemo<Suggestion[]>(() => {
+    if (!searchQuery.trim()) return [];
+    const houseSuggs: Suggestion[] = filteredBuildings.slice(0, 3).map((b) => ({
+      id: `h_${b.id}`,
+      label: b.name,
+      sublabel: b.address,
+      typeLabel: t("search.type_house"),
+    }));
+    const itemSuggs: Suggestion[] = searchFilteredItems.slice(0, 3).map((item) => ({
+      id: `i_${item.id}`,
+      label: item.displayName,
+      sublabel: buildings.find((b) => b.id === item.houseId)?.name ?? "",
+      typeLabel: t("search.type_item"),
+    }));
+    return [...houseSuggs, ...itemSuggs].slice(0, 6);
+  }, [searchQuery, filteredBuildings, searchFilteredItems, buildings, t]);
+
+  /** Xử lý khi người dùng chọn một gợi ý: điều hướng tới nhà hoặc thiết bị tương ứng. */
+  const handleSuggestionSelect = (sug: Suggestion) => {
+    setSearchQuery("");
+    if (sug.typeLabel === "Nhà") {
+      const houseId = sug.id.replace("h_", "");
+      const house = buildings.find((b) => b.id === houseId);
+      if (house) openBuildingDetail(house);
+    } else if (sug.typeLabel === "Thiết bị") {
+      const itemId = sug.id.replace("i_", "");
+      const item = rawItems.find((i) => i.id === itemId);
+      if (item) openItemEdit(item);
+    }
+  };
 
   // Chỉ hiển thị các slot có việc (có ticketId) - tóm tắt lịch có việc
   const sortedSchedule = useMemo(
@@ -337,14 +400,14 @@ export default function StaffHomeScreen() {
         })}
       </ScrollView>
       <View style={staffHomeStyles.devicesList}>
-        {items.length === 0 ? (
+        {searchFilteredItems.length === 0 ? (
           <View style={staffHomeStyles.devicesEmpty}>
             <Text style={staffHomeStyles.devicesEmptyText}>
               {t("staff_home.all_devices_no_items")}
             </Text>
           </View>
         ) : (
-          items.map((item) => {
+          searchFilteredItems.map((item) => {
             const categoryName =
               categories.find((c) => c.id === item.categoryId)?.name ?? item.categoryId;
             const houseName =
@@ -470,16 +533,30 @@ export default function StaffHomeScreen() {
 
   return (
     <View style={staffHomeStyles.container}>
-      <Header variant="default" />
-      <FlatList
-        data={buildings}
-        keyExtractor={(item) => item.id}
-        ListHeaderComponent={listHeader}
-        ListFooterComponent={listFooter}
-        renderItem={renderBuildingItem}
-        contentContainerStyle={staffHomeStyles.listContent}
-        showsVerticalScrollIndicator={false}
+      <Header
+        variant="default"
+        searchQuery={searchQuery}
+        onSearchChange={setSearchQuery}
+        searchPlaceholder={t("search.placeholder_staff")}
       />
+      <View style={{ flex: 1 }}>
+        <FlatList
+          data={filteredBuildings}
+          keyExtractor={(item) => item.id}
+          ListHeaderComponent={listHeader}
+          ListFooterComponent={listFooter}
+          renderItem={renderBuildingItem}
+          contentContainerStyle={staffHomeStyles.listContent}
+          showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
+        />
+        <SuggestionDropdown
+          visible={searchQuery.trim().length > 0}
+          suggestions={suggestions}
+          query={searchQuery}
+          onSelect={handleSuggestionSelect}
+        />
+      </View>
     </View>
   );
 }

@@ -24,7 +24,7 @@ export type RootStackParamList = AuthStackParamList & {
   /** Quét QR/NFC. Tenant: hiện DeviceDetail. Staff: tra cứu thiết bị theo NFC (chỉ mã đã gán) hoặc gán NFC (khi mode assign hoặc assignForDevice). */
   Camera:
     | undefined
-    | { assignForDevice?: AssetItemFromApi; /** "assign" = từ menu + Gán NFC: quét thẻ mới để gán; không truyền = từ footer: chỉ tra cứu mã đã gán */ mode?: "lookup" | "assign"; initialScanMode?: "qr" | "nfc" };
+    | { assignForDevice?: AssetItemFromApi; /** "assign" = từ menu + Gán NFC: quét thẻ mới để gán; không truyền = từ footer: chỉ tra cứu mã đã gán */ mode?: "lookup" | "assign"; initialScanMode?: "qr" | "nfc"; navigateOnSuccess?: keyof RootStackParamList | keyof MainTabParamList };
   DeviceDetail: { device: Device };
   /** Chi tiết thiết bị (tenant): nhận item từ danh sách, fetch theo id, hiển thị giống ItemDescription, có nút Báo cáo sự cố. */
   TenantItemDetail: { item: AssetItemFromApi };

@@ -3,7 +3,7 @@
  * Hiển thị thông tin nhà + danh sách thiết bị từ API GET /api/asset/items (filter theo houseId).
  * Thiết bị chưa có NFC hiển thị nút "Gán mã NFC" (sau này mở luồng quét NFC).
  */
-import React, { useMemo } from "react";
+import React, { useMemo, useState } from "react";
 import {
   View,
   Text,
@@ -52,6 +52,24 @@ export default function BuildingDetailScreen() {
       return (a.name ?? "").localeCompare(b.name ?? "");
     });
   }, [rawFunctionalAreas]);
+
+  /** Tầng đang chọn để lọc khu vực: null = Tất cả. */
+  const [selectedFloor, setSelectedFloor] = useState<string | null>(null);
+
+  /** Danh sách tầng duy nhất (không trùng), sắp xếp theo số. */
+  const uniqueFloors = useMemo(() => {
+    const floors = new Set<string>();
+    for (const area of functionalAreas) {
+      if (area.floorNo != null && area.floorNo !== "") floors.add(String(area.floorNo));
+    }
+    return [...floors].sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
+  }, [functionalAreas]);
+
+  /** Khu vực sau khi lọc theo tầng đang chọn. */
+  const filteredFunctionalAreas = useMemo(() => {
+    if (selectedFloor === null) return functionalAreas;
+    return functionalAreas.filter((area) => String(area.floorNo) === selectedFloor);
+  }, [functionalAreas, selectedFloor]);
 
   // Lấy thiết bị thuộc căn nhà này từ API GET /api/asset/items?houseId=...
   const { data: itemsData, isLoading, isError } = useAssetItems({
@@ -242,14 +260,66 @@ export default function BuildingDetailScreen() {
           <Text style={staffBuildingDetailStyles.sectionTitle}>
             {t("staff_building_detail.functional_areas_title")}
           </Text>
-          {functionalAreas.length === 0 ? (
+
+          {/* Thanh lọc theo tầng (cuộn ngang) */}
+          {functionalAreas.length > 0 && uniqueFloors.length > 0 && (
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={staffBuildingDetailStyles.categoryContent}
+              style={[staffBuildingDetailStyles.categoryScroll, { marginBottom: 12 }]}
+            >
+              <TouchableOpacity
+                style={[
+                  staffBuildingDetailStyles.categoryChip,
+                  selectedFloor === null && staffBuildingDetailStyles.categoryChipActive,
+                ]}
+                onPress={() => setSelectedFloor(null)}
+                activeOpacity={0.8}
+              >
+                <Text
+                  style={[
+                    staffBuildingDetailStyles.categoryChipText,
+                    selectedFloor === null && staffBuildingDetailStyles.categoryChipTextActive,
+                  ]}
+                >
+                  {t("staff_home.all_devices_category_all")}
+                </Text>
+              </TouchableOpacity>
+              {uniqueFloors.map((floor) => {
+                const isActive = selectedFloor === floor;
+                return (
+                  <TouchableOpacity
+                    key={floor}
+                    style={[
+                      staffBuildingDetailStyles.categoryChip,
+                      isActive && staffBuildingDetailStyles.categoryChipActive,
+                    ]}
+                    onPress={() => setSelectedFloor(floor)}
+                    activeOpacity={0.8}
+                  >
+                    <Text
+                      style={[
+                        staffBuildingDetailStyles.categoryChipText,
+                        isActive && staffBuildingDetailStyles.categoryChipTextActive,
+                      ]}
+                    >
+                      {t("staff_building_detail.functional_area_floor", { floor })}
+                    </Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </ScrollView>
+          )}
+
+          {filteredFunctionalAreas.length === 0 ? (
             <View style={staffBuildingDetailStyles.functionalAreasEmpty}>
               <Text style={staffBuildingDetailStyles.functionalAreasEmptyText}>
                 {t("staff_building_detail.functional_areas_empty")}
               </Text>
             </View>
           ) : (
-            functionalAreas.map((area: FunctionalAreaFromApi) => (
+            filteredFunctionalAreas.map((area: FunctionalAreaFromApi) => (
               <View key={area.id} style={staffBuildingDetailStyles.functionalAreaCard}>
                 <Text style={staffBuildingDetailStyles.functionalAreaName} numberOfLines={1}>
                   {area.name}

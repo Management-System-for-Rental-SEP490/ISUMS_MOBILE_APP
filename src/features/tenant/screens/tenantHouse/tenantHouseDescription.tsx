@@ -1,4 +1,4 @@
-import React, { useMemo } from "react";
+import React, { useMemo, useState } from "react";
 import { View, Text, ScrollView, TouchableOpacity } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useNavigation, useRoute, RouteProp } from "@react-navigation/native";
@@ -47,6 +47,24 @@ const TenantHouseDescription = () => {
       });
     });
   }, [rawFunctionalAreas]);
+
+  /** Tầng đang chọn để lọc khu vực: null = Tất cả. */
+  const [selectedFloor, setSelectedFloor] = useState<string | null>(null);
+
+  /** Danh sách tầng duy nhất (không trùng), sắp xếp theo số. */
+  const uniqueFloors = useMemo(() => {
+    const floors = new Set<string>();
+    for (const area of functionalAreas) {
+      if (area.floorNo != null && area.floorNo !== "") floors.add(String(area.floorNo));
+    }
+    return [...floors].sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
+  }, [functionalAreas]);
+
+  /** Khu vực sau khi lọc theo tầng đang chọn. */
+  const filteredFunctionalAreas = useMemo(() => {
+    if (selectedFloor === null) return functionalAreas;
+    return functionalAreas.filter((area) => String(area.floorNo) === selectedFloor);
+  }, [functionalAreas, selectedFloor]);
 
   const getHouseStatusLabel = (statusValue?: string) => {
     if (!statusValue) {
@@ -142,12 +160,63 @@ const TenantHouseDescription = () => {
           {t("staff_building_detail.functional_areas_title")}
         </Text>
 
-        {functionalAreas.length === 0 ? (
+        {/* Thanh lọc theo tầng (cuộn ngang) */}
+        {functionalAreas.length > 0 && uniqueFloors.length > 0 && (
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={tenantHouseStyles.floorCategoryContent}
+            style={tenantHouseStyles.floorCategoryScroll}
+          >
+            <TouchableOpacity
+              style={[
+                tenantHouseStyles.floorChip,
+                selectedFloor === null && tenantHouseStyles.floorChipActive,
+              ]}
+              onPress={() => setSelectedFloor(null)}
+              activeOpacity={0.8}
+            >
+              <Text
+                style={[
+                  tenantHouseStyles.floorChipText,
+                  selectedFloor === null && tenantHouseStyles.floorChipTextActive,
+                ]}
+              >
+                {t("staff_home.all_devices_category_all")}
+              </Text>
+            </TouchableOpacity>
+            {uniqueFloors.map((floor) => {
+              const isActive = selectedFloor === floor;
+              return (
+                <TouchableOpacity
+                  key={floor}
+                  style={[
+                    tenantHouseStyles.floorChip,
+                    isActive && tenantHouseStyles.floorChipActive,
+                  ]}
+                  onPress={() => setSelectedFloor(floor)}
+                  activeOpacity={0.8}
+                >
+                  <Text
+                    style={[
+                      tenantHouseStyles.floorChipText,
+                      isActive && tenantHouseStyles.floorChipTextActive,
+                    ]}
+                  >
+                    {t("staff_building_detail.functional_area_floor", { floor })}
+                  </Text>
+                </TouchableOpacity>
+              );
+            })}
+          </ScrollView>
+        )}
+
+        {filteredFunctionalAreas.length === 0 ? (
           <Text style={tenantHouseStyles.emptyText}>
             {t("staff_building_detail.functional_areas_empty")}
           </Text>
         ) : (
-          functionalAreas.map((area) => (
+          filteredFunctionalAreas.map((area) => (
             <View key={area.id} style={tenantHouseStyles.areaCard}>
               <View style={tenantHouseStyles.areaTitleRow}>
                 <Text style={tenantHouseStyles.areaName}>{area.name}</Text>

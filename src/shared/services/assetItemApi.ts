@@ -1,6 +1,6 @@
 /**
  * API liên quan đến thiết bị (asset items).
- * GET /api/asset/items, POST, PUT, DELETE /api/asset/items/:id.
+ * GET /api/assets/items, POST, PUT, DELETE /api/assets/items/:id.
  */
 import axiosClient from "../api/axiosClient";
 import { BACKEND_API_BASE } from "../api/config";
@@ -66,8 +66,8 @@ export const getAssetItems = async (
 
   const query = searchParams.toString();
   const url = query
-    ? `${BACKEND_API_BASE}/asset/items?${query}`
-    : `${BACKEND_API_BASE}/asset/items`;
+    ? `${BACKEND_API_BASE}/assets/items?${query}`
+    : `${BACKEND_API_BASE}/assets/items`;
 
   const response = await axiosClient.get<AssetItemsApiResponse>(url);
   return response.data;

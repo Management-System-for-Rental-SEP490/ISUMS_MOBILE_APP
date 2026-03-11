@@ -420,5 +420,16 @@ export default {
         "time_minutes": "{{n}}分前",
         "time_hours": "{{n}}時間前",
         "time_days": "{{n}}日前"
+    },
+    "search": {
+        "placeholder_default": "検索...",
+        "placeholder_staff": "建物・機器・シリアルを検索...",
+        "placeholder_tenant": "機器・機器タイプを検索...",
+        "placeholder_date": "日付で検索（例: 01/03）...",
+        "type_house": "建物",
+        "type_item": "機器",
+        "type_date": "日付",
+        "no_result": "「{{query}}」の検索結果はありません",
+        "viewing_date": "表示中: {{date}}"
     }
 }

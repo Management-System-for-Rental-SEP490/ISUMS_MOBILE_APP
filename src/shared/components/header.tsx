@@ -7,39 +7,37 @@ import Icons from "../theme/icon";
 import { HeaderVariant, MainTabParamList } from "../types";
 import { NavigationProp, useNavigation } from "@react-navigation/native";
 
-//1. const gradientMaps: Record<HeaderVariant, [ColorValue, ColorValue]> = { ... }
-//    - Định nghĩa một object tên là gradientMaps để map mỗi kiểu "variant" của header với một mảng gồm 2 màu gradient.
-//    - Sử dụng Record để đảm bảo các key chỉ là các giá trị hợp lệ của HeaderVariant.
-
-// 2. const Header = ({ variant = "default" }: { variant?: HeaderVariant }) => { ... }
-//    - Đây là khai báo một functional component tên Header.
-//    - Component này nhận một prop tuỳ chọn "variant" (kiểu HeaderVariant), default là "default".
-
-// 3. const insets = useSafeAreaInsets();
-//    - Lấy thông tin lề an toàn của màn hình thiết bị (ví dụ: để không bị che bởi tai thỏ hoặc cạnh cong).
-//    - Dùng hook useSafeAreaInsets trả về các giá trị lề (top, bottom, left, right).
-
-// 4. <LinearGradient ...>
-//    - Tạo một thành phần với nền gradient dùng LinearGradient từ expo.
-//    - props:
-//        - colors: sử dụng 2 màu gradient dựa theo variant (từ gradientMaps).
-//        - start, end: xác định hướng gradient (từ trên trái về dưới phải).
-//        - style: dùng style headerStyles.gradient và tăng paddingTop theo lề an toàn (insets.top + 12).
 const gradientMaps: Record<HeaderVariant, [ColorValue, ColorValue]> = {
   default: ["#3bb582", "rgba(12, 106, 181, 0.7)"],
-  electric: ["#82A762", "#82A762"], // Sử dụng 1 màu xanh lá nhạt
-  // electric: ["#008001", "rgba(26, 197, 60, 0.9)"],
-  water: ["#20B8EB", "#20B8EB"], // Sử dụng 1 màu xanh nhạt
+  electric: ["#82A762", "#82A762"],
+  water: ["#20B8EB", "#20B8EB"],
 };
 
-const Header = ({ variant = "default" }: { variant?: HeaderVariant }) => {
+type HeaderProps = {
+  variant?: HeaderVariant;
+  /** Giá trị hiện tại của ô tìm kiếm (controlled). Nếu không truyền, ô search chỉ là trang trí. */
+  searchQuery?: string;
+  /** Callback khi người dùng gõ vào ô tìm kiếm. Truyền vào để kích hoạt chế độ search. */
+  onSearchChange?: (text: string) => void;
+  /** Placeholder tuỳ chỉnh theo ngữ cảnh của từng màn hình. */
+  searchPlaceholder?: string;
+};
+
+const Header = ({
+  variant = "default",
+  searchQuery,
+  onSearchChange,
+  searchPlaceholder,
+}: HeaderProps) => {
   const insets = useSafeAreaInsets();
   const navigation = useNavigation<NavigationProp<MainTabParamList>>();
   const screenWidth = Dimensions.get("window").width;
-  const isSmallScreen = screenWidth < 375; // Màn hình nhỏ hơn iPhone 14 Pro Max
+  const isSmallScreen = screenWidth < 375;
+  const isSearchActive = !!onSearchChange;
+  const hasText = isSearchActive && !!searchQuery?.trim();
 
   return (
-    <View style={headerStyles.container}> 
+    <View style={headerStyles.container}>
       <LinearGradient
         colors={gradientMaps[variant]}
         start={{ x: 0, y: 0 }}
@@ -70,6 +68,7 @@ const Header = ({ variant = "default" }: { variant?: HeaderVariant }) => {
               isSmallScreen && { fontSize: 16 }, // Giảm fontSize trên màn hình nhỏ
             ]}>ISUMS</Text>
           </TouchableOpacity>
+
           <View style={[
             headerStyles.searchContainer,
             isSmallScreen && { paddingHorizontal: 10, paddingVertical: 8 }, // Giảm padding trên màn hình nhỏ
@@ -80,10 +79,24 @@ const Header = ({ variant = "default" }: { variant?: HeaderVariant }) => {
                 headerStyles.searchInput,
                 isSmallScreen && { fontSize: 14, marginLeft: 8 }, // Giảm fontSize và margin trên màn hình nhỏ
               ]}
-              placeholder="Tìm kiếm ..."
+              placeholder={searchPlaceholder ?? "Tìm kiếm ..."}
               placeholderTextColor="rgba(15, 23, 42, 0.45)"
               returnKeyType="search"
+              editable={isSearchActive}
+              value={isSearchActive ? (searchQuery ?? "") : undefined}
+              onChangeText={isSearchActive ? onSearchChange : undefined}
             />
+            {/* Nút xóa text — chỉ hiện khi đang search và có nội dung */}
+            {hasText && (
+              <TouchableOpacity
+                onPress={() => onSearchChange?.("")}
+                style={headerStyles.clearBtn}
+                activeOpacity={0.7}
+                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+              >
+                <Icons.close size={14} color="#64748b" />
+              </TouchableOpacity>
+            )}
           </View>
         </View>
       </LinearGradient>

@@ -70,6 +70,10 @@ const Icons = {
   plus: ({ size = 24, color = 'black' }: IconProps = {}) => (
     <AntDesign name="plus" size={size} color={color} />
   ),
+  /** Icon X để xóa nội dung (dùng cho nút clear ô tìm kiếm). */
+  close: ({ size = 24, color = 'black' }: IconProps = {}) => (
+    <AntDesign name="close" size={size} color={color} />
+  ),
 };
 
 export default Icons;

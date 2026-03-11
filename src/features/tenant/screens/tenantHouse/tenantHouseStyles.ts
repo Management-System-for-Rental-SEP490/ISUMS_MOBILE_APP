@@ -114,6 +114,36 @@ const tenantHouseStyles = StyleSheet.create({
     color: "#9CA3AF",
     marginTop: 8,
   },
+  /** Thanh lọc tầng cuộn ngang cho section khu vực */
+  floorCategoryScroll: {
+    marginBottom: 12,
+  },
+  floorCategoryContent: {
+    flexDirection: "row" as const,
+    alignItems: "center" as const,
+    paddingRight: 16,
+  },
+  floorChip: {
+    marginRight: 8,
+    paddingHorizontal: 14,
+    paddingVertical: 7,
+    borderRadius: 20,
+    backgroundColor: "#fff",
+    borderWidth: 1,
+    borderColor: "#E5E7EB",
+  },
+  floorChipActive: {
+    backgroundColor: "#2563EB",
+    borderColor: "#2563EB",
+  },
+  floorChipText: {
+    fontSize: 13,
+    fontWeight: "600" as const,
+    color: "#6B7280",
+  },
+  floorChipTextActive: {
+    color: "#fff",
+  },
 });
 
 export default tenantHouseStyles;

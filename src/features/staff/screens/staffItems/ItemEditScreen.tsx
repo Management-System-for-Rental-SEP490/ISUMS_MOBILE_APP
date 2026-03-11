@@ -470,62 +470,85 @@ export default function ItemEditScreen() {
               />
             </View>
           
-            {/* Nếu chưa có cả NFC & QR -> hiện nút gán; nếu đã có thì cho phép gỡ từng loại */}
-            {!nfcId.trim() && !qrId.trim() ? (
-              <TouchableOpacity
-                style={[
-                  itemScreenStyles.detachNfcBtn,
-                  { backgroundColor: "#2563EB", borderColor: "#2563EB", marginTop: 10 }
-                ]}
-                onPress={() => navigation.navigate("Camera", { assignForDevice: latestItem, mode: "assign" })}
-                activeOpacity={0.8}
-              >
-                <Text style={[itemScreenStyles.detachNfcBtnText, { color: "#fff" }]}>
-                  {t("staff_building_detail.assign_nfc") || "Gán NFC/QR"}
-                </Text>
-              </TouchableOpacity>
-            ) : (
-              <>
-                {!!nfcId.trim() && (
-                  <TouchableOpacity
-                    style={[
-                      itemScreenStyles.detachNfcBtn,
-                      detachNfcMutation.isPending && itemScreenStyles.detachNfcBtnDisabled,
-                    ]}
-                    onPress={handleDetachNfc}
-                    disabled={detachNfcMutation.isPending}
-                    activeOpacity={0.8}
-                  >
-                    {detachNfcMutation.isPending ? (
-                      <ActivityIndicator size="small" color="#111827" />
-                    ) : (
-                      <Text style={itemScreenStyles.detachNfcBtnText}>
-                        {t("staff_item_edit.remove_nfc_btn")}
-                      </Text>
-                    )}
-                  </TouchableOpacity>
-                )}
-                {!!qrId.trim() && (
-                  <TouchableOpacity
-                    style={[
-                      itemScreenStyles.detachNfcBtn,
-                      detachNfcMutation.isPending && itemScreenStyles.detachNfcBtnDisabled,
-                    ]}
-                    onPress={handleDetachQr}
-                    disabled={detachNfcMutation.isPending}
-                    activeOpacity={0.8}
-                  >
-                    {detachNfcMutation.isPending ? (
-                      <ActivityIndicator size="small" color="#111827" />
-                    ) : (
-                      <Text style={itemScreenStyles.detachNfcBtnText}>
-                        {t("staff_item_edit.remove_qr_btn")}
-                      </Text>
-                    )}
-                  </TouchableOpacity>
-                )}
-              </>
-            )}
+            <View style={{ gap: 10, marginTop: 10 }}>
+              {/* NFC Actions */}
+              {!nfcId.trim() ? (
+                <TouchableOpacity
+                  style={[
+                    itemScreenStyles.detachNfcBtn,
+                    { backgroundColor: "#2563EB", borderColor: "#2563EB" }
+                  ]}
+                  onPress={() => navigation.navigate("Camera", { 
+                    assignForDevice: latestItem, 
+                    mode: "assign", 
+                    initialScanMode: "nfc",
+                    navigateOnSuccess: "Main"
+                  })}
+                  activeOpacity={0.8}
+                >
+                  <Text style={[itemScreenStyles.detachNfcBtnText, { color: "#fff" }]}>
+                    {t("staff_home.add_menu_assign_nfc")}
+                  </Text>
+                </TouchableOpacity>
+              ) : (
+                <TouchableOpacity
+                  style={[
+                    itemScreenStyles.detachNfcBtn,
+                    detachNfcMutation.isPending && itemScreenStyles.detachNfcBtnDisabled,
+                  ]}
+                  onPress={handleDetachNfc}
+                  disabled={detachNfcMutation.isPending}
+                  activeOpacity={0.8}
+                >
+                  {detachNfcMutation.isPending ? (
+                    <ActivityIndicator size="small" color="#111827" />
+                  ) : (
+                    <Text style={itemScreenStyles.detachNfcBtnText}>
+                      {t("staff_item_edit.remove_nfc_btn")}
+                    </Text>
+                  )}
+                </TouchableOpacity>
+              )}
+
+              {/* QR Actions */}
+              {!qrId.trim() ? (
+                <TouchableOpacity
+                  style={[
+                    itemScreenStyles.detachNfcBtn,
+                    { backgroundColor: "#2563EB", borderColor: "#2563EB" }
+                  ]}
+                  onPress={() => navigation.navigate("Camera", { 
+                    assignForDevice: latestItem, 
+                    mode: "assign", 
+                    initialScanMode: "qr",
+                    navigateOnSuccess: "Main"
+                  })}
+                  activeOpacity={0.8}
+                >
+                  <Text style={[itemScreenStyles.detachNfcBtnText, { color: "#fff" }]}>
+                    {t("staff_home.add_menu_assign_qr")}
+                  </Text>
+                </TouchableOpacity>
+              ) : (
+                <TouchableOpacity
+                  style={[
+                    itemScreenStyles.detachNfcBtn,
+                    detachNfcMutation.isPending && itemScreenStyles.detachNfcBtnDisabled,
+                  ]}
+                  onPress={handleDetachQr}
+                  disabled={detachNfcMutation.isPending}
+                  activeOpacity={0.8}
+                >
+                  {detachNfcMutation.isPending ? (
+                    <ActivityIndicator size="small" color="#111827" />
+                  ) : (
+                    <Text style={itemScreenStyles.detachNfcBtnText}>
+                      {t("staff_item_edit.remove_qr_btn")}
+                    </Text>
+                  )}
+                </TouchableOpacity>
+              )}
+            </View>
 
             <View style={itemScreenStyles.fieldSpacer}>
               <Text style={itemScreenStyles.label}>{t("staff_item_create.condition_label")}</Text>

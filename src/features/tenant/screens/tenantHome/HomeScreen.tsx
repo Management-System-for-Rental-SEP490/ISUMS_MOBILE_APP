@@ -12,6 +12,7 @@ import {
 } from "react-native";
 import { useAuthStore } from "../../../../store/useAuthStore";
 import Header from "../../../../shared/components/header";
+import SuggestionDropdown, { Suggestion } from "../../../../shared/components/SuggestionDropdown";
 import { HomeScreenProps, RootStackParamList } from "../../../../shared/types";
 import { useTranslation } from "react-i18next";
 import { NavigationProp } from "@react-navigation/native";
@@ -80,6 +81,8 @@ const HomeScreen = ({ navigation }: HomeScreenProps) => {
   const [selectedCategoryId, setSelectedCategoryId] = useState<string | null>(
     null
   );
+  /** Chuỗi tìm kiếm từ ô search trên Header. */
+  const [searchQuery, setSearchQuery] = useState("");
 
   const filteredDevices = useMemo(
     () =>
@@ -88,6 +91,40 @@ const HomeScreen = ({ navigation }: HomeScreenProps) => {
         : devices.filter((d) => d.categoryId === selectedCategoryId),
     [devices, selectedCategoryId]
   );
+
+  /** Lọc thiết bị (đã lọc category) theo từ khoá tìm kiếm (tên / tên danh mục). */
+  const displayDevices = useMemo(() => {
+    const q = searchQuery.trim().toLowerCase();
+    if (!q) return filteredDevices;
+    return filteredDevices.filter((item) => {
+      const catName = categories.find((c) => c.id === item.categoryId)?.name ?? "";
+      return (
+        (item.displayName ?? "").toLowerCase().includes(q) ||
+        catName.toLowerCase().includes(q)
+      );
+    });
+  }, [filteredDevices, categories, searchQuery]);
+
+  /** Gợi ý tìm kiếm: tối đa 6 thiết bị khớp với searchQuery. */
+  const suggestions = useMemo<Suggestion[]>(() => {
+    if (!searchQuery.trim()) return [];
+    return displayDevices.slice(0, 6).map((item) => ({
+      id: item.id,
+      label: item.displayName,
+      sublabel: categories.find((c) => c.id === item.categoryId)?.name ?? "",
+      typeLabel: t("search.type_item"),
+    }));
+  }, [searchQuery, displayDevices, categories, t]);
+
+  /** Xử lý khi chọn gợi ý: điều hướng tới màn chi tiết thiết bị. */
+  const handleSuggestionSelect = (sug: Suggestion) => {
+    setSearchQuery("");
+    const item = devices.find((i) => i.id === sug.id);
+    if (item) {
+      const parentNav = navigation.getParent<NavigationProp<RootStackParamList>>();
+      parentNav?.navigate("TenantItemDetail", { item });
+    }
+  };
 
   const onRefresh = () => {
     refetchHouses();
@@ -385,9 +422,9 @@ const HomeScreen = ({ navigation }: HomeScreenProps) => {
           </View>
         </View>
 
-        {/* Tiêu đề danh sách thiết bị – hiển thị số thiết bị sau khi lọc theo danh mục */}
+        {/* Tiêu đề danh sách thiết bị – hiển thị số thiết bị sau khi lọc theo danh mục + search */}
         <Text style={homeStyles.sectionTitle}>
-          {t("home.device_list.title", { count: filteredDevices.length })}
+          {t("home.device_list.title", { count: displayDevices.length })}
         </Text>
 
         {/* Thanh category ngang: Tất cả + các danh mục có thiết bị trong nhà (từ API categories) */}
@@ -446,40 +483,54 @@ const HomeScreen = ({ navigation }: HomeScreenProps) => {
 
   return (
     <View style={homeStyles.container}>
-      <Header variant="default" />
+      <Header
+        variant="default"
+        searchQuery={searchQuery}
+        onSearchChange={setSearchQuery}
+        searchPlaceholder={t("search.placeholder_tenant")}
+      />
 
-      {loading && !housesData ? (
-        <View style={homeStyles.loadingContainer}>
-          <ActivityIndicator size="large" color="#3B82F6" />
-          <Text style={{ marginTop: 10, color: "#6B7280" }}>
-            {t("home.loading_data")}
-          </Text>
-        </View>
-      ) : (
-        <FlatList
-          data={filteredDevices}
-          renderItem={renderDeviceItem}
-          keyExtractor={(item) => item.id}
-          ListHeaderComponent={renderListHeader}
-          contentContainerStyle={homeStyles.deviceListContent}
-          showsVerticalScrollIndicator={false}
-          ListEmptyComponent={
-            !loading
-              ? () => (
-                  <View style={homeStyles.devicesEmpty}>
-                    <Text style={homeStyles.devicesEmptyText}>
-                      {t("staff_home.all_devices_no_items")}
-                    </Text>
-                  </View>
-                )
-              : null
-          }
-          refreshControl={
-            <RefreshControl refreshing={loading} onRefresh={onRefresh} />
-          }
+      <View style={{ flex: 1 }}>
+        {loading && !housesData ? (
+          <View style={homeStyles.loadingContainer}>
+            <ActivityIndicator size="large" color="#3B82F6" />
+            <Text style={{ marginTop: 10, color: "#6B7280" }}>
+              {t("home.loading_data")}
+            </Text>
+          </View>
+        ) : (
+          <FlatList
+            data={displayDevices}
+            renderItem={renderDeviceItem}
+            keyExtractor={(item) => item.id}
+            ListHeaderComponent={renderListHeader}
+            contentContainerStyle={homeStyles.deviceListContent}
+            showsVerticalScrollIndicator={false}
+            keyboardShouldPersistTaps="handled"
+            ListEmptyComponent={
+              !loading
+                ? () => (
+                    <View style={homeStyles.devicesEmpty}>
+                      <Text style={homeStyles.devicesEmptyText}>
+                        {t("staff_home.all_devices_no_items")}
+                      </Text>
+                    </View>
+                  )
+                : null
+            }
+            refreshControl={
+              <RefreshControl refreshing={loading} onRefresh={onRefresh} />
+            }
+          />
+        )}
+        <SuggestionDropdown
+          visible={searchQuery.trim().length > 0}
+          suggestions={suggestions}
+          query={searchQuery}
+          onSelect={handleSuggestionSelect}
         />
-      )}
-      
+      </View>
+
       {/* Modal chọn nhà */}
       <Modal
         visible={houseModalVisible}

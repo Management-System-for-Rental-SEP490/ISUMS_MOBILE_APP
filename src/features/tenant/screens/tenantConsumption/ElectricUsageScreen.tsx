@@ -9,6 +9,8 @@ import {
 } from "react-native";
 import { useTranslation } from "react-i18next";
 import Header from "../../../../shared/components/header";
+import SuggestionDropdown, { Suggestion } from "../../../../shared/components/SuggestionDropdown";
+import Icons from "../../../../shared/theme/icon";
 import { electricUsageStyles } from "./electricUsageStyles";
 import { useTenantContext } from "../../../../shared/hooks";
 import { useTenantIoTConnection, useTenantUsage } from "../../hooks/useTenantIoT";
@@ -24,6 +26,34 @@ const ElectricUsageScreen = () => {
   const { houseId, functionalAreas, thingId } = useTenantContext();
   const iotConnected = useTenantIoTConnection(thingId);
   const usage = useTenantUsage({ houseId, metric: "electricity" });
+
+  /** Chuỗi tìm kiếm ngày từ Header. */
+  const [searchQuery, setSearchQuery] = useState("");
+  /** Ngày đang được chọn để xem (dạng "DD/MM/YYYY"), null = không lọc theo ngày. */
+  const [selectedDate, setSelectedDate] = useState<string | null>(null);
+
+  /**
+   * Gợi ý ngày: lấy 30 ngày gần nhất và lọc theo chuỗi người dùng nhập.
+   * Ví dụ: gõ "01" → gợi ý "01/03/2026", "01/02/2026",...
+   */
+  const dateSuggestions = useMemo<Suggestion[]>(() => {
+    const q = searchQuery.trim();
+    if (!q) return [];
+    const today = new Date();
+    const dates: string[] = [];
+    for (let i = 0; i < 30; i++) {
+      const d = new Date(today);
+      d.setDate(d.getDate() - i);
+      const dd = String(d.getDate()).padStart(2, "0");
+      const mm = String(d.getMonth() + 1).padStart(2, "0");
+      const yyyy = d.getFullYear();
+      dates.push(`${dd}/${mm}/${yyyy}`);
+    }
+    return dates
+      .filter((date) => date.includes(q))
+      .slice(0, 6)
+      .map((date) => ({ id: date, label: date, typeLabel: t("search.type_date") }));
+  }, [searchQuery, t]);
 
   /** Tab "Tất cả" + các khu vực từ API (chỉ UI sẵn, chưa có dữ liệu). */
   const areaOptions = useMemo(
@@ -53,12 +83,43 @@ const ElectricUsageScreen = () => {
 
   return (
     <View style={electricUsageStyles.container}>
-      <Header variant="electric" />
+      <Header
+        variant="electric"
+        searchQuery={searchQuery}
+        onSearchChange={(text) => {
+          setSearchQuery(text);
+          if (!text.trim()) setSelectedDate(null);
+        }}
+        searchPlaceholder={t("search.placeholder_date")}
+      />
+      <View style={{ flex: 1 }}>
       <ScrollView
         style={electricUsageStyles.content}
         contentContainerStyle={electricUsageStyles.contentContainer}
         showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
       >
+        {/* Badge ngày đang xem */}
+        {selectedDate && (
+          <View style={{
+            flexDirection: "row",
+            alignItems: "center",
+            alignSelf: "flex-start",
+            backgroundColor: "#EFF6FF",
+            borderRadius: 10,
+            paddingHorizontal: 10,
+            paddingVertical: 5,
+            marginBottom: 12,
+            gap: 6,
+          }}>
+            <Text style={{ fontSize: 13, fontWeight: "600", color: "#2563EB" }}>
+              {t("search.viewing_date", { date: selectedDate })}
+            </Text>
+            <TouchableOpacity onPress={() => setSelectedDate(null)} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+              <Icons.close size={12} color="#2563EB" />
+            </TouchableOpacity>
+          </View>
+        )}
         <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
           <Text style={electricUsageStyles.title}>
             {t("screens.electric")}
@@ -200,6 +261,17 @@ const ElectricUsageScreen = () => {
           </View>
         )}
       </ScrollView>
+      <SuggestionDropdown
+        visible={searchQuery.trim().length > 0}
+        suggestions={dateSuggestions}
+        query={searchQuery}
+        onSelect={(sug) => {
+          setSelectedDate(sug.id);
+          setSearchQuery("");
+        }}
+        emptyText={t("search.no_result", { query: searchQuery })}
+      />
+      </View>
     </View>
   );
 };

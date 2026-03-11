@@ -420,5 +420,16 @@ export default {
         "time_minutes": "{{n}} min ago",
         "time_hours": "{{n}} hours ago",
         "time_days": "{{n}} days ago"
+    },
+    "search": {
+        "placeholder_default": "Search...",
+        "placeholder_staff": "Search house, device, serial...",
+        "placeholder_tenant": "Search device, device type...",
+        "placeholder_date": "Search by date (e.g. 01/03)...",
+        "type_house": "House",
+        "type_item": "Device",
+        "type_date": "Date",
+        "no_result": "No results for \"{{query}}\"",
+        "viewing_date": "Viewing: {{date}}"
     }
 }
