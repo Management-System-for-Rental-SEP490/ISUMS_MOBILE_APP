@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { View, Text, TouchableOpacity, Linking, Image, ActivityIndicator } from "react-native";
+import WebView from "react-native-webview";
 import { CustomAlert as Alert } from "../../../shared/components/alert";
 import { useNavigation, useFocusEffect } from "@react-navigation/native";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
@@ -8,7 +9,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import loginStyles from "./loginStyles";
 import { RootStackParamList } from "../../../shared/types";
 import { useAuthStore } from "../../../store/useAuthStore";
-import { openKeycloakLogin, handleKeycloakCallback, exchangeCodeForToken } from "../../../shared/services/keycloakAuth";
+import { getKeycloakAuthUrl, getKeycloakRedirectUri, handleKeycloakCallback, exchangeCodeForToken, logoutKeycloak } from "../../../shared/services/keycloakAuth";
 import { useTranslation } from "react-i18next";
 
 type LoginNavigationProp = NativeStackNavigationProp<RootStackParamList, "AuthLogin">; //đây là khai báo kiểu để useNavigation có type an toàn khi dùng trong LoginScreen.
@@ -18,6 +19,8 @@ const LoginScreen = () => {
   const navigation = useNavigation<LoginNavigationProp>();
   const insets = useSafeAreaInsets();
   const [isLoading, setIsLoading] = useState(false);
+  const [showWebView, setShowWebView] = useState(false);
+  const [authUrl, setAuthUrl] = useState<string | null>(null);
   const isProcessing = useRef(false); //useRef là một hook trong React để lưu trữ giá trị không thay đổi (immutable) trong suốt cả quá trình render của component.
 
   // Reset trạng thái khi màn hình được focus lại (ví dụ: quay lại từ browser nhưng không login):
@@ -58,6 +61,20 @@ const LoginScreen = () => {
       try {
         const payload = await exchangeCodeForToken(code);
         clearTimeout(timeoutId); // Xóa timeout nếu thành công
+        // Tenant app: chỉ cho phép role tenant. Chặn technical.
+        if (payload.role === "technical") {
+          setShowWebView(false);
+          setIsLoading(false);
+          isProcessing.current = false;
+          await logoutKeycloak(payload.idToken);
+          Alert.alert(
+            t("technical_blocked_title"),
+            t("technical_blocked_message"),
+            [{ text: t("common.close"), onPress: () => {} }],
+            { type: "error" }
+          );
+          return;
+        }
         useAuthStore.getState().login(payload);
         // Không cần navigation.replace("Main")
       } catch (error) {
@@ -107,31 +124,39 @@ const LoginScreen = () => {
   // Đã xóa AppState listener vì Linking.addEventListener đã đủ để bắt deep link khi app resume
 
 
-  const handleKeycloakLogin = async () => {
-    try {
-      // Gọi mở browser đăng nhập
-      const result = await openKeycloakLogin(i18n.language); //mở một cái "In-App Browser" (trình duyệt nhúng trong App).
-      
-      // Xử lý kết quả trả về ngay lập tức (Chủ động)
-      if (result && result.type === "success" && result.url) {
-        // Gọi hàm xử lý deep link với URL trả về
-        handleDeepLink({ url: result.url });
-      } else if (result && result.type === "cancel") {
-        // Người dùng hủy đăng nhập
-      }
-    } catch (error) {
-      Alert.alert(
-        "Lỗi", 
-        `Không thể mở trang đăng nhập: ${error instanceof Error ? error.message : "Unknown error"}`
-      );
-    }
+  const handleKeycloakLogin = () => {
+    // Dùng WebView nội bộ app để mở trang đăng nhập Keycloak
+    const url = getKeycloakAuthUrl(i18n.language);
+    setAuthUrl(url);
+    setShowWebView(true);
   };
+
+  const handleWebViewRequest = useCallback(
+    (request: any) => {
+      const redirectUri = getKeycloakRedirectUri();
+      const currentUrl: string = request.url;
+
+      // Khi Keycloak redirect về redirectUri (isums://callback?code=...)
+      if (currentUrl.startsWith(redirectUri)) {
+        // Tái sử dụng cùng logic xử lý deep link hiện tại
+        handleDeepLink({ url: currentUrl });
+        // Đóng WebView sau khi nhận được callback
+        setShowWebView(false);
+        return false; // chặn WebView không load URL này nữa
+      }
+
+      return true;
+    },
+    [handleDeepLink]
+  );
 
   if (isLoading) {
     return (
       <View style={{ flex: 1, justifyContent: "center", alignItems: "center", backgroundColor: "#fff" }}>
         <ActivityIndicator size="large" color="#3bb582" />
-        <Text style={{ marginTop: 10, color: "#666" }}>{t('loading')}</Text>
+        <Text style={{ color: "#666", textAlign: "center", marginTop: 10 }}>
+          {t("common.loading")}
+        </Text>
       </View>
     );
   }
@@ -197,6 +222,36 @@ const LoginScreen = () => {
             <Text style={loginStyles.buttonText}>{t('login_btn')}</Text>
           </TouchableOpacity>
         </View>
+
+        {showWebView && authUrl && (
+          <View style={loginStyles.webViewOverlay}>
+            <View style={loginStyles.webViewHeader}>
+              <TouchableOpacity
+                onPress={() => {
+                  setShowWebView(false);
+                }}
+                activeOpacity={0.7}
+              >
+                <Text style={loginStyles.webViewCloseText}>
+                  {t("common.cancel")}
+                </Text>
+              </TouchableOpacity>
+            </View>
+            <WebView
+              source={{ uri: authUrl }}
+              onShouldStartLoadWithRequest={handleWebViewRequest}
+              startInLoadingState
+              renderLoading={() => (
+                <View style={loginStyles.webViewLoadingOverlay}>
+                  <ActivityIndicator size="large" color="#3bb582" />
+                  <Text style={{ color: "#666", textAlign: "center", marginTop: 10 }}>
+                    {t("common.loading")}
+                  </Text>
+                </View>
+              )}
+            />
+          </View>
+        )}
       </View>
     </LinearGradient>
   );

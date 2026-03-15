@@ -121,6 +121,38 @@ const loginStyles = StyleSheet.create({
         color: "#1e88e5",
         fontWeight: "700",
     },
+    webViewOverlay: {
+        position: "absolute",
+        top: 0,
+        right: 0,
+        bottom: 0,
+        left: 0,
+        backgroundColor: "#ffffff",
+    },
+    webViewHeader: {
+        height: 56,
+        justifyContent: "center",
+        alignItems: "flex-end",
+        paddingHorizontal: 16,
+        borderBottomWidth: 1,
+        borderBottomColor: "#e2e8f0",
+        backgroundColor: "#ffffff",
+    },
+    webViewCloseText: {
+        fontSize: 15,
+        fontWeight: "600",
+        color: "#1e88e5",
+    },
+    webViewLoadingOverlay: {
+        position: "absolute",
+        top: 0,
+        right: 0,
+        bottom: 0,
+        left: 0,
+        justifyContent: "center",
+        alignItems: "center",
+        backgroundColor: "#ffffff",
+    },
 });
 
 export default loginStyles;

@@ -1,6 +1,8 @@
 import axios from "axios";
+import i18n from "../i18n";
 import { useAuthStore } from "../../store/useAuthStore";
-import { refreshAccessToken } from "../services/keycloakAuth";
+import { refreshAccessToken, logoutKeycloak } from "../services/keycloakAuth";
+import { CustomAlert } from "../components/alert";
 
 const axiosClient = axios.create({
   // Base URL của Backend API (Không phải Keycloak)
@@ -11,13 +13,16 @@ const axiosClient = axios.create({
   },
 });
 
-// Request Interceptor: Tự động gắn Token vào Header
+// Request Interceptor: Tự động gắn Token và ngôn ngữ vào Header
 axiosClient.interceptors.request.use(
   (config) => {
     const token = useAuthStore.getState().token;
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
     }
+    // Ngôn ngữ hiện tại, mặc định 'vi' khi BE chưa hỗ trợ / không bắt được
+    // Khi BE có bảng đa ngôn ngữ, sẽ dựa vào header này để trả đúng dữ liệu
+    config.headers["Accept-Language"] = i18n.language || "vi";
     return config;
   },
   (error) => Promise.reject(error)
@@ -75,6 +80,19 @@ axiosClient.interceptors.response.use(
 
         // Gọi Keycloak để lấy token mới
         const newAuthData = await refreshAccessToken(refreshToken);
+
+        // Tenant app: không cho technical đăng nhập (kể cả khi refresh token)
+        if (newAuthData.role === "technical") {
+          processQueue(new Error("User role not allowed"), null);
+          useAuthStore.getState().logout();
+          await logoutKeycloak(newAuthData.idToken);
+          CustomAlert.alert(
+            i18n.t("technical_blocked_title"),
+            i18n.t("technical_blocked_message"),
+            [{ text: i18n.t("common.close") }]
+          );
+          return Promise.reject(new Error("User role not allowed"));
+        }
 
         // Lưu vào Store
         useAuthStore.getState().login(newAuthData);

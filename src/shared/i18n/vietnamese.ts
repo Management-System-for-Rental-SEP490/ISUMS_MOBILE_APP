@@ -2,6 +2,8 @@ export default {
     "login_btn": "Đăng nhập với tài khoản ISUMS",
     "welcome": "Chào mừng bạn đến với ISUMS",
     "description": "Vui lòng đăng nhập để tiếp tục sử dụng ứng dụng",
+    "technical_blocked_title": "Không thể đăng nhập",
+    "technical_blocked_message": "Ứng dụng này chỉ dành cho cư dân. Vui lòng sử dụng ứng dụng dành cho nhân viên kỹ thuật.",
     "common": {
         "back": "Quay lại",
         "no_data": "Không có dữ liệu",

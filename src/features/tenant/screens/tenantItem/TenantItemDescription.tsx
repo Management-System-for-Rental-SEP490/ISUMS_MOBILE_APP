@@ -22,7 +22,7 @@ import type { AssetItemFromApi } from "../../../../shared/types/api";
 import Icons from "../../../../shared/theme/icon";
 import { useTenantContext } from "../../../../shared/hooks";
 import { useAssetCategories } from "../../../../shared/hooks";
-import { itemScreenStyles } from "../../../staff/screens/staffItems/itemScreenStyles";
+import { tenantItemDescriptionStyles as itemScreenStyles } from "./tenantItemDescriptionStyles";
 import { getAssetItemById } from "../../../../shared/services/assetItemApi";
 
 type NavProp = NativeStackNavigationProp<RootStackParamList, "TenantItemDetail">;

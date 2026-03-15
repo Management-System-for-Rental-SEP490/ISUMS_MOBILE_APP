@@ -2,6 +2,8 @@ export default {
     "login_btn": "Login with ISUMS account",
     "welcome": "Welcome to ISUMS",
     "description": "Please login to continue using the application",
+    "technical_blocked_title": "Login not allowed",
+    "technical_blocked_message": "This app is for residents only. Please use the staff app.",
     "common": {
         "back": "Back",
         "no_data": "No data",

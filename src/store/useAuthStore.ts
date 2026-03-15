@@ -46,7 +46,9 @@ const useAuthStore = create<AuthState>()(
 
       setHouseId: (id: string | null) => set({ houseId: id }),
 
-      login: (data) =>
+      login: (data) => {
+        // Tenant app: không cho technical đăng nhập
+        if (data.role === "technical") return;
         set((state) => ({
           user: data.username,
           role: data.role,
@@ -57,7 +59,8 @@ const useAuthStore = create<AuthState>()(
           isLoggedIn: true,
           // Giữ nguyên onboardedUsers
           onboardedUsers: state.onboardedUsers, 
-        })),
+        }));
+      },
 
       logout: () =>
         set((state) => ({

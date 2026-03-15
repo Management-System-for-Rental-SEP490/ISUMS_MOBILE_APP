@@ -3,6 +3,8 @@ import axios from "axios";
 import * as WebBrowser from "expo-web-browser";
 import { AuthPayload, UserRole } from "../types";
 import { useAuthStore } from "../../store/useAuthStore";
+import { CustomAlert } from "../components/alert";
+import i18n from "../i18n";
 
 // Đảm bảo WebBrowser hoạt động đúng trên Web
 WebBrowser.maybeCompleteAuthSession();
@@ -17,12 +19,13 @@ const getKeycloakBaseUrl = (): string => {
       return process.env.EXPO_PUBLIC_KEYCLOAK_BASE_URL;
   }
   
-  // Mặc định dùng Local IP cho Docker Keycloak (thay vì sso.isums.pro)
-  // const MOBILE_KEYCLOAK_IP = process.env.EXPO_PUBLIC_KEYCLOAK_IP || "192.168.1.80";
-  // return `http://${MOBILE_KEYCLOAK_IP}:8080`;
-  //hotpot của lap
-const MOBILE_KEYCLOAK_IP = process.env.EXPO_PUBLIC_KEYCLOAK_IP || "https://sso-dev.isums.pro";
-return `http://${MOBILE_KEYCLOAK_IP}:8080`;
+  // Mặc định: host (không có protocol) hoặc full URL từ env
+  const hostOrUrl = process.env.EXPO_PUBLIC_KEYCLOAK_IP || process.env.EXPO_PUBLIC_KEYCLOAK_BASE_URL || "sso-dev.isums.pro";
+  // Nếu đã là full URL (có ://) thì dùng trực tiếp
+  if (hostOrUrl.includes("://")) {
+    return hostOrUrl.endsWith(":8080") ? hostOrUrl : `${hostOrUrl.replace(/\/$/, "")}:8080`;
+  }
+  return `https://${hostOrUrl}:8080`;
   // Nếu dùng chung cho mọi nền tảng
   //return "https://sso.isums.pro";
  //return process.env.EXPO_PUBLIC_KEYCLOAK_BASE_URL || "https://sso.isums.pro";
@@ -42,6 +45,12 @@ const KEYCLOAK_CONFIG = {
     }
     return process.env.EXPO_PUBLIC_KEYCLOAK_REDIRECT_NATIVE || "isums://callback";
   },
+};
+
+// Helper export để các screen khác (ví dụ LoginScreen dùng WebView)
+// có thể lấy đúng redirectUri khi cần so khớp URL trong WebView.
+export const getKeycloakRedirectUri = (): string => {
+  return KEYCLOAK_CONFIG.redirectUri;
 };
 
 // Tạo URL authorization để chuyển hướng đến Keycloak login - tạo link và mở trình duyệt
@@ -83,18 +92,21 @@ export const exchangeCodeForToken = async (code: string): Promise<AuthPayload> =
 
     const { access_token, refresh_token, id_token } = response.data; // Lấy thêm id_token
 
-    // --- DEBUG LOG ---
-    console.log("====== KEYCLOAK TOKEN DEBUG ======");
-    console.log("Access Token nhận được từ App:", access_token);
     const debugClaims = decodeJWT(access_token);
-    console.log("Token Issuer (iss):", debugClaims?.iss);
-    console.log("Token Audience (aud):", debugClaims?.aud);
-    console.log("User config IP:", getKeycloakBaseUrl());
-    console.log("==================================");
-    // -----------------
-
     const userInfo = await getUserInfo(access_token);
     const role = determineUserRole(userInfo, access_token);
+
+    // --- LOG ĐĂNG NHẬP (hiện trong terminal Metro/Expo) ---
+    console.log("\n========== [LOGIN] ACCESS TOKEN ==========");
+    console.log("Access Token:", access_token);
+    console.log("-------------------------------------------");
+    console.log("Username:", userInfo.preferred_username || userInfo.name);
+    console.log("Role xác định:", role);
+    console.log("realm_roles:", debugClaims?.realm_access?.roles);
+    console.log("resource_access:", JSON.stringify(debugClaims?.resource_access, null, 2));
+    console.log("groups:", debugClaims?.groups || userInfo.groups);
+    console.log("iss:", debugClaims?.iss, "| aud:", debugClaims?.aud);
+    console.log("============================================\n");
     
     // Extract houseId from attributes (Keycloak usually returns attributes as arrays)
     let houseId: string | undefined;
@@ -170,18 +182,19 @@ const determineUserRole = (userInfo: any, accessToken: string): UserRole => { //
   
   if (tokenClaims) {
     // Kiểm tra realm_access.roles trong token
-    const realmRoles = tokenClaims.realm_access?.roles || []; //roles là các quyền của user trong realm.
-    if (realmRoles.includes("technical")) return "technical";
+    const realmRoles: string[] = (tokenClaims.realm_access?.roles || []).map((r: any) => String(r).toLowerCase());
+    if (realmRoles.some((r) => ["technical", "staff", "technician"].includes(r))) return "technical";
     // if (realmRoles.includes("landlord")) return "landlord";
     // if (realmRoles.includes("manager")) return "manager";
     if (realmRoles.includes("tenant")) return "tenant";
     
-    // Kiểm tra resource_access nếu có
-    const resourceRoles = tokenClaims.resource_access?.["mobile-app"]?.roles || [];
-    if (resourceRoles.includes("technical")) return "technical";
-    // if (resourceRoles.includes("landlord")) return "landlord";
-    // if (resourceRoles.includes("manager")) return "manager";
-    if (resourceRoles.includes("tenant")) return "tenant";
+    // Kiểm tra resource_access (mobile-app và tất cả clients khác)
+    const resourceAccess = tokenClaims.resource_access || {};
+    for (const clientRoles of Object.values(resourceAccess) as any[]) {
+      const roles: string[] = (clientRoles?.roles || []).map((r: any) => String(r).toLowerCase());
+      if (roles.some((r) => ["technical", "staff", "technician"].includes(r))) return "technical";
+      if (roles.includes("tenant")) return "tenant";
+    }
 
     // --- MỚI: Kiểm tra Group từ Keycloak ---
     // Yêu cầu: Cấu hình Mapper "Group Membership" trong Keycloak -> Token Claim Name: "groups"
@@ -197,9 +210,11 @@ const determineUserRole = (userInfo: any, accessToken: string): UserRole => { //
     }
 // hàm dưới có thể sai
     // --- MỚI: Kiểm tra Attributes tùy chỉnh ---
-    // Ví dụ: user có attribute "user_type": "technical"
+    // Ví dụ: user có attribute "user_type": "technical" hoặc "staff"
     const attributes = userInfo.attributes || tokenClaims.attributes || {};
-    if (attributes.user_type === "technical" || (Array.isArray(attributes.user_type) && attributes.user_type.includes("technical"))) {
+    const userType = attributes.user_type;
+    const userTypeVal = Array.isArray(userType) ? userType[0] : userType;
+    if (userTypeVal === "technical" || userTypeVal === "staff" || (Array.isArray(userType) && (userType.includes("technical") || userType.includes("staff")))) {
       return "technical";
     }
   }
@@ -327,10 +342,18 @@ export const openChangePasswordPage = async () => {
         const code = handleKeycloakCallback(result.url);
         if (code) {
              // Đổi mật khẩu thành công, Keycloak redirect về với auth code mới.
-             // Dùng code này để lấy token mới (tự động đăng nhập lại với mật khẩu mới)
              const authPayload = await exchangeCodeForToken(code);
-             
-             // Cập nhật lại AuthStore
+             // Tenant app: không cho technical đăng nhập, thông báo và đẩy về trang đăng nhập
+             if (authPayload.role === "technical") {
+               await logoutKeycloak(authPayload.idToken);
+               useAuthStore.getState().logout();
+               CustomAlert.alert(
+                 i18n.t("technical_blocked_title"),
+                 i18n.t("technical_blocked_message"),
+                 [{ text: i18n.t("common.close") }]
+               );
+               return;
+             }
              useAuthStore.getState().login(authPayload);
         }
     }

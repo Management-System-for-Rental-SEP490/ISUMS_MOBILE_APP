@@ -2,6 +2,8 @@ export default {
     "login_btn": "ISUMSアカウントでログイン",
     "welcome": "ISUMSへようこそ",
     "description": "アプリケーションの使用を続けるにはログインしてください",
+    "technical_blocked_title": "ログインできません",
+    "technical_blocked_message": "このアプリは居住者専用です。スタッフ向けアプリをご利用ください。",
     "common": {
         "back": "戻る",
         "no_data": "データなし",
