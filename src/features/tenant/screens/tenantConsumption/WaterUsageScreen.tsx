@@ -12,6 +12,7 @@ import Header from "../../../../shared/components/header";
 import SuggestionDropdown, { Suggestion } from "../../../../shared/components/SuggestionDropdown";
 import Icons from "../../../../shared/theme/icon";
 import { FloorPlanView } from "../../houseStructure";
+import { getMockFunctionalAreas } from "../../houseStructure/floorPlanPositions";
 import { waterUsageStyles } from "./waterUsageStyles";
 import { useTenantContext } from "../../../../shared/hooks";
 import { useTenantIoTConnection, useTenantUsage } from "../../hooks/useTenantIoT";
@@ -27,6 +28,11 @@ const WaterUsageScreen = () => {
   const { width: screenWidth } = useWindowDimensions();
   const { houseId, functionalAreas, thingId } = useTenantContext();
   const safeFunctionalAreas = Array.isArray(functionalAreas) ? functionalAreas : [];
+  /** Dùng mock khi BE trả rỗng (demo 3 tầng). */
+  const effectiveAreas =
+    safeFunctionalAreas.length > 0
+      ? safeFunctionalAreas
+      : getMockFunctionalAreas(houseId ?? "mock");
   const iotConnected = useTenantIoTConnection(thingId);
   const usage = useTenantUsage({ houseId, metric: "water" });
 
@@ -35,8 +41,8 @@ const WaterUsageScreen = () => {
   /** Ngày đang được chọn để xem (dạng "DD/MM/YYYY"), null = không lọc theo ngày. */
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
 
-  /** Tầng đang chọn: "all" = tổng nhà, "1" | "2" | ... = tầng cụ thể. */
-  const [selectedFloor, setSelectedFloor] = useState<string>("all");
+  /** Tầng đang chọn: mặc định Tầng 1 (không còn "all"). */
+  const [selectedFloor, setSelectedFloor] = useState<string>("1");
   /** Khu vực đang chọn: "all" hoặc areaId. */
   const [selectedArea, setSelectedArea] = useState<string>("all");
   /** Hiện/ẩn danh sách chip khu vực. */
@@ -64,26 +70,21 @@ const WaterUsageScreen = () => {
       .map((date) => ({ id: date, label: date, typeLabel: t("search.type_date") }));
   }, [searchQuery, t]);
 
-  /** Danh sách tầng unique từ functionalAreas. */
+  /** Danh sách tầng (Tầng 1, 2, 3). Dùng effectiveAreas; nếu rỗng fallback ["1","2","3"]. */
   const floorOptions = useMemo(() => {
-    const floors = new Set(safeFunctionalAreas.map((a) => a.floorNo).filter(Boolean));
-    return Array.from(floors).sort((a, b) => parseInt(a, 10) - parseInt(b, 10));
-  }, [safeFunctionalAreas]);
+    const floors = new Set(effectiveAreas.map((a) => a.floorNo).filter(Boolean));
+    const list = Array.from(floors).sort((a, b) => parseInt(a, 10) - parseInt(b, 10));
+    return list.length > 0 ? list : ["1", "2", "3"];
+  }, [effectiveAreas]);
 
-  /** Khu vực theo tầng đang chọn. */
+  /** Khu vực theo tầng: "Tất cả" (dữ liệu cả nhà) + các khu vực của tầng. */
   const areaOptions = useMemo(() => {
-    if (selectedFloor === "all") {
-      return [
-        { id: "all", label: t("consumption.area_all") },
-        ...safeFunctionalAreas.map((a) => ({ id: a.id, label: a.name })),
-      ];
-    }
-    const areasOfFloor = safeFunctionalAreas.filter((a) => a.floorNo === selectedFloor);
+    const areasOfFloor = effectiveAreas.filter((a) => a.floorNo === selectedFloor);
     return [
-      { id: "all", label: t("consumption.floor_all_areas", { floor: selectedFloor }) },
+      { id: "all", label: t("consumption.area_all") },
       ...areasOfFloor.map((a) => ({ id: a.id, label: a.name })),
     ];
-  }, [safeFunctionalAreas, selectedFloor, t]);
+  }, [effectiveAreas, selectedFloor, t]);
 
   /** Nhãn hiển thị trên nút chọn khu vực. */
   const selectedAreaLabel = useMemo(() => {
@@ -96,16 +97,12 @@ const WaterUsageScreen = () => {
     );
   }, [areaOptions, selectedArea, t]);
 
-  /** Khi đổi tầng: reset về "all" hoặc giữ area nếu vẫn thuộc tầng mới. */
+  /** Khi đổi tầng: reset về "all" nếu area hiện tại không thuộc tầng mới. */
   useEffect(() => {
-    if (selectedFloor === "all") {
-      setSelectedArea("all");
-      return;
-    }
-    const areasOfFloor = safeFunctionalAreas.filter((a) => a.floorNo === selectedFloor);
+    const areasOfFloor = effectiveAreas.filter((a) => a.floorNo === selectedFloor);
     const stillInFloor = areasOfFloor.some((a) => a.id === selectedArea);
     if (!stillInFloor) setSelectedArea("all");
-  }, [selectedFloor, safeFunctionalAreas]);
+  }, [selectedFloor, effectiveAreas, selectedArea]);
 
   const summaryBars = useMemo(
     () => [
@@ -198,7 +195,7 @@ const WaterUsageScreen = () => {
           </View>
         </View>
 
-        {/* Hàng chọn tầng: Tất cả | Tầng 1 | Tầng 2 | ... */}
+        {/* Hàng chọn tầng: Tầng 1 | Tầng 2 | Tầng 3 (không còn Tất cả) */}
         <Text style={{ fontSize: 13, fontWeight: "600", color: "#475569", marginBottom: 8 }}>
           {t("consumption.select_floor")}
         </Text>
@@ -208,24 +205,6 @@ const WaterUsageScreen = () => {
           style={waterUsageStyles.categoryScroll}
           contentContainerStyle={waterUsageStyles.categoryContent}
         >
-          <TouchableOpacity
-            activeOpacity={0.7}
-            style={[
-              waterUsageStyles.categoryChip,
-              selectedFloor === "all" && waterUsageStyles.categoryChipActive,
-            ]}
-            onPress={() => setSelectedFloor("all")}
-          >
-            <Text
-              style={[
-                waterUsageStyles.categoryChipText,
-                selectedFloor === "all" && waterUsageStyles.categoryChipTextActive,
-              ]}
-              numberOfLines={1}
-            >
-              {t("consumption.area_all")}
-            </Text>
-          </TouchableOpacity>
           {floorOptions.map((floorNo) => {
             const isActive = selectedFloor === floorNo;
             return (
@@ -307,11 +286,11 @@ const WaterUsageScreen = () => {
           )}
         </View>
 
-        {/* Sơ đồ nhà: chỉ hiện khi chọn tầng cụ thể (Tất cả = ẩn) */}
+        {/* Sơ đồ nhà: house.png nền, khu vực theo position */}
         <FloorPlanView
           selectedFloor={selectedFloor}
           selectedAreaId={selectedArea}
-          functionalAreas={safeFunctionalAreas}
+          functionalAreas={effectiveAreas}
           onSelectArea={setSelectedArea}
           accentColor={WATER_ACCENT}
         />

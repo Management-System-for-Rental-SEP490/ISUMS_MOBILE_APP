@@ -43,6 +43,14 @@ export interface UserProfileResponse {
 // Houses API (/api/houses)
 // =========================================================
 
+/** Tọa độ khu vực trong sơ đồ mặt bằng (viewBox 0 0 100 100). */
+export interface FunctionalAreaPosition {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+}
+
 /** Một khu vực chức năng trong nhà (phòng khách, bếp, phòng tắm, hành lang...) từ API GET /api/houses. */
 export interface FunctionalAreaFromApi {
   /** ID khu vực. */
@@ -59,6 +67,8 @@ export interface FunctionalAreaFromApi {
   description: string | null;
   /** Trạng thái (VD: NORMAL). */
   status?: string;
+  /** Vị trí trong sơ đồ mặt bằng (từ BE hoặc mock). Dùng khi vẽ theo house.png. */
+  position?: FunctionalAreaPosition;
   createdAt?: string;
   updatedAt?: string;
 }
