@@ -191,7 +191,10 @@ export default {
         "condition": "Tình trạng: {{percent}}%",
         "status_available": "Sẵn sàng",
         "status_in_use": "Đang sử dụng",
-        "status_disposed": "Đã thanh lý"
+        "status_active": "Đang hoạt động",
+        "status_broken": "Bị hỏng",
+        "status_disposed": "Đã thanh lý",
+        "status_deleted": "Đã xóa"
     },
     "staff_item_create": {
         "title": "Thêm thiết bị",
@@ -207,7 +210,10 @@ export default {
         "status_label": "Trạng thái",
         "status_available": "Sẵn sàng",
         "status_in_use": "Đang sử dụng",
+        "status_active": "Đang hoạt động",
+        "status_broken": "Bị hỏng",
         "status_disposed": "Đã thanh lý",
+        "status_deleted": "Đã xóa",
         "submit": "Thêm thiết bị",
         "success_message": "Đã thêm thiết bị.",
         "error_message": "Có lỗi. Vui lòng thử lại."
@@ -410,6 +416,19 @@ export default {
     },
     "notification": {
         "empty": "Chưa có thông báo nào",
+        "section_iot": "IoT",
+        "filter_all": "Tất cả",
+        "time_seconds": "{{n}} giây trước",
+        "level_critical": "Nguy hiểm",
+        "level_warning": "Cảnh báo",
+        "level_high": "Cao",
+        "level_medium": "Trung bình",
+        "level_low": "Thấp",
+        "level_info": "Thông tin",
+        "today": "Hôm nay",
+        "yesterday": "Hôm qua",
+        "area_all": "Toàn nhà",
+        "pagination_end": "Đã hiển thị hết",
         "type_ticket": "Phiếu bảo trì",
         "type_electric": "Cảnh báo điện",
         "type_water": "Cảnh báo nước",

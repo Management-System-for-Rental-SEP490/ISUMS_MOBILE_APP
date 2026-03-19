@@ -29,8 +29,9 @@ type NavProp = NativeStackNavigationProp<RootStackParamList, "TenantItemDetail">
 type RoutePropType = RouteProp<RootStackParamList, "TenantItemDetail">;
 
 function mapApiStatusToDeviceStatus(apiStatus: string): DeviceStatus {
-  switch (apiStatus) {
-    case "AVAILABLE":
+  // AssetStatus: API có thể trả về "AVAILABLE" nhưng app coi như "IN_USE"
+  const normalized = apiStatus === "AVAILABLE" ? "IN_USE" : apiStatus;
+  switch (normalized) {
     case "IN_USE":
       return "active";
     case "DISPOSED":
@@ -103,17 +104,25 @@ export default function TenantItemDescriptionScreen() {
     categories.find((c) => c.id === item.categoryId)?.name ?? item.categoryId;
 
   const getStatusStyle = () => {
-    if (item.status === "AVAILABLE") return itemScreenStyles.descriptionStatusAvailable;
-    if (item.status === "IN_USE") return itemScreenStyles.descriptionStatusInUse;
-    if (item.status === "DISPOSED") return itemScreenStyles.descriptionStatusDisposed;
+    const normalizedStatus = item.status === "AVAILABLE" ? "IN_USE" : item.status;
+    if (normalizedStatus === "IN_USE" || normalizedStatus === "ACTIVE") {
+      return itemScreenStyles.descriptionStatusInUse;
+    }
+    if (normalizedStatus === "DISPOSED" || normalizedStatus === "BROKEN") {
+      return itemScreenStyles.descriptionStatusDisposed;
+    }
+    if (normalizedStatus === "DELETED") return itemScreenStyles.descriptionStatusOther;
     return itemScreenStyles.descriptionStatusOther;
   };
 
   const getStatusLabel = () => {
-    if (item.status === "AVAILABLE") return t("staff_item_create.status_available");
-    if (item.status === "IN_USE") return t("staff_item_create.status_in_use");
-    if (item.status === "DISPOSED") return t("staff_item_create.status_disposed");
-    return item.status ?? "—";
+    const normalizedStatus = item.status === "AVAILABLE" ? "IN_USE" : item.status;
+    if (normalizedStatus === "IN_USE") return t("staff_item_create.status_in_use");
+    if (normalizedStatus === "ACTIVE") return t("staff_item_create.status_active");
+    if (normalizedStatus === "DISPOSED") return t("staff_item_create.status_disposed");
+    if (normalizedStatus === "BROKEN") return t("staff_item_create.status_broken");
+    if (normalizedStatus === "DELETED") return t("staff_item_create.status_deleted");
+    return normalizedStatus ?? "—";
   };
 
   let nfcValue = (item.nfcTag || "").trim();

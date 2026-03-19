@@ -191,7 +191,10 @@ export default {
         "condition": "状態: {{percent}}%",
         "status_available": "利用可能",
         "status_in_use": "使用中",
-        "status_disposed": "廃棄済み"
+        "status_active": "稼働中",
+        "status_broken": "故障",
+        "status_disposed": "廃棄済み",
+        "status_deleted": "削除済み"
     },
     "staff_item_create": {
         "title": "デバイスを追加",
@@ -207,7 +210,10 @@ export default {
         "status_label": "ステータス",
         "status_available": "利用可能",
         "status_in_use": "使用中",
+        "status_active": "稼働中",
+        "status_broken": "故障",
         "status_disposed": "廃棄済み",
+        "status_deleted": "削除済み",
         "submit": "追加",
         "success_message": "デバイスを追加しました。",
         "error_message": "エラーが発生しました。もう一度お試しください。"
@@ -410,6 +416,19 @@ export default {
     },
     "notification": {
         "empty": "通知はありません",
+        "section_iot": "IoT",
+        "filter_all": "すべて",
+        "time_seconds": "{{n}}秒前",
+        "level_critical": "重大",
+        "level_warning": "警告",
+        "level_high": "高",
+        "level_medium": "中",
+        "level_low": "低",
+        "level_info": "情報",
+        "today": "今日",
+        "yesterday": "昨日",
+        "area_all": "建物全体",
+        "pagination_end": "すべて表示しました",
         "type_ticket": "保守チケット",
         "type_electric": "電気アラート",
         "type_water": "水道アラート",

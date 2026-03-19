@@ -15,7 +15,7 @@ import { FloorPlanView } from "../../houseStructure";
 import { getMockFunctionalAreas } from "../../houseStructure/floorPlanPositions";
 import { waterUsageStyles } from "./waterUsageStyles";
 import { useTenantContext } from "../../../../shared/hooks";
-import { useTenantIoTConnection, useTenantUsage } from "../../hooks/useTenantIoT";
+import { useTenantIoTConnection, useTenantTelemetry, useTenantUsage } from "../../hooks/useTenantIoT";
 
 /** ID khu vực: "all" = tổng cả nhà (dữ liệu thật từ AWS), còn lại = id từ functionalAreas (chưa có dữ liệu). */
 export type AreaId = string;
@@ -35,6 +35,7 @@ const WaterUsageScreen = () => {
       : getMockFunctionalAreas(houseId ?? "mock");
   const iotConnected = useTenantIoTConnection(thingId);
   const usage = useTenantUsage({ houseId, metric: "water" });
+  const { water, waterHistory } = useTenantTelemetry(thingId);
 
   /** Chuỗi tìm kiếm ngày từ Header. */
   const [searchQuery, setSearchQuery] = useState("");
@@ -118,6 +119,49 @@ const WaterUsageScreen = () => {
   );
 
   const isAllArea = selectedArea === "all";
+
+  const w = water?.features;
+
+  const formatFixedOrDash = (val: number | undefined | null, digits: number) =>
+    val == null || Number.isNaN(val) ? "—" : val.toFixed(digits);
+
+  const dwTotDisplay =
+    w?.d_w_tot != null && w.d_w_tot >= 0 ? w.d_w_tot.toFixed(3) : "—";
+
+  const sparkData = useMemo(
+    () => waterHistory.map((m) => m.features.w_lpm ?? 0),
+    [waterHistory]
+  );
+
+  const sparkCurrent =
+    w?.w_lpm != null && !Number.isNaN(w.w_lpm) ? w.w_lpm.toFixed(2) : "—";
+
+  const statItems = [
+    {
+      key: "w_lpm",
+      label: "LƯU LƯỢNG",
+      valueText: formatFixedOrDash(w?.w_lpm, 2),
+      unit: "L/min",
+    },
+    {
+      key: "w_tot",
+      label: "TỔNG TIÊU THỤ",
+      valueText: formatFixedOrDash(w?.w_tot, 3),
+      unit: "L",
+    },
+    {
+      key: "d_w_tot",
+      label: "d_w_tot",
+      valueText: dwTotDisplay,
+      unit: "L",
+    },
+    {
+      key: "dt",
+      label: "dt",
+      valueText: formatFixedOrDash(w?.dt, 0),
+      unit: "s",
+    },
+  ];
 
   return (
     <View style={waterUsageStyles.container}>
@@ -294,6 +338,82 @@ const WaterUsageScreen = () => {
           onSelectArea={setSelectedArea}
           accentColor={WATER_ACCENT}
         />
+
+        {/* Realtime stat + sparkline (giống TestApp) */}
+        <View style={waterUsageStyles.realtimeCard}>
+          <View style={waterUsageStyles.realtimeTitleRow}>
+            <Text style={waterUsageStyles.realtimeTitle}>DỮ LIỆU NƯỚC REALTIME</Text>
+            <Text style={waterUsageStyles.realtimeTimestamp}>
+              {water?.ts ? new Date(water.ts).toLocaleTimeString("vi-VN") : ""}
+            </Text>
+          </View>
+
+          <View style={waterUsageStyles.statGrid}>
+            {statItems.map((item) => (
+              <View key={item.key} style={waterUsageStyles.statCard}>
+                <Text style={waterUsageStyles.statLabel}>{item.label}</Text>
+                <View style={waterUsageStyles.statValueRow}>
+                  <Text style={[waterUsageStyles.statValue, { color: WATER_ACCENT }]}>
+                    {item.valueText}
+                  </Text>
+                  <Text style={waterUsageStyles.statUnit}>{item.unit}</Text>
+                </View>
+              </View>
+            ))}
+          </View>
+        </View>
+
+        <View style={waterUsageStyles.sparkCard}>
+          <View style={waterUsageStyles.sparkHeader}>
+            <Text style={waterUsageStyles.sparkTitle}>LƯU LƯỢNG THỰC</Text>
+            <Text style={[waterUsageStyles.sparkCurrent, { color: WATER_ACCENT }]}>
+              {sparkCurrent} L/min
+            </Text>
+          </View>
+
+          {sparkData.length < 3 ? (
+            <Text style={{ fontSize: 13, color: "#64748b", textAlign: "center", paddingVertical: 18 }}>
+              Đang chờ dữ liệu realtime...
+            </Text>
+          ) : (
+            (() => {
+              const max = Math.max(...sparkData, 1);
+              const H = 52;
+              const bars = sparkData.slice(-30);
+              const sparkWidth = screenWidth - 80;
+              const barW = Math.max(2, sparkWidth / bars.length - 1);
+              return (
+                <View
+                  style={{
+                    flexDirection: "row",
+                    alignItems: "flex-end",
+                    height: H,
+                    alignSelf: "center",
+                    width: sparkWidth,
+                  }}
+                >
+                  {bars.map((v, i) => {
+                    const h = Math.max((v / max) * H, 2);
+                    const opacity = 0.3 + (i / bars.length) * 0.7;
+                    return (
+                      <View
+                        key={i}
+                        style={{
+                          height: h,
+                          width: barW,
+                          backgroundColor: WATER_ACCENT,
+                          opacity,
+                          borderTopLeftRadius: 4,
+                          borderTopRightRadius: 4,
+                        }}
+                      />
+                    );
+                  })}
+                </View>
+              );
+            })()
+          )}
+        </View>
 
         {isAllArea ? (
           <>

@@ -189,6 +189,9 @@ const HomeScreen = ({ navigation }: HomeScreenProps) => {
 
   // Hàm render từng item thiết bị
   const renderDeviceItem = ({ item }: { item: AssetItemFromApi }) => {
+    // AssetStatus: API có thể trả về "AVAILABLE" nhưng app coi như "IN_USE"
+    const normalizedStatus = item.status === "AVAILABLE" ? "IN_USE" : item.status;
+
     // Xác định màu sắc và text cho trạng thái thiết bị
     let statusColor = "#10B981"; // Green-500 (Active)
     let statusBg = "#D1FAE5"; // Green-100
@@ -198,18 +201,19 @@ const HomeScreen = ({ navigation }: HomeScreenProps) => {
       statusColor = "#F59E0B"; // Amber-500
       statusBg = "#FEF3C7"; // Amber-100
       statusLabel = t('home.device_list.status.maintenance');
-    } else if (item.status === "INACTIVE" || item.status === "DISPOSED") {
+    } else if (
+      item.status === "INACTIVE" ||
+      item.status === "DISPOSED" ||
+      item.status === "BROKEN" ||
+      item.status === "DELETED"
+    ) {
       statusColor = "#EF4444"; // Red-500
       statusBg = "#FEE2E2"; // Red-100
       statusLabel = t('home.device_list.status.inactive');
-    } else if (item.status === "AVAILABLE") {
-      statusColor = "#3B82F6"; // Blue-500
-      statusBg = "#DBEAFE"; // Blue-100
-      statusLabel = t("staff_item_list.status_available");
-    } else if (item.status === "IN_USE") {
+    } else if (normalizedStatus === "IN_USE" || normalizedStatus === "ACTIVE") {
       statusColor = "#10B981"; // Green-500
       statusBg = "#D1FAE5"; // Green-100
-      statusLabel = t("staff_item_list.status_in_use");
+      statusLabel = t("home.device_list.status.active");
     }
 
     const categoryName =

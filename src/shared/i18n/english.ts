@@ -191,7 +191,10 @@ export default {
         "condition": "Condition: {{percent}}%",
         "status_available": "Available",
         "status_in_use": "In use",
-        "status_disposed": "Disposed"
+        "status_active": "Active",
+        "status_broken": "Broken",
+        "status_disposed": "Disposed",
+        "status_deleted": "Deleted"
     },
     "staff_item_create": {
         "title": "Add device",
@@ -207,7 +210,10 @@ export default {
         "status_label": "Status",
         "status_available": "Available",
         "status_in_use": "In use",
+        "status_active": "Active",
+        "status_broken": "Broken",
         "status_disposed": "Disposed",
+        "status_deleted": "Deleted",
         "submit": "Add device",
         "success_message": "Device added.",
         "error_message": "Something went wrong. Please try again."
@@ -410,6 +416,19 @@ export default {
     },
     "notification": {
         "empty": "No notifications yet",
+        "section_iot": "IoT",
+        "filter_all": "All",
+        "time_seconds": "{{n}} sec ago",
+        "level_critical": "Critical",
+        "level_warning": "Warning",
+        "level_high": "High",
+        "level_medium": "Medium",
+        "level_low": "Low",
+        "level_info": "Info",
+        "today": "Today",
+        "yesterday": "Yesterday",
+        "area_all": "Entire building",
+        "pagination_end": "All alerts are shown",
         "type_ticket": "Maintenance ticket",
         "type_electric": "Electric alert",
         "type_water": "Water alert",

@@ -15,7 +15,7 @@ import { FloorPlanView } from "../../houseStructure";
 import { getMockFunctionalAreas } from "../../houseStructure/floorPlanPositions";
 import { electricUsageStyles } from "./electricUsageStyles";
 import { useTenantContext } from "../../../../shared/hooks";
-import { useTenantIoTConnection, useTenantUsage } from "../../hooks/useTenantIoT";
+import { useTenantIoTConnection, useTenantTelemetry, useTenantUsage } from "../../hooks/useTenantIoT";
 
 /** ID khu vực: "all" = tổng cả nhà (dữ liệu thật từ AWS), còn lại = id từ functionalAreas (chưa có dữ liệu). */
 export type AreaId = string;
@@ -35,6 +35,7 @@ const ElectricUsageScreen = () => {
       : getMockFunctionalAreas(houseId ?? "mock");
   const iotConnected = useTenantIoTConnection(thingId);
   const usage = useTenantUsage({ houseId, metric: "electricity" });
+  const { power, powerHistory } = useTenantTelemetry(thingId);
 
   /** Chuỗi tìm kiếm ngày từ Header. */
   const [searchQuery, setSearchQuery] = useState("");
@@ -119,6 +120,68 @@ const ElectricUsageScreen = () => {
   );
 
   const isAllArea = selectedArea === "all";
+
+  const f = power?.features;
+  const formatFixedOrDash = (val: number | undefined | null, digits: number) =>
+    val == null || Number.isNaN(val) ? "—" : val.toFixed(digits);
+
+  const kwhDisplay =
+    f?.kwh != null && f.kwh >= 0 ? f.kwh.toFixed(4) : "—";
+  const dkwhDisplay =
+    f?.d_kwh != null && f.d_kwh >= 0 ? f.d_kwh.toFixed(4) : "—";
+
+  const sparkData = useMemo(
+    () => powerHistory.map((m) => m.features.p ?? 0),
+    [powerHistory]
+  );
+
+  const sparkCurrent =
+    f?.p != null && !Number.isNaN(f.p) ? f.p.toFixed(1) : "—";
+
+  const statItems = [
+    {
+      key: "v",
+      label: "ĐIỆN ÁP",
+      valueText: formatFixedOrDash(f?.v, 1),
+      unit: "V",
+    },
+    {
+      key: "i",
+      label: "DÒNG ĐIỆN",
+      valueText: formatFixedOrDash(f?.i, 3),
+      unit: "A",
+    },
+    {
+      key: "p",
+      label: "CÔNG SUẤT",
+      valueText: formatFixedOrDash(f?.p, 1),
+      unit: "W",
+    },
+    {
+      key: "hz",
+      label: "TẦN SỐ",
+      valueText: formatFixedOrDash(f?.hz, 1),
+      unit: "Hz",
+    },
+    {
+      key: "pf",
+      label: "HỆ SỐ CS",
+      valueText: formatFixedOrDash(f?.pf, 3),
+      unit: "PF",
+    },
+    {
+      key: "kwh",
+      label: "TỔNG kWh",
+      valueText: kwhDisplay,
+      unit: "kWh",
+    },
+    {
+      key: "d_kwh",
+      label: "d_kwh",
+      valueText: dkwhDisplay,
+      unit: "kWh",
+    },
+  ];
 
   return (
     <View style={electricUsageStyles.container}>
@@ -295,6 +358,82 @@ const ElectricUsageScreen = () => {
           onSelectArea={setSelectedArea}
           accentColor={ELECTRIC_ACCENT}
         />
+
+        {/* Realtime stat + sparkline (giống TestApp) */}
+        <View style={electricUsageStyles.realtimeCard}>
+          <View style={electricUsageStyles.realtimeTitleRow}>
+            <Text style={electricUsageStyles.realtimeTitle}>DỮ LIỆU ĐIỆN REALTIME</Text>
+            <Text style={electricUsageStyles.realtimeTimestamp}>
+              {power?.ts ? new Date(power.ts).toLocaleTimeString("vi-VN") : ""}
+            </Text>
+          </View>
+
+          <View style={electricUsageStyles.statGrid}>
+            {statItems.map((item) => (
+              <View key={item.key} style={electricUsageStyles.statCard}>
+                <Text style={electricUsageStyles.statLabel}>{item.label}</Text>
+                <View style={electricUsageStyles.statValueRow}>
+                  <Text style={[electricUsageStyles.statValue, { color: ELECTRIC_ACCENT }]}>
+                    {item.valueText}
+                  </Text>
+                  <Text style={electricUsageStyles.statUnit}>{item.unit}</Text>
+                </View>
+              </View>
+            ))}
+          </View>
+        </View>
+
+        <View style={electricUsageStyles.sparkCard}>
+          <View style={electricUsageStyles.sparkHeader}>
+            <Text style={electricUsageStyles.sparkTitle}>CÔNG SUẤT THỰC</Text>
+            <Text style={[electricUsageStyles.sparkCurrent, { color: ELECTRIC_ACCENT }]}>
+              {sparkCurrent} W
+            </Text>
+          </View>
+
+          {sparkData.length < 3 ? (
+            <Text style={{ fontSize: 13, color: "#64748b", textAlign: "center", paddingVertical: 18 }}>
+              Đang chờ dữ liệu realtime...
+            </Text>
+          ) : (
+            (() => {
+              const max = Math.max(...sparkData, 1);
+              const H = 52;
+              const bars = sparkData.slice(-30);
+              const sparkWidth = screenWidth - 80;
+              const barW = Math.max(2, sparkWidth / bars.length - 1);
+              return (
+                <View
+                  style={{
+                    flexDirection: "row",
+                    alignItems: "flex-end",
+                    height: H,
+                    alignSelf: "center",
+                    width: sparkWidth,
+                  }}
+                >
+                  {bars.map((v, i) => {
+                    const h = Math.max((v / max) * H, 2);
+                    const opacity = 0.3 + (i / bars.length) * 0.7;
+                    return (
+                      <View
+                        key={i}
+                        style={{
+                          height: h,
+                          width: barW,
+                          backgroundColor: ELECTRIC_ACCENT,
+                          opacity,
+                          borderTopLeftRadius: 4,
+                          borderTopRightRadius: 4,
+                        }}
+                      />
+                    );
+                  })}
+                </View>
+              );
+            })()
+          )}
+        </View>
 
         {isAllArea ? (
           <>

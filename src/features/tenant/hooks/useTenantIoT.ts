@@ -36,19 +36,22 @@ export function useTenantIoTConnection(thingId: string): boolean {
 export function useTenantTelemetry(thingId: string): {
   power: TelemetryMessage | null;
   water: TelemetryMessage | null;
-  history: TelemetryMessage[];
+  powerHistory: TelemetryMessage[];
+  waterHistory: TelemetryMessage[];
 } {
   const [power, setPower] = useState<TelemetryMessage | null>(null);
   const [water, setWater] = useState<TelemetryMessage | null>(null);
-  const [history, setHistory] = useState<TelemetryMessage[]>([]);
+  const [powerHistory, setPowerHistory] = useState<TelemetryMessage[]>([]);
+  const [waterHistory, setWaterHistory] = useState<TelemetryMessage[]>([]);
 
   useEffect(() => {
     const handler = (msg: TelemetryMessage) => {
       if (msg.stream === "power") {
         setPower(msg);
-        setHistory((prev) => [...prev.slice(-49), msg]);
+        setPowerHistory((prev) => [...prev.slice(-49), msg]);
       } else if (msg.stream === "water") {
         setWater(msg);
+        setWaterHistory((prev) => [...prev.slice(-49), msg]);
       }
     };
     iotClient.on(`telemetry:${thingId}`, handler);
@@ -57,7 +60,7 @@ export function useTenantTelemetry(thingId: string): {
     };
   }, [thingId]);
 
-  return { power, water, history };
+  return { power, water, powerHistory, waterHistory };
 }
 
 /** Chuỗi ngày/tuần/tháng theo ISO để gọi API usage (giống TestApp). */
