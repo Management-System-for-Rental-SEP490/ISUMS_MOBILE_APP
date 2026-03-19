@@ -22,6 +22,8 @@ const LoginScreen = () => {
   const [showWebView, setShowWebView] = useState(false);
   const [authUrl, setAuthUrl] = useState<string | null>(null);
   const isProcessing = useRef(false); //useRef là một hook trong React để lưu trữ giá trị không thay đổi (immutable) trong suốt cả quá trình render của component.
+  const hasShownUpdatePasswordAlert = useRef(false);
+  const pendingUpdatePasswordUrl = useRef<string | null>(null);
 
   // Reset trạng thái khi màn hình được focus lại (ví dụ: quay lại từ browser nhưng không login):
   //Đoạn code này là một cơ chế dọn dẹp và reset trạng thái an toàn dành riêng cho việc điều hướng giữa các màn hình 
@@ -30,6 +32,8 @@ const LoginScreen = () => {
     useCallback(() => {
       isProcessing.current = false; //set giá trị của isProcessing về false để không xử lý deep link callback khi màn hình được focus lại.
       setIsLoading(false); //set giá trị của isLoading về false để không hiển thị loading khi màn hình được focus lại.
+      hasShownUpdatePasswordAlert.current = false;
+      pendingUpdatePasswordUrl.current = null;
     }, [])
   );
   // Hàm đổi ngôn ngữ
@@ -126,6 +130,8 @@ const LoginScreen = () => {
 
   const handleKeycloakLogin = () => {
     // Dùng WebView nội bộ app để mở trang đăng nhập Keycloak
+    hasShownUpdatePasswordAlert.current = false;
+    pendingUpdatePasswordUrl.current = null;
     const url = getKeycloakAuthUrl(i18n.language);
     setAuthUrl(url);
     setShowWebView(true);
@@ -135,6 +141,39 @@ const LoginScreen = () => {
     (request: any) => {
       const redirectUri = getKeycloakRedirectUri();
       const currentUrl: string = request.url;
+
+      // Khi Keycloak chuyển sang trang bắt buộc đổi mật khẩu (required action),
+      // chặn request lần đầu để hiển thị CustomAlert trước, sau đó mới cho tải trang đổi mật khẩu.
+      const currentUrlLower = currentUrl.toLowerCase();
+      const isUpdatePasswordFlow =
+        currentUrlLower.includes("kc_action=update_password") ||
+        currentUrlLower.includes("update-password");
+
+      if (isUpdatePasswordFlow) {
+        if (!hasShownUpdatePasswordAlert.current) {
+          hasShownUpdatePasswordAlert.current = true;
+          pendingUpdatePasswordUrl.current = currentUrl;
+
+          Alert.alert(
+            t("profile.change_password"),
+            t("profile.change_password_desc"),
+            [
+              {
+                text: t("common.close"),
+                onPress: () => {
+                  if (pendingUpdatePasswordUrl.current) {
+                    setAuthUrl(pendingUpdatePasswordUrl.current);
+                  }
+                },
+              },
+            ],
+            { type: "warning" }
+          );
+          return false; // chặn WebView không tải trang update password ngay lập tức
+        }
+
+        return true; // đã hiển thị alert rồi => cho phép WebView tiếp tục
+      }
 
       // Khi Keycloak redirect về redirectUri (isums://callback?code=...)
       if (currentUrl.startsWith(redirectUri)) {
@@ -147,7 +186,7 @@ const LoginScreen = () => {
 
       return true;
     },
-    [handleDeepLink]
+    [handleDeepLink, t]
   );
 
   if (isLoading) {
@@ -229,6 +268,8 @@ const LoginScreen = () => {
               <TouchableOpacity
                 onPress={() => {
                   setShowWebView(false);
+                  hasShownUpdatePasswordAlert.current = false;
+                  pendingUpdatePasswordUrl.current = null;
                 }}
                 activeOpacity={0.7}
               >
