@@ -62,6 +62,8 @@ const TicketScreen = () => {
                 style={ticketStyles.content} 
                 contentContainerStyle={[
                     ticketStyles.contentContainer,
+                    // Bù khoảng trống cho safe area phía trên để tránh bị che bởi status bar/notch
+                    { paddingTop: insets.top + 12 },
                     { paddingBottom: Math.max(insets.bottom, 20) + 40 } // Thêm padding để tránh bị che bởi safe area
                 ]}
             >

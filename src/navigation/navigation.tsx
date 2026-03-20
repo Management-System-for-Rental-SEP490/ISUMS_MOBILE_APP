@@ -11,7 +11,6 @@ import { logoutKeycloak } from "../shared/services/keycloakAuth";
 import { RootStackParamList } from "../shared/types";
 import { TenantTabs } from "../shared/components/footerNavigator";
 import CameraScreen from "../features/modal/camera/CameraScreen";
-import DeviceDetail from "../features/tenant/screens/tenantItem/deviceDetail";
 import TenantItemDescriptionScreen from "../features/tenant/screens/tenantItem/TenantItemDescription";
 import TicketScreen from "../features/tenant/screens/tenantTicket/ticket";
 import TenantHouseDescription from "../features/tenant/screens/tenantHouse/tenantHouseDescription";
@@ -86,7 +85,6 @@ const Navigation = () => {
                 component={CameraScreen}
                 options={{ presentation: "modal" }}
               />
-              <Stack.Screen name="DeviceDetail" component={DeviceDetail} />
               <Stack.Screen
                 name="TenantItemDetail"
                 component={TenantItemDescriptionScreen}

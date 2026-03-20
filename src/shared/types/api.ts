@@ -136,6 +136,17 @@ export interface AssetCategoriesApiResponse {
 }
 
 /**
+ * Response body của API GET /api/assets/categories/:id.
+ * BE có thể trả thêm message/statusCode/success, nhưng UI chỉ cần `data`.
+ */
+export interface AssetCategoryByIdApiResponse {
+  data: AssetCategoryFromApi;
+  message?: string;
+  statusCode?: number;
+  success?: boolean;
+}
+
+/**
  * Body gửi lên khi tạo danh mục thiết bị mới (POST /api/asset/categories).
  * Khớp với API: name, compensationPercent, description.
  */

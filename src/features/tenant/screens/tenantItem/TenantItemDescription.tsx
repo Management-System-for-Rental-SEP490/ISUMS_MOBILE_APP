@@ -21,7 +21,7 @@ import type { Device, DeviceStatus } from "../../../../shared/types";
 import type { AssetItemFromApi } from "../../../../shared/types/api";
 import Icons from "../../../../shared/theme/icon";
 import { useTenantContext } from "../../../../shared/hooks";
-import { useAssetCategories } from "../../../../shared/hooks";
+import { useAssetCategoryById, useAssetCategories } from "../../../../shared/hooks";
 import { tenantItemDescriptionStyles as itemScreenStyles } from "./tenantItemDescriptionStyles";
 import { getAssetItemById } from "../../../../shared/services/assetItemApi";
 
@@ -100,8 +100,13 @@ export default function TenantItemDescriptionScreen() {
   );
 
   const houseName = house?.id === item.houseId ? house.name : item.houseId;
+  const {
+    data: categoryByIdRes,
+  } = useAssetCategoryById(item.categoryId);
   const categoryName =
-    categories.find((c) => c.id === item.categoryId)?.name ?? item.categoryId;
+    categories.find((c) => c.id === item.categoryId)?.name ??
+    categoryByIdRes?.data?.name ??
+    item.categoryId;
 
   const getStatusStyle = () => {
     const normalizedStatus = item.status === "AVAILABLE" ? "IN_USE" : item.status;
@@ -237,9 +242,12 @@ export default function TenantItemDescriptionScreen() {
               }
               activeOpacity={0.8}
             >
-              <Text style={itemScreenStyles.descriptionEditBtnText}>
-                {t("device_detail.report_button")}
-              </Text>
+              <View style={itemScreenStyles.descriptionEditBtnContentRow}>
+                <Icons.warning size={20} color="#fff" />
+                <Text style={itemScreenStyles.descriptionEditBtnText}>
+                  {t("device_detail.report_button")}
+                </Text>
+              </View>
             </TouchableOpacity>
           </View>
         </ScrollView>

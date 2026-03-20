@@ -7,6 +7,7 @@ export default {
     "common": {
         "back": "戻る",
         "no_data": "データなし",
+        "not_found_title": "見つかりません",
         "loading": "読み込み中...",
         "error": "エラー",
         "success": "成功",

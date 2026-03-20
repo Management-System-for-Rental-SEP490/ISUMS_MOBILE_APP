@@ -23,7 +23,6 @@ export type RootStackParamList = AuthStackParamList & {
   OnBoarding: undefined;
   /** Quét QR/NFC cho tenant: tra cứu thiết bị thuộc nhà đang chọn, mở TenantItemDetail. */
   Camera: undefined | { initialScanMode?: "qr" | "nfc" };
-  DeviceDetail: { device: Device };
   /** Chi tiết thiết bị (tenant): nhận item từ danh sách, fetch theo id, hiển thị giống ItemDescription, có nút Báo cáo sự cố. */
   TenantItemDetail: { item: AssetItemFromApi };
   Ticket: { device: Device };

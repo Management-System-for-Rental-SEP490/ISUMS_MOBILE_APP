@@ -9,7 +9,6 @@ import {
 } from "react-native";
 import { useTranslation } from "react-i18next";
 import Header from "../../../../shared/components/header";
-import SuggestionDropdown, { Suggestion } from "../../../../shared/components/SuggestionDropdown";
 import Icons from "../../../../shared/theme/icon";
 import { FloorPlanView } from "../../houseStructure";
 import { getMockFunctionalAreas } from "../../houseStructure/floorPlanPositions";
@@ -37,39 +36,12 @@ const ElectricUsageScreen = () => {
   const usage = useTenantUsage({ houseId, metric: "electricity" });
   const { power, powerHistory } = useTenantTelemetry(thingId);
 
-  /** Chuỗi tìm kiếm ngày từ Header. */
-  const [searchQuery, setSearchQuery] = useState("");
-  /** Ngày đang được chọn để xem (dạng "DD/MM/YYYY"), null = không lọc theo ngày. */
-  const [selectedDate, setSelectedDate] = useState<string | null>(null);
-
   /** Tầng đang chọn: mặc định Tầng 1 (không còn "all"). */
   const [selectedFloor, setSelectedFloor] = useState<string>("1");
   /** Khu vực đang chọn: "all" hoặc areaId. */
   const [selectedArea, setSelectedArea] = useState<string>("all");
   /** Hiện/ẩn danh sách chip khu vực. */
   const [showAreaFilter, setShowAreaFilter] = useState(false);
-
-  /**
-   * Gợi ý ngày: lấy 30 ngày gần nhất và lọc theo chuỗi người dùng nhập.
-   */
-  const dateSuggestions = useMemo<Suggestion[]>(() => {
-    const q = searchQuery.trim();
-    if (!q) return [];
-    const today = new Date();
-    const dates: string[] = [];
-    for (let i = 0; i < 30; i++) {
-      const d = new Date(today);
-      d.setDate(d.getDate() - i);
-      const dd = String(d.getDate()).padStart(2, "0");
-      const mm = String(d.getMonth() + 1).padStart(2, "0");
-      const yyyy = d.getFullYear();
-      dates.push(`${dd}/${mm}/${yyyy}`);
-    }
-    return dates
-      .filter((date) => date.includes(q))
-      .slice(0, 6)
-      .map((date) => ({ id: date, label: date, typeLabel: t("search.type_date") }));
-  }, [searchQuery, t]);
 
   /** Danh sách tầng (Tầng 1, 2, 3). Dùng effectiveAreas; nếu rỗng fallback ["1","2","3"]. */
   const floorOptions = useMemo(() => {
@@ -185,43 +157,15 @@ const ElectricUsageScreen = () => {
 
   return (
     <View style={electricUsageStyles.container}>
-      <Header
-        variant="electric"
-        searchQuery={searchQuery}
-        onSearchChange={(text) => {
-          setSearchQuery(text);
-          if (!text.trim()) setSelectedDate(null);
-        }}
-        searchPlaceholder={t("search.placeholder_date")}
-      />
+      <Header variant="electric" />
       <View style={{ flex: 1 }}>
       <ScrollView
         style={electricUsageStyles.content}
         contentContainerStyle={electricUsageStyles.contentContainer}
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
+        keyboardDismissMode="on-drag"
       >
-        {/* Badge ngày đang xem */}
-        {selectedDate && (
-          <View style={{
-            flexDirection: "row",
-            alignItems: "center",
-            alignSelf: "flex-start",
-            backgroundColor: "#EFF6FF",
-            borderRadius: 10,
-            paddingHorizontal: 10,
-            paddingVertical: 5,
-            marginBottom: 12,
-            gap: 6,
-          }}>
-            <Text style={{ fontSize: 13, fontWeight: "600", color: "#2563EB" }}>
-              {t("search.viewing_date", { date: selectedDate })}
-            </Text>
-            <TouchableOpacity onPress={() => setSelectedDate(null)} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
-              <Icons.close size={12} color="#2563EB" />
-            </TouchableOpacity>
-          </View>
-        )}
         <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
           <Text style={electricUsageStyles.title}>
             {t("screens.electric")}
@@ -506,16 +450,6 @@ const ElectricUsageScreen = () => {
           </View>
         )}
       </ScrollView>
-      <SuggestionDropdown
-        visible={searchQuery.trim().length > 0}
-        suggestions={dateSuggestions}
-        query={searchQuery}
-        onSelect={(sug) => {
-          setSelectedDate(sug.id);
-          setSearchQuery("");
-        }}
-        emptyText={t("search.no_result", { query: searchQuery })}
-      />
       </View>
     </View>
   );

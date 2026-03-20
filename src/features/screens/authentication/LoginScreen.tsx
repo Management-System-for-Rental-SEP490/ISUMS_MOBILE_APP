@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from "react";
-import { View, Text, TouchableOpacity, Linking, Image, ActivityIndicator } from "react-native";
+import { View, Text, TouchableOpacity, Linking, Image, ActivityIndicator, BackHandler, Platform } from "react-native";
 import WebView from "react-native-webview";
 import { CustomAlert as Alert } from "../../../shared/components/alert";
 import { useNavigation, useFocusEffect } from "@react-navigation/native";
@@ -126,6 +126,26 @@ const LoginScreen = () => {
   }, [navigation]);
 
   // Đã xóa AppState listener vì Linking.addEventListener đã đủ để bắt deep link khi app resume
+
+  // Bắt nút back cứng Android: nếu đang mở WebView login thì đóng overlay trước thay vì thoát app.
+  useEffect(() => {
+    if (Platform.OS !== "android") {
+      return;
+    }
+
+    const onHardwareBack = () => {
+      if (showWebView) {
+        setShowWebView(false);
+        hasShownUpdatePasswordAlert.current = false;
+        pendingUpdatePasswordUrl.current = null;
+        return true;
+      }
+      return false;
+    };
+
+    const subscription = BackHandler.addEventListener("hardwareBackPress", onHardwareBack);
+    return () => subscription.remove();
+  }, [showWebView]);
 
 
   const handleKeycloakLogin = () => {
@@ -264,7 +284,7 @@ const LoginScreen = () => {
 
         {showWebView && authUrl && (
           <View style={loginStyles.webViewOverlay}>
-            <View style={loginStyles.webViewHeader}>
+            {/* <View style={loginStyles.webViewHeader}>
               <TouchableOpacity
                 onPress={() => {
                   setShowWebView(false);
@@ -277,7 +297,7 @@ const LoginScreen = () => {
                   {t("common.cancel")}
                 </Text>
               </TouchableOpacity>
-            </View>
+            </View> */}
             <WebView
               source={{ uri: authUrl }}
               onShouldStartLoadWithRequest={handleWebViewRequest}

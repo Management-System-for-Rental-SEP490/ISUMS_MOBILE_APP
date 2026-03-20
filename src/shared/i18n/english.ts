@@ -7,6 +7,7 @@ export default {
     "common": {
         "back": "Back",
         "no_data": "No data",
+        "not_found_title": "Not Found",
         "loading": "Loading...",
         "error": "Error",
         "success": "Success",

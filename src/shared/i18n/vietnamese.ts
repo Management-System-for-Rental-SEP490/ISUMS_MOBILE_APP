@@ -7,6 +7,7 @@ export default {
     "common": {
         "back": "Quay lại",
         "no_data": "Không có dữ liệu",
+        "not_found_title": "Không tìm thấy",
         "loading": "Đang tải...",
         "error": "Lỗi",
         "success": "Thành công",

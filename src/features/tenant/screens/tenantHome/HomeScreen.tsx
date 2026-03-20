@@ -10,6 +10,7 @@ import {
   Modal,
   TouchableWithoutFeedback,
 } from "react-native";
+import { useQueries } from "@tanstack/react-query";
 import { useAuthStore } from "../../../../store/useAuthStore";
 import Header from "../../../../shared/components/header";
 import SuggestionDropdown, { Suggestion } from "../../../../shared/components/SuggestionDropdown";
@@ -17,8 +18,15 @@ import { HomeScreenProps, RootStackParamList } from "../../../../shared/types";
 import { useTranslation } from "react-i18next";
 import { NavigationProp } from "@react-navigation/native";
 import homeStyles from "./homeStyles";
-import { useTenantHouses, useAssetItems, useAssetCategories, useTenantContext } from "../../../../shared/hooks";
+import {
+  useTenantHouses,
+  useAssetItems,
+  useAssetCategories,
+  useTenantContext,
+  ASSET_CATEGORY_KEYS,
+} from "../../../../shared/hooks";
 import { useTenantIoTConnection, useTenantUsage } from "../../hooks/useTenantIoT";
+import { getAssetCategoryById } from "../../../../shared/services/assetCategoryApi";
 import type {
   AssetItemFromApi,
   HouseFromApi,
@@ -40,6 +48,7 @@ const HomeScreen = ({ navigation }: HomeScreenProps) => {
 
   // Sử dụng context để lấy nhà hiện tại (đồng bộ với houseId trong store)
   const { house: myHouse, houseId: tenantHouseId, thingId } = useTenantContext();
+  const hasTenantHouse = Boolean(myHouse);
 
   // 2. Lấy danh sách thiết bị của nhà đó
   const {
@@ -54,7 +63,7 @@ const HomeScreen = ({ navigation }: HomeScreenProps) => {
   const devices: AssetItemFromApi[] = useMemo(
     () =>
       (itemsData?.data ?? []).filter((item) =>
-        myHouse ? item.houseId === myHouse.id : true
+        myHouse ? item.houseId === myHouse.id : false
       ),
     [itemsData?.data, myHouse]
   );
@@ -92,18 +101,53 @@ const HomeScreen = ({ navigation }: HomeScreenProps) => {
     [devices, selectedCategoryId]
   );
 
+  // Tên category: nếu categories list chưa có categoryId của từng item thì gọi GET /assets/categories/:id.
+  const uniqueCategoryIds = useMemo(() => {
+    return Array.from(new Set(filteredDevices.map((d) => d.categoryId).filter(Boolean)));
+  }, [filteredDevices]);
+
+  const missingCategoryIds = useMemo(() => {
+    return uniqueCategoryIds.filter((id) => !categories.some((c) => c.id === id));
+  }, [uniqueCategoryIds, categories]);
+
+  const categoryByIdQueries = useQueries({
+    queries: missingCategoryIds.map((id) => ({
+      queryKey: ASSET_CATEGORY_KEYS.byId(id),
+      queryFn: () => getAssetCategoryById(id),
+      enabled: Boolean(id),
+      staleTime: 1000 * 60 * 5,
+      refetchOnMount: false,
+      refetchOnWindowFocus: false,
+      refetchOnReconnect: false,
+    })),
+  });
+
+  const categoryByIdNameMap = useMemo(() => {
+    const map = new Map<string, string>();
+    for (let i = 0; i < missingCategoryIds.length; i++) {
+      const id = missingCategoryIds[i];
+      const res = categoryByIdQueries[i];
+      const name = res?.data?.data?.name;
+      if (id && name) map.set(id, name);
+    }
+    return map;
+  }, [categoryByIdQueries, missingCategoryIds]);
+
   /** Lọc thiết bị (đã lọc category) theo từ khoá tìm kiếm (tên / tên danh mục). */
   const displayDevices = useMemo(() => {
     const q = searchQuery.trim().toLowerCase();
     if (!q) return filteredDevices;
     return filteredDevices.filter((item) => {
-      const catName = categories.find((c) => c.id === item.categoryId)?.name ?? "";
+      const catName =
+        categories.find((c) => c.id === item.categoryId)?.name ??
+        categoryByIdNameMap.get(item.categoryId) ??
+        "";
       return (
         (item.displayName ?? "").toLowerCase().includes(q) ||
         catName.toLowerCase().includes(q)
       );
     });
-  }, [filteredDevices, categories, searchQuery]);
+  }, [filteredDevices, categories, searchQuery, categoryByIdNameMap]);
 
   /** Gợi ý tìm kiếm: tối đa 6 thiết bị khớp với searchQuery. */
   const suggestions = useMemo<Suggestion[]>(() => {
@@ -111,10 +155,13 @@ const HomeScreen = ({ navigation }: HomeScreenProps) => {
     return displayDevices.slice(0, 6).map((item) => ({
       id: item.id,
       label: item.displayName,
-      sublabel: categories.find((c) => c.id === item.categoryId)?.name ?? "",
+      sublabel:
+        categories.find((c) => c.id === item.categoryId)?.name ??
+        categoryByIdNameMap.get(item.categoryId) ??
+        "",
       typeLabel: t("search.type_item"),
     }));
-  }, [searchQuery, displayDevices, categories, t]);
+  }, [searchQuery, displayDevices, categories, t, categoryByIdNameMap]);
 
   /** Xử lý khi chọn gợi ý: điều hướng tới màn chi tiết thiết bị. */
   const handleSuggestionSelect = (sug: Suggestion) => {
@@ -218,6 +265,7 @@ const HomeScreen = ({ navigation }: HomeScreenProps) => {
 
     const categoryName =
       categories.find((c) => c.id === item.categoryId)?.name ||
+      categoryByIdNameMap.get(item.categoryId) ||
       t("staff_item_list.category_other");
 
     return (
@@ -248,15 +296,8 @@ const HomeScreen = ({ navigation }: HomeScreenProps) => {
 
   // Component hiển thị phần Header thông tin nhà
   const renderListHeader = () => {
-    if (!myHouse && !loadingHouses) {
-      return (
-        <View style={homeStyles.houseInfoCard}>
-          <Text style={homeStyles.houseTitle}>{t("common.not_found_title")}</Text>
-          <Text style={homeStyles.houseValue}>
-            Không tìm thấy thông tin nhà.
-          </Text>
-        </View>
-      );
+    if (!hasTenantHouse && !loadingHouses) {
+      return null;
     }
 
     return (
@@ -489,6 +530,7 @@ const HomeScreen = ({ navigation }: HomeScreenProps) => {
     <View style={homeStyles.container}>
       <Header
         variant="default"
+        showSearch
         searchQuery={searchQuery}
         onSearchChange={setSearchQuery}
         searchPlaceholder={t("search.placeholder_tenant")}
@@ -512,7 +554,7 @@ const HomeScreen = ({ navigation }: HomeScreenProps) => {
             showsVerticalScrollIndicator={false}
             keyboardShouldPersistTaps="handled"
             ListEmptyComponent={
-              !loading
+              !loading && hasTenantHouse
                 ? () => (
                     <View style={homeStyles.devicesEmpty}>
                       <Text style={homeStyles.devicesEmptyText}>

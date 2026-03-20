@@ -59,10 +59,16 @@ export const tenantItemDescriptionStyles = StyleSheet.create({
   descriptionStatusOther: { backgroundColor: "#f3f4f6" },
   descriptionEditBtn: {
     marginTop: 20,
-    backgroundColor: "#0ea5e9",
+    backgroundColor: "#ef4444",
     borderRadius: 12,
     padding: 16,
     alignItems: "center",
+  },
+  descriptionEditBtnContentRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
   },
   descriptionEditBtnText: {
     color: "#fff",
