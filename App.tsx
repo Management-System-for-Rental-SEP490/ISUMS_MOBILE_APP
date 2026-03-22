@@ -1,4 +1,7 @@
-import { SafeAreaProvider } from "react-native-safe-area-context";
+import {
+  SafeAreaProvider,
+  initialWindowMetrics,
+} from "react-native-safe-area-context";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import './src/shared/i18n'; // Import configuration i18n
 import Navigation from './src/navigation/navigation';
@@ -20,7 +23,7 @@ export default function App() {
   // SafeAreaProvider được sử dụng để đảm bảo nội dung hiển thị đúng trong vùng an toàn của thiết bị (ví dụ: tránh phần notch, thanh trạng thái trên iPhone X trở lên).
   return (
     <QueryClientProvider client={queryClient}>
-      <SafeAreaProvider>
+      <SafeAreaProvider initialMetrics={initialWindowMetrics}>
           <Navigation />
           <GlobalAlert />
       </SafeAreaProvider>

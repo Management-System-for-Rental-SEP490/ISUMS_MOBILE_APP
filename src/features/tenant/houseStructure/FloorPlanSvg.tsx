@@ -6,6 +6,8 @@ import React, { useMemo } from "react";
 import { View, useWindowDimensions, Pressable, StyleSheet, Image } from "react-native";
 import Svg, { G, Text as SvgText } from "react-native-svg";
 import type { FunctionalAreaFromApi } from "../../../shared/types/api";
+import { brandPrimary } from "../../../shared/theme/color";
+import { mapLabelForFunctionalArea } from "../../../shared/utils";
 import { getPositionForArea } from "./floorPlanPositions";
 
 interface FloorPlanSvgProps {
@@ -36,7 +38,7 @@ const FloorPlanSvg: React.FC<FloorPlanSvgProps> = ({
   areas,
   selectedAreaId,
   onSelectArea,
-  accentColor = "#82A762",
+  accentColor = brandPrimary,
 }) => {
   const { width: screenWidth } = useWindowDimensions();
   const svgSize = Math.min(screenWidth - 16, 400);
@@ -67,7 +69,7 @@ const FloorPlanSvg: React.FC<FloorPlanSvgProps> = ({
                   fill={isSelected ? accentColor : "#1e293b"}
                   fontWeight={isSelected ? "bold" : "normal"}
                 >
-                  {area.name}
+                  {mapLabelForFunctionalArea(area.name)}
                 </SvgText>
               </G>
             );
@@ -103,7 +105,7 @@ const FloorPlanSvg: React.FC<FloorPlanSvgProps> = ({
 };
 
 const styles = StyleSheet.create({
-  container: { alignItems: "center", paddingVertical: 16 },
+  container: { alignItems: "center", paddingVertical: 4 },
   planWrapper: {
     position: "relative",
   },

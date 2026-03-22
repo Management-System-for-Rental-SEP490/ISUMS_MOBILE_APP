@@ -15,7 +15,9 @@ export default {
         "cancel": "キャンセル",
         "try_again": "再試行",
         "save": "保存",
-        "warning_different_house": "警告：このデバイスは{{houseName}}に属しており、現在選択されている家ではありません。"
+        "warning_different_house": "警告：このデバイスは{{houseName}}に属しており、現在選択されている家ではありません。",
+        "read_more": "もっと見る",
+        "show_less": "折りたたむ"
     },
     "device_detail": {
         "title": "デバイス詳細",
@@ -130,7 +132,7 @@ export default {
     },
     "staff_home": {
         "schedule_title": "今週の勤務表",
-        "schedule_summary_title": "勤務あり（まとめ）",
+        "schedule_summary_title": "勤務要約",
         "schedule_no_slots": "今週の予定はありません",
         "schedule_col_time": "時間",
         "schedule_col_building": "建物",
@@ -200,6 +202,9 @@ export default {
     "staff_item_create": {
         "title": "デバイスを追加",
         "house_label": "建物",
+        "function_area_label": "設置場所",
+        "function_area_none": "エリア未設定",
+        "function_area_unknown": "保存済みエリア（現在の一覧にありません）",
         "category_label": "カテゴリ",
         "display_name_label": "表示名",
         "display_name_placeholder": "例：リビングエアコン",
@@ -304,7 +309,10 @@ export default {
         "status_inactive": "停止",
         "status_pending": "保留",
         "house_status_available": "使用中",
-        "house_status_rented": "賃貸中",
+        "house_status_rented": "賃借中",
+        "house_status_vacant": "空室",
+        "house_status_maintenance": "メンテナンス中",
+        "house_status_unavailable": "利用不可",
         "house_status_other": "{{status}}",
         "functional_areas_title": "家内の機能エリア",
         "functional_areas_empty": "機能エリアがありません",
@@ -371,8 +379,10 @@ export default {
         "loading_data": "データを読み込んでいます...",
         "switch_house": "家の切り替え",
         "select_house": "家を選択",
+        "house_detail_screen_title": "物件の詳細",
         "house_info": {
             "address": "住所:",
+            "admin_division": "地域:",
             "description": "説明:",
             "contract": "契約:",
             "duration": "期間:",
@@ -381,6 +391,9 @@ export default {
         },
         "device_list": {
             "title": "デバイス一覧 ({{count}})",
+            "by_area_title": "エリア別デバイス",
+            "areas_row_label": "エリアを選択",
+            "area_all_devices": "すべてのエリア",
             "status": {
                 "active": "アクティブ",
                 "maintenance": "メンテナンス中",
@@ -457,5 +470,19 @@ export default {
         "type_date": "日付",
         "no_result": "「{{query}}」の検索結果はありません",
         "viewing_date": "表示中: {{date}}"
+    },
+    "dropdown_box": {
+        "title": "絞り込み",
+        "search_placeholder": "名前・住所・階・カテゴリで検索…",
+        "no_results": "該当する項目がありません。",
+        "section_floor": "階",
+        "section_category": "機器カテゴリ",
+        "section_house": "物件",
+        "section_status": "状態",
+        "floor_short": "階",
+        "category_short": "カテゴリ",
+        "house_short": "物件",
+        "status_short": "状態",
+        "open_a11y": "絞り込みを開く"
     }
 }

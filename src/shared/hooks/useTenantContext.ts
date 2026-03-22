@@ -1,5 +1,6 @@
 /**
  * Hook chứa ngữ cảnh tenant: nhà đang thuê, các khu vực chức năng, thingId IoT.
+ * Danh sách IoT theo nhà: `useIotDevicesByHouseId(houseId)` (từ `useAssetItems`).
  * Dùng cho IoT (usage, telemetry) và màn consumption – dễ đối chiếu houseId/areaId với API.
  * Chỉ dùng khi user đã đăng nhập với role tenant.
  */
@@ -8,7 +9,10 @@ import { useAuthStore } from "../../store/useAuthStore";
 import { useTenantHouses } from "./useHouses";
 import type { FunctionalAreaFromApi, HouseFromApi } from "../types/api";
 
-/** ThingId IoT gán cứng theo TestApp; sau này lấy từ functionalArea hoặc API. */
+/**
+ * ThingId telemetry MQTT (tạm cứng). Sau này thay bằng `thingName` từ
+ * `useIotDevicesByHouseId(houseId)` khi BE + app gắn xong.
+ */
 export const TENANT_IOT_THING_ID =
   "ESP32-controller_62174095-1ba3-4296-ba16-40edf78c2de2";
 

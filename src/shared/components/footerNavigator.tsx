@@ -14,6 +14,7 @@ import footerStyles from "../styles/footerStyles";
 import NotificationScreen from "../../features/tenant/screens/tenantNotification/NotificationScreen";
 import i18next from "i18next";
 import { useTranslation } from "react-i18next";
+import { brandPrimary, neutral, waterAccent } from "../theme/color";
 
 export const Tab = createBottomTabNavigator<MainTabParamList>();
 
@@ -81,8 +82,9 @@ const createScreenOptions = (bottomInset: number) => ({
   route: RouteProp<MainTabParamList, keyof MainTabParamList>;
 }) => ({
   headerShown: false,
-  tabBarActiveTintColor: "#111827",
-  tabBarInactiveTintColor: "#9ca3af",
+  tabBarActiveTintColor:
+    route.name === "WaterUsage" ? waterAccent : brandPrimary,
+  tabBarInactiveTintColor: neutral.textMuted,
   tabBarStyle: [
     footerStyles.tabBar,
     {

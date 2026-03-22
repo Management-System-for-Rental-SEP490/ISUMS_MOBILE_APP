@@ -1,0 +1,73 @@
+---
+description: Quy tắc kỹ thuật ISUMS Mobile (tenant) — kiến trúc, BE, UI; ưu tiên file này để luôn nạp đủ trong ngữ cảnh AI.
+globs: **/*
+alwaysApply: true
+---
+
+# Quy tắc kỹ thuật & UI (ISUMS_MOBILE_APP)
+
+**Mục đích:** Gom luật “phải làm đúng trong code” vào một file **ngắn hơn `000-user-preferences.mdc`** để Cursor/AI dễ nạp **đủ nội dung** mỗi lượt.  
+**Tương tác người dùng** (hỏi trước khi tạo file, giải thích siêu chi tiết, tiếng Việt): xem **`000-user-preferences.mdc`**.
+
+---
+
+## 1. Tầng dữ liệu & kiến trúc
+
+- **HTTP:** chỉ trong `src/shared/services/*Api.ts`. **Không** `axiosClient` / `fetch` / ghép `BACKEND_API_BASE` trong `screens` hay `components`.
+- **React Query:** `useQuery` / `useInfiniteQuery` / `useMutation` trong `src/shared/hooks/*.ts`. Screen chỉ gọi hook.
+- **Types API:** `src/shared/types/api.ts`. Không nhét type response lớn trong screen.
+- **Format:** `src/shared/utils/`.
+- **Zustand:** **`src/store/`**.
+- **Kết nối BE:** mở rộng service/hook hiện có; có API → **bỏ mock**. Mock tạm: chuỗi qua i18n.
+- **File mới:** ưu tiên mở rộng cùng domain; tạo file mới khi tách domain rõ **hoặc** user đồng ý (mục 1 trong `000`).
+- **Dead code:** xóa hoặc nối luồng thật.
+
+## 2. i18n
+
+- Mọi chuỗi user-facing qua `t()`. Cập nhật **vi / en / ja** trong `src/shared/i18n/*.ts`. `index.ts` chỉ config.
+
+## 3. Alert
+
+- **Không** `Alert.alert` RN. Dùng **`CustomAlert`** từ `src/shared/components/alert`. Store: `src/store/useAlertStore.ts`.
+
+## 4. Màu (`src/shared/theme/color.tsx`)
+
+- Chỉ token đã export (`brandPrimary`, `neutral.*`, `waterAccent`, `BRAND_DANGER`, …). Không hex ngoài `color.tsx` / asset / khi user chỉ định rõ.
+- Thiếu semantic → thêm vào `color.tsx`.
+
+## 5. Typography (`src/shared/utils/typography.ts`)
+
+- Ưu tiên `appTypography.<key>` + `lineHeightFor`. Màu chữ từ `color.tsx`.
+- Thêm key mới → **đồng bộ** với ISUMS_STAFF_APP.
+
+## 6. Pull-to-refresh
+
+- `RefreshControl` cho list/scroll có dữ liệu động; `isRefetching` từ query; màu spinner từ `color.tsx` (`brandPrimary` hoặc accent màn).
+
+## 7. Màn stack không header
+
+- Không lồng `SafeAreaProvider` trong màn. `SafeAreaProvider` root kèm `initialMetrics` khi edge-to-edge. `StackScreenTitleHeaderStrip` + `StackScreenTitleBadge` (`tone="onBrand"`), `brandGradient`, `StatusBar` `light-content` — xem `StackScreenTitleBadge.tsx`.
+
+## 8. Chuỗi dài từ BE
+
+- **`ExpandableLongText`** + `truncateDisplayText` / `DEFAULT_*`. i18n `common.read_more`, `common.show_less` đủ 3 ngôn ngữ.
+
+## 9. DropdownBox
+
+- Lọc/chọn danh sách → **`DropdownBox`** + `dropdown_box.*`. Cuộn parent khi focus search; Android `softwareKeyboardLayoutMode: "resize"`.
+
+## 10. Phân trang
+
+- **`PaginationBar`**, `CLIENT_LIST_PAGE_SIZE`, `slicePage`, `getTotalPages` — đồng bộ Staff app.
+
+## 11. React Native
+
+- Tuân thủ `.agents/skills/vercel-react-native-skills`.
+
+## 12. File `.cursor/rules`
+
+- Không tự thêm `.mdc` chủ đề nhỏ — trừ khi user đồng ý (`000` mục 1).
+
+## 13. Phân biệt role
+
+- Tenant vs Staff: đúng folder feature / endpoint; không lộn luồng (xem thêm `000` mục 6–8).

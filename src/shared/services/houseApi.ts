@@ -4,8 +4,13 @@
  * và xử lý refresh token khi 401.
  */
 import axiosClient from "../api/axiosClient";
-import { BACKEND_API_BASE } from "../api/config";
-import type { HousesApiResponse } from "../types/api";
+import { ASSETS_API_BASE, BACKEND_API_BASE } from "../api/config";
+import type {
+  ApiResponse,
+  FunctionalAreaFromApi,
+  HouseIotAlertsApiResponse,
+  HousesApiResponse,
+} from "../types/api";
 
 /**
  * Lấy danh sách TẤT CẢ căn nhà (GET /api/houses).
@@ -29,6 +34,46 @@ export const getTenantHouses = async (): Promise<HousesApiResponse> => {
   const response = await axiosClient.get<HousesApiResponse>(
     `${BACKEND_API_BASE}/houses/house`
   );
+  return response.data;
+};
+
+/**
+ * Lấy danh sách khu vực chức năng theo houseId (GET /api/houses/functionalAreas/{houseId}).
+ */
+export const getFunctionalAreasByHouseId = async (
+  houseId: string
+): Promise<ApiResponse<FunctionalAreaFromApi[]>> => {
+  const url = `${BACKEND_API_BASE}/houses/functionalAreas/${encodeURIComponent(
+    houseId
+  )}`;
+  const response =
+    await axiosClient.get<ApiResponse<FunctionalAreaFromApi[]>>(url);
+  return response.data;
+};
+
+export type HouseIotAlertsQueryParams = {
+  limit: number;
+  date: string;
+  /** Trang đầu không gửi; các trang sau dùng cursor từ response trước. */
+  cursor?: string | null;
+};
+
+/**
+ * Lịch sử cảnh báo IoT theo nhà và ngày (GET /api/assets/houses/{houseId}/iot/alerts).
+ */
+export const getHouseIotAlerts = async (
+  houseId: string,
+  params: HouseIotAlertsQueryParams
+): Promise<HouseIotAlertsApiResponse> => {
+  const sp = new URLSearchParams();
+  sp.set("limit", String(params.limit));
+  sp.set("date", params.date);
+  const c = params.cursor;
+  if (c) sp.set("cursor", c);
+  const url = `${BACKEND_API_BASE}/assets/houses/${encodeURIComponent(
+    houseId
+  )}/iot/alerts?${sp.toString()}`;
+  const response = await axiosClient.get<HouseIotAlertsApiResponse>(url);
   return response.data;
 };
 

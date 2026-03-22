@@ -1,13 +1,13 @@
 import axiosClient from "../api/axiosClient";
-import { USER_API_BASE } from "../api/config";
+import { BACKEND_API_BASE } from "../api/config";
 import type { ApiResponse, UserProfileResponse } from "../types/api";
 
 /**
  * Lấy thông tin chi tiết user hiện tại (GET /api/users/me).
- * Sử dụng USER_API_BASE riêng biệt.
+ * Cùng BACKEND_API_BASE với toàn bộ REST app.
  */
 export const getUserProfile = async (): Promise<UserProfileResponse | null> => {
-  const url = `${USER_API_BASE}/users/me`;
+  const url = `${BACKEND_API_BASE}/users/me`;
   try {
     const response = await axiosClient.get<ApiResponse<UserProfileResponse>>(url);
     
@@ -30,4 +30,22 @@ export const getUserProfile = async (): Promise<UserProfileResponse | null> => {
     }
     return null;
   }
+};
+
+export type UserProfileUpdatePayload = Partial<
+  Pick<UserProfileResponse, "name" | "phoneNumber" | "identityNumber">
+>;
+
+/** Cập nhật hồ sơ user hiện tại (PUT /api/users/me). */
+export const updateUserProfile = async (
+  payload: UserProfileUpdatePayload
+): Promise<UserProfileResponse> => {
+  const url = `${BACKEND_API_BASE}/users/me`;
+  const response = await axiosClient.put<ApiResponse<UserProfileResponse>>(url, payload);
+  if (response.data?.success && response.data.data) {
+    return response.data.data;
+  }
+  throw new Error(
+    (response.data as { message?: string } | undefined)?.message ?? "Cập nhật hồ sơ thất bại"
+  );
 };

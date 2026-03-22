@@ -3,9 +3,10 @@
  * Mặc định vào Tầng 1, hiển thị "Tất cả tầng" cho đến khi user bấm chọn khu vực cụ thể.
  */
 import React, { useMemo } from "react";
-import { View, StyleSheet } from "react-native";
+import { View, StyleSheet, type StyleProp, type ViewStyle } from "react-native";
 import type { FunctionalAreaFromApi } from "../../../shared/types/api";
 import FloorPlanSvg from "./FloorPlanSvg";
+import { brandPrimary } from "../../../shared/theme/color";
 
 export interface FloorPlanViewProps {
   /** "1" | "2" | ... = tầng cụ thể (không còn "all"). */
@@ -16,8 +17,10 @@ export interface FloorPlanViewProps {
   functionalAreas: FunctionalAreaFromApi[];
   /** Callback khi bấm vào khu vực trên sơ đồ. */
   onSelectArea: (areaId: string) => void;
-  /** Màu accent (điện = #82A762, nước = #20B8EB). */
+  /** Màu accent highlight sơ đồ (mặc định palette thương hiệu). */
   accentColor?: string;
+  /** Gộp thêm style wrapper (ví dụ margin gần thanh tầng). */
+  containerStyle?: StyleProp<ViewStyle>;
 }
 
 const FloorPlanView: React.FC<FloorPlanViewProps> = ({
@@ -25,20 +28,24 @@ const FloorPlanView: React.FC<FloorPlanViewProps> = ({
   selectedAreaId,
   functionalAreas,
   onSelectArea,
-  accentColor = "#82A762",
+  accentColor = brandPrimary,
+  containerStyle,
 }) => {
   const safeAreas = Array.isArray(functionalAreas) ? functionalAreas : [];
-  const areasOfFloor = useMemo(
-    () => safeAreas.filter((a) => a.floorNo === selectedFloor),
-    [safeAreas, selectedFloor]
-  );
+  const areasOfFloor = useMemo(() => {
+    const floorKey = (a: (typeof safeAreas)[0]) => {
+      const s = String(a.floorNo ?? "").trim();
+      return s || "1";
+    };
+    return safeAreas.filter((a) => floorKey(a) === selectedFloor);
+  }, [safeAreas, selectedFloor]);
 
   if (areasOfFloor.length === 0) {
     return null;
   }
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, containerStyle]}>
       <FloorPlanSvg
         areas={areasOfFloor}
         selectedAreaId={selectedAreaId}
@@ -50,8 +57,10 @@ const FloorPlanView: React.FC<FloorPlanViewProps> = ({
 };
 
 const styles = StyleSheet.create({
+  /** Sát thanh chọn tầng; khoảng dưới vừa đủ tách block tiếp theo. */
   container: {
-    marginBottom: 16,
+    marginTop: 0,
+    marginBottom: 8,
   },
 });
 

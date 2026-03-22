@@ -1,12 +1,14 @@
 ---
-description: Các quy tắc bắt buộc về tương tác với người dùng, tạo file và giải thích code.
+description: ISUMS Mobile (tenant) — tương tác AI, i18n, spec, ticket/mock, data source. Chi tiết kỹ thuật code trong 010-architecture-conventions.mdc.
 globs: **/*
 alwaysApply: true
 ---
 
-# Quy tắc Tương tác và Code (User Preferences)
+# Quy tắc Tương tác và Code (User Preferences) – ISUMS Mobile App
 
-Bạn phải tuân thủ nghiêm ngặt các quy tắc dưới đây trong mọi câu trả lời:
+Bạn phải tuân thủ nghiêm ngặt các quy tắc dưới đây trong mọi câu trả lời.
+
+**Luật kỹ thuật (services, hooks, màu, typography, BE, Alert, DropdownBox, phân trang, chuỗi BE, phân biệt tenant/staff…):** bắt buộc đọc và làm theo **`010-architecture-conventions.mdc`**. File này (`000`) giữ **cách tương tác với user** và **ngữ cảnh nghiệp vụ** (tenant + ticket).
 
 ## 1. Quy định về Tạo File Mới
 
@@ -19,6 +21,8 @@ Khi bạn nhận thấy cần tạo một file mới, bạn phải thực hiện
     *   **Tại sao** chọn vị trí (thư mục) đó? (Tuân thủ cấu trúc dự án nào...)
     *   Mục đích của file là gì?
 3.  Chỉ thực hiện lệnh tạo file (Write tool) khi người dùng đã xác nhận **"Đồng ý"**.
+
+*(Tạo file rule `.mdc` mới trong `.cursor/rules/` cũng áp dụng quy trình này — trừ khi user yêu cầu rõ.)*
 
 ## 2. Quy định về Giải thích Code (Gen Code)
 
@@ -45,147 +49,62 @@ Mọi đoạn code được sinh ra phải đi kèm với chú thích và giải
 Ứng dụng này tích hợp **3 ngôn ngữ**, do đó bạn **PHẢI** đảm bảo tích hợp đa ngôn ngữ cho tất cả các phần có thể:
 
 *   **KHÔNG ĐƯỢC** hardcode text trực tiếp vào code (ví dụ: `"Xin chào"`, `"Submit"`, `"Cancel"`).
-*   **PHẢI** sử dụng hệ thống i18n (internationalization) có sẵn trong dự án cho mọi text hiển thị cho người dùng:
-    *   Sử dụng các hàm dịch từ thư viện i18n (ví dụ: `t()`, `translate()`, hoặc các hàm tương tự).
+*   **PHẢI** sử dụng hệ thống i18n có sẵn trong dự án cho mọi text hiển thị cho người dùng:
+    *   `t()`, `translate()`, hoặc tương đương.
     *   **Vị trí lưu trữ bản dịch**:
-        *   Tiếng Việt: `src/shared/i18n/vietnamese.ts`
-        *   Tiếng Anh: `src/shared/i18n/english.ts`
-        *   Tiếng Nhật: `src/shared/i18n/japanese.ts`
-        *   File `src/shared/i18n/index.ts` chỉ dùng để config chung, **KHÔNG** thêm text trực tiếp vào đây.
-    *   Nếu cần tạo key mới, phải thêm vào **TẤT CẢ** các file ngôn ngữ (3 ngôn ngữ) tại các đường dẫn trên.
-*   **Áp dụng cho**:
-    *   Tất cả các label, button text, placeholder, error messages.
-    *   Các thông báo, alert, toast messages.
-    *   Tiêu đề màn hình, menu items.
-    *   Bất kỳ text nào hiển thị cho người dùng cuối.
-*   **Tránh bỏ sót**: Khi tạo component mới hoặc thêm tính năng mới, luôn kiểm tra lại xem có text nào cần dịch không.
+        *   `src/shared/i18n/vietnamese.ts`
+        *   `src/shared/i18n/english.ts`
+        *   `src/shared/i18n/japanese.ts`
+        *   `src/shared/i18n/index.ts` chỉ config, **KHÔNG** thêm text.
+    *   Key mới → thêm **đủ 3** file ngôn ngữ.
+*   **Áp dụng cho** label, button, placeholder, error, alert, toast, tiêu đề, menu, mọi text user-facing.
+*   **Tránh bỏ sót** khi tạo component/tính năng mới.
 
-## 6. Quy định về Ticket Workflow và Staff (đã có – mock)
+*(Checklist kỹ thuật i18n trong `010-architecture-conventions.mdc`.)*
 
-**Hiện trạng:** Luồng tenant tạo ticket và luồng Staff xem danh sách/chi tiết ticket **đã được implement** với **mock data**. Khi có API, chỉ cần thay mock bằng dữ liệu BE (mục 8).
+## 6. Quy định về Ticket Workflow (đã có – mock)
+
+**Hiện trạng:** Luồng tenant tạo ticket và luồng Staff xem danh sách/chi tiết ticket **đã được implement** với **mock data**. Khi có API, thay mock theo **`010-architecture-conventions.mdc`**.
 
 ### 6.1. Luồng tenant (đã có)
 
-*   tenant mở `TicketScreen` từ DeviceDetail (quét NFC hoặc chọn thiết bị) → điền form (title, description, priority) → Submit → ticket status "pending". File: `src/features/ticket/ticket.tsx`. Navigation: `Ticket: { device: Device }`. Chưa gọi API (TODO).
+*   Tenant mở `TicketScreen` từ DeviceDetail (quét NFC hoặc chọn thiết bị) → điền form (title, description, priority) → Submit → ticket status "pending". File: `src/features/ticket/ticket.tsx`. Navigation: `Ticket: { device: Device }`. Chưa gọi API (TODO).
 
 ### 6.2. Luồng Staff (đã có – mock)
 
-*   **TicketListScreen:** `src/features/staff/screens/staffTicket/TicketListScreen.tsx` – danh sách ticket (mock `MOCK_STAFF_TICKETS`), filter status/priority, nhấn item → navigate **TicketDetail** với `ticketId`.
-*   **TicketDetailScreen:** `src/features/staff/screens/staffTicket/TicketDetailScreen.tsx` – chi tiết ticket, hiển thị đầy đủ thông tin; có action "Nhận Ticket" (logic mock). Tab Staff dùng TicketListScreen; Stack có màn TicketDetail.
-*   Khi có API: thay mock bằng React Query/Zustand; bổ sung actions Đặt lịch, Check-in, Hoàn thành theo spec (xem `docs/SPECIFICATION.md`).
+*   Trong repo **Mobile** có code Staff ticket (mock) để đồng bộ với app Staff; chi tiết file giống spec Staff — khi nối BE, phân biệt rõ role và folder (`010` mục 13).
 
 ### 6.3. Types và cấu trúc
 
-*   **Types hiện tại:** `TicketStatus`, `TicketPriority`, `StaffTicketListItem` nằm trong `src/features/staff/data/mockStaffData.ts`.
-*   **Khi kết nối BE:** Đặt types/interface chuẩn (request/response, model đầy đủ) tại **`src/shared/types/`** (mục 8.5); có thể tham khảo spec trong `docs/SPECIFICATION.md`.
+*   **Types hiện tại (Staff mock):** `src/features/staff/data/mockStaffData.ts`.
+*   **Khi kết nối BE:** types chuẩn trong **`src/shared/types/api.ts`**.
 
 ### 6.4. Lưu ý
 
-*   **Role:** Chỉ Staff thấy TicketList / TicketDetail (phân biệt role: mục 8.10).
+*   **Phân biệt role Staff / tenant:** không lộn luồng — xem **`010-architecture-conventions.mdc`**.
 *   **Notification:** Khi có API, link thông báo ticket từ NotificationScreen đến TicketDetailScreen.
-*   i18n: mục 5; mock/API: mục 7, 8.
+*   i18n: mục 5; mock/API: mục 7 + **`010`**.
 
 ---
 
 ## 7. Hiện trạng Dữ liệu (Data Source)
 
-*   **Phần lớn ứng dụng hiện dùng mock data** do đã xây dựng sẵn; **chưa áp dụng API** để liên kết với Backend (BE).
-*   **Ngoại lệ:** Luồng **authentication** đã dùng **Keycloak** (kết nối thật với IdP).
-*   Khi người dùng hoặc AI agent làm việc với tính năng liên quan dữ liệu (ticket, lịch staff, tiêu thụ điện/nước, thông báo, v.v.), cần **nhớ rằng** nguồn dữ liệu hiện tại là mock; khi bắt đầu kết nối BE thì áp dụng thêm **mục 8** bên dưới.
+*   **Phần lớn** tính năng từng dùng mock; nhiều phần đã/đang chuyển API — luôn kiểm tra code thực tế và **`010`**.
+*   **Authentication:** Keycloak (kết nối thật).
+*   Khi đụng dữ liệu nghiệp vụ, **xác nhận** mock vs API trong code; kết nối BE → **`010`**.
 
 ---
 
-## 8. Quy định khi Bắt đầu Kết nối Backend (BE)
+## 8. Các mục kỹ thuật dài (đã chuyển sang 010)
 
-Khi bắt đầu tích hợp API và kết nối với BE, AI agent **phải** tuân thủ các quy định sau (bên cạnh các quy tắc đã nêu ở mục 1–6):
+Nội dung cũ **mục 8–17** (BE, React Query, Zustand, CustomAlert, `color.tsx`, `appTypography`, pull-to-refresh, stack không header, `ExpandableLongText`, `DropdownBox`, `PaginationBar`, …) đã **rút gọn** trong **`010-architecture-conventions.mdc`**.
 
-### 8.1. Tái sử dụng file và thay mock bằng dữ liệu BE
+**Gen / sửa code:** tuân thủ **`010`**.  
+**Trả lời user:** tuân thủ **mục 1–3** + **4–7**.
 
-*   **Ưu tiên dùng các file đã tạo sẵn** trong dự án.
-*   **Xóa hoặc thay thế** phần mock data tương ứng bằng dữ liệu lấy từ BE (gọi API, React Query, Zustand, v.v.).
-*   Không tạo lại từ đầu những màn hình/component đã có nếu chỉ đổi nguồn dữ liệu.
+### 8.1. Gen trong chat vs áp dụng luôn
 
-### 8.2. Giữ đúng cấu trúc code hiện tại
+*   **Mặc định:** có thể gen trong chat đủ để user code tay — khớp mục **2**.
+*   **User yêu cầu** “gen luôn” / patch repo: được tool sửa file; vẫn tuân thủ **`010`**.
 
-*   **Đảm bảo đúng cấu trúc code** đã xây dựng (folder features, shared, screens, components, styles, data/context, v.v.).
-*   Khi thêm API layer hoặc store, đặt đúng vị trí theo cấu trúc dự án (vd: `shared/services`, `shared/api`, store trong từng feature hoặc shared tùy doc).
-*   **Zustand:** Mọi store Zustand (state global phía client, hook dạng `useXxxStore`) **phải** đặt trong thư mục **`src/store/`**. Các phần có thể dùng Zustand (filter, selection, UI state chia sẻ, v.v.) khi implement cần tạo hoặc mở rộng store trong `src/store/`.
-
-### 8.3. File mới / tài nguyên mới – gợi ý, người dùng tự tạo
-
-*   Nếu cần **tạo file hoặc tài nguyên mới**: **không** tự tiện tạo bằng tool; **hỏi người dùng trước**.
-*   **Gợi ý** rõ: tên file, **lý do** cần, **vị trí** (đường dẫn) và mục đích.
-*   **Yêu cầu người dùng tự tạo** (hoặc xác nhận đã tạo) **rồi mới tiếp tục** bước tiếp theo (điền code, hướng dẫn sửa).
-
-### 8.4. Giải thích code đầy đủ, dễ hiểu
-
-*   Áp dụng **mục 2** (Quy định về Giải thích Code) cho mọi code liên quan kết nối BE.
-*   Thêm: nêu **file dùng để làm gì**, **hàm có chức năng gì** (đầu vào, xử lý, đầu ra), **từng dòng/khối** có ý nghĩa gì trong chức năng đó.
-
-### 8.5. Kiểu dữ liệu (types) – vị trí quy định
-
-*   **Types/interface** (TypeScript) phải được quy định và đặt tại **`src/shared/types/`** (hoặc đúng cấu trúc con đã thống nhất trong dự án).
-*   Tránh định nghĩa type rải rác trong từng screen; dùng shared types cho API request/response và model dùng chung.
-
-### 8.6. Format (chữ, ngày giờ, số, …) – vị trí quy định
-
-*   Các hàm **format** (chuỗi, ngày giờ, số, đơn vị, v.v.) phải được quy định và đặt tại **`src/shared/utils/`** (vd: `formatDate`, `formatNumber`, `formatDateTime`).
-*   UI và API layer **gọi** các util này thay vì format inline nhiều nơi.
-
-### 8.7. React Query và Zustand theo tài liệu
-
-*   **Đảm bảo dùng React Query và Zustand** đúng như tài liệu dự án (docx / spec) yêu cầu.
-*   Gọi API qua **React Query (useQuery, useMutation, v.v.)**; mọi hook React Query **phải được đặt trong `src/shared/hooks`** (ví dụ: `useHouses`, `useAssetItems`, `useUserProfile`), không gọi `axiosClient` trực tiếp trong screen. Nếu cần component UI (loading/empty/error) đi kèm data từ React Query, hãy đóng gói component đó trong cùng module thuộc `src/shared/hooks` để màn hình chỉ render theo data/trạng thái trả về từ hook.
-*   **Vị trí store Zustand:** Tất cả store Zustand đặt trong **`src/store/`** (xem mục 8.2).
-
-### 8.8. Gen code trong chat: đầy đủ để code tay theo
-
-*   **Mặc định:** Khi sinh code liên quan kết nối BE, **gen trong khung chat đầy đủ** để người dùng có thể **code tay theo** (vừa code vừa học).
-*   **Tránh:** Gen xong rồi chạy được nhưng người dùng phải đọc lại code từng file, mất thời gian.
-*   **Ngoại lệ:** Chỉ **gen ra file/code trực tiếp** (patch, write) khi người dùng **yêu cầu rõ** “gen ra luôn” / “áp dụng luôn”.
-
-### 8.9. Hướng dẫn từng bước
-
-*   Khi thực hiện yêu cầu kết nối BE, **hướng dẫn từng bước** rõ ràng: Bước 1 làm gì, Bước 2 làm gì, … (có thể kèm code mẫu hoặc đoạn cần sửa).
-*   Giúp người dùng thực hiện tuần tự, tránh làm dồn một lúc khó kiểm soát.
-
-### 8.10. Phân biệt rõ hai role: Thợ kỹ thuật (Staff) và Người thuê (tenant)
-
-*   **Phân biệt rõ** hai role **Staff** (thợ kỹ thuật) và **tenant** (người thuê).
-*   **Tránh lộn file / luồng:** Màn hình, API, store dành cho Staff đặt trong `features/staff/` (hoặc đúng cấu trúc Staff); dành cho tenant trong `features/` tương ứng (tenant, house, ticket, v.v.). Không dùng nhầm screen hoặc endpoint của role này cho role kia.
-
-### 8.11. Đa ngôn ngữ (i18n)
-
-*   Tuân thủ **mục 5** (Quy định về Đa ngôn ngữ) cho mọi phần có thể, kể cả message/error từ API hiển thị cho user.
-
-### 8.12. Đọc tài liệu trước khi làm
-
-*   **Đọc lại tài liệu** `docs/SPECIFICATION.md` **trước khi** thực hiện thay đổi hoặc gợi ý code.
-*   Đảm bảo gợi ý và code khớp với spec và quy ước đã ghi.
-
-## 9. Quy định về Alert (Cập nhật mới)
-
-*   **KHÔNG** sử dụng `Alert.alert` mặc định của React Native cho các thông báo hệ thống.
-*   **PHẢI** sử dụng hệ thống **CustomAlert** đã được xây dựng để đảm bảo tính thẩm mỹ và đồng bộ.
-*   **Cách sử dụng**:
-    1.  Import `CustomAlert` từ `src/shared/components/alert` (có thể alias là `Alert`):
-        ```typescript
-        import { CustomAlert as Alert } from "path/to/src/shared/components/alert"; 
-        ```
-    2.  Sử dụng cú pháp tương tự `Alert.alert` gốc:
-        ```typescript
-        Alert.alert("Tiêu đề", "Nội dung thông báo");
-        ```
-    3.  Hoặc sử dụng các options nâng cao (type: success/error/warning):
-        ```typescript
-        Alert.alert("Thành công", "Đã lưu dữ liệu", [], { type: "success" });
-        ```
-*   **Cấu trúc file Alert**:
-    *   Component: `src/shared/components/alert.tsx` (Chứa logic GlobalAlert và Helper)
-    *   Styles: `src/shared/styles/alertStyles.tsx`
-    *   Store (Zustand): `src/store/useAlertStore.ts`
-    *   Types: `src/shared/types/index.ts`
-
-## 10. Skill (React Native)
-
-*   Khi viết/sửa React Native code, **tuân thủ** các rules trong `.agents/skills/vercel-react-native-skills`.
+---

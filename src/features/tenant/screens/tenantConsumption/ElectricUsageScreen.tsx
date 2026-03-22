@@ -1,11 +1,12 @@
-import React, { useMemo, useState, useEffect } from "react";
+import React, { useMemo, useState, useEffect, useCallback } from "react";
 import {
   View,
   Text,
   ScrollView,
-  TouchableOpacity,
   useWindowDimensions,
   ActivityIndicator,
+  RefreshControl,
+  TouchableOpacity,
 } from "react-native";
 import { useTranslation } from "react-i18next";
 import Header from "../../../../shared/components/header";
@@ -15,12 +16,12 @@ import { getMockFunctionalAreas } from "../../houseStructure/floorPlanPositions"
 import { electricUsageStyles } from "./electricUsageStyles";
 import { useTenantContext } from "../../../../shared/hooks";
 import { useTenantIoTConnection, useTenantTelemetry, useTenantUsage } from "../../hooks/useTenantIoT";
+import { brandPrimary } from "../../../../shared/theme/color";
 
 /** ID khu vực: "all" = tổng cả nhà (dữ liệu thật từ AWS), còn lại = id từ functionalAreas (chưa có dữ liệu). */
 export type AreaId = string;
 
 const MAX_BAR_HEIGHT = 180;
-const ELECTRIC_ACCENT = "#82A762";
 
 const ElectricUsageScreen = () => {
   const { t } = useTranslation();
@@ -35,47 +36,24 @@ const ElectricUsageScreen = () => {
   const iotConnected = useTenantIoTConnection(thingId);
   const usage = useTenantUsage({ houseId, metric: "electricity" });
   const { power, powerHistory } = useTenantTelemetry(thingId);
+  const [pullRefreshing, setPullRefreshing] = useState(false);
+  const onPullRefresh = useCallback(async () => {
+    setPullRefreshing(true);
+    try {
+      await usage.refetch();
+    } finally {
+      setPullRefreshing(false);
+    }
+  }, [usage.refetch]);
 
   /** Tầng đang chọn: mặc định Tầng 1 (không còn "all"). */
   const [selectedFloor, setSelectedFloor] = useState<string>("1");
-  /** Khu vực đang chọn: "all" hoặc areaId. */
-  const [selectedArea, setSelectedArea] = useState<string>("all");
-  /** Hiện/ẩn danh sách chip khu vực. */
-  const [showAreaFilter, setShowAreaFilter] = useState(false);
-
   /** Danh sách tầng (Tầng 1, 2, 3). Dùng effectiveAreas; nếu rỗng fallback ["1","2","3"]. */
   const floorOptions = useMemo(() => {
     const floors = new Set(effectiveAreas.map((a) => a.floorNo).filter(Boolean));
     const list = Array.from(floors).sort((a, b) => parseInt(a, 10) - parseInt(b, 10));
     return list.length > 0 ? list : ["1", "2", "3"];
   }, [effectiveAreas]);
-
-  /** Khu vực theo tầng: "Tất cả" (dữ liệu cả nhà) + các khu vực của tầng. */
-  const areaOptions = useMemo(() => {
-    const areasOfFloor = effectiveAreas.filter((a) => a.floorNo === selectedFloor);
-    return [
-      { id: "all", label: t("consumption.area_all") },
-      ...areasOfFloor.map((a) => ({ id: a.id, label: a.name })),
-    ];
-  }, [effectiveAreas, selectedFloor, t]);
-
-  /** Nhãn hiển thị trên nút chọn khu vực (đặt sau areaOptions). */
-  const selectedAreaLabel = useMemo(() => {
-    if (selectedArea === "all") {
-      return areaOptions[0]?.label ?? t("consumption.area_all");
-    }
-    return (
-      areaOptions.find((a) => a.id === selectedArea)?.label ??
-      t("consumption.area_all")
-    );
-  }, [areaOptions, selectedArea, t]);
-
-  /** Khi đổi tầng: reset về "all" nếu area hiện tại không thuộc tầng mới. */
-  useEffect(() => {
-    const areasOfFloor = effectiveAreas.filter((a) => a.floorNo === selectedFloor);
-    const stillInFloor = areasOfFloor.some((a) => a.id === selectedArea);
-    if (!stillInFloor) setSelectedArea("all");
-  }, [selectedFloor, effectiveAreas, selectedArea]);
 
   /** Dữ liệu cho biểu đồ "Tất cả": 3 cột Day / Week / Month từ AWS. */
   const summaryBars = useMemo(
@@ -90,8 +68,6 @@ const ElectricUsageScreen = () => {
     () => Math.max(...summaryBars.map((b) => b.value), 0.001),
     [summaryBars]
   );
-
-  const isAllArea = selectedArea === "all";
 
   const f = power?.features;
   const formatFixedOrDash = (val: number | undefined | null, digits: number) =>
@@ -158,15 +134,22 @@ const ElectricUsageScreen = () => {
   return (
     <View style={electricUsageStyles.container}>
       <Header variant="electric" />
-      <View style={{ flex: 1 }}>
       <ScrollView
         style={electricUsageStyles.content}
         contentContainerStyle={electricUsageStyles.contentContainer}
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
         keyboardDismissMode="on-drag"
+        refreshControl={
+          <RefreshControl
+            refreshing={pullRefreshing}
+            onRefresh={onPullRefresh}
+            tintColor={brandPrimary}
+            colors={[brandPrimary]}
+          />
+        }
       >
-        <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
+        <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 4 }}>
           <Text style={electricUsageStyles.title}>
             {t("screens.electric")}
           </Text>
@@ -203,104 +186,44 @@ const ElectricUsageScreen = () => {
           </View>
         </View>
 
-        {/* Hàng chọn tầng: Tầng 1 | Tầng 2 | Tầng 3 (không còn Tất cả) */}
-        <Text style={{ fontSize: 13, fontWeight: "600", color: "#475569", marginBottom: 8 }}>
-          {t("consumption.select_floor")}
-        </Text>
         <ScrollView
           horizontal
           showsHorizontalScrollIndicator={false}
           style={electricUsageStyles.categoryScroll}
           contentContainerStyle={electricUsageStyles.categoryContent}
         >
-          {floorOptions.map((floorNo) => {
-            const isActive = selectedFloor === floorNo;
+          {floorOptions.map((floor) => {
+            const active = selectedFloor === floor;
             return (
               <TouchableOpacity
-                key={floorNo}
-                activeOpacity={0.7}
+                key={floor}
                 style={[
                   electricUsageStyles.categoryChip,
-                  isActive && electricUsageStyles.categoryChipActive,
+                  active && electricUsageStyles.categoryChipActive,
                 ]}
-                onPress={() => setSelectedFloor(floorNo)}
+                onPress={() => setSelectedFloor(floor)}
+                activeOpacity={0.8}
               >
                 <Text
                   style={[
                     electricUsageStyles.categoryChipText,
-                    isActive && electricUsageStyles.categoryChipTextActive,
+                    active && electricUsageStyles.categoryChipTextActive,
                   ]}
-                  numberOfLines={1}
                 >
-                  {t("consumption.floor_label", { floor: floorNo })}
+                  {t("consumption.floor_label", { floor })}
                 </Text>
               </TouchableOpacity>
             );
           })}
         </ScrollView>
 
-        {/* Hàng chọn khu vực: nút sổ xuống nhỏ gọn, cách xa sơ đồ */}
-        <View style={electricUsageStyles.areaSelectorWrapper}>
-          <TouchableOpacity
-            activeOpacity={0.8}
-            onPress={() => setShowAreaFilter((v) => !v)}
-            style={electricUsageStyles.areaDropdownBtn}
-          >
-            <View>
-              <Text style={electricUsageStyles.areaDropdownLabel}>
-                {t("consumption.select_area")}
-              </Text>
-              <Text style={electricUsageStyles.areaDropdownValue} numberOfLines={1}>
-                {selectedAreaLabel}
-              </Text>
-            </View>
-            <Text style={{ fontSize: 12, color: "#94a3b8" }}>
-              {showAreaFilter ? "▲" : "▼"}
-            </Text>
-          </TouchableOpacity>
-
-          {showAreaFilter && (
-            <ScrollView
-              horizontal
-              showsHorizontalScrollIndicator={false}
-              style={electricUsageStyles.areaChipScroll}
-              contentContainerStyle={electricUsageStyles.areaChipContent}
-            >
-              {areaOptions.map((area) => {
-                const isActive = selectedArea === area.id;
-                return (
-                  <TouchableOpacity
-                    key={area.id}
-                    activeOpacity={0.7}
-                    style={[
-                      electricUsageStyles.areaChip,
-                      isActive && electricUsageStyles.areaChipActive,
-                    ]}
-                    onPress={() => setSelectedArea(area.id)}
-                  >
-                    <Text
-                      style={[
-                        electricUsageStyles.areaChipText,
-                        isActive && electricUsageStyles.areaChipTextActive,
-                      ]}
-                      numberOfLines={1}
-                    >
-                      {area.label}
-                    </Text>
-                  </TouchableOpacity>
-                );
-              })}
-            </ScrollView>
-          )}
-        </View>
-
         {/* Sơ đồ nhà: house.png nền, khu vực theo position */}
         <FloorPlanView
           selectedFloor={selectedFloor}
-          selectedAreaId={selectedArea}
+          selectedAreaId="all"
           functionalAreas={effectiveAreas}
-          onSelectArea={setSelectedArea}
-          accentColor={ELECTRIC_ACCENT}
+          onSelectArea={() => {}}
+          accentColor={brandPrimary}
         />
 
         {/* Realtime stat + sparkline (giống TestApp) */}
@@ -317,7 +240,7 @@ const ElectricUsageScreen = () => {
               <View key={item.key} style={electricUsageStyles.statCard}>
                 <Text style={electricUsageStyles.statLabel}>{item.label}</Text>
                 <View style={electricUsageStyles.statValueRow}>
-                  <Text style={[electricUsageStyles.statValue, { color: ELECTRIC_ACCENT }]}>
+                  <Text style={[electricUsageStyles.statValue, { color: brandPrimary }]}>
                     {item.valueText}
                   </Text>
                   <Text style={electricUsageStyles.statUnit}>{item.unit}</Text>
@@ -330,7 +253,7 @@ const ElectricUsageScreen = () => {
         <View style={electricUsageStyles.sparkCard}>
           <View style={electricUsageStyles.sparkHeader}>
             <Text style={electricUsageStyles.sparkTitle}>CÔNG SUẤT THỰC</Text>
-            <Text style={[electricUsageStyles.sparkCurrent, { color: ELECTRIC_ACCENT }]}>
+            <Text style={[electricUsageStyles.sparkCurrent, { color: brandPrimary }]}>
               {sparkCurrent} W
             </Text>
           </View>
@@ -365,7 +288,7 @@ const ElectricUsageScreen = () => {
                         style={{
                           height: h,
                           width: barW,
-                          backgroundColor: ELECTRIC_ACCENT,
+                          backgroundColor: brandPrimary,
                           opacity,
                           borderTopLeftRadius: 4,
                           borderTopRightRadius: 4,
@@ -379,78 +302,63 @@ const ElectricUsageScreen = () => {
           )}
         </View>
 
-        {isAllArea ? (
-          <>
-            {/* Tab "Tất cả": biểu đồ 3 cột Day / Week / Month từ AWS */}
-            <View style={electricUsageStyles.chartCard}>
-              <Text style={electricUsageStyles.chartTitle}>
-                {t("consumption.chart_title_electric")}
-              </Text>
-              {usage.loading ? (
-                <ActivityIndicator size="large" color="#82A762" style={{ marginVertical: 24 }} />
-              ) : (
-                <View
-                  style={[
-                    electricUsageStyles.chartWrapper,
-                    { width: screenWidth - 80 },
-                  ]}
-                >
-                  <View style={electricUsageStyles.chartBar}>
-                    {summaryBars.map((bar) => {
-                      const heightRatio = maxSummary > 0 ? bar.value / maxSummary : 0;
-                      const barHeight = Math.max(8, heightRatio * MAX_BAR_HEIGHT);
-                      return (
-                        <View key={bar.key} style={electricUsageStyles.barGroup}>
-                          <View
-                            style={{
-                              width: "80%",
-                              maxWidth: 48,
-                              height: barHeight,
-                              backgroundColor: "#82A762",
-                              borderTopLeftRadius: 6,
-                              borderTopRightRadius: 6,
-                            }}
-                          />
-                          <Text style={electricUsageStyles.barLabel} numberOfLines={1}>
-                            {bar.label}
-                          </Text>
-                          <Text style={{ fontSize: 10, color: "#64748b", marginTop: 2 }}>
-                            {bar.value.toFixed(2)} {usage.unit}
-                          </Text>
-                        </View>
-                      );
-                    })}
-                  </View>
-                </View>
-              )}
-              <Text style={{ fontSize: 12, color: "#64748b", marginTop: 8, textAlign: "center" }}>
-                ({t("consumption.unit_kwh")})
-              </Text>
-            </View>
-
-            {/* Pie: hiện chưa có dữ liệu theo khu vực từ AWS, chỉ để sẵn UI */}
-            <View style={electricUsageStyles.chartCard}>
-              <Text style={electricUsageStyles.chartTitle}>
-                {t("consumption.chart_title_pie")}
-              </Text>
-              <Text style={{ fontSize: 13, color: "#64748b", textAlign: "center", paddingVertical: 16 }}>
-                {t("consumption.no_data_area")}
-              </Text>
-            </View>
-          </>
-        ) : (
-          /* Khu vực cụ thể: chưa có dữ liệu */
-          <View style={electricUsageStyles.chartCard}>
+        {/* Tab "Tất cả": biểu đồ 3 cột Day / Week / Month từ AWS */}
+        <View style={electricUsageStyles.chartCard}>
             <Text style={electricUsageStyles.chartTitle}>
-              {areaOptions.find((a) => a.id === selectedArea)?.label ?? selectedArea}
+              {t("consumption.chart_title_electric")}
             </Text>
-            <Text style={{ fontSize: 14, color: "#64748b", textAlign: "center", paddingVertical: 32 }}>
-              {t("consumption.no_data_area")}
+            {usage.loading ? (
+              <ActivityIndicator size="large" color="#82A762" style={{ marginVertical: 24 }} />
+            ) : (
+              <View
+                style={[
+                  electricUsageStyles.chartWrapper,
+                  { width: screenWidth - 80 },
+                ]}
+              >
+                <View style={electricUsageStyles.chartBar}>
+                  {summaryBars.map((bar) => {
+                    const heightRatio = maxSummary > 0 ? bar.value / maxSummary : 0;
+                    const barHeight = Math.max(8, heightRatio * MAX_BAR_HEIGHT);
+                    return (
+                      <View key={bar.key} style={electricUsageStyles.barGroup}>
+                        <View
+                          style={{
+                            width: "80%",
+                            maxWidth: 48,
+                            height: barHeight,
+                            backgroundColor: brandPrimary,
+                            borderTopLeftRadius: 6,
+                            borderTopRightRadius: 6,
+                          }}
+                        />
+                        <Text style={electricUsageStyles.barLabel} numberOfLines={1}>
+                          {bar.label}
+                        </Text>
+                        <Text style={{ fontSize: 10, color: "#64748b", marginTop: 2 }}>
+                          {bar.value.toFixed(2)} {usage.unit}
+                        </Text>
+                      </View>
+                    );
+                  })}
+                </View>
+              </View>
+            )}
+            <Text style={{ fontSize: 12, color: "#64748b", marginTop: 8, textAlign: "center" }}>
+              ({t("consumption.unit_kwh")})
             </Text>
-          </View>
-        )}
+        </View>
+
+        {/* Pie: hiện chưa có dữ liệu theo khu vực từ AWS, chỉ để sẵn UI */}
+        <View style={electricUsageStyles.chartCard}>
+          <Text style={electricUsageStyles.chartTitle}>
+            {t("consumption.chart_title_pie")}
+          </Text>
+          <Text style={{ fontSize: 13, color: "#64748b", textAlign: "center", paddingVertical: 16 }}>
+            {t("consumption.no_data_area")}
+          </Text>
+        </View>
       </ScrollView>
-      </View>
     </View>
   );
 };

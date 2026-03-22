@@ -3,6 +3,7 @@ import i18n from "../i18n";
 import { useAuthStore } from "../../store/useAuthStore";
 import { refreshAccessToken, logoutKeycloak } from "../services/keycloakAuth";
 import { CustomAlert } from "../components/alert";
+import { BACKEND_URL_PRIMARY, BACKEND_URL_FALLBACK } from "./config";
 
 const axiosClient = axios.create({
   // Base URL của Backend API (Không phải Keycloak)
@@ -112,6 +113,17 @@ axiosClient.interceptors.response.use(
       } finally {
         isRefreshing = false;
       }
+    }
+
+    // Primary (api-dev) lỗi mạng / không phản hồi → thử lại với fallback (ngrok)
+    const url = originalRequest?.url ?? "";
+    if (
+      !originalRequest._retriedWithFallback &&
+      url.startsWith(BACKEND_URL_PRIMARY)
+    ) {
+      originalRequest._retriedWithFallback = true;
+      originalRequest.url = url.replace(BACKEND_URL_PRIMARY, BACKEND_URL_FALLBACK);
+      return axiosClient(originalRequest);
     }
 
     return Promise.reject(error);

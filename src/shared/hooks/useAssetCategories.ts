@@ -1,14 +1,9 @@
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import {
-  getAssetCategories,
-  getAssetCategoryById,
-  createAssetCategory,
-  updateAssetCategory,
-} from "../services/assetCategoryApi";
+import { useQuery, useQueries } from "@tanstack/react-query";
+import { useMemo } from "react";
+import { getAssetCategories, getAssetCategoryById } from "../services/assetCategoryApi";
 import type {
-  CreateAssetCategoryRequest,
-  UpdateAssetCategoryRequest,
   AssetCategoryByIdApiResponse,
+  AssetCategoryFromApi,
 } from "../types/api";
 
 /**
@@ -54,37 +49,45 @@ export const useAssetCategoryById = (categoryId?: string | null) => {
 };
 
 /**
- * Hook mutation để tạo danh mục thiết bị mới (POST /api/assets/categories).
- * Sau khi tạo thành công, tự động invalidate danh sách categories để refetch.
- * @returns useMutation: mutate(payload), isPending, isSuccess, isError, data, error.
+ * Map categoryId → tên: ưu tiên danh sách từ `useAssetCategories`, các id thiếu gọi GET /categories/:id (useQueries).
+ * Dùng Home tenant thay vì gọi `useQueries` trực tiếp trong screen.
  */
-export const useCreateAssetCategory = () => {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: (payload: CreateAssetCategoryRequest) => createAssetCategory(payload),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ASSET_CATEGORY_KEYS.all });
-    },
-  });
-};
+export const useAssetCategoryNamesByIds = (
+  categoryIds: string[],
+  categoriesFromList: AssetCategoryFromApi[]
+) => {
+  const missingIds = useMemo(
+    () =>
+      Array.from(new Set(categoryIds.filter(Boolean))).filter(
+        (id) => !categoriesFromList.some((c) => c.id === id)
+      ),
+    [categoryIds, categoriesFromList]
+  );
 
-/**
- * Hook mutation cập nhật danh mục (PUT /api/assets/categories/:id).
- * Sau khi thành công invalidate danh sách categories.
- */
-export const useUpdateAssetCategory = () => {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: ({
-      id,
-      payload,
-    }: {
-      id: string;
-      payload: UpdateAssetCategoryRequest;
-    }) => updateAssetCategory(id, payload),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ASSET_CATEGORY_KEYS.all });
-    },
+  const queries = useQueries({
+    queries: missingIds.map((id) => ({
+      queryKey: ASSET_CATEGORY_KEYS.byId(id),
+      queryFn: () => getAssetCategoryById(id),
+      enabled: Boolean(id),
+      staleTime: 1000 * 60 * 5,
+      refetchOnMount: false,
+      refetchOnWindowFocus: false,
+      refetchOnReconnect: false,
+    })),
   });
-};
 
+  const categoryNameById = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const c of categoriesFromList) {
+      if (c.id && c.name) map.set(c.id, c.name);
+    }
+    for (let i = 0; i < missingIds.length; i++) {
+      const id = missingIds[i];
+      const name = queries[i]?.data?.data?.name;
+      if (id && name) map.set(id, name);
+    }
+    return map;
+  }, [categoriesFromList, missingIds, queries]);
+
+  return { categoryNameById };
+};

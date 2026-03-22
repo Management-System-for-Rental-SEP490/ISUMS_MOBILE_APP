@@ -1,11 +1,12 @@
-import React, { useMemo, useState, useEffect } from "react";
+import React, { useMemo, useState, useEffect, useCallback } from "react";
 import {
   View,
   Text,
   ScrollView,
-  TouchableOpacity,
   useWindowDimensions,
   ActivityIndicator,
+  RefreshControl,
+  TouchableOpacity,
 } from "react-native";
 import { useTranslation } from "react-i18next";
 import Header from "../../../../shared/components/header";
@@ -15,12 +16,12 @@ import { getMockFunctionalAreas } from "../../houseStructure/floorPlanPositions"
 import { waterUsageStyles } from "./waterUsageStyles";
 import { useTenantContext } from "../../../../shared/hooks";
 import { useTenantIoTConnection, useTenantTelemetry, useTenantUsage } from "../../hooks/useTenantIoT";
+import { waterAccent } from "../../../../shared/theme/color";
 
 /** ID khu vực: "all" = tổng cả nhà (dữ liệu thật từ AWS), còn lại = id từ functionalAreas (chưa có dữ liệu). */
 export type AreaId = string;
 
 const MAX_BAR_HEIGHT = 180;
-const WATER_ACCENT = "#20B8EB";
 
 const WaterUsageScreen = () => {
   const { t } = useTranslation();
@@ -35,47 +36,24 @@ const WaterUsageScreen = () => {
   const iotConnected = useTenantIoTConnection(thingId);
   const usage = useTenantUsage({ houseId, metric: "water" });
   const { water, waterHistory } = useTenantTelemetry(thingId);
+  const [pullRefreshing, setPullRefreshing] = useState(false);
+  const onPullRefresh = useCallback(async () => {
+    setPullRefreshing(true);
+    try {
+      await usage.refetch();
+    } finally {
+      setPullRefreshing(false);
+    }
+  }, [usage.refetch]);
 
   /** Tầng đang chọn: mặc định Tầng 1 (không còn "all"). */
   const [selectedFloor, setSelectedFloor] = useState<string>("1");
-  /** Khu vực đang chọn: "all" hoặc areaId. */
-  const [selectedArea, setSelectedArea] = useState<string>("all");
-  /** Hiện/ẩn danh sách chip khu vực. */
-  const [showAreaFilter, setShowAreaFilter] = useState(false);
-
   /** Danh sách tầng (Tầng 1, 2, 3). Dùng effectiveAreas; nếu rỗng fallback ["1","2","3"]. */
   const floorOptions = useMemo(() => {
     const floors = new Set(effectiveAreas.map((a) => a.floorNo).filter(Boolean));
     const list = Array.from(floors).sort((a, b) => parseInt(a, 10) - parseInt(b, 10));
     return list.length > 0 ? list : ["1", "2", "3"];
   }, [effectiveAreas]);
-
-  /** Khu vực theo tầng: "Tất cả" (dữ liệu cả nhà) + các khu vực của tầng. */
-  const areaOptions = useMemo(() => {
-    const areasOfFloor = effectiveAreas.filter((a) => a.floorNo === selectedFloor);
-    return [
-      { id: "all", label: t("consumption.area_all") },
-      ...areasOfFloor.map((a) => ({ id: a.id, label: a.name })),
-    ];
-  }, [effectiveAreas, selectedFloor, t]);
-
-  /** Nhãn hiển thị trên nút chọn khu vực. */
-  const selectedAreaLabel = useMemo(() => {
-    if (selectedArea === "all") {
-      return areaOptions[0]?.label ?? t("consumption.area_all");
-    }
-    return (
-      areaOptions.find((a) => a.id === selectedArea)?.label ??
-      t("consumption.area_all")
-    );
-  }, [areaOptions, selectedArea, t]);
-
-  /** Khi đổi tầng: reset về "all" nếu area hiện tại không thuộc tầng mới. */
-  useEffect(() => {
-    const areasOfFloor = effectiveAreas.filter((a) => a.floorNo === selectedFloor);
-    const stillInFloor = areasOfFloor.some((a) => a.id === selectedArea);
-    if (!stillInFloor) setSelectedArea("all");
-  }, [selectedFloor, effectiveAreas, selectedArea]);
 
   const summaryBars = useMemo(
     () => [
@@ -89,8 +67,6 @@ const WaterUsageScreen = () => {
     () => Math.max(...summaryBars.map((b) => b.value), 0.001),
     [summaryBars]
   );
-
-  const isAllArea = selectedArea === "all";
 
   const w = water?.features;
 
@@ -138,15 +114,22 @@ const WaterUsageScreen = () => {
   return (
     <View style={waterUsageStyles.container}>
       <Header variant="water" />
-      <View style={{ flex: 1 }}>
       <ScrollView
         style={waterUsageStyles.content}
         contentContainerStyle={waterUsageStyles.contentContainer}
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
         keyboardDismissMode="on-drag"
+        refreshControl={
+          <RefreshControl
+            refreshing={pullRefreshing}
+            onRefresh={onPullRefresh}
+            tintColor={waterAccent}
+            colors={[waterAccent]}
+          />
+        }
       >
-        <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
+        <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 4 }}>
           <Text style={waterUsageStyles.title}>
             {t("screens.water")}
           </Text>
@@ -183,104 +166,44 @@ const WaterUsageScreen = () => {
           </View>
         </View>
 
-        {/* Hàng chọn tầng: Tầng 1 | Tầng 2 | Tầng 3 (không còn Tất cả) */}
-        <Text style={{ fontSize: 13, fontWeight: "600", color: "#475569", marginBottom: 8 }}>
-          {t("consumption.select_floor")}
-        </Text>
         <ScrollView
           horizontal
           showsHorizontalScrollIndicator={false}
           style={waterUsageStyles.categoryScroll}
           contentContainerStyle={waterUsageStyles.categoryContent}
         >
-          {floorOptions.map((floorNo) => {
-            const isActive = selectedFloor === floorNo;
+          {floorOptions.map((floor) => {
+            const active = selectedFloor === floor;
             return (
               <TouchableOpacity
-                key={floorNo}
-                activeOpacity={0.7}
+                key={floor}
                 style={[
                   waterUsageStyles.categoryChip,
-                  isActive && waterUsageStyles.categoryChipActive,
+                  active && waterUsageStyles.categoryChipActive,
                 ]}
-                onPress={() => setSelectedFloor(floorNo)}
+                onPress={() => setSelectedFloor(floor)}
+                activeOpacity={0.8}
               >
                 <Text
                   style={[
                     waterUsageStyles.categoryChipText,
-                    isActive && waterUsageStyles.categoryChipTextActive,
+                    active && waterUsageStyles.categoryChipTextActive,
                   ]}
-                  numberOfLines={1}
                 >
-                  {t("consumption.floor_label", { floor: floorNo })}
+                  {t("consumption.floor_label", { floor })}
                 </Text>
               </TouchableOpacity>
             );
           })}
         </ScrollView>
 
-        {/* Hàng chọn khu vực: nút sổ xuống nhỏ gọn, cách xa sơ đồ */}
-        <View style={waterUsageStyles.areaSelectorWrapper}>
-          <TouchableOpacity
-            activeOpacity={0.8}
-            onPress={() => setShowAreaFilter((v) => !v)}
-            style={waterUsageStyles.areaDropdownBtn}
-          >
-            <View>
-              <Text style={waterUsageStyles.areaDropdownLabel}>
-                {t("consumption.select_area")}
-              </Text>
-              <Text style={waterUsageStyles.areaDropdownValue} numberOfLines={1}>
-                {selectedAreaLabel}
-              </Text>
-            </View>
-            <Text style={{ fontSize: 12, color: "#94a3b8" }}>
-              {showAreaFilter ? "▲" : "▼"}
-            </Text>
-          </TouchableOpacity>
-
-          {showAreaFilter && (
-            <ScrollView
-              horizontal
-              showsHorizontalScrollIndicator={false}
-              style={waterUsageStyles.areaChipScroll}
-              contentContainerStyle={waterUsageStyles.areaChipContent}
-            >
-              {areaOptions.map((area) => {
-                const isActive = selectedArea === area.id;
-                return (
-                  <TouchableOpacity
-                    key={area.id}
-                    activeOpacity={0.7}
-                    style={[
-                      waterUsageStyles.areaChip,
-                      isActive && waterUsageStyles.areaChipActive,
-                    ]}
-                    onPress={() => setSelectedArea(area.id)}
-                  >
-                    <Text
-                      style={[
-                        waterUsageStyles.areaChipText,
-                        isActive && waterUsageStyles.areaChipTextActive,
-                      ]}
-                      numberOfLines={1}
-                    >
-                      {area.label}
-                    </Text>
-                  </TouchableOpacity>
-                );
-              })}
-            </ScrollView>
-          )}
-        </View>
-
         {/* Sơ đồ nhà: house.png nền, khu vực theo position */}
         <FloorPlanView
           selectedFloor={selectedFloor}
-          selectedAreaId={selectedArea}
+          selectedAreaId="all"
           functionalAreas={effectiveAreas}
-          onSelectArea={setSelectedArea}
-          accentColor={WATER_ACCENT}
+          onSelectArea={() => {}}
+          accentColor={waterAccent}
         />
 
         {/* Realtime stat + sparkline (giống TestApp) */}
@@ -297,7 +220,7 @@ const WaterUsageScreen = () => {
               <View key={item.key} style={waterUsageStyles.statCard}>
                 <Text style={waterUsageStyles.statLabel}>{item.label}</Text>
                 <View style={waterUsageStyles.statValueRow}>
-                  <Text style={[waterUsageStyles.statValue, { color: WATER_ACCENT }]}>
+                  <Text style={[waterUsageStyles.statValue, { color: waterAccent }]}>
                     {item.valueText}
                   </Text>
                   <Text style={waterUsageStyles.statUnit}>{item.unit}</Text>
@@ -310,7 +233,7 @@ const WaterUsageScreen = () => {
         <View style={waterUsageStyles.sparkCard}>
           <View style={waterUsageStyles.sparkHeader}>
             <Text style={waterUsageStyles.sparkTitle}>LƯU LƯỢNG THỰC</Text>
-            <Text style={[waterUsageStyles.sparkCurrent, { color: WATER_ACCENT }]}>
+            <Text style={[waterUsageStyles.sparkCurrent, { color: waterAccent }]}>
               {sparkCurrent} L/min
             </Text>
           </View>
@@ -345,7 +268,7 @@ const WaterUsageScreen = () => {
                         style={{
                           height: h,
                           width: barW,
-                          backgroundColor: WATER_ACCENT,
+                          backgroundColor: waterAccent,
                           opacity,
                           borderTopLeftRadius: 4,
                           borderTopRightRadius: 4,
@@ -359,75 +282,61 @@ const WaterUsageScreen = () => {
           )}
         </View>
 
-        {isAllArea ? (
-          <>
-            <View style={waterUsageStyles.chartCard}>
-              <Text style={waterUsageStyles.chartTitle}>
-                {t("consumption.chart_title_water")}
-              </Text>
-              {usage.loading ? (
-                <ActivityIndicator size="large" color="#20B8EB" style={{ marginVertical: 24 }} />
-              ) : (
-                <View
-                  style={[
-                    waterUsageStyles.chartWrapper,
-                    { width: screenWidth - 80 },
-                  ]}
-                >
-                  <View style={waterUsageStyles.chartBar}>
-                    {summaryBars.map((bar) => {
-                      const heightRatio = maxSummary > 0 ? bar.value / maxSummary : 0;
-                      const barHeight = Math.max(8, heightRatio * MAX_BAR_HEIGHT);
-                      return (
-                        <View key={bar.key} style={waterUsageStyles.barGroup}>
-                          <View
-                            style={{
-                              width: "80%",
-                              maxWidth: 48,
-                              height: barHeight,
-                              backgroundColor: "#20B8EB",
-                              borderTopLeftRadius: 6,
-                              borderTopRightRadius: 6,
-                            }}
-                          />
-                          <Text style={waterUsageStyles.barLabel} numberOfLines={1}>
-                            {bar.label}
-                          </Text>
-                          <Text style={{ fontSize: 10, color: "#64748b", marginTop: 2 }}>
-                            {bar.value.toFixed(2)} {usage.unit}
-                          </Text>
-                        </View>
-                      );
-                    })}
-                  </View>
-                </View>
-              )}
-              <Text style={{ fontSize: 12, color: "#64748b", marginTop: 8, textAlign: "center" }}>
-                ({t("consumption.unit_L")})
-              </Text>
-            </View>
-
-            <View style={waterUsageStyles.chartCard}>
-              <Text style={waterUsageStyles.chartTitle}>
-                {t("consumption.chart_title_pie")}
-              </Text>
-              <Text style={{ fontSize: 13, color: "#64748b", textAlign: "center", paddingVertical: 16 }}>
-                {t("consumption.no_data_area")}
-              </Text>
-            </View>
-          </>
-        ) : (
-          <View style={waterUsageStyles.chartCard}>
+        <View style={waterUsageStyles.chartCard}>
             <Text style={waterUsageStyles.chartTitle}>
-              {areaOptions.find((a) => a.id === selectedArea)?.label ?? selectedArea}
+              {t("consumption.chart_title_water")}
             </Text>
-            <Text style={{ fontSize: 14, color: "#64748b", textAlign: "center", paddingVertical: 32 }}>
-              {t("consumption.no_data_area")}
+            {usage.loading ? (
+              <ActivityIndicator size="large" color={waterAccent} style={{ marginVertical: 24 }} />
+            ) : (
+              <View
+                style={[
+                  waterUsageStyles.chartWrapper,
+                  { width: screenWidth - 80 },
+                ]}
+              >
+                <View style={waterUsageStyles.chartBar}>
+                  {summaryBars.map((bar) => {
+                    const heightRatio = maxSummary > 0 ? bar.value / maxSummary : 0;
+                    const barHeight = Math.max(8, heightRatio * MAX_BAR_HEIGHT);
+                    return (
+                      <View key={bar.key} style={waterUsageStyles.barGroup}>
+                        <View
+                          style={{
+                            width: "80%",
+                            maxWidth: 48,
+                            height: barHeight,
+                            backgroundColor: waterAccent,
+                            borderTopLeftRadius: 6,
+                            borderTopRightRadius: 6,
+                          }}
+                        />
+                        <Text style={waterUsageStyles.barLabel} numberOfLines={1}>
+                          {bar.label}
+                        </Text>
+                        <Text style={{ fontSize: 10, color: "#64748b", marginTop: 2 }}>
+                          {bar.value.toFixed(2)} {usage.unit}
+                        </Text>
+                      </View>
+                    );
+                  })}
+                </View>
+              </View>
+            )}
+            <Text style={{ fontSize: 12, color: "#64748b", marginTop: 8, textAlign: "center" }}>
+              ({t("consumption.unit_L")})
             </Text>
-          </View>
-        )}
+        </View>
+
+        <View style={waterUsageStyles.chartCard}>
+          <Text style={waterUsageStyles.chartTitle}>
+            {t("consumption.chart_title_pie")}
+          </Text>
+          <Text style={{ fontSize: 13, color: "#64748b", textAlign: "center", paddingVertical: 16 }}>
+            {t("consumption.no_data_area")}
+          </Text>
+        </View>
       </ScrollView>
-      </View>
     </View>
   );
 };

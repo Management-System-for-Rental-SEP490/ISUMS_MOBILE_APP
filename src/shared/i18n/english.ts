@@ -15,7 +15,9 @@ export default {
         "cancel": "Cancel",
         "try_again": "Try again",
         "save": "Save",
-        "warning_different_house": "Warning: This device belongs to {{houseName}}, not the currently selected house."
+        "warning_different_house": "Warning: This device belongs to {{houseName}}, not the currently selected house.",
+        "read_more": "Read more",
+        "show_less": "Show less"
     },
     "device_detail": {
         "title": "Device Details",
@@ -130,7 +132,7 @@ export default {
     },
     "staff_home": {
         "schedule_title": "This week's work schedule",
-        "schedule_summary_title": "When you have work (summary)",
+        "schedule_summary_title": "Work summary",
         "schedule_no_slots": "No slots this week",
         "schedule_col_time": "Time",
         "schedule_col_building": "Building",
@@ -200,6 +202,9 @@ export default {
     "staff_item_create": {
         "title": "Add device",
         "house_label": "House",
+        "function_area_label": "Placement location",
+        "function_area_none": "No functional area",
+        "function_area_unknown": "Saved area (not in current list)",
         "category_label": "Category",
         "display_name_label": "Display name",
         "display_name_placeholder": "e.g. Living room AC",
@@ -304,7 +309,10 @@ export default {
         "status_inactive": "Inactive",
         "status_pending": "Pending",
         "house_status_available": "In use",
-        "house_status_rented": "Rented",
+        "house_status_rented": "Renting",
+        "house_status_vacant": "Vacant",
+        "house_status_maintenance": "Under maintenance",
+        "house_status_unavailable": "Unavailable",
         "house_status_other": "{{status}}",
         "functional_areas_title": "Functional areas",
         "functional_areas_empty": "No functional areas",
@@ -371,6 +379,7 @@ export default {
         "loading_data": "Loading data...",
         "switch_house": "Switch House",
         "select_house": "Select House",
+        "house_detail_screen_title": "House details",
         "house_info": {
             "address": "Address:",
             "description": "Description:",
@@ -381,6 +390,9 @@ export default {
         },
         "device_list": {
             "title": "Device List ({{count}})",
+            "by_area_title": "Devices by area",
+            "areas_row_label": "Select area",
+            "area_all_devices": "All areas",
             "status": {
                 "active": "Active",
                 "maintenance": "Maintenance",
@@ -457,5 +469,19 @@ export default {
         "type_date": "Date",
         "no_result": "No results for \"{{query}}\"",
         "viewing_date": "Viewing: {{date}}"
+    },
+    "dropdown_box": {
+        "title": "Filters & selection",
+        "search_placeholder": "Search name, address, floor, category…",
+        "no_results": "No matching items.",
+        "section_floor": "Floor",
+        "section_category": "Device category",
+        "section_house": "House",
+        "section_status": "Status",
+        "floor_short": "Floor",
+        "category_short": "Category",
+        "house_short": "House",
+        "status_short": "Status",
+        "open_a11y": "Open filters"
     }
 }

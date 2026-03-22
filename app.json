@@ -2,7 +2,7 @@
   "expo": {
     "name": "ISUMS",
     "slug": "ISUMS",
-    "scheme": "isums",
+    "scheme": "isumstenant",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/logob.png",
@@ -17,6 +17,7 @@
       "supportsTablet": true
     },
     "android": {
+      "softwareKeyboardLayoutMode": "resize",
       "adaptiveIcon": {
         "foregroundImage": "./assets/logob.png",
         "backgroundColor": "#ffffff"
@@ -34,7 +35,7 @@
           "autoVerify": true,
           "data": [
             {
-              "scheme": "isums"
+              "scheme": "isumstenant"
             }
           ],
           "category": [

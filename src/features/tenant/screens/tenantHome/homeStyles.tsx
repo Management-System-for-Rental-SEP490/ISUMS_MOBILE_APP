@@ -1,9 +1,16 @@
 import { StyleSheet } from "react-native";
+import {
+  brandPrimary,
+  brandSecondary,
+  brandTintBg,
+  neutral,
+} from "../../../../shared/theme/color";
+import { appTypography } from "../../../../shared/utils";
 
 export const homeStyles = StyleSheet.create({
     container: {
         flex: 1,
-        backgroundColor: "#F3F4F6", // Màu nền xám nhạt (Gray-100)
+        backgroundColor: neutral.background,
     },
     loadingContainer: {
         flex: 1,
@@ -12,59 +19,91 @@ export const homeStyles = StyleSheet.create({
     },
     // Style cho phần Header thông tin nhà
     houseInfoCard: {
-        backgroundColor: "white",
+        backgroundColor: neutral.surface,
         margin: 16,
         padding: 16,
         borderRadius: 12,
-        shadowColor: "#000",
+        shadowColor: neutral.black,
         shadowOffset: { width: 0, height: 2 },
         shadowOpacity: 0.1,
         shadowRadius: 4,
         elevation: 3, // Bóng đổ cho Android
     },
     houseTitle: {
-        fontSize: 18,
-        fontWeight: "bold",
-        color: "#1F2937", // Gray-800
+        ...appTypography.cardTitle,
+        color: neutral.heading,
         marginBottom: 8,
     },
     houseDetailRow: {
         flexDirection: "row",
-        alignItems: "center",
+        alignItems: "flex-start",
         marginTop: 4,
     },
     houseLabel: {
-        color: "#6B7280", // Gray-500
+        ...appTypography.labelRow,
+        color: neutral.textSecondary,
         width: 80,
-        fontSize: 14,
     },
     houseValue: {
-        color: "#374151", // Gray-700
-        fontWeight: "500",
-        fontSize: 14,
+        ...appTypography.labelRowValue,
+        color: neutral.textBody,
         flex: 1,
     },
     
     // Style cho phần danh sách thiết bị
     sectionTitle: {
-        fontSize: 16,
-        fontWeight: "bold",
-        color: "#1F2937",
+        ...appTypography.sectionHeading,
+        color: neutral.heading,
         marginLeft: 16,
         marginBottom: 8,
         marginTop: 8,
+    },
+    /** Thanh chọn tầng trên Home (gọn, sát sơ đồ). */
+    deviceFloorScroll: {
+        marginBottom: 2,
+        marginTop: 0,
+    },
+    deviceFloorContent: {
+        flexDirection: "row",
+        alignItems: "center",
+        gap: 6,
+        paddingVertical: 2,
+        paddingLeft: 16,
+        paddingRight: 16,
+    },
+    deviceFloorChip: {
+        paddingHorizontal: 12,
+        paddingVertical: 6,
+        borderRadius: 14,
+        backgroundColor: neutral.surface,
+        borderWidth: 1,
+        borderColor: neutral.border,
+        minHeight: 32,
+        justifyContent: "center",
+    },
+    deviceFloorChipActive: {
+        backgroundColor: brandTintBg,
+        borderColor: brandPrimary,
+    },
+    deviceFloorChipText: {
+        fontSize: 12,
+        fontWeight: "600",
+        color: neutral.textSecondary,
+    },
+    deviceFloorChipTextActive: {
+        color: brandPrimary,
     },
     deviceListContent: {
         paddingBottom: 20,
     },
     deviceCard: {
-        backgroundColor: "white",
+        backgroundColor: neutral.surface,
         marginHorizontal: 16,
         marginBottom: 12,
         padding: 12,
         borderRadius: 8,
         borderWidth: 1,
-        borderColor: "#E5E7EB", // Gray-200
+        borderColor: neutral.border,
         flexDirection: "row",
         alignItems: "center",
         justifyContent: "space-between",
@@ -78,7 +117,7 @@ export const homeStyles = StyleSheet.create({
         width: 40,
         height: 40,
         borderRadius: 20,
-        backgroundColor: "#EEF2FF", // Indigo-50
+        backgroundColor: brandTintBg,
         justifyContent: "center",
         alignItems: "center",
         marginRight: 12,
@@ -87,13 +126,12 @@ export const homeStyles = StyleSheet.create({
         flex: 1,
     },
     deviceName: {
-        fontSize: 15,
-        fontWeight: "600",
-        color: "#111827",
+        ...appTypography.listTitle,
+        color: neutral.text,
     },
     deviceLocation: {
-        fontSize: 13,
-        color: "#6B7280",
+        ...appTypography.listSubtitle,
+        color: neutral.textSecondary,
         marginTop: 2,
     },
     statusBadge: {
@@ -102,8 +140,7 @@ export const homeStyles = StyleSheet.create({
         borderRadius: 12,
     },
     statusText: {
-        fontSize: 11,
-        fontWeight: "600",
+        ...appTypography.badge,
     },
     /** Thanh cuộn ngang chọn danh mục (category) từ API asset/categories */
     categoryScroll: {
@@ -122,36 +159,35 @@ export const homeStyles = StyleSheet.create({
         paddingHorizontal: 14,
         paddingVertical: 8,
         borderRadius: 20,
-        backgroundColor: "#fff",
+        backgroundColor: neutral.surface,
         borderWidth: 1,
-        borderColor: "#E5E7EB",
+        borderColor: neutral.border,
     },
     categoryChipActive: {
-        backgroundColor: "#2563EB",
-        borderColor: "#2563EB",
+        backgroundColor: brandPrimary,
+        borderColor: brandPrimary,
     },
     categoryChipText: {
-        fontSize: 13,
-        fontWeight: "600",
-        color: "#6B7280",
+        ...appTypography.chip,
+        color: neutral.textSecondary,
     },
     categoryChipTextActive: {
-        color: "#fff",
+        color: neutral.surface,
     },
     // Nhóm theo danh mục
     devicesEmpty: {
         marginTop: 16,
         paddingVertical: 24,
         paddingHorizontal: 16,
-        backgroundColor: "#fff",
+        backgroundColor: neutral.surface,
         borderRadius: 12,
         borderWidth: 1,
-        borderColor: "#E5E7EB",
+        borderColor: neutral.border,
         alignItems: "center",
     },
     devicesEmptyText: {
-        fontSize: 14,
-        color: "#94a3b8",
+        ...appTypography.body,
+        color: neutral.slate400,
         textAlign: "center",
     },
     /** Block tổng quan tiêu thụ IoT (điện + nước) trên Home */
@@ -167,9 +203,8 @@ export const homeStyles = StyleSheet.create({
         marginBottom: 10,
     },
     usageSummaryTitle: {
-        fontSize: 16,
-        fontWeight: "700",
-        color: "#1F2937",
+        ...appTypography.sectionHeading,
+        color: neutral.heading,
     },
     usageSummaryLiveChip: {
         flexDirection: "row",
@@ -186,7 +221,7 @@ export const homeStyles = StyleSheet.create({
         borderRadius: 3,
     },
     usageSummaryLiveText: {
-        fontSize: 11,
+        ...appTypography.badge,
         fontWeight: "700",
         letterSpacing: 0.5,
     },
@@ -196,30 +231,29 @@ export const homeStyles = StyleSheet.create({
     },
     usageSummaryCard: {
         flex: 1,
-        backgroundColor: "white",
+        backgroundColor: neutral.surface,
         padding: 12,
         borderRadius: 10,
         borderLeftWidth: 4,
-        shadowColor: "#000",
+        shadowColor: neutral.black,
         shadowOffset: { width: 0, height: 1 },
         shadowOpacity: 0.06,
         shadowRadius: 3,
         elevation: 2,
     },
     usageSummaryCardTitle: {
-        fontSize: 14,
-        fontWeight: "700",
-        color: "#374151",
+        ...appTypography.itemTitle,
+        color: neutral.textBody,
         marginBottom: 8,
     },
     usageSummaryCardRow: {
-        fontSize: 12,
-        color: "#6B7280",
+        ...appTypography.caption,
+        color: neutral.textSecondary,
         marginBottom: 4,
     },
     usageSummaryCardMonth: {
         fontWeight: "600",
-        color: "#1F2937",
+        color: neutral.heading,
     },
     
     // Styles cho Modal chọn nhà
@@ -231,22 +265,21 @@ export const homeStyles = StyleSheet.create({
         padding: 20,
     },
     modalContent: {
-        backgroundColor: 'white',
+        backgroundColor: neutral.surface,
         borderRadius: 12,
         width: '100%',
         maxHeight: '60%',
         padding: 20,
-        shadowColor: '#000',
+        shadowColor: neutral.black,
         shadowOffset: { width: 0, height: 2 },
         shadowOpacity: 0.25,
         shadowRadius: 4,
         elevation: 5,
     },
     modalTitle: {
-        fontSize: 18,
-        fontWeight: 'bold',
+        ...appTypography.modalTitle,
         marginBottom: 16,
-        color: '#1F2937',
+        color: neutral.heading,
         textAlign: 'center',
     },
     houseItem: {
@@ -258,29 +291,29 @@ export const homeStyles = StyleSheet.create({
         borderRadius: 8,
     },
     houseItemActive: {
-        backgroundColor: '#EFF6FF',
+        backgroundColor: brandTintBg,
     },
     houseItemText: {
-        fontSize: 16,
-        color: '#374151',
+        ...appTypography.modalListItem,
+        color: neutral.textBody,
     },
     houseItemTextActive: {
-        color: '#2563EB',
+        color: brandSecondary,
         fontWeight: '600',
     },
     separator: {
         height: 1,
-        backgroundColor: '#E5E7EB',
+        backgroundColor: neutral.border,
     },
     switchHouseButton: {
         paddingHorizontal: 8, 
         paddingVertical: 4, 
-        backgroundColor: '#E0F2FE', 
+        backgroundColor: brandTintBg, 
         borderRadius: 6,
     },
     switchHouseText: {
-        color: '#0284C7', 
-        fontSize: 12, 
+        ...appTypography.caption,
+        color: brandSecondary,
         fontWeight: '600',
     }
 });

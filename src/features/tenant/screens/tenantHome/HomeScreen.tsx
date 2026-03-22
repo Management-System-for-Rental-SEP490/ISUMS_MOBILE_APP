@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   View,
   Text,
@@ -6,36 +6,81 @@ import {
   ActivityIndicator,
   TouchableOpacity,
   RefreshControl,
-  ScrollView,
   Modal,
   TouchableWithoutFeedback,
+  KeyboardAvoidingView,
+  Platform,
+  ScrollView,
 } from "react-native";
-import { useQueries } from "@tanstack/react-query";
 import { useAuthStore } from "../../../../store/useAuthStore";
 import Header from "../../../../shared/components/header";
+import {
+  DropdownBox,
+  type DropdownBoxSection,
+} from "../../../../shared/components/dropdownBox";
 import SuggestionDropdown, { Suggestion } from "../../../../shared/components/SuggestionDropdown";
 import { HomeScreenProps, RootStackParamList } from "../../../../shared/types";
 import { useTranslation } from "react-i18next";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { NavigationProp } from "@react-navigation/native";
 import homeStyles from "./homeStyles";
 import {
   useTenantHouses,
   useAssetItems,
   useAssetCategories,
+  useAssetCategoryNamesByIds,
   useTenantContext,
-  ASSET_CATEGORY_KEYS,
+  useFunctionalAreasByHouseId,
 } from "../../../../shared/hooks";
+import { FloorPlanView } from "../../houseStructure";
+import { getMockFunctionalAreas } from "../../houseStructure/floorPlanPositions";
 import { useTenantIoTConnection, useTenantUsage } from "../../hooks/useTenantIoT";
-import { getAssetCategoryById } from "../../../../shared/services/assetCategoryApi";
+import { ExpandableLongText } from "../../../../shared/components/ExpandableLongText";
+import { DEFAULT_BE_SHORT_TEXT_MAX_CHARS } from "../../../../shared/utils";
+import {
+  brandBlueMutedBg,
+  brandBlueMutedBorder,
+  brandPrimary,
+  brandSecondary,
+  brandTintBg,
+  neutral,
+} from "../../../../shared/theme/color";
 import type {
   AssetItemFromApi,
   HouseFromApi,
   AssetCategoryFromApi,
+  FunctionalAreaFromApi,
 } from "../../../../shared/types/api";
+import {
+  formatHouseStatusForDisplay,
+  getTotalPages,
+  mergeFunctionalAreasForHouse,
+  parentScrollOffsetForDropdownField,
+  slicePage,
+} from "../../../../shared/utils";
+import { PaginationBar } from "../../../../shared/components/PaginationBar";
+
+/** Trạng thái nhà “đang gắn với tenant” (nhấn màu brand trên Home). */
+const isTenantHouseStatusHighlighted = (status?: string) => {
+  const u = status?.trim().toUpperCase();
+  return u === "AVAILABLE" || u === "RENTED";
+};
 
 const HomeScreen = ({ navigation }: HomeScreenProps) => {
   const { houseId, setHouseId } = useAuthStore();
   const { t } = useTranslation();
+  const insets = useSafeAreaInsets();
+  const deviceListRef = useRef<FlatList<AssetItemFromApi>>(null);
+  const deviceCategoryFilterYRef = useRef(0);
+  /** DropdownBox trong ListHeader — cuộn vừa đủ để thanh tìm nằm dưới header app, không kéo sát mép trên. */
+  const scrollDeviceCategoryFilterIntoView = useCallback(() => {
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        const target = parentScrollOffsetForDropdownField(deviceCategoryFilterYRef.current);
+        deviceListRef.current?.scrollToOffset({ offset: target, animated: true });
+      });
+    });
+  }, []);
   const [houseModalVisible, setHouseModalVisible] = useState(false);
 
   // 1. Lấy danh sách nhà GẮN VỚI TENANT hiện tại (API mới /api/houses/house)
@@ -92,46 +137,61 @@ const HomeScreen = ({ navigation }: HomeScreenProps) => {
   );
   /** Chuỗi tìm kiếm từ ô search trên Header. */
   const [searchQuery, setSearchQuery] = useState("");
+  const [deviceListPage, setDeviceListPage] = useState(1);
+  /** Tầng đang xem trên sơ đồ / danh sách khu vực (giống màn điện–nước). */
+  const [deviceFloor, setDeviceFloor] = useState("1");
+  /** null = mọi thiết bị (theo danh mục); chọn id = chỉ thiết bị gắn khu vực đó. */
+  const [selectedFunctionAreaId, setSelectedFunctionAreaId] = useState<string | null>(null);
 
-  const filteredDevices = useMemo(
-    () =>
-      selectedCategoryId == null
-        ? devices
-        : devices.filter((d) => d.categoryId === selectedCategoryId),
-    [devices, selectedCategoryId]
-  );
+  const houseIdForAreas = String(myHouse?.id ?? "").trim();
+  const { data: functionalAreasRes } = useFunctionalAreasByHouseId(houseIdForAreas);
+
+  const effectiveFunctionalAreas = useMemo((): FunctionalAreaFromApi[] => {
+    const merged = mergeFunctionalAreasForHouse(
+      myHouse ?? undefined,
+      functionalAreasRes?.data
+    );
+    if (merged.length > 0) return merged;
+    return getMockFunctionalAreas(houseIdForAreas || "mock");
+  }, [myHouse, functionalAreasRes?.data, houseIdForAreas]);
+
+  const floorOptions = useMemo(() => {
+    const fk = (a: FunctionalAreaFromApi) => String(a.floorNo ?? "").trim() || "1";
+    const floors = new Set(effectiveFunctionalAreas.map(fk));
+    const list = Array.from(floors).sort(
+      (a, b) => parseInt(a, 10) - parseInt(b, 10)
+    );
+    return list.length > 0 ? list : ["1", "2", "3"];
+  }, [effectiveFunctionalAreas]);
+
+  useEffect(() => {
+    if (floorOptions.length && !floorOptions.includes(deviceFloor)) {
+      setDeviceFloor(floorOptions[0]!);
+    }
+  }, [floorOptions, deviceFloor]);
+
+  useEffect(() => {
+    setSelectedFunctionAreaId(null);
+  }, [deviceFloor, myHouse?.id]);
+
+  const filteredDevices = useMemo(() => {
+    let list = devices;
+    if (selectedCategoryId != null) {
+      list = list.filter((d) => d.categoryId === selectedCategoryId);
+    }
+    if (selectedFunctionAreaId != null) {
+      list = list.filter((d) => d.functionAreaId === selectedFunctionAreaId);
+    }
+    return list;
+  }, [devices, selectedCategoryId, selectedFunctionAreaId]);
 
   // Tên category: nếu categories list chưa có categoryId của từng item thì gọi GET /assets/categories/:id.
-  const uniqueCategoryIds = useMemo(() => {
-    return Array.from(new Set(filteredDevices.map((d) => d.categoryId).filter(Boolean)));
-  }, [filteredDevices]);
+  const uniqueCategoryIds = useMemo(
+    () => Array.from(new Set(filteredDevices.map((d) => d.categoryId).filter(Boolean))),
+    [filteredDevices]
+  );
 
-  const missingCategoryIds = useMemo(() => {
-    return uniqueCategoryIds.filter((id) => !categories.some((c) => c.id === id));
-  }, [uniqueCategoryIds, categories]);
-
-  const categoryByIdQueries = useQueries({
-    queries: missingCategoryIds.map((id) => ({
-      queryKey: ASSET_CATEGORY_KEYS.byId(id),
-      queryFn: () => getAssetCategoryById(id),
-      enabled: Boolean(id),
-      staleTime: 1000 * 60 * 5,
-      refetchOnMount: false,
-      refetchOnWindowFocus: false,
-      refetchOnReconnect: false,
-    })),
-  });
-
-  const categoryByIdNameMap = useMemo(() => {
-    const map = new Map<string, string>();
-    for (let i = 0; i < missingCategoryIds.length; i++) {
-      const id = missingCategoryIds[i];
-      const res = categoryByIdQueries[i];
-      const name = res?.data?.data?.name;
-      if (id && name) map.set(id, name);
-    }
-    return map;
-  }, [categoryByIdQueries, missingCategoryIds]);
+  const { categoryNameById } = useAssetCategoryNamesByIds(uniqueCategoryIds, categories);
 
   /** Lọc thiết bị (đã lọc category) theo từ khoá tìm kiếm (tên / tên danh mục). */
   const displayDevices = useMemo(() => {
@@ -140,14 +200,70 @@ const HomeScreen = ({ navigation }: HomeScreenProps) => {
     return filteredDevices.filter((item) => {
       const catName =
         categories.find((c) => c.id === item.categoryId)?.name ??
-        categoryByIdNameMap.get(item.categoryId) ??
+        categoryNameById.get(item.categoryId) ??
         "";
       return (
         (item.displayName ?? "").toLowerCase().includes(q) ||
         catName.toLowerCase().includes(q)
       );
     });
-  }, [filteredDevices, categories, searchQuery, categoryByIdNameMap]);
+  }, [filteredDevices, categories, searchQuery, categoryNameById]);
+
+  const deviceTotalPages = getTotalPages(displayDevices.length);
+  const pagedDisplayDevices = useMemo(
+    () => slicePage(displayDevices, deviceListPage),
+    [displayDevices, deviceListPage]
+  );
+
+  /** Đổi nhà / lọc / tìm kiếm / khu trên sơ đồ / tầng → về trang 1 danh sách thiết bị. */
+  useEffect(() => {
+    setDeviceListPage(1);
+  }, [
+    myHouse?.id,
+    selectedCategoryId,
+    searchQuery,
+    selectedFunctionAreaId,
+    deviceFloor,
+  ]);
+
+  useEffect(() => {
+    setDeviceListPage((pg) => Math.min(pg, deviceTotalPages));
+  }, [deviceTotalPages]);
+
+  const onDeviceListPageChange = useCallback((p: number) => {
+    setDeviceListPage(p);
+    requestAnimationFrame(() => {
+      deviceListRef.current?.scrollToOffset({ offset: 0, animated: true });
+    });
+  }, []);
+
+  const deviceCategoryFilterSections = useMemo((): DropdownBoxSection[] => {
+    return [
+      {
+        id: "category",
+        title: t("dropdown_box.section_category"),
+        items: categories.map((c) => ({ id: c.id, label: c.name })),
+        selectedId: selectedCategoryId,
+        showAllOption: true,
+      },
+    ];
+  }, [categories, selectedCategoryId, t]);
+
+  const deviceCategoryFilterSummary = useMemo(() => {
+    const all = t("staff_home.all_devices_category_all");
+    if (selectedCategoryId === null) {
+      return `${t("dropdown_box.category_short")}: ${all}`;
+    }
+    const name = categories.find((c) => c.id === selectedCategoryId)?.name ?? "";
+    return `${t("dropdown_box.category_short")}: ${name}`;
+  }, [selectedCategoryId, categories, t]);
+
+  const onDeviceCategoryFilterSelect = useCallback(
+    (sectionId: string, itemId: string | null) => {
+      if (sectionId === "category") setSelectedCategoryId(itemId);
+    },
+    []
+  );
 
   /** Gợi ý tìm kiếm: tối đa 6 thiết bị khớp với searchQuery. */
   const suggestions = useMemo<Suggestion[]>(() => {
@@ -157,11 +273,11 @@ const HomeScreen = ({ navigation }: HomeScreenProps) => {
       label: item.displayName,
       sublabel:
         categories.find((c) => c.id === item.categoryId)?.name ??
-        categoryByIdNameMap.get(item.categoryId) ??
+        categoryNameById.get(item.categoryId) ??
         "",
       typeLabel: t("search.type_item"),
     }));
-  }, [searchQuery, displayDevices, categories, t, categoryByIdNameMap]);
+  }, [searchQuery, displayDevices, categories, t, categoryNameById]);
 
   /** Xử lý khi chọn gợi ý: điều hướng tới màn chi tiết thiết bị. */
   const handleSuggestionSelect = (sug: Suggestion) => {
@@ -239,14 +355,14 @@ const HomeScreen = ({ navigation }: HomeScreenProps) => {
     // AssetStatus: API có thể trả về "AVAILABLE" nhưng app coi như "IN_USE"
     const normalizedStatus = item.status === "AVAILABLE" ? "IN_USE" : item.status;
 
-    // Xác định màu sắc và text cho trạng thái thiết bị
-    let statusColor = "#10B981"; // Green-500 (Active)
-    let statusBg = "#D1FAE5"; // Green-100
+    // Trạng thái thiết bị — chỉ dùng palette thương hiệu (theme/color).
+    let statusColor = brandPrimary;
+    let statusBg = brandTintBg;
     let statusLabel = t('home.device_list.status.active');
 
     if (item.status === "MAINTENANCE") {
-      statusColor = "#F59E0B"; // Amber-500
-      statusBg = "#FEF3C7"; // Amber-100
+      statusColor = brandSecondary;
+      statusBg = brandBlueMutedBg;
       statusLabel = t('home.device_list.status.maintenance');
     } else if (
       item.status === "INACTIVE" ||
@@ -254,18 +370,18 @@ const HomeScreen = ({ navigation }: HomeScreenProps) => {
       item.status === "BROKEN" ||
       item.status === "DELETED"
     ) {
-      statusColor = "#EF4444"; // Red-500
-      statusBg = "#FEE2E2"; // Red-100
+      statusColor = brandSecondary;
+      statusBg = brandBlueMutedBg;
       statusLabel = t('home.device_list.status.inactive');
     } else if (normalizedStatus === "IN_USE" || normalizedStatus === "ACTIVE") {
-      statusColor = "#10B981"; // Green-500
-      statusBg = "#D1FAE5"; // Green-100
+      statusColor = brandPrimary;
+      statusBg = brandTintBg;
       statusLabel = t("home.device_list.status.active");
     }
 
     const categoryName =
       categories.find((c) => c.id === item.categoryId)?.name ||
-      categoryByIdNameMap.get(item.categoryId) ||
+      categoryNameById.get(item.categoryId) ||
       t("staff_item_list.category_other");
 
     return (
@@ -346,9 +462,12 @@ const HomeScreen = ({ navigation }: HomeScreenProps) => {
               <Text style={homeStyles.houseLabel}>
                 {t("home.house_info.address")}
               </Text>
-              <Text style={homeStyles.houseValue} numberOfLines={2}>
-                {myHouse?.address}
-              </Text>
+              <ExpandableLongText
+                text={myHouse?.address}
+                maxLength={DEFAULT_BE_SHORT_TEXT_MAX_CHARS}
+                textStyle={homeStyles.houseValue}
+                containerStyle={{ flex: 1 }}
+              />
             </View>
 
             {/* Các thông tin khác nếu có trong API HouseFromApi */}
@@ -357,9 +476,11 @@ const HomeScreen = ({ navigation }: HomeScreenProps) => {
                 <Text style={homeStyles.houseLabel}>
                   {t("home.house_info.description")}
                 </Text>
-                <Text style={homeStyles.houseValue}>
-                  {myHouse.description}
-                </Text>
+                <ExpandableLongText
+                  text={myHouse.description}
+                  textStyle={homeStyles.houseValue}
+                  containerStyle={{ flex: 1 }}
+                />
               </View>
             )}
 
@@ -371,14 +492,13 @@ const HomeScreen = ({ navigation }: HomeScreenProps) => {
                 style={[
                   homeStyles.houseValue,
                   {
-                    color:
-                      myHouse?.status === "RENTED" ? "#16a34a" : "#6b7280",
+                    color: isTenantHouseStatusHighlighted(myHouse?.status)
+                      ? brandPrimary
+                      : neutral.textSecondary,
                   },
                 ]}
               >
-                {myHouse?.status === "RENTED"
-                  ? t("home.house_info.status_active")
-                  : myHouse?.status}
+                {formatHouseStatusForDisplay(myHouse?.status, t)}
               </Text>
             </View>
           </View>
@@ -394,21 +514,21 @@ const HomeScreen = ({ navigation }: HomeScreenProps) => {
               style={[
                 homeStyles.usageSummaryLiveChip,
                 {
-                  backgroundColor: iotConnected ? "rgba(74,222,128,0.15)" : "rgba(248,113,113,0.15)",
-                  borderColor: iotConnected ? "rgba(74,222,128,0.5)" : "rgba(248,113,113,0.5)",
+                  backgroundColor: iotConnected ? brandTintBg : brandBlueMutedBg,
+                  borderColor: iotConnected ? "rgba(59, 181, 130, 0.45)" : brandBlueMutedBorder,
                 },
               ]}
             >
               <View
                 style={[
                   homeStyles.usageSummaryLiveDot,
-                  { backgroundColor: iotConnected ? "#4ADE80" : "#F87171" },
+                  { backgroundColor: iotConnected ? brandPrimary : brandSecondary },
                 ]}
               />
               <Text
                 style={[
                   homeStyles.usageSummaryLiveText,
-                  { color: iotConnected ? "#16a34a" : "#dc2626" },
+                  { color: iotConnected ? brandPrimary : brandSecondary },
                 ]}
               >
                 {iotConnected ? t("consumption.iot_live") : t("consumption.iot_offline")}
@@ -417,7 +537,7 @@ const HomeScreen = ({ navigation }: HomeScreenProps) => {
           </View>
           <View style={homeStyles.usageSummaryCards}>
             <TouchableOpacity
-              style={[homeStyles.usageSummaryCard, { borderLeftColor: "#2563EB" }]}
+              style={[homeStyles.usageSummaryCard, { borderLeftColor: brandPrimary }]}
               onPress={() => navigation.navigate("ElectricUsage")}
               activeOpacity={0.8}
             >
@@ -425,7 +545,7 @@ const HomeScreen = ({ navigation }: HomeScreenProps) => {
                 {t("consumption.electric_summary")}
               </Text>
               {electricUsage.loading ? (
-                <ActivityIndicator size="small" color="#2563EB" style={{ marginVertical: 8 }} />
+                <ActivityIndicator size="small" color={brandPrimary} style={{ marginVertical: 8 }} />
               ) : (
                 <>
                   <Text style={homeStyles.usageSummaryCardRow}>
@@ -441,7 +561,7 @@ const HomeScreen = ({ navigation }: HomeScreenProps) => {
               )}
             </TouchableOpacity>
             <TouchableOpacity
-              style={[homeStyles.usageSummaryCard, { borderLeftColor: "#0D9488" }]}
+              style={[homeStyles.usageSummaryCard, { borderLeftColor: brandPrimary }]}
               onPress={() => navigation.navigate("WaterUsage")}
               activeOpacity={0.8}
             >
@@ -449,7 +569,7 @@ const HomeScreen = ({ navigation }: HomeScreenProps) => {
                 {t("consumption.water_summary")}
               </Text>
               {waterUsage.loading ? (
-                <ActivityIndicator size="small" color="#0D9488" style={{ marginVertical: 8 }} />
+                <ActivityIndicator size="small" color={brandPrimary} style={{ marginVertical: 8 }} />
               ) : (
                 <>
                   <Text style={homeStyles.usageSummaryCardRow}>
@@ -467,61 +587,70 @@ const HomeScreen = ({ navigation }: HomeScreenProps) => {
           </View>
         </View>
 
-        {/* Tiêu đề danh sách thiết bị – hiển thị số thiết bị sau khi lọc theo danh mục + search */}
-        <Text style={homeStyles.sectionTitle}>
-          {t("home.device_list.title", { count: displayDevices.length })}
+        {/* Thiết bị: chọn tầng (gọn) → sơ đồ → danh mục → danh sách */}
+        <Text style={[homeStyles.sectionTitle, { marginBottom: 4 }]}>
+          {t("home.device_list.by_area_title")}
         </Text>
-
-        {/* Thanh category ngang: Tất cả + các danh mục có thiết bị trong nhà (từ API categories) */}
         <ScrollView
           horizontal
           showsHorizontalScrollIndicator={false}
-          style={homeStyles.categoryScroll}
-          contentContainerStyle={homeStyles.categoryContent}
+          style={homeStyles.deviceFloorScroll}
+          contentContainerStyle={homeStyles.deviceFloorContent}
+          keyboardShouldPersistTaps="handled"
         >
-          <TouchableOpacity
-            style={[
-              homeStyles.categoryChip,
-              selectedCategoryId === null && homeStyles.categoryChipActive,
-            ]}
-            onPress={() => setSelectedCategoryId(null)}
-            activeOpacity={0.8}
-          >
-            <Text
-              style={[
-                homeStyles.categoryChipText,
-                selectedCategoryId === null &&
-                  homeStyles.categoryChipTextActive,
-              ]}
-            >
-              {t("staff_home.all_devices_category_all")}
-            </Text>
-          </TouchableOpacity>
-          {categories.map((cat) => {
-            const isActive = selectedCategoryId === cat.id;
+          {floorOptions.map((floor) => {
+            const active = deviceFloor === floor;
             return (
               <TouchableOpacity
-                key={cat.id}
+                key={floor}
                 style={[
-                  homeStyles.categoryChip,
-                  isActive && homeStyles.categoryChipActive,
+                  homeStyles.deviceFloorChip,
+                  active && homeStyles.deviceFloorChipActive,
                 ]}
-                onPress={() => setSelectedCategoryId(cat.id)}
+                onPress={() => setDeviceFloor(floor)}
                 activeOpacity={0.8}
               >
                 <Text
                   style={[
-                    homeStyles.categoryChipText,
-                    isActive && homeStyles.categoryChipTextActive,
+                    homeStyles.deviceFloorChipText,
+                    active && homeStyles.deviceFloorChipTextActive,
                   ]}
-                  numberOfLines={1}
                 >
-                  {cat.name}
+                  {t("consumption.floor_label", { floor })}
                 </Text>
               </TouchableOpacity>
             );
           })}
         </ScrollView>
+
+        <FloorPlanView
+          selectedFloor={deviceFloor}
+          selectedAreaId={selectedFunctionAreaId ?? "all"}
+          functionalAreas={effectiveFunctionalAreas}
+          onSelectArea={(id) =>
+            setSelectedFunctionAreaId((prev) => (prev === id ? null : id))
+          }
+          accentColor={brandPrimary}
+        />
+
+        <View
+          onLayout={(e) => {
+            deviceCategoryFilterYRef.current = e.nativeEvent.layout.y;
+          }}
+        >
+          <DropdownBox
+            sections={deviceCategoryFilterSections}
+            summary={deviceCategoryFilterSummary}
+            onSelect={onDeviceCategoryFilterSelect}
+            style={{ marginHorizontal: 16, marginBottom: 8 }}
+            keyboardVerticalOffset={insets.top + 52}
+            onSearchInputFocus={scrollDeviceCategoryFilterIntoView}
+          />
+        </View>
+
+        <Text style={[homeStyles.sectionTitle, { marginTop: 8 }]}>
+          {t("home.device_list.title", { count: displayDevices.length })}
+        </Text>
       </View>
     );
   };
@@ -530,29 +659,38 @@ const HomeScreen = ({ navigation }: HomeScreenProps) => {
     <View style={homeStyles.container}>
       <Header
         variant="default"
-        showSearch
-        searchQuery={searchQuery}
-        onSearchChange={setSearchQuery}
-        searchPlaceholder={t("search.placeholder_tenant")}
       />
 
-      <View style={{ flex: 1 }}>
+      <KeyboardAvoidingView
+        style={{ flex: 1 }}
+        behavior={Platform.OS === "ios" ? "padding" : undefined}
+        keyboardVerticalOffset={insets.top + 52}
+      >
         {loading && !housesData ? (
           <View style={homeStyles.loadingContainer}>
-            <ActivityIndicator size="large" color="#3B82F6" />
-            <Text style={{ marginTop: 10, color: "#6B7280" }}>
+            <ActivityIndicator size="large" color={brandPrimary} />
+            <Text style={{ marginTop: 10, color: neutral.textSecondary }}>
               {t("home.loading_data")}
             </Text>
           </View>
         ) : (
           <FlatList
-            data={displayDevices}
+            ref={deviceListRef}
+            data={pagedDisplayDevices}
             renderItem={renderDeviceItem}
             keyExtractor={(item) => item.id}
             ListHeaderComponent={renderListHeader}
             contentContainerStyle={homeStyles.deviceListContent}
             showsVerticalScrollIndicator={false}
             keyboardShouldPersistTaps="handled"
+            ListFooterComponent={() => (
+              <PaginationBar
+                currentPage={deviceListPage}
+                totalPages={deviceTotalPages}
+                onPageChange={onDeviceListPageChange}
+                style={{ paddingBottom: Math.max(8, insets.bottom) }}
+              />
+            )}
             ListEmptyComponent={
               !loading && hasTenantHouse
                 ? () => (
@@ -575,7 +713,7 @@ const HomeScreen = ({ navigation }: HomeScreenProps) => {
           query={searchQuery}
           onSelect={handleSuggestionSelect}
         />
-      </View>
+      </KeyboardAvoidingView>
 
       {/* Modal chọn nhà */}
       <Modal
@@ -612,7 +750,7 @@ const HomeScreen = ({ navigation }: HomeScreenProps) => {
                         {item.name}
                       </Text>
                       {item.id === myHouse?.id && (
-                        <Text style={{ color: '#3B82F6', fontWeight: 'bold' }}>✓</Text>
+                        <Text style={{ color: brandPrimary, fontWeight: 'bold' }}>✓</Text>
                       )}
                     </TouchableOpacity>
                   )}

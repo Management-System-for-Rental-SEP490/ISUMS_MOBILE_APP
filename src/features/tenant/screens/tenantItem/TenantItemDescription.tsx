@@ -3,7 +3,7 @@
  * hiển thị giống staff ItemDescription (nhà, danh mục, tên, serial, NFC, QR, tình trạng, trạng thái).
  * Có nút "Báo cáo sự cố" chuyển sang Ticket.
  */
-import React, { useCallback, useState } from "react";
+import React, { useCallback, useMemo, useState } from "react";
 import {
   View,
   Text,
@@ -20,10 +20,26 @@ import { RootStackParamList } from "../../../../shared/types";
 import type { Device, DeviceStatus } from "../../../../shared/types";
 import type { AssetItemFromApi } from "../../../../shared/types/api";
 import Icons from "../../../../shared/theme/icon";
-import { useTenantContext } from "../../../../shared/hooks";
-import { useAssetCategoryById, useAssetCategories } from "../../../../shared/hooks";
+import {
+  useAssetCategoryById,
+  useAssetCategories,
+  useFunctionalAreasByHouseId,
+  useTenantContext,
+} from "../../../../shared/hooks";
+import { mergeFunctionalAreasForHouse } from "../../../../shared/utils";
 import { tenantItemDescriptionStyles as itemScreenStyles } from "./tenantItemDescriptionStyles";
 import { getAssetItemById } from "../../../../shared/services/assetItemApi";
+import { brandPrimary, neutral } from "../../../../shared/theme/color";
+import {
+  StackScreenTitleBadge,
+  StackScreenTitleBarBalance,
+  StackScreenTitleHeaderStrip,
+  stackScreenTitleBackBtnOnBrand,
+  stackScreenTitleCenterSlotStyle,
+  stackScreenTitleOnBrandIconColor,
+  stackScreenTitleRowStyle,
+  stackScreenTitleSideSlotStyle,
+} from "../../../../shared/components/StackScreenTitleBadge";
 
 type NavProp = NativeStackNavigationProp<RootStackParamList, "TenantItemDetail">;
 type RoutePropType = RouteProp<RootStackParamList, "TenantItemDetail">;
@@ -76,6 +92,19 @@ export default function TenantItemDescriptionScreen() {
   const [item, setItem] = useState<AssetItemFromApi>(initialItem);
   const [loading, setLoading] = useState(false);
 
+  const houseIdForAreas = String(item.houseId ?? "").trim();
+  const { data: functionalAreasByHouseRes } =
+    useFunctionalAreasByHouseId(houseIdForAreas);
+
+  const placementFunctionalAreas = useMemo(
+    () =>
+      mergeFunctionalAreasForHouse(
+        house?.id === item.houseId ? house : undefined,
+        functionalAreasByHouseRes?.data
+      ),
+    [house, item.houseId, functionalAreasByHouseRes?.data]
+  );
+
   useFocusEffect(
     useCallback(() => {
       let isActive = true;
@@ -88,8 +117,8 @@ export default function TenantItemDescriptionScreen() {
             if (!latest.qrTag && initialItem.qrTag) latest.qrTag = initialItem.qrTag;
             setItem(latest);
           }
-        } catch (e) {
-          console.log("Error fetching item:", e);
+        } catch {
+          /* giữ dữ liệu từ route */
         } finally {
           if (isActive) setLoading(false);
         }
@@ -107,6 +136,19 @@ export default function TenantItemDescriptionScreen() {
     categories.find((c) => c.id === item.categoryId)?.name ??
     categoryByIdRes?.data?.name ??
     item.categoryId;
+
+  const placementDisplay = useMemo(() => {
+    const fid = item.functionAreaId;
+    if (!fid || !String(fid).trim()) return "—";
+    const a = placementFunctionalAreas.find((x) => x.id === fid);
+    if (a) {
+      const floorPart = (a.floorNo ?? "").trim()
+        ? t("staff_building_detail.functional_area_floor", { floor: a.floorNo })
+        : "";
+      return [a.name, floorPart].filter(Boolean).join(" · ");
+    }
+    return t("staff_item_create.function_area_unknown");
+  }, [item.functionAreaId, placementFunctionalAreas, t]);
 
   const getStatusStyle = () => {
     const normalizedStatus = item.status === "AVAILABLE" ? "IN_USE" : item.status;
@@ -141,6 +183,7 @@ export default function TenantItemDescriptionScreen() {
 
   const rows: { label: string; value: string }[] = [
     { label: t("staff_item_create.house_label"), value: houseName ?? "—" },
+    { label: t("staff_item_create.function_area_label"), value: placementDisplay },
     { label: t("staff_item_create.category_label"), value: categoryName },
     { label: t("staff_item_create.display_name_label"), value: item.displayName ?? "—" },
     { label: t("staff_item_create.serial_number_label"), value: item.serialNumber ?? "—" },
@@ -149,27 +192,33 @@ export default function TenantItemDescriptionScreen() {
     { label: t("staff_item_create.condition_label"), value: `${item.conditionPercent ?? 0}%` },
   ];
 
-  const safeStyle = { paddingTop: insets.top, paddingBottom: insets.bottom };
   const isDifferentHouse = house && item.houseId !== house.id;
 
   return (
-    <View style={[itemScreenStyles.container, safeStyle]}>
-      <View style={itemScreenStyles.topBar}>
-        <TouchableOpacity
-          style={itemScreenStyles.backBtn}
-          onPress={() => navigation.goBack()}
-          activeOpacity={0.7}
-        >
-          <Icons.chevronBack size={24} color="#1F2937" />
-        </TouchableOpacity>
-        <Text style={itemScreenStyles.topBarTitle} numberOfLines={1}>
-          {t("device_detail.title")}
-        </Text>
-      </View>
+    <View style={itemScreenStyles.container}>
+      <StackScreenTitleHeaderStrip>
+        <View style={stackScreenTitleRowStyle}>
+          <View style={stackScreenTitleSideSlotStyle}>
+            <TouchableOpacity
+              style={stackScreenTitleBackBtnOnBrand}
+              onPress={() => navigation.goBack()}
+              activeOpacity={0.7}
+            >
+              <Icons.chevronBack size={24} color={stackScreenTitleOnBrandIconColor} />
+            </TouchableOpacity>
+          </View>
+          <View style={stackScreenTitleCenterSlotStyle}>
+            <StackScreenTitleBadge numberOfLines={1}>
+              {t("device_detail.title")}
+            </StackScreenTitleBadge>
+          </View>
+          <StackScreenTitleBarBalance />
+        </View>
+      </StackScreenTitleHeaderStrip>
 
       {isDifferentHouse && (
-        <View style={{ backgroundColor: '#FEF2F2', padding: 12, marginHorizontal: 16, marginTop: 12, borderRadius: 8, borderWidth: 1, borderColor: '#FECACA' }}>
-          <Text style={{ color: '#B91C1C', fontSize: 13, fontWeight: '500' }}>
+        <View style={itemScreenStyles.errorBanner}>
+          <Text style={itemScreenStyles.errorBannerText}>
             {t("common.warning_different_house", { houseName: houseName || item.houseId })}
           </Text>
         </View>
@@ -177,7 +226,7 @@ export default function TenantItemDescriptionScreen() {
 
       {loading ? (
         <View style={{ flex: 1, justifyContent: "center", alignItems: "center" }}>
-          <ActivityIndicator size="large" color="#60A5FA" />
+          <ActivityIndicator size="large" color={brandPrimary} />
         </View>
       ) : (
         <ScrollView
@@ -243,7 +292,7 @@ export default function TenantItemDescriptionScreen() {
               activeOpacity={0.8}
             >
               <View style={itemScreenStyles.descriptionEditBtnContentRow}>
-                <Icons.warning size={20} color="#fff" />
+                <Icons.warning size={20} color={neutral.surface} />
                 <Text style={itemScreenStyles.descriptionEditBtnText}>
                   {t("device_detail.report_button")}
                 </Text>

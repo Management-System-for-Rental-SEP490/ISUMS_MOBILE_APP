@@ -1,13 +1,16 @@
 import { StyleSheet } from "react-native";
+import {
+  brandPrimary,
+  brandSecondary,
+  brandTintBg,
+  neutral,
+} from "../../../../shared/theme/color";
+import { appTypography } from "../../../../shared/utils/typography";
 
-/**
- * Styles cho màn hình Thông báo.
- * Đồng bộ với hệ thống: nền #F5F7FA, card trắng, bo góc, shadow nhẹ.
- */
 export const notificationStyles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#F5F7FA",
+    backgroundColor: neutral.canvasMuted,
   },
   listContent: {
     paddingHorizontal: 20,
@@ -15,12 +18,10 @@ export const notificationStyles = StyleSheet.create({
     paddingBottom: 100,
   },
   title: {
-    fontSize: 20,
-    fontWeight: "700",
-    color: "#1e293b",
+    ...appTypography.dialogTitle,
+    color: neutral.slate900,
     marginBottom: 16,
   },
-  /** Thanh danh mục (chưa nhiều mục nên để framework mở rộng). */
   sectionTabsRow: {
     flexDirection: "row",
     gap: 8,
@@ -32,23 +33,21 @@ export const notificationStyles = StyleSheet.create({
     paddingVertical: 8,
     borderRadius: 999,
     borderWidth: 1,
-    borderColor: "#E2E8F0",
-    backgroundColor: "#fff",
+    borderColor: neutral.slate200,
+    backgroundColor: neutral.surface,
   },
   sectionTabActive: {
-    borderColor: "#2563EB",
-    backgroundColor: "#DBEAFE",
+    borderColor: brandPrimary,
+    backgroundColor: brandTintBg,
   },
   sectionTabText: {
-    fontSize: 13,
+    ...appTypography.chip,
     fontWeight: "700",
-    color: "#334155",
+    color: neutral.slate700,
   },
   sectionTabTextActive: {
-    color: "#1D4ED8",
+    color: brandSecondary,
   },
-
-  /** Date selector (7 ngày gần nhất). */
   dateRow: {
     paddingVertical: 8,
   },
@@ -57,16 +56,14 @@ export const notificationStyles = StyleSheet.create({
     paddingVertical: 7,
     borderRadius: 20,
     borderWidth: 1,
-    borderColor: "#E2E8F0",
+    borderColor: neutral.slate200,
     marginRight: 10,
   },
   dateChipText: {
-    fontSize: 12,
+    ...appTypography.caption,
     fontWeight: "700",
-    color: "#475569",
+    color: neutral.slate600,
   },
-
-  /** Filter chips theo level. */
   filterRow: {
     paddingBottom: 10,
   },
@@ -78,24 +75,22 @@ export const notificationStyles = StyleSheet.create({
     paddingVertical: 10,
     borderRadius: 14,
     borderWidth: 1,
-    borderColor: "#E2E8F0",
-    backgroundColor: "#fff",
+    borderColor: neutral.slate200,
+    backgroundColor: neutral.surface,
     marginRight: 10,
   },
   filterChipActive: {
     borderWidth: 1,
   },
   filterCount: {
-    fontSize: 18,
+    ...appTypography.cardTitle,
     fontWeight: "800",
   },
   filterLabel: {
-    fontSize: 10,
-    color: "#64748b",
+    ...appTypography.micro,
+    color: neutral.slate500,
     fontWeight: "700",
   },
-
-  /** Hàng nút phân trang (1,2,3...). */
   paginationRow: {
     paddingHorizontal: 20,
     paddingBottom: 10,
@@ -105,31 +100,29 @@ export const notificationStyles = StyleSheet.create({
     paddingVertical: 8,
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: "#E2E8F0",
-    backgroundColor: "#fff",
+    borderColor: neutral.slate200,
+    backgroundColor: neutral.surface,
     marginRight: 10,
   },
   pageBtnActive: {
-    borderColor: "#2563EB",
-    backgroundColor: "#DBEAFE",
+    borderColor: brandPrimary,
+    backgroundColor: brandTintBg,
   },
   pageBtnText: {
-    fontSize: 13,
+    ...appTypography.chip,
     fontWeight: "800",
-    color: "#334155",
+    color: neutral.slate700,
   },
   pageBtnTextActive: {
-    color: "#1D4ED8",
+    color: brandSecondary,
   },
-
-  /** Card IoT alert. */
   alertCard: {
-    backgroundColor: "#fff",
+    backgroundColor: neutral.surface,
     borderRadius: 16,
     padding: 14,
     marginBottom: 12,
     borderWidth: 1,
-    borderColor: "#E2E8F0",
+    borderColor: neutral.slate200,
     borderLeftWidth: 4,
   },
   alertBadge: {
@@ -142,22 +135,22 @@ export const notificationStyles = StyleSheet.create({
     marginBottom: 10,
   },
   alertBadgeText: {
-    fontSize: 11,
+    ...appTypography.badge,
     fontWeight: "800",
   },
   alertBadgeStream: {
-    fontSize: 11,
+    ...appTypography.badge,
     fontWeight: "600",
   },
   alertTitle: {
-    fontSize: 15,
+    ...appTypography.listTitle,
     fontWeight: "800",
     marginBottom: 6,
     lineHeight: 20,
   },
   alertDetail: {
-    fontSize: 13,
-    color: "#475569",
+    ...appTypography.secondary,
+    color: neutral.slate600,
     lineHeight: 18,
     marginBottom: 10,
   },
@@ -170,29 +163,27 @@ export const notificationStyles = StyleSheet.create({
   areaBadge: {
     borderRadius: 6,
     borderWidth: 1,
-    borderColor: "#E2E8F0",
+    borderColor: neutral.slate200,
     paddingHorizontal: 8,
     paddingVertical: 3,
     maxWidth: "70%",
   },
   areaText: {
-    fontSize: 11,
+    ...appTypography.badge,
     fontWeight: "700",
-    color: "#64748b",
+    color: neutral.slate500,
   },
   alertTime: {
-    fontSize: 11,
-    color: "#94a3b8",
+    ...appTypography.badge,
+    color: neutral.slate400,
   },
-
-  /** Mỗi item thông báo */
   itemCard: {
     flexDirection: "row",
-    backgroundColor: "#fff",
+    backgroundColor: neutral.surface,
     borderRadius: 16,
     padding: 16,
     marginBottom: 12,
-    shadowColor: "#000",
+    shadowColor: neutral.slate900,
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.06,
     shadowRadius: 8,
@@ -200,7 +191,7 @@ export const notificationStyles = StyleSheet.create({
   },
   itemCardUnread: {
     borderLeftWidth: 4,
-    borderLeftColor: "#3bb582",
+    borderLeftColor: brandPrimary,
   },
   iconWrapper: {
     width: 44,
@@ -211,32 +202,31 @@ export const notificationStyles = StyleSheet.create({
     marginRight: 14,
   },
   iconWrapperTicket: {
-    backgroundColor: "#E3F2FD",
+    backgroundColor: brandTintBg,
   },
   iconWrapperElectric: {
-    backgroundColor: "#E8F5E9",
+    backgroundColor: brandTintBg,
   },
   iconWrapperWater: {
-    backgroundColor: "#E0F7FA",
+    backgroundColor: brandTintBg,
   },
   itemBody: {
     flex: 1,
     minWidth: 0,
   },
   itemTitle: {
-    fontSize: 15,
-    fontWeight: "600",
-    color: "#1e293b",
+    ...appTypography.listTitle,
+    color: neutral.slate900,
     marginBottom: 4,
   },
   itemMessage: {
-    fontSize: 13,
-    color: "#64748b",
+    ...appTypography.secondary,
+    color: neutral.slate500,
     lineHeight: 18,
   },
   itemTime: {
-    fontSize: 11,
-    color: "#94a3b8",
+    ...appTypography.badge,
+    color: neutral.slate400,
     marginTop: 6,
   },
   emptyWrapper: {
@@ -246,8 +236,24 @@ export const notificationStyles = StyleSheet.create({
     paddingVertical: 60,
   },
   emptyText: {
-    fontSize: 15,
-    color: "#94a3b8",
+    ...appTypography.dialogMessage,
+    color: neutral.slate400,
     textAlign: "center",
+  },
+  emptyStateWrap: {
+    paddingVertical: 60,
+    alignItems: "center",
+  },
+  loadingBlock: {
+    paddingVertical: 30,
+  },
+  loadingMoreBlock: {
+    paddingVertical: 16,
+  },
+  footerHint: {
+    ...appTypography.dialogMessage,
+    color: neutral.slate400,
+    textAlign: "center",
+    paddingVertical: 10,
   },
 });

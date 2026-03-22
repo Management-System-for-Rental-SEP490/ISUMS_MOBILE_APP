@@ -226,6 +226,11 @@ export interface AssetItemFromApi {
   conditionPercent: number;
   /** Trạng thái: VD "AVAILABLE", "DISPOSED", ... */
   status: string;
+  /**
+   * ID khu vực chức năng trong nhà; null nếu chưa gán.
+   * BE có thể trả `functionAreaId` hoặc `functionalAreaId` — service chuẩn hóa về `functionAreaId`.
+   */
+  functionAreaId?: string | null;
 }
 
 /** Response body của API GET /api/asset/items. */
@@ -250,6 +255,8 @@ export interface CreateAssetItemRequest {
   conditionPercent: number;
   /** VD "AVAILABLE", "DISPOSED". */
   status: string;
+  /** Gán vào khu vực chức năng (tùy chọn). */
+  functionAreaId?: string | null;
 }
 
 /** Response body của API POST /api/asset/items (tạo thiết bị thành công). */
@@ -272,10 +279,10 @@ export interface UpdateAssetItemApiResponse {
 }
 
 // =========================================================
-// Asset Tags API (POST /api/asset/tags — gán NFC vào thiết bị)
+// Asset Tags — POST /api/assets/tags (gán), PUT /api/assets/tags/detach/{tagValue} (gỡ)
 // =========================================================
 
-/** Body gửi lên khi gán tag NFC vào thiết bị (POST /api/asset/tags). */
+/** Body gửi lên khi gán tag (POST /api/assets/tags). */
 export interface AttachAssetTagRequest {
   /** ID thiết bị (asset item) cần gán tag. */
   assetId: string;
@@ -285,7 +292,7 @@ export interface AttachAssetTagRequest {
   tagType: "NFC" | "QR_CODE";
 }
 
-/** Dữ liệu tag trả về từ POST /api/asset/tags khi gán thành công. */
+/** Dữ liệu tag trả về từ POST /api/assets/tags khi gán thành công. */
 export interface AssetTagFromApi {
   id: string;
   tagValue: string;
@@ -296,7 +303,7 @@ export interface AssetTagFromApi {
   isActive: boolean;
 }
 
-/** Response body của API POST /api/asset/tags (gán tag thành công, statusCode 201). */
+/** Response body của API POST /api/assets/tags. */
 export interface AttachAssetTagApiResponse {
   statusCode: number;
   success: boolean;
@@ -304,18 +311,92 @@ export interface AttachAssetTagApiResponse {
   data: AssetTagFromApi;
 }
 
-/** Response body của API PUT /api/asset/tags/detach/{tagValue} (gỡ tag NFC khỏi thiết bị). */
+/** Response body của API PUT /api/assets/tags/detach/{tagValue}. */
 export type DetachAssetTagApiResponse = AttachAssetTagApiResponse;
 
-/** Response body của API GET /api/asset/tags/asset/{tagValue} (lấy thiết bị từ mã NFC). */
+/** Response của GET /api/assets/tags/asset/{tagValue} (quét NFC/QR → item). */
 export interface GetAssetByTagValueApiResponse {
   statusCode: number;
   success: boolean;
   message: string;
-  /** BE trả về mảng (thường 1 phần tử) HOẶC 1 object thiết bị khớp với tagValue. */
+  /** Một object thiết bị (Postman) hoặc mảng (tương thích cũ). */
   data: AssetItemFromApi[] | AssetItemFromApi;
 }
 
-// Sau này có thêm API khác thì định nghĩa tiếp ở dưới
-// Ví dụ:
-// export interface DeviceResponse { ... }
+// =========================================================
+// IoT Devices API (/api/assets/iot-devices) — đồng bộ Staff app
+// =========================================================
+
+/**
+ * Một node IoT trong `data.devices` từ GET /api/assets/iot-devices/house/{houseId}.
+ */
+export interface IotNodeDeviceFromApi {
+  id: string;
+  assetId: string;
+  categoryCode: string;
+  displayName: string;
+  serialNumber: string;
+  status: string;
+  /** Thing name để subscribe telemetry (nếu dùng cho từng node). */
+  thing: string;
+  areaName: string | null;
+}
+
+/**
+ * Controller + danh sách node của một nhà (object trong `data` của response).
+ */
+export interface IotControllerHouseDataFromApi {
+  id: string;
+  houseName: string;
+  deviceId: string;
+  /** Thing name của controller — dùng cho MQTT/telemetry (thay `thingId` cứng khi BE sẵn sàng). */
+  thingName: string;
+  status: string;
+  areaName: string | null;
+  createdAt?: string;
+  activatedAt?: string;
+  devices: IotNodeDeviceFromApi[];
+}
+
+/** Response: ApiResponse<IotControllerHouseDataFromApi> */
+export type IotDevicesByHouseApiResponse = ApiResponse<IotControllerHouseDataFromApi>;
+
+// =========================================================
+// IoT alerts (GET /api/assets/houses/{houseId}/iot/alerts)
+// =========================================================
+
+export type IotAlertLevel =
+  | "LOW"
+  | "MEDIUM"
+  | "HIGH"
+  | "WARNING"
+  | "CRITICAL"
+  | "INFO";
+
+export interface IotAlertItem {
+  alertId: string;
+  houseId: string;
+  areaId?: string | null;
+  areaName?: string | null;
+  thing: string;
+  alertType: string;
+  title: string;
+  detail?: string | null;
+  metric?: string | null;
+  value?: number | null;
+  level: IotAlertLevel | string;
+  resolved?: boolean;
+  ts: number;
+  date?: string;
+}
+
+/** Trang phân trang cursor từ BE (nằm trong `data` của response). */
+export interface HouseIotAlertsPageData {
+  items: IotAlertItem[];
+  hasMore?: boolean;
+  nextCursor?: string | null;
+  cursor?: string | null;
+}
+
+/** Response có thể dùng wrapper ApiResponse hoặc object tối giản tùy BE — giữ cả hai alias cho an toàn. */
+export type HouseIotAlertsApiResponse = ApiResponse<HouseIotAlertsPageData>;

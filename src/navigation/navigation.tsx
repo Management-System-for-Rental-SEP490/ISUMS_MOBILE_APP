@@ -14,6 +14,7 @@ import CameraScreen from "../features/modal/camera/CameraScreen";
 import TenantItemDescriptionScreen from "../features/tenant/screens/tenantItem/TenantItemDescription";
 import TicketScreen from "../features/tenant/screens/tenantTicket/ticket";
 import TenantHouseDescription from "../features/tenant/screens/tenantHouse/tenantHouseDescription";
+import { brandPrimary } from "../shared/theme/color";
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
 
@@ -64,7 +65,7 @@ const Navigation = () => {
       return (
           <View style={{flex: 1, justifyContent: 'center', alignItems: 'center'}}>
             {/* Hiển thị loading khi đang đọc state từ AsyncStorage vào store(cái vòng tròn xoay */}
-              <ActivityIndicator size="large" color="#3bb582" /> 
+              <ActivityIndicator size="large" color={brandPrimary} /> 
           </View>
       );
   }

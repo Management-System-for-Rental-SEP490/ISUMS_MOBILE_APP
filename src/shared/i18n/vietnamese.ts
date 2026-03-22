@@ -15,7 +15,9 @@ export default {
         "cancel": "Hủy",
         "try_again": "Thử lại",
         "save": "Lưu",
-        "warning_different_house": "Cảnh báo: Thiết bị này thuộc về {{houseName}}, không phải nhà đang chọn."
+        "warning_different_house": "Cảnh báo: Thiết bị này thuộc về {{houseName}}, không phải nhà đang chọn.",
+        "read_more": "Xem thêm",
+        "show_less": "Thu gọn"
     },
     "device_detail": {
         "title": "Chi tiết thiết bị",
@@ -200,6 +202,9 @@ export default {
     "staff_item_create": {
         "title": "Thêm thiết bị",
         "house_label": "Căn nhà",
+        "function_area_label": "Vị trí đặt",
+        "function_area_none": "Chưa gán khu vực",
+        "function_area_unknown": "Khu vực đã lưu (không có trong danh sách hiện tại)",
         "category_label": "Danh mục thiết bị",
         "display_name_label": "Tên hiển thị",
         "display_name_placeholder": "Ví dụ: Máy lạnh phòng khách",
@@ -304,14 +309,17 @@ export default {
         "status_inactive": "Ngừng",
         "status_pending": "Chờ xử lý",
         "house_status_available": "Đang sử dụng",
-        "house_status_rented": "Đã cho thuê",
+        "house_status_rented": "Đang thuê",
+        "house_status_vacant": "Còn trống",
+        "house_status_maintenance": "Đang bảo trì",
+        "house_status_unavailable": "Tạm ngưng",
         "house_status_other": "{{status}}",
         "functional_areas_title": "Khu vực trong nhà",
         "functional_areas_empty": "Chưa có khu vực nào",
         "functional_area_floor": "Tầng {{floor}}",
         "area_type_LIVINGROOM": "Phòng khách",
         "area_type_KITCHEN": "Bếp",
-        "area_type_BATHROOM": "Phòng tắm",
+        "area_type_BATHROOM": "Toilet",
         "area_type_HALLWAY": "Hành lang",
         "area_type_BEDROOM": "Phòng ngủ",
         "area_type_OTHER": "Khác"
@@ -371,8 +379,10 @@ export default {
         "loading_data": "Đang tải dữ liệu...",
         "switch_house": "Đổi nhà",
         "select_house": "Chọn nhà",
+        "house_detail_screen_title": "Chi tiết nhà",
         "house_info": {
             "address": "Địa chỉ:",
+            "admin_division": "Địa bàn:",
             "description": "Mô tả:",
             "contract": "Hợp đồng:",
             "duration": "Thời hạn:",
@@ -381,6 +391,9 @@ export default {
         },
         "device_list": {
             "title": "Danh sách thiết bị ({{count}})",
+            "by_area_title": "Thiết bị theo khu vực",
+            "areas_row_label": "Chọn khu vực",
+            "area_all_devices": "Tất cả khu vực",
             "status": {
                 "active": "Hoạt động",
                 "maintenance": "Bảo trì",
@@ -397,7 +410,7 @@ export default {
         "area_kitchen": "Bếp",
         "area_living_room": "Phòng khách",
         "area_bedroom": "Phòng ngủ",
-        "area_bathroom": "Phòng tắm",
+        "area_bathroom": "Toilet",
         "chart_title_electric": "Tiêu thụ điện theo tuần",
         "chart_title_water": "Tiêu thụ nước theo tuần",
         "unit_kwh": "kWh",
@@ -457,5 +470,19 @@ export default {
         "type_date": "Ngày",
         "no_result": "Không có kết quả cho \"{{query}}\"",
         "viewing_date": "Xem ngày: {{date}}"
+    },
+    "dropdown_box": {
+        "title": "Bộ lọc & lựa chọn",
+        "search_placeholder": "Tìm theo tên, địa chỉ, tầng, danh mục…",
+        "no_results": "Không có mục phù hợp.",
+        "section_floor": "Tầng",
+        "section_category": "Danh mục thiết bị",
+        "section_house": "Nhà",
+        "section_status": "Trạng thái",
+        "floor_short": "Tầng",
+        "category_short": "Danh mục",
+        "house_short": "Nhà",
+        "status_short": "Trạng thái",
+        "open_a11y": "Mở bộ lọc"
     }
 }

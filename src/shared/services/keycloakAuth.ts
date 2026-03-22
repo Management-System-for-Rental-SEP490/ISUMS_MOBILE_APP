@@ -9,26 +9,16 @@ import i18n from "../i18n";
 // Đảm bảo WebBrowser hoạt động đúng trên Web
 WebBrowser.maybeCompleteAuthSession();
 
-// Lấy IP address động hoặc dùng localhost
+/** Keycloak issuer base (không có /realms/...). Ưu tiên EXPO_PUBLIC_KEYCLOAK_BASE_URL (.env). */
 const getKeycloakBaseUrl = (): string => {
-  if (Platform.OS === 'web') {
+  const fromEnv = process.env.EXPO_PUBLIC_KEYCLOAK_BASE_URL?.trim();
+  if (fromEnv) {
+    return fromEnv.replace(/\/$/, "");
+  }
+  if (Platform.OS === "web") {
     return "http://localhost:8080";
   }
-  // Cho phép override bằng biến môi trường nếu cần
-  if (process.env.EXPO_PUBLIC_KEYCLOAK_BASE_URL) {
-      return process.env.EXPO_PUBLIC_KEYCLOAK_BASE_URL;
-  }
-  
-  // Mặc định: host (không có protocol) hoặc full URL từ env
-  const hostOrUrl = process.env.EXPO_PUBLIC_KEYCLOAK_IP || process.env.EXPO_PUBLIC_KEYCLOAK_BASE_URL || "sso-dev.isums.pro";
-  // Nếu đã là full URL (có ://) thì dùng trực tiếp
-  if (hostOrUrl.includes("://")) {
-    return hostOrUrl.endsWith(":8080") ? hostOrUrl : `${hostOrUrl.replace(/\/$/, "")}:8080`;
-  }
-  return `https://${hostOrUrl}:8080`;
-  // Nếu dùng chung cho mọi nền tảng
-  //return "https://sso.isums.pro";
- //return process.env.EXPO_PUBLIC_KEYCLOAK_BASE_URL || "https://sso.isums.pro";
+  return "https://sso.isums.pro";
 };
 
 // Cấu hình Keycloak
@@ -43,7 +33,7 @@ const KEYCLOAK_CONFIG = {
     if (Platform.OS === 'web') {
       return process.env.EXPO_PUBLIC_KEYCLOAK_REDIRECT_WEB || "http://localhost/callback";
     }
-    return process.env.EXPO_PUBLIC_KEYCLOAK_REDIRECT_NATIVE || "isums://callback";
+    return process.env.EXPO_PUBLIC_KEYCLOAK_REDIRECT_NATIVE || "isumstenant://callback";
   },
 };
 

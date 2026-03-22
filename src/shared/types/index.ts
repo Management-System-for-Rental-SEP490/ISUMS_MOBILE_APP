@@ -33,11 +33,11 @@ export type RootStackParamList = AuthStackParamList & {
     buildingAddress: string;
     /** Mô tả căn nhà (từ API) */
     description?: string;
-    /** Phường (từ API) */
+    /** Phường / xã (`HouseFromApi.ward`) */
     ward?: string;
-    /** Quận (từ API) */
+    /** Quận / huyện (`HouseFromApi.commune`) */
     commune?: string;
-    /** Thành phố (từ API) */
+    /** Tỉnh / thành phố (`HouseFromApi.city`) */
     city?: string;
     /** Trạng thái: AVAILABLE, RENTED, ... (từ API) */
     status?: string;

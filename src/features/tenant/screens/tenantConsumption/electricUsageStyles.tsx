@@ -1,4 +1,5 @@
 import { StyleSheet, Dimensions } from "react-native";
+import { brandPrimary } from "../../../../shared/theme/color";
 
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
 
@@ -23,15 +24,16 @@ export const electricUsageStyles = StyleSheet.create({
     fontSize: 20,
     fontWeight: "700",
     color: "#1e293b",
-    marginBottom: 16,
-  },
-  /** Thanh category chọn khu vực (horizontal scroll) – không giới hạn chiều cao để chữ không bị cắt */
-  categoryScroll: {
     marginBottom: 8,
+  },
+  /** Thanh chọn tầng — gọn, sát sơ đồ nhà bên dưới */
+  categoryScroll: {
+    marginBottom: 2,
+    marginTop: 0,
   },
   /** Wrapper thanh chọn khu vực – cách xa sơ đồ bên dưới */
   areaSelectorWrapper: {
-    marginBottom: 20,
+    marginBottom: 12,
   },
   /** Nút dropdown chọn khu vực – thu nhỏ, gọn */
   areaDropdownBtn: {
@@ -78,8 +80,8 @@ export const electricUsageStyles = StyleSheet.create({
     justifyContent: "center",
   },
   areaChipActive: {
-    backgroundColor: "#82A762",
-    borderColor: "#82A762",
+    backgroundColor: brandPrimary,
+    borderColor: brandPrimary,
   },
   areaChipText: {
     fontSize: 12,
@@ -92,33 +94,28 @@ export const electricUsageStyles = StyleSheet.create({
   categoryContent: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 10,
-    paddingVertical: 8,
-    paddingRight: 20,
+    gap: 6,
+    paddingVertical: 2,
+    paddingRight: 16,
   },
   categoryChip: {
-    paddingHorizontal: 18,
-    paddingVertical: 12,
-    borderRadius: 22,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 14,
     backgroundColor: "#fff",
-    borderWidth: 1.5,
+    borderWidth: 1,
     borderColor: "#e2e8f0",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 2,
-    elevation: 2,
-    minHeight: 44,
+    minHeight: 32,
     justifyContent: "center",
   },
   categoryChipActive: {
-    backgroundColor: "#82A762",
-    borderColor: "#82A762",
+    backgroundColor: brandPrimary,
+    borderColor: brandPrimary,
   },
   categoryChipText: {
-    fontSize: 14,
+    fontSize: 12,
     fontWeight: "600",
-    color: "#475569",
+    color: "#64748b",
   },
   categoryChipTextActive: {
     color: "#fff",
