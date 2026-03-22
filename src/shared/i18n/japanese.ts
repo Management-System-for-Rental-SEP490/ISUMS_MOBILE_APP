@@ -2,16 +2,22 @@ export default {
     "login_btn": "ISUMSアカウントでログイン",
     "welcome": "ISUMSへようこそ",
     "description": "アプリケーションの使用を続けるにはログインしてください",
+    "technical_blocked_title": "ログインできません",
+    "technical_blocked_message": "このアプリは居住者専用です。スタッフ向けアプリをご利用ください。",
     "common": {
         "back": "戻る",
         "no_data": "データなし",
+        "not_found_title": "見つかりません",
         "loading": "読み込み中...",
         "error": "エラー",
         "success": "成功",
         "close": "閉じる",
         "cancel": "キャンセル",
         "try_again": "再試行",
-        "save": "保存"
+        "save": "保存",
+        "warning_different_house": "警告：このデバイスは{{houseName}}に属しており、現在選択されている家ではありません。",
+        "read_more": "もっと見る",
+        "show_less": "折りたたむ"
     },
     "device_detail": {
         "title": "デバイス詳細",
@@ -100,6 +106,7 @@ export default {
         "not_found_nfc": "NFC ID: {{id}} のデバイスが見つかりません",
         "lookup_no_device_nfc": "このNFCコードが割り当てられたデバイスはありません。",
         "not_found_qr": "コード: {{id}} のデバイスが見つかりません",
+        "device_not_in_your_house": "このデバイスは現在選択されている家にありません。家を切り替えるか、現在の家のデバイスをスキャンしてください。",
         "rescan": "再スキャン"
     },
     "billing": {
@@ -125,7 +132,7 @@ export default {
     },
     "staff_home": {
         "schedule_title": "今週の勤務表",
-        "schedule_summary_title": "勤務あり（まとめ）",
+        "schedule_summary_title": "勤務要約",
         "schedule_no_slots": "今週の予定はありません",
         "schedule_col_time": "時間",
         "schedule_col_building": "建物",
@@ -187,11 +194,17 @@ export default {
         "condition": "状態: {{percent}}%",
         "status_available": "利用可能",
         "status_in_use": "使用中",
-        "status_disposed": "廃棄済み"
+        "status_active": "稼働中",
+        "status_broken": "故障",
+        "status_disposed": "廃棄済み",
+        "status_deleted": "削除済み"
     },
     "staff_item_create": {
         "title": "デバイスを追加",
         "house_label": "建物",
+        "function_area_label": "設置場所",
+        "function_area_none": "エリア未設定",
+        "function_area_unknown": "保存済みエリア（現在の一覧にありません）",
         "category_label": "カテゴリ",
         "display_name_label": "表示名",
         "display_name_placeholder": "例：リビングエアコン",
@@ -203,7 +216,10 @@ export default {
         "status_label": "ステータス",
         "status_available": "利用可能",
         "status_in_use": "使用中",
+        "status_active": "稼働中",
+        "status_broken": "故障",
         "status_disposed": "廃棄済み",
+        "status_deleted": "削除済み",
         "submit": "追加",
         "success_message": "デバイスを追加しました。",
         "error_message": "エラーが発生しました。もう一度お試しください。"
@@ -292,8 +308,11 @@ export default {
         "status_maintenance": "メンテ中",
         "status_inactive": "停止",
         "status_pending": "保留",
-        "house_status_available": "空き",
-        "house_status_rented": "賃貸中",
+        "house_status_available": "使用中",
+        "house_status_rented": "賃借中",
+        "house_status_vacant": "空室",
+        "house_status_maintenance": "メンテナンス中",
+        "house_status_unavailable": "利用不可",
         "house_status_other": "{{status}}",
         "functional_areas_title": "家内の機能エリア",
         "functional_areas_empty": "機能エリアがありません",
@@ -358,8 +377,12 @@ export default {
     "home": {
         "welcome_role": "あなたは{{role}}です",
         "loading_data": "データを読み込んでいます...",
+        "switch_house": "家の切り替え",
+        "select_house": "家を選択",
+        "house_detail_screen_title": "物件の詳細",
         "house_info": {
             "address": "住所:",
+            "admin_division": "地域:",
             "description": "説明:",
             "contract": "契約:",
             "duration": "期間:",
@@ -368,6 +391,9 @@ export default {
         },
         "device_list": {
             "title": "デバイス一覧 ({{count}})",
+            "by_area_title": "エリア別デバイス",
+            "areas_row_label": "エリアを選択",
+            "area_all_devices": "すべてのエリア",
             "status": {
                 "active": "アクティブ",
                 "maintenance": "メンテナンス中",
@@ -377,6 +403,10 @@ export default {
     },
     "consumption": {
         "area_all": "すべて",
+        "floor_label": "{{floor}}階",
+        "floor_all_areas": "{{floor}}階すべて",
+        "select_floor": "階を選択",
+        "select_area": "エリアを選択",
         "area_kitchen": "キッチン",
         "area_living_room": "リビング",
         "area_bedroom": "寝室",
@@ -385,12 +415,34 @@ export default {
         "chart_title_water": "週間水道消費",
         "unit_kwh": "kWh",
         "unit_m3": "m³",
+        "unit_L": "L",
         "period_week": "今週",
+        "period_day": "今日",
+        "period_month": "今月",
         "day_label": "{{n}}日",
-        "chart_title_pie": "エリア別割合"
+        "chart_title_pie": "エリア別割合",
+        "no_data_area": "このエリアのデータはまだありません",
+        "iot_live": "LIVE",
+        "iot_offline": "OFFLINE",
+        "summary_title": "使用量概要",
+        "electric_summary": "電気",
+        "water_summary": "水道"
     },
     "notification": {
         "empty": "通知はありません",
+        "section_iot": "IoT",
+        "filter_all": "すべて",
+        "time_seconds": "{{n}}秒前",
+        "level_critical": "重大",
+        "level_warning": "警告",
+        "level_high": "高",
+        "level_medium": "中",
+        "level_low": "低",
+        "level_info": "情報",
+        "today": "今日",
+        "yesterday": "昨日",
+        "area_all": "建物全体",
+        "pagination_end": "すべて表示しました",
         "type_ticket": "保守チケット",
         "type_electric": "電気アラート",
         "type_water": "水道アラート",
@@ -407,5 +459,30 @@ export default {
         "time_minutes": "{{n}}分前",
         "time_hours": "{{n}}時間前",
         "time_days": "{{n}}日前"
+    },
+    "search": {
+        "placeholder_default": "検索...",
+        "placeholder_staff": "建物・機器・シリアルを検索...",
+        "placeholder_tenant": "機器・機器タイプを検索...",
+        "placeholder_date": "日付で検索（例: 01/03）...",
+        "type_house": "建物",
+        "type_item": "機器",
+        "type_date": "日付",
+        "no_result": "「{{query}}」の検索結果はありません",
+        "viewing_date": "表示中: {{date}}"
+    },
+    "dropdown_box": {
+        "title": "絞り込み",
+        "search_placeholder": "名前・住所・階・カテゴリで検索…",
+        "no_results": "該当する項目がありません。",
+        "section_floor": "階",
+        "section_category": "機器カテゴリ",
+        "section_house": "物件",
+        "section_status": "状態",
+        "floor_short": "階",
+        "category_short": "カテゴリ",
+        "house_short": "物件",
+        "status_short": "状態",
+        "open_a11y": "絞り込みを開く"
     }
 }

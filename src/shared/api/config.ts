@@ -1,31 +1,53 @@
-// Cấu hình chung cho Backend API (base URL).
-// Mục đích: chỉ khai báo 1 lần rồi dùng lại ở các service (houses, asset,...)
-// để sau này nếu đổi domain/ngrok chỉ cần sửa ở đây.
+// PRIMARY = API chung (users, houses, schedules…). FALLBACK/ngrok = bản dev cục bộ.
+// Module asset (/assets/*) mặc định gọi ASSETS_API_BASE (= fallback); đổi sau qua env.
+
+const DEFAULT_PRIMARY = "https://api-dev.isums.pro/api";
+const DEFAULT_FALLBACK = "https://unrestrictable-lan-syzygial.ngrok-free.dev/api";
+
+function readEnvTrimmed(envKey: string, fallback: string): string {
+  const v =
+    typeof process !== "undefined" && process.env?.[envKey]
+      ? String(process.env[envKey]).trim()
+      : "";
+  return v || fallback;
+}
+
+export const PRIMARY_BACKEND_URL = readEnvTrimmed(
+  "EXPO_PUBLIC_BACKEND_API_PRIMARY",
+  DEFAULT_PRIMARY
+);
+
+export const FALLBACK_BACKEND_URL = readEnvTrimmed(
+  "EXPO_PUBLIC_BACKEND_API_FALLBACK",
+  DEFAULT_FALLBACK
+);
+
+/** Alias cho interceptor axios — trùng PRIMARY / FALLBACK. */
+export const BACKEND_URL_PRIMARY = PRIMARY_BACKEND_URL;
+export const BACKEND_URL_FALLBACK = FALLBACK_BACKEND_URL;
+
+/** Base cho users, houses, Keycloak-adjacent REST — luôn primary; axios lỗi mạng → retry FALLBACK. */
+export const BACKEND_API_BASE = PRIMARY_BACKEND_URL;
 
 /**
- * Base URL của Backend API cho toàn bộ phần houses / asset / ticket...
- *
- * - Ưu tiên đọc từ biến môi trường `EXPO_PUBLIC_HOUSES_API_BASE`
- *   để cấu hình linh hoạt giữa dev / staging / production.
- * - Nếu không có biến môi trường, tạm dùng fallback là URL ngrok hiện tại.
+ * Base cho mọi route `/assets/*` (items, tags, categories, IoT trong asset module).
+ * Mặc định = FALLBACK (ngrok). Khi merge lên primary: `EXPO_PUBLIC_ASSETS_API_BASE` = URL primary.
  */
-export const BACKEND_API_BASE =
-  typeof process !== "undefined" && process.env?.EXPO_PUBLIC_HOUSES_API_BASE
-    ? process.env.EXPO_PUBLIC_HOUSES_API_BASE
-    : "https://unrestrictable-lan-syzygial.ngrok-free.dev/api";
+export const ASSETS_API_BASE = readEnvTrimmed(
+  "EXPO_PUBLIC_ASSETS_API_BASE",
+  FALLBACK_BACKEND_URL
+);
 
-/**
- * Base URL của API User (do dev khác làm, đường dẫn khác).
- * - Ưu tiên đọc từ biến môi trường `EXPO_PUBLIC_USER_API_BASE`.
- * - Fallback tạm thời là một URL placeholder, bạn hãy cập nhật lại sau.
- */
-export const USER_API_BASE =
-  typeof process !== "undefined" && process.env?.EXPO_PUBLIC_USER_API_BASE
-    ? process.env.EXPO_PUBLIC_USER_API_BASE
-    : "https://api-dev.isums.pro/api"; 
+const DEFAULT_IOT_WS =
+  "wss://a98erfaotg.execute-api.ap-southeast-1.amazonaws.com/production/";
+const DEFAULT_IOT_REST =
+  "https://m0etrbg5l2.execute-api.ap-southeast-1.amazonaws.com/dev";
 
+/** WebSocket telemetry AWS — khai báo trong .env EXPO_PUBLIC_IOT_WS_URL */
+export const IOT_WS_URL = readEnvTrimmed("EXPO_PUBLIC_IOT_WS_URL", DEFAULT_IOT_WS);
 
-/** true = gửi body PUT /api/asset/items/:id dạng snake_case (house_id, category_id...) để BE map được. */
-export const ASSET_PUT_BODY_SNAKE_CASE =
-  typeof process !== "undefined" && process.env?.EXPO_PUBLIC_ASSET_PUT_BODY_SNAKE_CASE === "true";
-
+/** REST usage điện/nước — khai báo trong .env EXPO_PUBLIC_IOT_REST_BASE */
+export const IOT_REST_BASE = readEnvTrimmed(
+  "EXPO_PUBLIC_IOT_REST_BASE",
+  DEFAULT_IOT_REST
+);

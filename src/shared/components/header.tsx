@@ -1,45 +1,45 @@
 
-import { ColorValue, Dimensions, Text, TextInput, TouchableOpacity, View } from "react-native";
+import { ColorValue, Dimensions, Image, Text, TouchableOpacity, View } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import headerStyles from "../styles/headerStyles";
-import Icons from "../theme/icon";
+import { brandGradient, waterHeaderGradient } from "../theme/color";
+import { appTypography } from "../utils/typography";
 import { HeaderVariant, MainTabParamList } from "../types";
 import { NavigationProp, useNavigation } from "@react-navigation/native";
 
-//1. const gradientMaps: Record<HeaderVariant, [ColorValue, ColorValue]> = { ... }
-//    - Định nghĩa một object tên là gradientMaps để map mỗi kiểu "variant" của header với một mảng gồm 2 màu gradient.
-//    - Sử dụng Record để đảm bảo các key chỉ là các giá trị hợp lệ của HeaderVariant.
+const LOGO_ASSET = require("../../../assets/logob.png");
+const LOGO_RING_PADDING = 3;
 
-// 2. const Header = ({ variant = "default" }: { variant?: HeaderVariant }) => { ... }
-//    - Đây là khai báo một functional component tên Header.
-//    - Component này nhận một prop tuỳ chọn "variant" (kiểu HeaderVariant), default là "default".
+const brandHeaderGradient: [ColorValue, ColorValue] = [
+  brandGradient[0],
+  brandGradient[1],
+];
 
-// 3. const insets = useSafeAreaInsets();
-//    - Lấy thông tin lề an toàn của màn hình thiết bị (ví dụ: để không bị che bởi tai thỏ hoặc cạnh cong).
-//    - Dùng hook useSafeAreaInsets trả về các giá trị lề (top, bottom, left, right).
-
-// 4. <LinearGradient ...>
-//    - Tạo một thành phần với nền gradient dùng LinearGradient từ expo.
-//    - props:
-//        - colors: sử dụng 2 màu gradient dựa theo variant (từ gradientMaps).
-//        - start, end: xác định hướng gradient (từ trên trái về dưới phải).
-//        - style: dùng style headerStyles.gradient và tăng paddingTop theo lề an toàn (insets.top + 12).
 const gradientMaps: Record<HeaderVariant, [ColorValue, ColorValue]> = {
-  default: ["#3bb582", "rgba(12, 106, 181, 0.7)"],
-  electric: ["#82A762", "#82A762"], // Sử dụng 1 màu xanh lá nhạt
-  // electric: ["#008001", "rgba(26, 197, 60, 0.9)"],
-  water: ["#20B8EB", "#20B8EB"], // Sử dụng 1 màu xanh nhạt
+  default: brandHeaderGradient,
+  electric: brandHeaderGradient,
+  water: waterHeaderGradient,
 };
 
-const Header = ({ variant = "default" }: { variant?: HeaderVariant }) => {
+type HeaderProps = {
+  variant?: HeaderVariant;
+};
+
+const Header = ({
+  variant = "default",
+}: HeaderProps) => {
   const insets = useSafeAreaInsets();
   const navigation = useNavigation<NavigationProp<MainTabParamList>>();
   const screenWidth = Dimensions.get("window").width;
-  const isSmallScreen = screenWidth < 375; // Màn hình nhỏ hơn iPhone 14 Pro Max
+  const isSmallScreen = screenWidth < 375;
+  const logoOuter = isSmallScreen ? 40 : 48;
+  const logoInner = logoOuter - LOGO_RING_PADDING * 2;
+  const logoRadiusOuter = logoOuter / 2;
+  const logoRadiusInner = logoInner / 2;
 
   return (
-    <View style={headerStyles.container}> 
+    <View style={headerStyles.container}>
       <LinearGradient
         colors={gradientMaps[variant]}
         start={{ x: 0, y: 0 }}
@@ -47,44 +47,53 @@ const Header = ({ variant = "default" }: { variant?: HeaderVariant }) => {
         style={[
           headerStyles.gradient,
           { paddingTop: insets.top + 12 },
-          isSmallScreen && { paddingHorizontal: 12 }, // Giảm padding trên màn hình nhỏ
+          isSmallScreen && { paddingHorizontal: 12 },
         ]}
       >
-        <View style={[
-          headerStyles.headerRow,
-          isSmallScreen && { gap: 8 }, // Giảm gap trên màn hình nhỏ
-        ]}>
+        <View
+          style={[
+            headerStyles.headerRow,
+            headerStyles.headerRowCentered,
+            isSmallScreen && { gap: 8 },
+          ]}
+        >
           <TouchableOpacity
             style={headerStyles.brandRow}
             activeOpacity={0.75}
             onPress={() => navigation.navigate("Dashboard")}
           >
-            <View style={[
-              headerStyles.logoWrapper,
-              isSmallScreen && { width: 40, height: 40, marginRight: 6 }, // Giảm kích thước logo trên màn hình nhỏ
-            ]}>
-              <Icons.logoHome size={isSmallScreen ? 32 : 40} />
-            </View>
-            <Text style={[
-              headerStyles.brandTitle,
-              isSmallScreen && { fontSize: 16 }, // Giảm fontSize trên màn hình nhỏ
-            ]}>ISUMS</Text>
-          </TouchableOpacity>
-          <View style={[
-            headerStyles.searchContainer,
-            isSmallScreen && { paddingHorizontal: 10, paddingVertical: 8 }, // Giảm padding trên màn hình nhỏ
-          ]}>
-            <Icons.search size={isSmallScreen ? 18 : 20} color="#1e293b" />
-            <TextInput
+            <View
               style={[
-                headerStyles.searchInput,
-                isSmallScreen && { fontSize: 14, marginLeft: 8 }, // Giảm fontSize và margin trên màn hình nhỏ
+                headerStyles.logoRing,
+                {
+                  width: logoOuter,
+                  height: logoOuter,
+                  borderRadius: logoRadiusOuter,
+                },
+                isSmallScreen && { marginRight: 6 },
               ]}
-              placeholder="Tìm kiếm ..."
-              placeholderTextColor="rgba(15, 23, 42, 0.45)"
-              returnKeyType="search"
-            />
-          </View>
+            >
+              <Image
+                source={LOGO_ASSET}
+                style={{
+                  width: logoInner,
+                  height: logoInner,
+                  borderRadius: logoRadiusInner,
+                }}
+                resizeMode="cover"
+                accessibilityLabel="ISUMS logo"
+              />
+            </View>
+            <Text
+              style={[
+                headerStyles.brandTitle,
+                isSmallScreen && appTypography.sectionHeading,
+              ]}
+            >
+              ISUMS
+            </Text>
+          </TouchableOpacity>
+
         </View>
       </LinearGradient>
     </View>

@@ -52,11 +52,12 @@ const resources = {
 };
 
 i18n
-  .use(languageDetector) // Sử dụng bộ phát hiện ngôn ngữ
+  .use(languageDetector) // Sử dụng bộ phát hiện ngôn ngữ (AsyncStorage)
   .use(initReactI18next)
   .init({
     resources,
-    fallbackLng: "en",
+    lng: "vi", // Ngôn ngữ mặc định khi khởi động (trước khi detector chạy)
+    fallbackLng: "vi", // Khi không bắt được ngôn ngữ từ BE hoặc thiếu bản dịch -> dùng tiếng Việt
     interpolation: {
       escapeValue: false 
     },

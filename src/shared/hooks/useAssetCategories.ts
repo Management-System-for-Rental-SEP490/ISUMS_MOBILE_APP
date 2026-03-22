@@ -1,64 +1,93 @@
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import {
-  getAssetCategories,
-  createAssetCategory,
-  updateAssetCategory,
-} from "../services/assetCategoryApi";
+import { useQuery, useQueries } from "@tanstack/react-query";
+import { useMemo } from "react";
+import { getAssetCategories, getAssetCategoryById } from "../services/assetCategoryApi";
 import type {
-  CreateAssetCategoryRequest,
-  UpdateAssetCategoryRequest,
+  AssetCategoryByIdApiResponse,
+  AssetCategoryFromApi,
 } from "../types/api";
 
 /**
  * Hook dùng React Query để lấy danh sách danh mục thiết bị (asset categories).
  *
  * - Dùng cho dropdown chọn loại thiết bị, thanh filter category, v.v.
- * - Gói gọn logic `useQuery` + `getAssetCategories` để các màn hình không phải lặp lại.
+ * - refetchOnMount: "always" để mỗi lần vào màn có dùng categories đều gọi lại API,
+ *   tránh hiển thị "Khác" do cache cũ khi BE đã có danh mục (IoT, Furniture, IT Equipment...).
  */
 export const ASSET_CATEGORY_KEYS = {
   /** Key gốc cho queries về asset categories. */
   all: ["assetCategories"] as const,
+  /** Key cho query lấy 1 category theo id. */
+  byId: (id: string) => [...ASSET_CATEGORY_KEYS.all, "byId", id] as const,
 };
 
 export const useAssetCategories = () => {
   return useQuery({
     queryKey: ASSET_CATEGORY_KEYS.all,
     queryFn: getAssetCategories,
+    refetchOnMount: "always",
   });
 };
 
 /**
- * Hook mutation để tạo danh mục thiết bị mới (POST /api/asset/categories).
- * Sau khi tạo thành công, tự động invalidate danh sách categories để refetch.
- * @returns useMutation: mutate(payload), isPending, isSuccess, isError, data, error.
+ * Lấy tên category theo `categoryId`.
+ * - Dùng cho các màn chỉ có categoryId (không đủ danh sách categories để map name).
  */
-export const useCreateAssetCategory = () => {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: (payload: CreateAssetCategoryRequest) => createAssetCategory(payload),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ASSET_CATEGORY_KEYS.all });
-    },
+export const useAssetCategoryById = (categoryId?: string | null) => {
+  const safeCategoryId = categoryId ?? null;
+  return useQuery<AssetCategoryByIdApiResponse>({
+    queryKey: safeCategoryId ? ASSET_CATEGORY_KEYS.byId(safeCategoryId) : [...ASSET_CATEGORY_KEYS.all, "byId", "none"] as const,
+    queryFn: () =>
+      safeCategoryId
+        ? getAssetCategoryById(safeCategoryId)
+        : Promise.reject(new Error("Missing categoryId")),
+    enabled: Boolean(safeCategoryId),
+    staleTime: 1000 * 60 * 5,
+    refetchOnMount: true,
+    refetchOnWindowFocus: true,
+    refetchOnReconnect: true,
   });
 };
 
 /**
- * Hook mutation cập nhật danh mục (PUT /api/asset/categories/:id).
- * Sau khi thành công invalidate danh sách categories.
+ * Map categoryId → tên: ưu tiên danh sách từ `useAssetCategories`, các id thiếu gọi GET /categories/:id (useQueries).
+ * Dùng Home tenant thay vì gọi `useQueries` trực tiếp trong screen.
  */
-export const useUpdateAssetCategory = () => {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: ({
-      id,
-      payload,
-    }: {
-      id: string;
-      payload: UpdateAssetCategoryRequest;
-    }) => updateAssetCategory(id, payload),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ASSET_CATEGORY_KEYS.all });
-    },
-  });
-};
+export const useAssetCategoryNamesByIds = (
+  categoryIds: string[],
+  categoriesFromList: AssetCategoryFromApi[]
+) => {
+  const missingIds = useMemo(
+    () =>
+      Array.from(new Set(categoryIds.filter(Boolean))).filter(
+        (id) => !categoriesFromList.some((c) => c.id === id)
+      ),
+    [categoryIds, categoriesFromList]
+  );
 
+  const queries = useQueries({
+    queries: missingIds.map((id) => ({
+      queryKey: ASSET_CATEGORY_KEYS.byId(id),
+      queryFn: () => getAssetCategoryById(id),
+      enabled: Boolean(id),
+      staleTime: 1000 * 60 * 5,
+      refetchOnMount: false,
+      refetchOnWindowFocus: false,
+      refetchOnReconnect: false,
+    })),
+  });
+
+  const categoryNameById = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const c of categoriesFromList) {
+      if (c.id && c.name) map.set(c.id, c.name);
+    }
+    for (let i = 0; i < missingIds.length; i++) {
+      const id = missingIds[i];
+      const name = queries[i]?.data?.data?.name;
+      if (id && name) map.set(id, name);
+    }
+    return map;
+  }, [categoriesFromList, missingIds, queries]);
+
+  return { categoryNameById };
+};

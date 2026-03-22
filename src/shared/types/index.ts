@@ -21,46 +21,29 @@ export type HeaderVariant = "default" | "electric" | "water"; // định nghĩa 
 export type RootStackParamList = AuthStackParamList & {
   Main: undefined;
   OnBoarding: undefined;
-  /** Quét QR/NFC. Tenant: hiện DeviceDetail. Staff: tra cứu thiết bị theo NFC (chỉ mã đã gán) hoặc gán NFC (khi mode assign hoặc assignForDevice). */
-  Camera:
-    | undefined
-    | { assignForDevice?: AssetItemFromApi; /** "assign" = từ menu + Gán NFC: quét thẻ mới để gán; không truyền = từ footer: chỉ tra cứu mã đã gán */ mode?: "lookup" | "assign"; initialScanMode?: "qr" | "nfc" };
-  DeviceDetail: { device: Device };
+  /** Quét QR/NFC cho tenant: tra cứu thiết bị thuộc nhà đang chọn, mở TenantItemDetail. */
+  Camera: undefined | { initialScanMode?: "qr" | "nfc" };
+  /** Chi tiết thiết bị (tenant): nhận item từ danh sách, fetch theo id, hiển thị giống ItemDescription, có nút Báo cáo sự cố. */
+  TenantItemDetail: { item: AssetItemFromApi };
   Ticket: { device: Device };
-  /** Chi tiết nhà cho Staff: danh sách thiết bị + nút gán NFC. Có thể truyền thêm thông tin từ API houses. */
+  /** Chi tiết nhà (tenant): mô tả căn nhà, khu vực chức năng. */
   BuildingDetail: {
     buildingId: string;
     buildingName: string;
     buildingAddress: string;
     /** Mô tả căn nhà (từ API) */
     description?: string;
-    /** Phường (từ API) */
+    /** Phường / xã (`HouseFromApi.ward`) */
     ward?: string;
-    /** Quận (từ API) */
+    /** Quận / huyện (`HouseFromApi.commune`) */
     commune?: string;
-    /** Thành phố (từ API) */
+    /** Tỉnh / thành phố (`HouseFromApi.city`) */
     city?: string;
     /** Trạng thái: AVAILABLE, RENTED, ... (từ API) */
     status?: string;
     /** Danh sách khu vực chức năng trong nhà (từ API houses.functionalAreas). */
     functionalAreas?: FunctionalAreaFromApi[];
   };
-  /** Chi tiết ticket cho Staff: thông tin, trạng thái, nút Nhận ticket (nếu pending) */
-  TicketDetail: { ticketId: string };
-  /** Màn form tạo danh mục thiết bị (Staff). Không tham số. */
-  Category: undefined;
-  /** Màn danh sách danh mục thiết bị (Staff). Không tham số. */
-  CategoryList: undefined;
-  /** Màn chỉnh sửa danh mục (Staff), hiện dạng modal. Param: category cần sửa. */
-  CategoryEdit: { category: AssetCategoryFromApi };
-  /** Màn danh sách thiết bị (Staff), xếp theo category. */
-  ItemList: undefined;
-  /** Màn form thêm thiết bị (Staff). */
-  ItemCreate: undefined;
-  /** Màn chỉnh sửa thiết bị (Staff), hiện dạng modal. Param: item cần sửa. */
-  ItemEdit: { item: AssetItemFromApi };
-  /** Màn chỉ xem thông tin thiết bị (Staff), khi thợ quét NFC bằng nút Quét ở footer. Param: item. */
-  ItemDescription: { item: AssetItemFromApi };
 };
 
 export type IconProps = {
@@ -99,6 +82,7 @@ export type AuthState = {
   login: (data: AuthPayload) => void;
   logout: () => void;
   completeOnboarding: () => void; // Hàm xác nhận user hiện tại đã xem xong
+  setHouseId: (id: string | null) => void;
 };
 export type RegisterState = {
   username: string;
@@ -158,15 +142,19 @@ export interface RentalHouse {
 // đã được di chuyển sang file riêng `types/api.ts` cho dễ bảo trì.
 // Tại đây chỉ re-export lại để ai đang import từ "shared/types" vẫn dùng được.
 export type {
+  ApiResponse,
   HouseFromApi,
   HousesApiResponse,
   FunctionalAreaFromApi,
   AssetCategoryFromApi,
   AssetCategoriesApiResponse,
+  AssetItemsParams,
   AssetItemFromApi,
   AssetItemsApiResponse,
   UserProfileResponse,
 } from "./api";
+
+export type { TelemetryMessage, UsageData } from "./iot";
 
 export type ScanMode = "qr" | "nfc";
 export type HomeScreenProps = BottomTabScreenProps<MainTabParamList, "Dashboard">; // HomeScreenProps là một type alias cho BottomTabScreenProps<MainTabParamList, "Dashboard">.

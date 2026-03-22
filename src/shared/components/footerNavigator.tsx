@@ -11,14 +11,10 @@ import WaterUsageScreen from "../../features/tenant/screens/tenantConsumption/Wa
 import UserProfileScreen from "../../features/screens/user/UserProfileScreen";
 import { iconStyles } from "../styles/iconStyles";
 import footerStyles from "../styles/footerStyles";
-import CalendarScreen from "../../features/staff/screens/staffCalendar/CalendarScreen";
 import NotificationScreen from "../../features/tenant/screens/tenantNotification/NotificationScreen";
-import StaffHomeScreen from "../../features/staff/screens/staffHome/StaffHomeScreen";
-import StaffNotificationScreen from "../../features/staff/screens/staffnotification/StaffNotificationScreen";
-import TicketListScreen from "../../features/staff/screens/staffTicket/TicketListScreen";
-import { StaffScheduleProvider } from "../../features/staff/context/StaffScheduleContext";
 import i18next from "i18next";
 import { useTranslation } from "react-i18next";
+import { brandPrimary, neutral, waterAccent } from "../theme/color";
 
 export const Tab = createBottomTabNavigator<MainTabParamList>();
 
@@ -86,8 +82,9 @@ const createScreenOptions = (bottomInset: number) => ({
   route: RouteProp<MainTabParamList, keyof MainTabParamList>;
 }) => ({
   headerShown: false,
-  tabBarActiveTintColor: "#111827",
-  tabBarInactiveTintColor: "#9ca3af",
+  tabBarActiveTintColor:
+    route.name === "WaterUsage" ? waterAccent : brandPrimary,
+  tabBarInactiveTintColor: neutral.textMuted,
   tabBarStyle: [
     footerStyles.tabBar,
     {
@@ -218,29 +215,6 @@ export const TenantTabs = () => {
 //     <Tab.Screen name="Profile" component={UserProfileScreen} />
 //   </Tab.Navigator>
 // );
-
-/** Tab Navigator cho Staff: Home (lịch + asset), Calendar, Ticket (danh sách ticket), Notification, Profile */
-export const StaffTabs = () => {
-  const { t } = useTranslation(); // Trigger re-render khi đổi ngôn ngữ
-  const insets = useSafeAreaInsets();
-  return (
-    <StaffScheduleProvider>
-      <Tab.Navigator screenOptions={createScreenOptions(insets.bottom)} initialRouteName="Dashboard">
-        <Tab.Screen name="Ticket" component={TicketListScreen} />
-        <Tab.Screen name="Calendar" component={CalendarScreen} />
-        {/* Khi nhấn tab Dashboard: mở Camera (quét QR/NFC) thay vì chuyển về Dashboard, giống Tenant */}
-        <Tab.Screen
-          name="Dashboard"
-          component={StaffHomeScreen}
-          listeners={DashboardListener}
-        />
-        <Tab.Screen name="Notification" component={StaffNotificationScreen} />
-        <Tab.Screen name="Profile" component={UserProfileScreen} />
-      </Tab.Navigator>
-    </StaffScheduleProvider>
-  );
-};
-
 
 // Tóm tắt ý nghĩa và chức năng:
 // createBottomTabNavigator cho phép bạn tạo ra một thanh điều hướng (bottom tab navigation) ở phía dưới màn hình ứng dụng.

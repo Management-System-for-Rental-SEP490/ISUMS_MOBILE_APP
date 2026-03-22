@@ -1,95 +1,21 @@
-import React, { useMemo } from "react";
-import {
-  View,
-  Text,
-  FlatList,
-  TouchableOpacity,
-  ListRenderItem,
-} from "react-native";
+import React, { useEffect, useMemo, useRef, useState } from "react";
+import { ActivityIndicator, RefreshControl, ScrollView, Text, TouchableOpacity, View } from "react-native";
 import { useTranslation } from "react-i18next";
 import Header from "../../../../shared/components/header";
-import Icons from "../../../../shared/theme/icon";
+import { useTenantContext, useTenantHouseIotAlertsInfinite } from "../../../../shared/hooks";
 import { notificationStyles } from "./notificationStyles";
+import {
+  BRAND_DANGER,
+  brandDangerMutedBg,
+  brandPrimary,
+  getNotificationAlertLevelStyle,
+} from "../../../../shared/theme/color";
+import { PaginationBar } from "../../../../shared/components/PaginationBar";
+import { CLIENT_LIST_PAGE_SIZE, getTotalPages, slicePage } from "../../../../shared/utils";
+import type { IotAlertItem } from "../../../../shared/types/api";
 
 /**
- * Loại thông báo: phiếu bảo trì hoặc cảnh báo AI (điện / nước).
- * Khi có API từ BE, có thể mở rộng thêm type và map từ response.
- */
-export type NotificationType = "ticket" | "electric_anomaly" | "water_anomaly";
-
-/**
- * Cấu trúc một thông báo (mock). Sau khi có API: thay bằng DTO từ BE,
- * có thể giữ type + title/body hoặc dùng messageKey + params để i18n.
- */
-export interface NotificationItem {
-  id: string;
-  type: NotificationType;
-  /** Key i18n cho tiêu đề (ví dụ notification.msg_ticket_received_title) */
-  titleKey: string;
-  /** Key i18n cho nội dung (ví dụ notification.msg_ticket_received_body) */
-  bodyKey: string;
-  /** Tham số interpolation cho title/body (ví dụ { id: "T001" }, { percent: 40 }) */
-  params?: Record<string, string | number>;
-  /** Thời điểm tạo – dùng để hiển thị "X phút/giờ/ngày trước" */
-  createdAt: Date;
-  /** Đã đọc hay chưa – khi có API có thể sync với BE */
-  read?: boolean;
-}
-
-/**
- * Mock danh sách thông báo: ticket (phiếu bảo trì) + cảnh báo điện/nước từ AI.
- * Khi có API: thay bằng dữ liệu từ endpoint, map về NotificationItem hoặc cấu trúc tương đương.
- */
-const MOCK_NOTIFICATIONS: NotificationItem[] = [
-  {
-    id: "1",
-    type: "ticket",
-    titleKey: "notification.msg_ticket_received_title",
-    bodyKey: "notification.msg_ticket_received_body",
-    params: { id: "T001" },
-    createdAt: new Date(Date.now() - 30 * 60 * 1000),
-    read: false,
-  },
-  {
-    id: "2",
-    type: "electric_anomaly",
-    titleKey: "notification.msg_electric_anomaly_title",
-    bodyKey: "notification.msg_electric_anomaly_body",
-    params: { percent: 40 },
-    createdAt: new Date(Date.now() - 2 * 60 * 60 * 1000),
-    read: false,
-  },
-  {
-    id: "3",
-    type: "water_anomaly",
-    titleKey: "notification.msg_water_anomaly_title",
-    bodyKey: "notification.msg_water_anomaly_body",
-    createdAt: new Date(Date.now() - 5 * 60 * 60 * 1000),
-    read: true,
-  },
-  {
-    id: "4",
-    type: "ticket",
-    titleKey: "notification.msg_ticket_done_title",
-    bodyKey: "notification.msg_ticket_done_body",
-    params: { id: "T002" },
-    createdAt: new Date(Date.now() - 24 * 60 * 60 * 1000),
-    read: true,
-  },
-  {
-    id: "5",
-    type: "ticket",
-    titleKey: "notification.msg_ticket_assigned_title",
-    bodyKey: "notification.msg_ticket_assigned_body",
-    params: { id: "T003" },
-    createdAt: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000),
-    read: true,
-  },
-];
-
-/**
- * Tính chuỗi "X phút/giờ/ngày trước" từ Date.
- * Dùng key i18n notification.time_minutes / time_hours / time_days với {{n}}.
+ * Chuỗi "X phút/giờ/ngày trước" — dùng key i18n notification.time_* với {{n}}.
  */
 function formatTimeAgo(
   date: Date,
@@ -97,93 +23,232 @@ function formatTimeAgo(
 ): string {
   const now = Date.now();
   const diffMs = now - date.getTime();
+  const diffSeconds = Math.floor(diffMs / 1000);
   const diffMins = Math.floor(diffMs / (60 * 1000));
   const diffHours = Math.floor(diffMs / (60 * 60 * 1000));
   const diffDays = Math.floor(diffMs / (24 * 60 * 60 * 1000));
 
+  if (diffSeconds < 60) return t("notification.time_seconds", { n: Math.max(diffSeconds, 1) });
   if (diffMins < 60) return t("notification.time_minutes", { n: diffMins || 1 });
   if (diffHours < 24) return t("notification.time_hours", { n: diffHours });
   return t("notification.time_days", { n: diffDays });
 }
 
+const pad2 = (n: number) => String(n).padStart(2, "0");
+const toDateStr = (date: Date) =>
+  `${date.getFullYear()}-${pad2(date.getMonth() + 1)}-${pad2(date.getDate())}`;
+const todayStr = () => toDateStr(new Date());
+
+const normalizeAlertLevel = (level: string) => String(level ?? "").trim().toUpperCase();
+
 const NotificationScreen = () => {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
+  const { houseId } = useTenantContext();
 
-  /** Danh sách mock – khi có API thay bằng state từ hook/query */
-  const notifications = useMemo(() => MOCK_NOTIFICATIONS, []);
+  const PAGE_SIZE = CLIENT_LIST_PAGE_SIZE;
 
-  const renderItem: ListRenderItem<NotificationItem> = ({ item }) => {
-    const title = t(item.titleKey, item.params as Record<string, string>);
-    const body = t(item.bodyKey, item.params as Record<string, string>);
-    const timeStr = formatTimeAgo(item.createdAt, t);
+  const [selectedDate, setSelectedDate] = useState<string>(todayStr());
+  const [currentPage, setCurrentPage] = useState<number>(1);
 
-    let iconWrapperStyle = notificationStyles.iconWrapperTicket;
-    let IconComponent = Icons.contract;
-    let iconColor = "#0c6ab5";
-    if (item.type === "electric_anomaly") {
-      iconWrapperStyle = notificationStyles.iconWrapperElectric;
-      IconComponent = Icons.electric;
-      iconColor = "#2E7D32";
-    } else if (item.type === "water_anomaly") {
-      iconWrapperStyle = notificationStyles.iconWrapperWater;
-      IconComponent = Icons.water;
-      iconColor = "#00838F";
+  const scrollRef = useRef<ScrollView | null>(null);
+
+  const {
+    data,
+    isPending,
+    isFetchingNextPage,
+    isRefetching,
+    hasNextPage,
+    fetchNextPage,
+    refetch,
+  } = useTenantHouseIotAlertsInfinite(houseId, selectedDate, PAGE_SIZE);
+
+  const historyAlerts = useMemo(() => {
+    const pages = data?.pages ?? [];
+    const merged: IotAlertItem[] = [];
+    const seen = new Set<string>();
+    for (const page of pages) {
+      for (const item of page.data?.items ?? []) {
+        if (seen.has(item.alertId)) continue;
+        seen.add(item.alertId);
+        merged.push(item);
+      }
     }
+    merged.sort((a, b) => b.ts - a.ts);
+    return merged.slice(0, 200);
+  }, [data?.pages]);
 
+  const getLevelLabel = (level: string) => {
+    const L = normalizeAlertLevel(level);
+    if (L === "CRITICAL") return t("notification.level_critical");
+    if (L === "WARNING") return t("notification.level_warning");
+    if (L === "HIGH") return t("notification.level_high");
+    if (L === "MEDIUM") return t("notification.level_medium");
+    if (L === "LOW") return t("notification.level_low");
+    if (L === "INFO") return t("notification.level_info");
+    return t("notification.level_info");
+  };
+
+  const locale = useMemo(() => {
+    const lang = String(i18n.language || "").toLowerCase();
+    if (lang.startsWith("en")) return "en-US";
+    if (lang.startsWith("ja")) return "ja-JP";
+    return "vi-VN";
+  }, [i18n.language]);
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [selectedDate]);
+
+  const allAlerts = historyAlerts;
+  const filtered = allAlerts;
+
+  const pageCount = getTotalPages(filtered.length, PAGE_SIZE);
+  const displayedAlerts = useMemo(
+    () => slicePage(filtered, currentPage, PAGE_SIZE),
+    [filtered, currentPage, PAGE_SIZE]
+  );
+
+  const dateOptions = useMemo(() => {
+    return Array.from({ length: 7 }, (_, i) => {
+      const d = new Date();
+      d.setDate(d.getDate() - i);
+      const str = toDateStr(d);
+      const label =
+        i === 0
+          ? t("notification.today")
+          : i === 1
+            ? t("notification.yesterday")
+            : d.toLocaleDateString(locale, { day: "2-digit", month: "2-digit" });
+      return { str, label };
+    });
+  }, [locale, t]);
+
+  const AlertCard = ({ alert }: { alert: IotAlertItem }) => {
+    const level = normalizeAlertLevel(String(alert.level));
+    const { fg: color, bg } = getNotificationAlertLevelStyle(level);
+    const timeStr = formatTimeAgo(new Date(alert.ts), t);
     return (
-      <TouchableOpacity
-        activeOpacity={0.7}
-        style={[
-          notificationStyles.itemCard,
-          !item.read && notificationStyles.itemCardUnread,
-        ]}
-      >
-        <View style={[notificationStyles.iconWrapper, iconWrapperStyle]}>
-          <IconComponent size={22} color={iconColor} />
+      <View style={[notificationStyles.alertCard, { borderLeftColor: color }]}>
+        <View style={[notificationStyles.alertBadge, { backgroundColor: bg }]}>
+          <Text style={[notificationStyles.alertBadgeText, { color }]}>{getLevelLabel(level)}</Text>
         </View>
-        <View style={notificationStyles.itemBody}>
-          <Text style={notificationStyles.itemTitle} numberOfLines={2}>
-            {title}
-          </Text>
-          <Text style={notificationStyles.itemMessage} numberOfLines={3}>
-            {body}
-          </Text>
-          <Text style={notificationStyles.itemTime}>{timeStr}</Text>
+        <Text style={[notificationStyles.alertTitle, { color }]} numberOfLines={2}>
+          {alert.title}
+        </Text>
+        {!!alert.detail && <Text style={notificationStyles.alertDetail}>{alert.detail}</Text>}
+        <View style={notificationStyles.alertFooter}>
+          <View style={notificationStyles.areaBadge}>
+            <Text style={[notificationStyles.areaText]} numberOfLines={1}>
+              📍 {alert.areaName || t("notification.area_all")}
+            </Text>
+          </View>
+          <Text style={notificationStyles.alertTime}>{timeStr}</Text>
         </View>
-      </TouchableOpacity>
+      </View>
     );
   };
 
-  const listHeader = (
-    <Text style={notificationStyles.title}>
-      {t("screens.notification")}
-    </Text>
-  );
+  const handlePageChange = (pageNum: number) => {
+    setCurrentPage(pageNum);
+    requestAnimationFrame(() => {
+      scrollRef.current?.scrollTo({ y: 0, x: 0, animated: true });
+    });
+  };
 
-  const listEmpty = (
-    <View style={notificationStyles.emptyWrapper}>
-      <Text style={notificationStyles.emptyText}>
-        {t("notification.empty")}
-      </Text>
-    </View>
-  );
+  const initialLoading = isPending && historyAlerts.length === 0;
+  const refreshing = isRefetching && !isFetchingNextPage;
 
   return (
     <View style={notificationStyles.container}>
       <Header variant="default" />
-      <FlatList
-        data={notifications}
-        renderItem={renderItem}
-        keyExtractor={(item) => item.id}
-        ListHeaderComponent={listHeader}
-        ListEmptyComponent={listEmpty}
-        contentContainerStyle={
-          notifications.length === 0
-            ? [notificationStyles.listContent, { flex: 1 }]
-            : notificationStyles.listContent
-        }
+      <ScrollView
+        ref={scrollRef}
         showsVerticalScrollIndicator={false}
-      />
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={() => refetch()} />
+        }
+        contentContainerStyle={notificationStyles.listContent}
+        onScroll={({ nativeEvent }) => {
+          const { layoutMeasurement, contentOffset, contentSize } = nativeEvent;
+          const isBottom =
+            layoutMeasurement.height + contentOffset.y >= contentSize.height - 60;
+          if (
+            isBottom &&
+            contentOffset.y > 10 &&
+            currentPage === pageCount &&
+            displayedAlerts.length >= PAGE_SIZE &&
+            hasNextPage &&
+            !isFetchingNextPage
+          ) {
+            fetchNextPage();
+          }
+        }}
+        scrollEventThrottle={400}
+      >
+        <>
+          <Text style={notificationStyles.title}>{t("screens.notification")}</Text>
+
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={notificationStyles.dateRow}
+          >
+            {dateOptions.map((d) => {
+              const active = selectedDate === d.str;
+              return (
+                <TouchableOpacity
+                  key={d.str}
+                  onPress={() => setSelectedDate(d.str)}
+                  style={[
+                    notificationStyles.dateChip,
+                    active && {
+                      backgroundColor: brandDangerMutedBg,
+                      borderColor: BRAND_DANGER,
+                    },
+                  ]}
+                  activeOpacity={0.8}
+                >
+                  <Text
+                    style={[
+                      notificationStyles.dateChipText,
+                      active && { color: BRAND_DANGER },
+                    ]}
+                  >
+                    {d.label}
+                  </Text>
+                </TouchableOpacity>
+              );
+            })}
+          </ScrollView>
+
+          {initialLoading ? (
+            <View style={notificationStyles.loadingBlock}>
+              <ActivityIndicator size="large" color={brandPrimary} />
+            </View>
+          ) : filtered.length === 0 ? (
+            <View style={notificationStyles.emptyStateWrap}>
+              <Text style={notificationStyles.emptyText}>{t("notification.empty")}</Text>
+            </View>
+          ) : (
+            displayedAlerts.map((alert) => <AlertCard key={alert.alertId} alert={alert} />)
+          )}
+
+          {isFetchingNextPage && (
+            <View style={notificationStyles.loadingMoreBlock}>
+              <ActivityIndicator size="small" color={brandPrimary} />
+            </View>
+          )}
+          {!hasNextPage && filtered.length > 0 && !isFetchingNextPage && (
+            <Text style={notificationStyles.footerHint}>{t("notification.pagination_end")}</Text>
+          )}
+
+          <PaginationBar
+            currentPage={currentPage}
+            totalPages={pageCount}
+            onPageChange={handlePageChange}
+          />
+        </>
+      </ScrollView>
     </View>
   );
 };

@@ -2,16 +2,22 @@ export default {
     "login_btn": "Login with ISUMS account",
     "welcome": "Welcome to ISUMS",
     "description": "Please login to continue using the application",
+    "technical_blocked_title": "Login not allowed",
+    "technical_blocked_message": "This app is for residents only. Please use the staff app.",
     "common": {
         "back": "Back",
         "no_data": "No data",
+        "not_found_title": "Not Found",
         "loading": "Loading...",
         "error": "Error",
         "success": "Success",
         "close": "Close",
         "cancel": "Cancel",
         "try_again": "Try again",
-        "save": "Save"
+        "save": "Save",
+        "warning_different_house": "Warning: This device belongs to {{houseName}}, not the currently selected house.",
+        "read_more": "Read more",
+        "show_less": "Show less"
     },
     "device_detail": {
         "title": "Device Details",
@@ -100,6 +106,7 @@ export default {
         "not_found_nfc": "Device not found with NFC ID: {{id}}",
         "lookup_no_device_nfc": "No device is assigned to this NFC code.",
         "not_found_qr": "Device not found with code: {{id}}",
+        "device_not_in_your_house": "This device is not in the currently selected house. Please switch house or scan a device in the current house.",
         "rescan": "Rescan"
     },
     "billing": {
@@ -125,7 +132,7 @@ export default {
     },
     "staff_home": {
         "schedule_title": "This week's work schedule",
-        "schedule_summary_title": "When you have work (summary)",
+        "schedule_summary_title": "Work summary",
         "schedule_no_slots": "No slots this week",
         "schedule_col_time": "Time",
         "schedule_col_building": "Building",
@@ -187,11 +194,17 @@ export default {
         "condition": "Condition: {{percent}}%",
         "status_available": "Available",
         "status_in_use": "In use",
-        "status_disposed": "Disposed"
+        "status_active": "Active",
+        "status_broken": "Broken",
+        "status_disposed": "Disposed",
+        "status_deleted": "Deleted"
     },
     "staff_item_create": {
         "title": "Add device",
         "house_label": "House",
+        "function_area_label": "Placement location",
+        "function_area_none": "No functional area",
+        "function_area_unknown": "Saved area (not in current list)",
         "category_label": "Category",
         "display_name_label": "Display name",
         "display_name_placeholder": "e.g. Living room AC",
@@ -203,7 +216,10 @@ export default {
         "status_label": "Status",
         "status_available": "Available",
         "status_in_use": "In use",
+        "status_active": "Active",
+        "status_broken": "Broken",
         "status_disposed": "Disposed",
+        "status_deleted": "Deleted",
         "submit": "Add device",
         "success_message": "Device added.",
         "error_message": "Something went wrong. Please try again."
@@ -292,8 +308,11 @@ export default {
         "status_maintenance": "Maintenance",
         "status_inactive": "Inactive",
         "status_pending": "Pending",
-        "house_status_available": "Available",
-        "house_status_rented": "Rented",
+        "house_status_available": "In use",
+        "house_status_rented": "Renting",
+        "house_status_vacant": "Vacant",
+        "house_status_maintenance": "Under maintenance",
+        "house_status_unavailable": "Unavailable",
         "house_status_other": "{{status}}",
         "functional_areas_title": "Functional areas",
         "functional_areas_empty": "No functional areas",
@@ -358,6 +377,9 @@ export default {
     "home": {
         "welcome_role": "You are a {{role}}",
         "loading_data": "Loading data...",
+        "switch_house": "Switch House",
+        "select_house": "Select House",
+        "house_detail_screen_title": "House details",
         "house_info": {
             "address": "Address:",
             "description": "Description:",
@@ -368,6 +390,9 @@ export default {
         },
         "device_list": {
             "title": "Device List ({{count}})",
+            "by_area_title": "Devices by area",
+            "areas_row_label": "Select area",
+            "area_all_devices": "All areas",
             "status": {
                 "active": "Active",
                 "maintenance": "Maintenance",
@@ -377,6 +402,10 @@ export default {
     },
     "consumption": {
         "area_all": "All",
+        "floor_label": "Floor {{floor}}",
+        "floor_all_areas": "All floor {{floor}}",
+        "select_floor": "Select floor",
+        "select_area": "Select area",
         "area_kitchen": "Kitchen",
         "area_living_room": "Living room",
         "area_bedroom": "Bedroom",
@@ -385,12 +414,34 @@ export default {
         "chart_title_water": "Weekly water consumption",
         "unit_kwh": "kWh",
         "unit_m3": "m³",
+        "unit_L": "L",
         "period_week": "This week",
+        "period_day": "Today",
+        "period_month": "This month",
         "day_label": "Day {{n}}",
-        "chart_title_pie": "Distribution by area"
+        "chart_title_pie": "Distribution by area",
+        "no_data_area": "No data for this area yet",
+        "iot_live": "LIVE",
+        "iot_offline": "OFFLINE",
+        "summary_title": "Usage overview",
+        "electric_summary": "Electricity",
+        "water_summary": "Water"
     },
     "notification": {
         "empty": "No notifications yet",
+        "section_iot": "IoT",
+        "filter_all": "All",
+        "time_seconds": "{{n}} sec ago",
+        "level_critical": "Critical",
+        "level_warning": "Warning",
+        "level_high": "High",
+        "level_medium": "Medium",
+        "level_low": "Low",
+        "level_info": "Info",
+        "today": "Today",
+        "yesterday": "Yesterday",
+        "area_all": "Entire building",
+        "pagination_end": "All alerts are shown",
         "type_ticket": "Maintenance ticket",
         "type_electric": "Electric alert",
         "type_water": "Water alert",
@@ -407,5 +458,30 @@ export default {
         "time_minutes": "{{n}} min ago",
         "time_hours": "{{n}} hours ago",
         "time_days": "{{n}} days ago"
+    },
+    "search": {
+        "placeholder_default": "Search...",
+        "placeholder_staff": "Search house, device, serial...",
+        "placeholder_tenant": "Search device, device type...",
+        "placeholder_date": "Search by date (e.g. 01/03)...",
+        "type_house": "House",
+        "type_item": "Device",
+        "type_date": "Date",
+        "no_result": "No results for \"{{query}}\"",
+        "viewing_date": "Viewing: {{date}}"
+    },
+    "dropdown_box": {
+        "title": "Filters & selection",
+        "search_placeholder": "Search name, address, floor, category…",
+        "no_results": "No matching items.",
+        "section_floor": "Floor",
+        "section_category": "Device category",
+        "section_house": "House",
+        "section_status": "Status",
+        "floor_short": "Floor",
+        "category_short": "Category",
+        "house_short": "House",
+        "status_short": "Status",
+        "open_a11y": "Open filters"
     }
 }

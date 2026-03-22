@@ -44,7 +44,11 @@ const useAuthStore = create<AuthState>()(
       isLoggedIn: false,
       onboardedUsers: [], // Danh sách các user đã xem Intro
 
-      login: (data) =>
+      setHouseId: (id: string | null) => set({ houseId: id }),
+
+      login: (data) => {
+        // Tenant app: không cho technical đăng nhập
+        if (data.role === "technical") return;
         set((state) => ({
           user: data.username,
           role: data.role,
@@ -55,7 +59,8 @@ const useAuthStore = create<AuthState>()(
           isLoggedIn: true,
           // Giữ nguyên onboardedUsers
           onboardedUsers: state.onboardedUsers, 
-        })),
+        }));
+      },
 
       logout: () =>
         set((state) => ({

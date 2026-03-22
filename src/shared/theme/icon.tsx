@@ -59,6 +59,9 @@ const Icons = {
   chevronBack: ({ size = 24, color = 'black' }: IconProps = {}) => (
     <Ionicons name="chevron-back" size={size} color={color} />
   ),
+  chevronDown: ({ size = 24, color = 'black' }: IconProps = {}) => (
+    <Ionicons name="chevron-down" size={size} color={color} />
+  ),
   logOut: ({ size = 24, color = 'black' }: IconProps = {}) => (
     <Ionicons name="log-out-outline" size={size} color={color} />
   ),
@@ -69,6 +72,14 @@ const Icons = {
   /** Icon dấu cộng (thêm danh mục / thêm thiết bị). */
   plus: ({ size = 24, color = 'black' }: IconProps = {}) => (
     <AntDesign name="plus" size={size} color={color} />
+  ),
+  /** Icon cảnh báo (dấu hiệu sự cố/alert). */
+  warning: ({ size = 24, color = 'black' }: IconProps = {}) => (
+    <MaterialIcons name="warning" size={size} color={color} />
+  ),
+  /** Icon X để xóa nội dung (dùng cho nút clear ô tìm kiếm). */
+  close: ({ size = 24, color = 'black' }: IconProps = {}) => (
+    <AntDesign name="close" size={size} color={color} />
   ),
 };
 

@@ -1,15 +1,17 @@
 import { StyleSheet, Dimensions } from "react-native";
+import { neutral, waterAccent } from "../../../../shared/theme/color";
+import { appTypography } from "../../../../shared/utils/typography";
 
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
 
 /**
  * Styles cho màn hình tiêu thụ nước.
- * Đồng bộ với hệ thống: nền #F5F7FA, card trắng, màu chủ đạo nước #20B8EB.
+ * Nền / card / viền: neutral; accent nước: waterAccent.
  */
 export const waterUsageStyles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#F5F7FA",
+    backgroundColor: neutral.canvasMuted,
   },
   content: {
     flex: 1,
@@ -20,64 +22,203 @@ export const waterUsageStyles = StyleSheet.create({
     paddingBottom: 100,
   },
   title: {
-    fontSize: 20,
-    fontWeight: "700",
-    color: "#1e293b",
-    marginBottom: 16,
+    ...appTypography.dialogTitle,
+    color: neutral.slate900,
+    marginBottom: 8,
   },
   categoryScroll: {
-    marginBottom: 20,
+    marginBottom: 2,
+    marginTop: 0,
+  },
+  areaSelectorWrapper: {
+    marginBottom: 12,
+  },
+  areaDropdownBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    borderRadius: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    backgroundColor: neutral.surface,
+    borderWidth: 1,
+    borderColor: neutral.slate200,
+    marginTop: 6,
+  },
+  areaDropdownLabel: {
+    ...appTypography.hint,
+    color: neutral.slate400,
+    marginBottom: 1,
+  },
+  areaDropdownValue: {
+    ...appTypography.chip,
+    color: neutral.slate700,
+  },
+  areaChipScroll: {
+    marginTop: 8,
+    marginBottom: 4,
+  },
+  areaChipContent: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    paddingRight: 16,
+  },
+  areaChip: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 16,
+    backgroundColor: neutral.backgroundElevated,
+    borderWidth: 1,
+    borderColor: neutral.slate200,
+    minHeight: 32,
+    justifyContent: "center",
+  },
+  areaChipActive: {
+    backgroundColor: waterAccent,
+    borderColor: waterAccent,
+  },
+  areaChipText: {
+    ...appTypography.caption,
+    fontWeight: "500",
+    color: neutral.slate500,
+  },
+  areaChipTextActive: {
+    color: neutral.surface,
   },
   categoryContent: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 10,
-    paddingVertical: 8,
-    paddingRight: 20,
+    gap: 6,
+    paddingVertical: 2,
+    paddingRight: 16,
   },
   categoryChip: {
-    paddingHorizontal: 18,
-    paddingVertical: 12,
-    borderRadius: 22,
-    backgroundColor: "#fff",
-    borderWidth: 1.5,
-    borderColor: "#e2e8f0",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 2,
-    elevation: 2,
-    minHeight: 44,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 14,
+    backgroundColor: neutral.surface,
+    borderWidth: 1,
+    borderColor: neutral.slate200,
+    minHeight: 32,
     justifyContent: "center",
   },
   categoryChipActive: {
-    backgroundColor: "#20B8EB",
-    borderColor: "#20B8EB",
+    backgroundColor: waterAccent,
+    borderColor: waterAccent,
   },
   categoryChipText: {
-    fontSize: 14,
+    fontSize: 12,
     fontWeight: "600",
-    color: "#475569",
+    color: neutral.slate500,
   },
   categoryChipTextActive: {
-    color: "#fff",
+    color: neutral.surface,
   },
   chartCard: {
-    backgroundColor: "#fff",
+    backgroundColor: neutral.surface,
     borderRadius: 20,
     padding: 20,
     marginBottom: 20,
-    shadowColor: "#000",
+    shadowColor: neutral.black,
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.08,
     shadowRadius: 12,
     elevation: 4,
   },
   chartTitle: {
-    fontSize: 16,
+    ...appTypography.sectionHeading,
     fontWeight: "600",
-    color: "#334155",
+    color: neutral.slate700,
     marginBottom: 16,
+  },
+  /** Card realtime (các stat đo nước + biểu đồ sparkline). */
+  realtimeCard: {
+    backgroundColor: neutral.surface,
+    borderRadius: 20,
+    padding: 20,
+    marginBottom: 16,
+    shadowColor: neutral.black,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.08,
+    shadowRadius: 12,
+    elevation: 4,
+  },
+  realtimeTitleRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginBottom: 12,
+  },
+  realtimeTitle: {
+    ...appTypography.listTitle,
+    color: neutral.slate700,
+  },
+  realtimeTimestamp: {
+    ...appTypography.hint,
+    color: neutral.slate500,
+  },
+  statGrid: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    justifyContent: "space-between",
+  },
+  statCard: {
+    width: "48%",
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: neutral.slate200,
+    padding: 12,
+    marginBottom: 12,
+  },
+  statLabel: {
+    ...appTypography.caption,
+    fontWeight: "600",
+    color: neutral.slate500,
+    marginBottom: 6,
+  },
+  statValueRow: {
+    flexDirection: "row",
+    alignItems: "baseline",
+    gap: 6,
+  },
+  statValue: {
+    fontSize: 18,
+    fontWeight: "800",
+    letterSpacing: -0.2,
+  },
+  statUnit: {
+    ...appTypography.hint,
+    fontWeight: "700",
+    color: neutral.slate400,
+  },
+  /** Sparkline card realtime. */
+  sparkCard: {
+    backgroundColor: neutral.surface,
+    borderRadius: 20,
+    padding: 20,
+    marginBottom: 20,
+    shadowColor: neutral.black,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.08,
+    shadowRadius: 12,
+    elevation: 4,
+  },
+  sparkHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 12,
+  },
+  sparkTitle: {
+    ...appTypography.captionStrong,
+    fontWeight: "800",
+    letterSpacing: 1.5,
+    color: neutral.slate700,
+  },
+  sparkCurrent: {
+    fontSize: 18,
+    fontWeight: "900",
   },
   chartWrapper: {
     width: SCREEN_WIDTH - 80,
@@ -98,8 +239,8 @@ export const waterUsageStyles = StyleSheet.create({
     marginHorizontal: 2,
   },
   barLabel: {
-    fontSize: 10,
-    color: "#64748b",
+    ...appTypography.micro,
+    color: neutral.slate500,
     marginTop: 6,
   },
   pieChartWrapper: {
@@ -126,7 +267,7 @@ export const waterUsageStyles = StyleSheet.create({
     marginRight: 6,
   },
   pieLegendText: {
-    fontSize: 12,
-    color: "#64748b",
+    ...appTypography.caption,
+    color: neutral.slate500,
   },
 });

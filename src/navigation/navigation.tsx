@@ -1,58 +1,25 @@
 import React, { useEffect, useState } from "react";
 import { View, ActivityIndicator } from "react-native";
+import { useTranslation } from "react-i18next";
 import { NavigationContainer } from "@react-navigation/native";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
+import { CustomAlert } from "../shared/components/alert";
 import Login from "../features/screens/authentication/LoginScreen";
 import OnBoarding from "../features/screens/onBoarding/onBoarding";
 import { useAuthStore } from "../store/useAuthStore";
+import { logoutKeycloak } from "../shared/services/keycloakAuth";
 import { RootStackParamList } from "../shared/types";
-import {StaffTabs, TenantTabs } from "../shared/components/footerNavigator";
+import { TenantTabs } from "../shared/components/footerNavigator";
 import CameraScreen from "../features/modal/camera/CameraScreen";
-import DeviceDetail from "../features/tenant/screens/tenantItem/deviceDetail";
+import TenantItemDescriptionScreen from "../features/tenant/screens/tenantItem/TenantItemDescription";
 import TicketScreen from "../features/tenant/screens/tenantTicket/ticket";
-import BuildingDetailScreen from "../features/staff/screens/staffHouse/BuildingDetailScreen";
-import TicketDetailScreen from "../features/staff/screens/staffTicket/TicketDetailScreen";
-import CategoryScreen from "../features/staff/screens/staffCategory/categoryScreen";
-import CategoryListScreen from "../features/staff/screens/staffCategory/CategoryListScreen";
-import CategoryEditScreen from "../features/staff/screens/staffCategory/CategoryEditScreen";
-import ItemListScreen from "../features/staff/screens/staffItems/ItemListScreen";
-import ItemCreateScreen from "../features/staff/screens/staffItems/ItemCreateScreen";
-import ItemEditScreen from "../features/staff/screens/staffItems/ItemEditScreen";
-import ItemDescriptionScreen from "../features/staff/screens/staffItems/itemDescription";
 import TenantHouseDescription from "../features/tenant/screens/tenantHouse/tenantHouseDescription";
-import { StaffScheduleProvider } from "../features/staff/context/StaffScheduleContext";
-
-// Wrapper components để bọc Provider cho các screen cần useStaffSchedule
-const BuildingDetailScreenWrapper = () => (
-  <StaffScheduleProvider>
-    <BuildingDetailScreen />
-  </StaffScheduleProvider>
-);
-
-const TicketDetailScreenWrapper = () => (
-  <StaffScheduleProvider>
-    <TicketDetailScreen />
-  </StaffScheduleProvider>
-);
+import { brandPrimary } from "../shared/theme/color";
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
 
-const RoleNavigator = () => {
-  const role = useAuthStore((state) => state.role);
-
-  // if (role === "landlord") {
-  //   return <LandlordTabs />;
-  // }
-  // if (role === "manager") {
-  //   return <ManagerTabs />;
-  // }
-  if (role === "technical") {
-    return <StaffTabs />;
-  }
-  return <TenantTabs />;
-};
-
 const Navigation = () => {
+  const { t } = useTranslation();
   const isLoggedIn = useAuthStore((state) => state.isLoggedIn);
   const user = useAuthStore((state) => state.user);
   const role = useAuthStore((state) => state.role);
@@ -62,7 +29,7 @@ const Navigation = () => {
 
   // Kiểm tra xem User hiện tại đã xem Onboarding chưa
   const showOnboarding = isLoggedIn && user && !onboardedUsers.includes(user);
-// đọc state từ AsyncStorage vào store
+  // đọc state từ AsyncStorage vào store
   useEffect(() => {
     const rehydrate = async () => {
         if (useAuthStore.persist && useAuthStore.persist.hasHydrated) { //Middleware của Zustand giúp lưu state vào AsyncStorage (ổ cứng điện thoại).
@@ -78,11 +45,27 @@ const Navigation = () => {
     rehydrate();
   }, []);
 
+  // Tenant app: nếu có session cũ với role technical (persisted) → logout, thông báo, xóa Keycloak session
+  useEffect(() => {
+    if (!isReady) return;
+    const state = useAuthStore.getState();
+    if (state.isLoggedIn && state.role === "technical") {
+      const idToken = state.idToken;
+      useAuthStore.getState().logout();
+      logoutKeycloak(idToken).catch(() => {});
+      CustomAlert.alert(
+        t("technical_blocked_title"),
+        t("technical_blocked_message"),
+        [{ text: t("common.close") }]
+      );
+    }
+  }, [isReady, isLoggedIn, role, t]);
+
   if (!isReady) {
       return (
           <View style={{flex: 1, justifyContent: 'center', alignItems: 'center'}}>
             {/* Hiển thị loading khi đang đọc state từ AsyncStorage vào store(cái vòng tròn xoay */}
-              <ActivityIndicator size="large" color="#3bb582" /> 
+              <ActivityIndicator size="large" color={brandPrimary} /> 
           </View>
       );
   }
@@ -95,50 +78,24 @@ const Navigation = () => {
              // User mới (chưa có trong onboardedUsers) -> Hiện Onboarding
              <Stack.Screen name="OnBoarding" component={OnBoarding} />
           ) : (
-            // User cũ (đã có trong onboardedUsers) -> Vào thẳng Main
+            // User cũ (đã có trong onboardedUsers) -> Vào thẳng Main (chỉ Tenant)
             <>
-              <Stack.Screen name="Main" component={RoleNavigator} />
+              <Stack.Screen name="Main" component={TenantTabs} />
               <Stack.Screen
                 name="Camera"
                 component={CameraScreen}
                 options={{ presentation: "modal" }}
               />
-              <Stack.Screen name="DeviceDetail" component={DeviceDetail} />
+              <Stack.Screen
+                name="TenantItemDetail"
+                component={TenantItemDescriptionScreen}
+              />
               <Stack.Screen 
                 name="Ticket" 
                 component={TicketScreen}
                 options={{ presentation: "modal" }}
               />
-              {role === "technical" ? (
-                <>
-                  <Stack.Screen name="BuildingDetail" component={BuildingDetailScreenWrapper} />
-                  <Stack.Screen name="TicketDetail" component={TicketDetailScreenWrapper} />
-                  <Stack.Screen name="CategoryList" component={CategoryListScreen} />
-                  <Stack.Screen name="Category" component={CategoryScreen} />
-                  <Stack.Screen
-                    name="CategoryEdit"
-                    component={CategoryEditScreen}
-                    options={{ presentation: "modal" }}
-                  />
-                  <Stack.Screen name="ItemList" component={ItemListScreen} />
-                  <Stack.Screen name="ItemCreate" component={ItemCreateScreen} />
-                  <Stack.Screen
-                    name="ItemEdit"
-                    component={ItemEditScreen}
-                    options={{ presentation: "modal" }}
-                  />
-                  <Stack.Screen
-                    name="ItemDescription"
-                    component={ItemDescriptionScreen}
-                    options={{ presentation: "modal" }}
-                  />
-                </>
-              ) : (
-                <>
-                  <Stack.Screen name="BuildingDetail" component={TenantHouseDescription} />
-                  <Stack.Screen name="TicketDetail" component={TicketDetailScreen} />
-                </>
-              )}
+              <Stack.Screen name="BuildingDetail" component={TenantHouseDescription} />
             </>
           )
         ) : (

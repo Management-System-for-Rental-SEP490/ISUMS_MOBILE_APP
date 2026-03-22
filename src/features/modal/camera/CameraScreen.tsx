@@ -5,52 +5,26 @@ import { useEffect, useState, useRef } from "react";
 import { CameraView, useCameraPermissions } from "expo-camera";
 import { cameraStyles } from "./cameraStyles";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
-import { Device, RootStackParamList, DeviceStatus } from "../../../shared/types";
+import { RootStackParamList } from "../../../shared/types";
 import NfcManager, { NfcTech, Ndef } from "react-native-nfc-manager";
 import { ScanMode } from "../../../shared/types";
 import { useTranslation } from "react-i18next";
 import { useAuthStore } from "../../../store/useAuthStore";
 import { getAssetItemByNfcId } from "../../../shared/services/assetItemApi";
-import { useAttachAssetTag } from "../../../shared/hooks";
-import type { AssetItemFromApi } from "../../../shared/types/api";
-import { AssignNfcModal } from "../../staff/modal/assignNFC/AssignNfcModal";
 
 
 const CameraScreen = () => {
   const { t } = useTranslation();
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const route = useRoute<RouteProp<RootStackParamList, "Camera">>();
-  const role = useAuthStore((s) => s.role);
-  /** Từ BuildingDetail: gán NFC cho thiết bị đã chọn. */
-  const assignForDevice = route.params?.assignForDevice;
-  /** "assign" = từ menu + Gán NFC; "lookup" (hoặc undefined) = tra cứu. */
-  const cameraMode = route.params?.mode;
+  const currentHouseId = useAuthStore((s) => s.houseId);
   const initialScanMode = route.params?.initialScanMode;
-
-  // Debug params
-  useEffect(() => {
-    console.log("CameraScreen params:", { mode: cameraMode, assignForDevice: assignForDevice?.id, role, initialScanMode });
-  }, [route.params]);
 
   const [permission, requestPermission] = useCameraPermissions(); 
   const [scanned, setScanned] = useState(false);
-  const [scanMode, setScanMode] = useState<ScanMode>(() => {
-    if (initialScanMode) return initialScanMode;
-    if (assignForDevice || cameraMode === "assign") return "nfc";
-    if (role === "technical") return "nfc";
-    return "qr";
-  });
+  const [scanMode, setScanMode] = useState<ScanMode>(() => initialScanMode ?? "qr");
   const [nfcScanning, setNfcScanning] = useState(false);
-  const [scannedNfcId, setScannedNfcId] = useState<string | null>(null);
-  /** Điều khiển hiển thị modal chọn thiết bị trống để gán NFC. */
-  const [assignModalVisible, setAssignModalVisible] = useState(false);
-
-  const [scannedTagType, setScannedTagType] = useState<"NFC" | "QR_CODE">("NFC");
-
   const nfcTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-
-  /** Gán NFC/QR vào thiết bị qua POST /api/asset/tags. */
-  const { mutateAsync: attachAssetTag } = useAttachAssetTag();
 
   const isMounted = useRef(true);
 
@@ -94,47 +68,6 @@ const CameraScreen = () => {
       stopNfcScan();
     }
   }, [scanMode]);
-
-  /**
-   * Map trạng thái từ API (AVAILABLE, IN_USE, DISPOSED, MAINTENANCE, ...)
-   * sang DeviceStatus để tái sử dụng màn DeviceDetail/Ticket cũ.
-   */
-  const mapApiStatusToDeviceStatus = (apiStatus: string): DeviceStatus => {
-    switch (apiStatus) {
-      case "AVAILABLE":
-      case "IN_USE":
-        return "active";
-      case "DISPOSED":
-        return "inactive";
-      case "MAINTENANCE":
-        return "maintenance";
-      default:
-        return "pending";
-    }
-  };
-
-  /**
-   * Chuyển AssetItemFromApi (dữ liệu thật từ BE) về kiểu Device
-   * để truyền sang màn DeviceDetail/Ticket hiện tại.
-   */
-  const mapAssetItemToDevice = (item: AssetItemFromApi): Device => {
-    return {
-      id: item.id,
-      name: item.displayName,
-      type: "other",
-      nfcTagId: item.nfcTag ?? "",
-      // Camera chỉ biết thiết bị nào được quét, không biết rõ phòng/tầng,
-      // nên location tạm để chuỗi rỗng, DeviceDetail sẽ hiển thị "no_data".
-      location: "",
-      status: mapApiStatusToDeviceStatus(item.status),
-      metadata: {
-        serialNumber: item.serialNumber,
-        manufacturer: "",
-        model: "",
-        installationDate: "",
-      },
-    };
-  };
 
   const startNfcScan = async () => {
     if (nfcScanning || scanned) return;
@@ -220,150 +153,38 @@ const CameraScreen = () => {
     setNfcScanning(false);
   };
 
-  // Common logic for both NFC and QR
+  // Luồng Tenant: quét NFC/QR → mở trang chi tiết thiết bị (TenantItemDetail) nếu thiết bị thuộc nhà mình
   const handleTagScanned = async (tagValue: string, type: "NFC" | "QR_CODE") => {
     console.log(`Scanned ${type}:`, tagValue);
-
-    // --- Luồng Staff: Gán Tag cho thiết bị đã chọn (từ màn BuildingDetail) ---
-    if (assignForDevice) {
-      // Đảm bảo 1 Tag chỉ gán cho 1 thiết bị
-      try {
-        const existing = await getAssetItemByNfcId(tagValue);
-        if (existing && existing.id !== assignForDevice.id) {
-          Alert.alert(
-            t("staff_nfc.duplicate_title"),
-            t("staff_nfc.duplicate_message", { name: existing.displayName }),
-            [
-              {
-                text: t("common.close"),
-                onPress: () => {
-                  setScanned(false);
-                  if (type === "NFC") startNfcScan();
-                },
-              },
-            ]
-          );
-          return;
-        }
-      } catch (e) {
-        console.log("Lỗi kiểm tra trùng Tag khi gán từ BuildingDetail:", e);
-      }
-
-      Alert.alert(
-        t("staff_nfc.confirm_assign_title"),
-        t("staff_nfc.confirm_assign_message", {
-          nfcId: tagValue,
-          displayName: assignForDevice.displayName,
-        }),
-        [
-          { text: t("common.cancel"), onPress: () => { setScanned(false); if (type === "NFC") startNfcScan(); }, style: "cancel" as const },
-          {
-            text: t("common.save"),
-            onPress: async () => {
-              try {
-                await attachAssetTag({
-                  assetId: assignForDevice.id,
-                  tagValue: tagValue,
-                  tagType: type,
-                });
-                Alert.alert(t("common.success"), 
-                  type === "QR_CODE" 
-                    ? t("staff_nfc.assign_success_qr") 
-                    : t("staff_nfc.assign_success"), 
-                  [
-                  { text: t("common.close"), onPress: () => navigation.goBack() },
-                ]);
-              } catch {
-                Alert.alert(t("camera.error_title"), t("staff_nfc.assign_error"), [
-                  { text: t("common.close"), onPress: () => navigation.goBack() },
-                ]);
-              }
-            },
-          },
-        ]
-      );
-      return;
-    }
-
-    // --- Luồng Staff: Quét Tag từ footer (chỉ tra cứu mã đã gán) ---
-    if (role === "technical" && cameraMode !== "assign" && !assignForDevice) {
-      try {
-        const device = await getAssetItemByNfcId(tagValue);
-        if (device) {
-          navigation.replace("ItemDescription", { item: device });
-          return;
-        }
-        
-        // Nếu không tìm thấy
-        Alert.alert(
-          t("camera.not_found_title"),
-          type === "QR_CODE" 
-            ? t("camera.not_found_qr", { id: tagValue })
-            : t("camera.lookup_no_device_nfc", { id: tagValue }),
-          [
-            { text: t("camera.rescan"), onPress: () => { setScanned(false); if (type === "NFC") startNfcScan(); } },
-            { text: t("common.close"), onPress: () => navigation.goBack() },
-          ]
-        );
-      } catch (error) {
-        console.log("Lỗi tra cứu thiết bị:", error);
-        Alert.alert(
-          t("camera.not_found_title"),
-          type === "QR_CODE" 
-            ? t("camera.not_found_qr", { id: tagValue })
-            : t("camera.lookup_no_device_nfc", { id: tagValue }),
-          [
-            { text: t("camera.rescan"), onPress: () => { setScanned(false); if (type === "NFC") startNfcScan(); } },
-            { text: t("common.close"), onPress: () => navigation.goBack() },
-          ]
-        );
-      }
-      return;
-    }
-
-    // --- Luồng Staff: Từ menu "+" → Gán Tag: quét mã mới thì mở modal chọn thiết bị; mã đã gán thì báo lỗi ---
-    if (role === "technical" && cameraMode === "assign") {
-      try {
-        const existing = await getAssetItemByNfcId(tagValue);
-        if (existing) {
-          Alert.alert(
-            t("staff_nfc.duplicate_title"),
-            t("staff_nfc.duplicate_message", { name: existing.displayName ?? existing.id }),
-            [
-              {
-                text: t("common.close"),
-                onPress: () => {
-                  setScanned(false);
-                  if (type === "NFC") startNfcScan();
-                },
-              },
-            ]
-          );
-          return;
-        }
-        setScannedNfcId(tagValue);
-        setScannedTagType(type);
-        setAssignModalVisible(true);
-      } catch {
-        Alert.alert(
-          t("camera.not_found_title"),
-          t("camera.not_found_nfc", { id: tagValue }),
-          [
-            { text: t("camera.rescan"), onPress: () => { setScanned(false); if (type === "NFC") startNfcScan(); } },
-            { text: t("common.close"), onPress: () => navigation.goBack() },
-          ]
-        );
-      }
-      return;
-    }
-
-    // --- Luồng Tenant: tra cứu thiết bị bằng dữ liệu thật từ BE ---
     try {
       const assetItem = await getAssetItemByNfcId(tagValue);
 
       if (assetItem) {
-        const device = mapAssetItemToDevice(assetItem);
-        navigation.replace("DeviceDetail", { device });
+        // Yêu cầu mới: Chỉ cho phép quét thiết bị thuộc CĂN NHÀ ĐANG CHỌN (currentHouseId).
+        // Nếu assetItem.houseId trùng với currentHouseId thì mới cho phép.
+        const isCurrentHouseDevice = currentHouseId && assetItem.houseId === currentHouseId;
+
+        if (isCurrentHouseDevice) {
+          navigation.replace("TenantItemDetail", { item: assetItem });
+          return;
+        }
+
+        // Thiết bị không thuộc nhà đang chọn (dù có thể thuộc nhà khác của tenant)
+        if (!isMounted.current) return;
+        Alert.alert(
+          t("camera.not_found_title"),
+          t("camera.device_not_in_your_house"), // Có thể cần sửa lại câu thông báo cho chính xác hơn "Thiết bị không thuộc nhà đang chọn"
+          [
+            {
+              text: t("camera.rescan"),
+              onPress: () => {
+                setScanned(false);
+                if (type === "NFC") startNfcScan();
+              },
+            },
+            { text: t("common.close"), onPress: () => navigation.goBack() },
+          ]
+        );
         return;
       }
 
@@ -624,59 +445,6 @@ const CameraScreen = () => {
       >
         <Text style={cameraStyles.closeButtonText}>{t('common.close')}</Text>
       </TouchableOpacity>
-
-      {/* Modal chọn thiết bị trống để gán NFC (Staff) */}
-      <AssignNfcModal
-        visible={assignModalVisible}
-        nfcId={scannedNfcId}
-        tagType={scannedTagType}
-        onClose={() => {
-          setAssignModalVisible(false);
-          setScannedNfcId(null);
-          setScanned(false);
-        }}
-        onSelectDevice={async (device: AssetItemFromApi) => {
-          if (!scannedNfcId) return;
-          Alert.alert(
-            t("staff_nfc.confirm_assign_title"),
-            t("staff_nfc.confirm_assign_message", {
-              nfcId: scannedNfcId,
-              displayName: device.displayName,
-            }),
-            [
-              { text: t("common.cancel"), style: "cancel" as const },
-              {
-                text: t("common.save"),
-            onPress: async () => {
-              try {
-                await attachAssetTag({
-                  assetId: device.id,
-                  tagValue: scannedNfcId,
-                  tagType: scannedTagType,
-                });
-                setAssignModalVisible(false);
-                Alert.alert(
-                  t("common.success"),
-                  scannedTagType === "QR_CODE" 
-                    ? t("staff_nfc.assign_success_qr") 
-                    : t("staff_nfc.assign_success"),
-                  [{ text: t("common.close"), onPress: () => navigation.goBack() }]
-                );
-              } catch (error: any) {
-                // Lấy message lỗi từ BE nếu có
-                const errorMessage = error?.response?.data?.message || t("staff_nfc.assign_error");
-                Alert.alert(
-                  t("camera.error_title"),
-                  errorMessage,
-                  [{ text: t("common.close") }]
-                );
-              }
-            },
-              },
-            ]
-          );
-        }}
-      />
     </View>
   );
 };

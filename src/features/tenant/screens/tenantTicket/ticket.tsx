@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { SafeAreaProvider, useSafeAreaInsets } from "react-native-safe-area-context";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { View, Text, TextInput, TouchableOpacity, ScrollView } from "react-native";
 import { CustomAlert as Alert } from "../../../../shared/components/alert";
 import { RouteProp, useNavigation, useRoute } from "@react-navigation/native";
@@ -7,16 +7,27 @@ import { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { RootStackParamList } from "../../../../shared/types";
 import { ticketStyles } from "./ticketStyles";
 import { useTranslation } from "react-i18next";
+import Icons from "../../../../shared/theme/icon";
+import {
+  StackScreenTitleBadge,
+  StackScreenTitleBarBalance,
+  StackScreenTitleHeaderStrip,
+  stackScreenTitleBackBtnOnBrand,
+  stackScreenTitleCenterSlotStyle,
+  stackScreenTitleOnBrandIconColor,
+  stackScreenTitleRowStyle,
+  stackScreenTitleSideSlotStyle,
+} from "../../../../shared/components/StackScreenTitleBadge";
 
 type TicketRouteProp = RouteProp<RootStackParamList, "Ticket">;
 type TicketNavigationProp = NativeStackNavigationProp<RootStackParamList, "Ticket">;
 
 const TicketScreen = () => {
     const { t } = useTranslation();
+    const insets = useSafeAreaInsets();
     const route = useRoute<TicketRouteProp>();
     const navigation = useNavigation<TicketNavigationProp>();
     const { device } = route.params;
-    const insets = useSafeAreaInsets();
 
     // State để lưu thông tin form
     const [title, setTitle] = useState("");
@@ -57,27 +68,33 @@ const TicketScreen = () => {
     };
 
     return (
-        <SafeAreaProvider style={ticketStyles.container}>
+        <View style={ticketStyles.container}>
+            <StackScreenTitleHeaderStrip>
+                <View style={stackScreenTitleRowStyle}>
+                    <View style={stackScreenTitleSideSlotStyle}>
+                        <TouchableOpacity
+                            style={stackScreenTitleBackBtnOnBrand}
+                            onPress={() => navigation.goBack()}
+                            activeOpacity={0.7}
+                        >
+                            <Icons.chevronBack size={24} color={stackScreenTitleOnBrandIconColor} />
+                        </TouchableOpacity>
+                    </View>
+                    <View style={stackScreenTitleCenterSlotStyle}>
+                        <StackScreenTitleBadge numberOfLines={1}>
+                            {t("ticket.title")}
+                        </StackScreenTitleBadge>
+                    </View>
+                    <StackScreenTitleBarBalance />
+                </View>
+            </StackScreenTitleHeaderStrip>
             <ScrollView 
                 style={ticketStyles.content} 
                 contentContainerStyle={[
                     ticketStyles.contentContainer,
-                    { paddingBottom: Math.max(insets.bottom, 20) + 40 } // Thêm padding để tránh bị che bởi safe area
+                    { paddingBottom: Math.max(insets.bottom, 20) + ticketStyles.contentContainer.paddingBottom },
                 ]}
             >
-                {/* Header với nút quay lại */}
-                <TouchableOpacity 
-                    onPress={() => navigation.goBack()}
-                    style={ticketStyles.backButton}
-                >
-                    <Text style={ticketStyles.backButtonText}>← {t('common.back')}</Text>
-                </TouchableOpacity>
-
-                {/* Tiêu đề màn hình */}
-                <Text style={ticketStyles.title}>
-                    {t('ticket.title')}
-                </Text>
-
                 {/* Thông tin thiết bị (chỉ hiển thị, không chỉnh sửa) */}
                 <View style={ticketStyles.deviceInfoSection}>
                     <Text style={ticketStyles.sectionTitle}>
@@ -198,7 +215,7 @@ const TicketScreen = () => {
                     </TouchableOpacity>
                 </View>
             </ScrollView>
-        </SafeAreaProvider>
+        </View>
     );
 };
 

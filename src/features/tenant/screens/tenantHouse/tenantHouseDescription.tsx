@@ -1,3 +1,7 @@
+/**
+ * Chi tiết nhà (tenant): hiện chỉ hiển thị thông tin nhà.
+ * Sau này bổ sung link hợp đồng và các mục khác khi BE/UI sẵn sàng.
+ */
 import React, { useMemo } from "react";
 import { View, Text, ScrollView, TouchableOpacity } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -6,14 +10,40 @@ import { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { useTranslation } from "react-i18next";
 import Icons from "../../../../shared/theme/icon";
 import { RootStackParamList } from "../../../../shared/types";
-import type { FunctionalAreaFromApi } from "../../../../shared/types/api";
 import tenantHouseStyles from "./tenantHouseStyles";
+import { formatHouseStatusForDisplay } from "../../../../shared/utils";
+import {
+  StackScreenTitleBadge,
+  StackScreenTitleBarBalance,
+  StackScreenTitleHeaderStrip,
+  stackScreenTitleBackBtnOnBrand,
+  stackScreenTitleCenterSlotStyle,
+  stackScreenTitleOnBrandIconColor,
+  stackScreenTitleRowStyle,
+  stackScreenTitleSideSlotStyle,
+} from "../../../../shared/components/StackScreenTitleBadge";
 
 type TenantHouseRouteProp = RouteProp<RootStackParamList, "BuildingDetail">;
 type TenantHouseNavProp = NativeStackNavigationProp<
   RootStackParamList,
   "BuildingDetail"
 >;
+
+/** Nếu BE trả `address` đã gồm phường/quận/TP thì không hiển thị thêm một dòng trùng nội dung. */
+function isAdminDivisionInsideAddress(
+  address: string,
+  ward?: string,
+  commune?: string,
+  city?: string
+): boolean {
+  const a = address.trim().toLowerCase();
+  if (!a) return false;
+  const parts = [ward, commune, city]
+    .map((x) => (x ?? "").trim().toLowerCase())
+    .filter((x) => x.length >= 2);
+  if (parts.length === 0) return false;
+  return parts.every((p) => a.includes(p));
+}
 
 const TenantHouseDescription = () => {
   const { t } = useTranslation();
@@ -29,66 +59,50 @@ const TenantHouseDescription = () => {
     commune,
     city,
     status,
-    functionalAreas: rawFunctionalAreas,
   } = route.params;
 
-  const functionalAreas = useMemo<FunctionalAreaFromApi[]>(() => {
-    const list = rawFunctionalAreas ?? [];
-    return [...list].sort((a, b) => {
-      const floorA = a.floorNo ?? "";
-      const floorB = b.floorNo ?? "";
-      if (floorA !== floorB) {
-        return String(floorA).localeCompare(String(floorB), undefined, {
-          numeric: true,
-        });
-      }
-      return (a.name ?? "").localeCompare(b.name ?? "", undefined, {
-        sensitivity: "base",
-      });
-    });
-  }, [rawFunctionalAreas]);
-
-  const getHouseStatusLabel = (statusValue?: string) => {
-    if (!statusValue) {
-      return t("staff_building_detail.house_status_other", { status: "-" });
-    }
-    const key =
-      statusValue === "AVAILABLE"
-        ? "house_status_available"
-        : statusValue === "RENTED"
-          ? "house_status_rented"
-          : "house_status_other";
-    return t(`staff_building_detail.${key}`, { status: statusValue });
-  };
-
-  const getAreaTypeLabel = (areaType: string) => {
-    const key = `staff_building_detail.area_type_${areaType}`;
-    const translated = t(key);
-    if (translated === key) {
-      return t("staff_building_detail.area_type_OTHER");
-    }
-    return translated;
-  };
+  /** Chuỗi từ `ward`, `commune`, `city` (đúng thứ tự BE). */
+  const adminDivisionLine = useMemo(
+    () =>
+      [ward, commune, city]
+        .map((x) => (x ?? "").trim())
+        .filter(Boolean)
+        .join(", "),
+    [ward, commune, city]
+  );
+  const streetLine = (buildingAddress ?? "").trim();
+  const adminRedundant =
+    streetLine.length > 0 &&
+    adminDivisionLine.length > 0 &&
+    isAdminDivisionInsideAddress(streetLine, ward, commune, city);
+  const showAdminRow =
+    streetLine.length > 0 &&
+    adminDivisionLine.length > 0 &&
+    !adminRedundant;
+  const hasLocationLine =
+    streetLine.length > 0 || adminDivisionLine.length > 0;
 
   return (
     <View style={tenantHouseStyles.container}>
-      <View
-        style={[
-          tenantHouseStyles.topBar,
-          { paddingTop: insets.top + 12 },
-        ]}
-      >
-        <TouchableOpacity
-          style={tenantHouseStyles.backBtn}
-          onPress={() => navigation.goBack()}
-          activeOpacity={0.7}
-        >
-          <Icons.chevronBack size={22} color="#374151" />
-        </TouchableOpacity>
-        <Text style={tenantHouseStyles.topTitle} numberOfLines={1}>
-          {buildingName}
-        </Text>
-      </View>
+      <StackScreenTitleHeaderStrip>
+        <View style={stackScreenTitleRowStyle}>
+          <View style={stackScreenTitleSideSlotStyle}>
+            <TouchableOpacity
+              style={stackScreenTitleBackBtnOnBrand}
+              onPress={() => navigation.goBack()}
+              activeOpacity={0.7}
+            >
+              <Icons.chevronBack size={22} color={stackScreenTitleOnBrandIconColor} />
+            </TouchableOpacity>
+          </View>
+          <View style={stackScreenTitleCenterSlotStyle}>
+            <StackScreenTitleBadge numberOfLines={1}>
+              {t("home.house_detail_screen_title")}
+            </StackScreenTitleBadge>
+          </View>
+          <StackScreenTitleBarBalance />
+        </View>
+      </StackScreenTitleHeaderStrip>
 
       <ScrollView
         style={tenantHouseStyles.content}
@@ -101,77 +115,47 @@ const TenantHouseDescription = () => {
         <View style={tenantHouseStyles.card}>
           <Text style={tenantHouseStyles.houseName}>{buildingName}</Text>
 
-          <View style={tenantHouseStyles.houseRow}>
-            <Text style={tenantHouseStyles.houseLabel}>
-              {t("home.house_info.address")}
-            </Text>
-            <Text style={tenantHouseStyles.houseValue}>{buildingAddress}</Text>
-          </View>
-
-          {(city || commune || ward) && (
+          {hasLocationLine && (
             <View style={tenantHouseStyles.houseRow}>
               <Text style={tenantHouseStyles.houseLabel}>
                 {t("home.house_info.address")}
               </Text>
               <Text style={tenantHouseStyles.houseValue}>
-                {[ward, commune, city].filter(Boolean).join(", ")}
+                {streetLine || adminDivisionLine}
               </Text>
             </View>
           )}
 
-          {description && (
+          {showAdminRow && (
+            <View style={tenantHouseStyles.houseRow}>
+              <Text style={tenantHouseStyles.houseLabel}>
+                {t("home.house_info.admin_division")}
+              </Text>
+              <Text style={tenantHouseStyles.houseValue}>{adminDivisionLine}</Text>
+            </View>
+          )}
+
+          {description ? (
             <View style={tenantHouseStyles.houseRow}>
               <Text style={tenantHouseStyles.houseLabel}>
                 {t("home.house_info.description")}
               </Text>
               <Text style={tenantHouseStyles.houseValue}>{description}</Text>
             </View>
-          )}
+          ) : null}
 
           <View style={tenantHouseStyles.houseRow}>
             <Text style={tenantHouseStyles.houseLabel}>
               {t("home.house_info.status")}
             </Text>
             <Text style={tenantHouseStyles.houseValue}>
-              {getHouseStatusLabel(status)}
+              {formatHouseStatusForDisplay(status, t)}
             </Text>
           </View>
         </View>
-
-        <Text style={tenantHouseStyles.sectionTitle}>
-          {t("staff_building_detail.functional_areas_title")}
-        </Text>
-
-        {functionalAreas.length === 0 ? (
-          <Text style={tenantHouseStyles.emptyText}>
-            {t("staff_building_detail.functional_areas_empty")}
-          </Text>
-        ) : (
-          functionalAreas.map((area) => (
-            <View key={area.id} style={tenantHouseStyles.areaCard}>
-              <View style={tenantHouseStyles.areaTitleRow}>
-                <Text style={tenantHouseStyles.areaName}>{area.name}</Text>
-                <Text style={tenantHouseStyles.areaType}>
-                  {getAreaTypeLabel(area.areaType)}
-                </Text>
-              </View>
-              <Text style={tenantHouseStyles.areaFloor}>
-                {t("staff_building_detail.functional_area_floor", {
-                  floor: area.floorNo || "-",
-                })}
-              </Text>
-              {area.description && (
-                <Text style={tenantHouseStyles.areaDescription}>
-                  {area.description}
-                </Text>
-              )}
-            </View>
-          ))
-        )}
       </ScrollView>
     </View>
   );
 };
 
 export default TenantHouseDescription;
-
