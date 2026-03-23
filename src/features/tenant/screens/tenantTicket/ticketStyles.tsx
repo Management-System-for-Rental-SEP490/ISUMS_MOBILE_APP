@@ -142,3 +142,550 @@ export const ticketStyles = StyleSheet.create({
     ...appTypography.dialogButton,
   },
 });
+
+/** Hai loại ticket (REPAIR / QUESTION) — nút chọn trên form tạo ticket. */
+export const ticketTypeSelectStyles = StyleSheet.create({
+  row: {
+    flexDirection: "row",
+    gap: 10,
+    marginTop: 4,
+  },
+  chip: {
+    flex: 1,
+    paddingVertical: 12,
+    paddingHorizontal: 12,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: neutral.inputBorder,
+    backgroundColor: neutral.surface,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  chipActive: {
+    backgroundColor: brandSecondary,
+    borderColor: brandSecondary,
+  },
+  chipText: {
+    ...appTypography.dialogButton,
+    fontWeight: "600",
+    color: neutral.textSecondary,
+    textAlign: "center",
+  },
+  chipTextActive: {
+    color: neutral.surface,
+  },
+});
+
+/** Chọn thiết bị (modal tìm kiếm) — dùng chung trên màn Ticket khi không có presetAsset. */
+export const ticketAssetSelectStyles = StyleSheet.create({
+  trigger: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    borderWidth: 1,
+    borderColor: neutral.inputBorder,
+    borderRadius: 10,
+    paddingVertical: 14,
+    paddingHorizontal: 14,
+    backgroundColor: neutral.surface,
+    gap: 10,
+  },
+  triggerText: {
+    ...appTypography.dialogButton,
+    fontWeight: "500",
+    color: neutral.text,
+    flex: 1,
+  },
+  triggerPlaceholder: {
+    color: neutral.textMuted,
+    fontWeight: "400",
+  },
+  modalRoot: {
+    flex: 1,
+    justifyContent: "flex-end",
+    backgroundColor: "rgba(15, 23, 42, 0.45)",
+  },
+  sheet: {
+    backgroundColor: neutral.surface,
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    maxHeight: "88%",
+    paddingBottom: 8,
+    borderWidth: 1,
+    borderColor: neutral.border,
+    borderBottomWidth: 0,
+  },
+  sheetHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingHorizontal: 18,
+    paddingTop: 16,
+    paddingBottom: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: neutral.border,
+  },
+  sheetTitle: {
+    ...appTypography.cardTitle,
+    fontWeight: "700",
+    color: neutral.text,
+  },
+  searchWrap: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginHorizontal: 16,
+    marginTop: 12,
+    marginBottom: 8,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: neutral.inputBorder,
+    paddingHorizontal: 12,
+    backgroundColor: neutral.canvasMuted,
+  },
+  searchInput: {
+    flex: 1,
+    paddingVertical: 10,
+    ...appTypography.dialogButton,
+    color: neutral.text,
+  },
+  list: {
+    flexGrow: 0,
+    maxHeight: 360,
+  },
+  assetRow: {
+    paddingVertical: 14,
+    paddingHorizontal: 18,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: neutral.border,
+  },
+  assetRowTitle: {
+    ...appTypography.modalListItem,
+    fontWeight: "600",
+    color: neutral.text,
+  },
+  assetRowSub: {
+    ...appTypography.labelRow,
+    color: neutral.textMuted,
+    marginTop: 4,
+  },
+  emptyText: {
+    ...appTypography.body,
+    color: neutral.textMuted,
+    textAlign: "center",
+    paddingVertical: 28,
+    paddingHorizontal: 24,
+  },
+  loadingBox: {
+    paddingVertical: 32,
+    alignItems: "center",
+  },
+});
+
+/** Bottom sheet menu (+) trên danh sách ticket. */
+export const tenantTicketMenuStyles = StyleSheet.create({
+  backdrop: {
+    flex: 1,
+    backgroundColor: "rgba(15, 23, 42, 0.45)",
+    justifyContent: "flex-end",
+  },
+  sheet: {
+    backgroundColor: neutral.surface,
+    borderTopLeftRadius: 22,
+    borderTopRightRadius: 22,
+    paddingHorizontal: 20,
+    paddingTop: 12,
+    borderWidth: 1,
+    borderColor: neutral.border,
+    borderBottomWidth: 0,
+  },
+  grab: {
+    alignSelf: "center",
+    width: 40,
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: neutral.border,
+    marginBottom: 16,
+  },
+  menuTitle: {
+    ...appTypography.cardTitle,
+    fontWeight: "700",
+    color: neutral.text,
+    marginBottom: 6,
+  },
+  menuSubtitle: {
+    ...appTypography.body,
+    color: neutral.textSecondary,
+    marginBottom: 20,
+    lineHeight: 22,
+  },
+  primaryBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 10,
+    backgroundColor: brandSecondary,
+    borderRadius: 14,
+    paddingVertical: 16,
+    marginBottom: 10,
+  },
+  primaryBtnText: {
+    ...appTypography.dialogButton,
+    fontWeight: "700",
+    color: neutral.surface,
+  },
+  ghostBtn: {
+    alignItems: "center",
+    paddingVertical: 14,
+    marginBottom: 4,
+  },
+  ghostBtnText: {
+    ...appTypography.dialogButton,
+    fontWeight: "600",
+    color: neutral.textSecondary,
+  },
+});
+
+/** Màn danh sách ticket tenant (TenantTicketList) — UI card nhẹ, ít màu. */
+export const tenantTicketListStyles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: neutral.canvasMuted,
+  },
+  pageHeading: {
+    paddingHorizontal: 20,
+    paddingTop: 10,
+    paddingBottom: 14,
+  },
+  pageTitle: {
+    ...appTypography.ticketScreenTitle,
+    fontSize: 22,
+    color: neutral.heading,
+    marginBottom: 6,
+  },
+  pageSubtitle: {
+    fontSize: 13,
+    lineHeight: 18,
+    color: neutral.textMuted,
+  },
+  listContent: {
+    paddingHorizontal: 20,
+    paddingTop: 4,
+    paddingBottom: 8,
+    gap: 12,
+  },
+  listEmptyGrow: {
+    flexGrow: 1,
+    justifyContent: "center",
+  },
+  card: {
+    backgroundColor: neutral.surface,
+    borderRadius: 14,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: neutral.border,
+    shadowColor: neutral.slate900,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 8,
+    elevation: 2,
+  },
+  /** Nhãn loại: hình chữ nhật bo góc, tông nhạt (REPAIR xanh rất nhạt, QUESTION xám). */
+  typeTag: {
+    alignSelf: "flex-start",
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 6,
+    marginBottom: 12,
+  },
+  typeTagText: {
+    fontSize: 11,
+    fontWeight: "600",
+    letterSpacing: 0.2,
+  },
+  typeRepair: {
+    backgroundColor: "#E8F4FA",
+  },
+  typeRepairText: {
+    color: "#4A6572",
+  },
+  typeQuestion: {
+    backgroundColor: "#F1F5F9",
+  },
+  typeQuestionText: {
+    color: "#64748B",
+  },
+  typeDefault: {
+    backgroundColor: neutral.tileMuted,
+  },
+  typeDefaultText: {
+    color: neutral.slate500,
+  },
+  rowTitle: {
+    fontSize: 16,
+    fontWeight: "600",
+    color: neutral.text,
+    marginBottom: 8,
+    lineHeight: 22,
+  },
+  dateRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    marginBottom: 14,
+  },
+  dateLine: {
+    fontSize: 12,
+    color: neutral.textMuted,
+  },
+  cardBottomRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: 12,
+  },
+  /** Trạng thái: pill + chấm màu nhạt. */
+  statusPill: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingVertical: 6,
+    paddingHorizontal: 10,
+    borderRadius: 999,
+    flexShrink: 1,
+  },
+  statusDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    marginRight: 8,
+  },
+  statusPillText: {
+    fontSize: 12,
+    fontWeight: "600",
+    flexShrink: 1,
+  },
+  statusCreated: {
+    backgroundColor: "#F1F5F9",
+  },
+  statusCreatedDot: {
+    backgroundColor: "#CBD5E1",
+  },
+  statusCreatedText: {
+    color: "#64748B",
+  },
+  statusScheduled: {
+    backgroundColor: "#EEF6FB",
+  },
+  statusScheduledDot: {
+    backgroundColor: "#7EB8D8",
+  },
+  statusScheduledText: {
+    color: "#52606D",
+  },
+  statusInProgress: {
+    backgroundColor: "#E8F4FA",
+  },
+  statusInProgressDot: {
+    backgroundColor: "#5BA3C6",
+  },
+  statusInProgressText: {
+    color: "#4A6572",
+  },
+  statusDone: {
+    backgroundColor: "#F0FDF4",
+  },
+  statusDoneDot: {
+    backgroundColor: "#86EFAC",
+  },
+  statusDoneText: {
+    color: "#4B5563",
+  },
+  statusCancelled: {
+    backgroundColor: "#FEF2F2",
+  },
+  statusCancelledDot: {
+    backgroundColor: "#FCA5A5",
+  },
+  statusCancelledText: {
+    color: "#9CA3AF",
+  },
+  statusDefault: {
+    backgroundColor: neutral.backgroundSubtle,
+  },
+  statusDefaultDot: {
+    backgroundColor: neutral.slate300,
+  },
+  statusDefaultText: {
+    color: neutral.textSecondary,
+  },
+  detailsBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    flexShrink: 0,
+  },
+  detailsText: {
+    fontSize: 13,
+    fontWeight: "600",
+    color: "#3D8BA8",
+  },
+  centered: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    padding: 24,
+  },
+  hint: {
+    marginTop: 14,
+    ...appTypography.body,
+    color: neutral.textSecondary,
+  },
+  errorText: {
+    ...appTypography.body,
+    color: neutral.textSecondary,
+    textAlign: "center",
+    marginBottom: 18,
+    lineHeight: 22,
+  },
+  retryBtn: {
+    backgroundColor: brandSecondary,
+    paddingHorizontal: 24,
+    paddingVertical: 14,
+    borderRadius: 12,
+    minWidth: 160,
+    alignItems: "center",
+    shadowColor: brandSecondary,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.18,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  retryBtnText: {
+    ...appTypography.dialogButton,
+    color: neutral.surface,
+    fontWeight: "600",
+  },
+  empty: {
+    ...appTypography.body,
+    color: neutral.textMuted,
+    textAlign: "center",
+    paddingVertical: 40,
+    paddingHorizontal: 24,
+    lineHeight: 22,
+  },
+});
+
+/** Màn chi tiết ticket tenant — cùng tông với danh sách. */
+export const tenantTicketDetailStyles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: neutral.canvasMuted,
+  },
+  scroll: {
+    flex: 1,
+  },
+  scrollContent: {
+    paddingHorizontal: 20,
+    paddingTop: 8,
+    paddingBottom: 32,
+    gap: 14,
+  },
+  heroCard: {
+    backgroundColor: neutral.surface,
+    borderRadius: 14,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: neutral.border,
+    shadowColor: neutral.slate900,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 8,
+    elevation: 2,
+  },
+  heroTitle: {
+    fontSize: 18,
+    fontWeight: "700",
+    color: neutral.text,
+    lineHeight: 26,
+    marginBottom: 12,
+  },
+  badgeRow: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    alignItems: "center",
+    gap: 8,
+    marginBottom: 12,
+  },
+  heroDateRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+  },
+  heroDateText: {
+    fontSize: 13,
+    color: neutral.textMuted,
+  },
+  sectionLabel: {
+    fontSize: 11,
+    fontWeight: "700",
+    letterSpacing: 0.6,
+    color: neutral.textMuted,
+    textTransform: "uppercase",
+    marginBottom: 8,
+    marginLeft: 2,
+  },
+  panel: {
+    backgroundColor: neutral.surface,
+    borderRadius: 14,
+    paddingHorizontal: 16,
+    paddingVertical: 4,
+    borderWidth: 1,
+    borderColor: neutral.border,
+    shadowColor: neutral.slate900,
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.04,
+    shadowRadius: 6,
+    elevation: 1,
+  },
+  panelRow: {
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: neutral.borderMuted,
+  },
+  panelRowLast: {
+    borderBottomWidth: 0,
+  },
+  fieldLabel: {
+    fontSize: 12,
+    fontWeight: "600",
+    color: neutral.textMuted,
+    marginBottom: 4,
+  },
+  fieldValue: {
+    fontSize: 15,
+    fontWeight: "500",
+    color: neutral.text,
+    lineHeight: 22,
+  },
+  fieldValueMuted: {
+    fontSize: 14,
+    fontWeight: "400",
+    color: neutral.textSecondary,
+    fontStyle: "italic",
+  },
+  fieldValueMono: {
+    fontSize: 12,
+    fontWeight: "500",
+    color: neutral.slate600,
+    lineHeight: 18,
+  },
+  assetLoadingRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+  },
+  descriptionBody: {
+    fontSize: 15,
+    lineHeight: 24,
+    color: neutral.text,
+    paddingVertical: 8,
+  },
+});

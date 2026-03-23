@@ -3,13 +3,14 @@
  */
 import axiosClient from "../api/axiosClient";
 import { ASSETS_API_BASE, BACKEND_API_BASE} from "../api/config";
-import type {
-  ApiResponse,
-  AssetItemFromApi,
-  AssetItemsApiResponse,
-  AssetItemsParams,
-  GetAssetByTagValueApiResponse,
-  IotDevicesByHouseApiResponse,
+import {
+  normalizeAssetItemStatusFromApi,
+  type ApiResponse,
+  type AssetItemFromApi,
+  type AssetItemsApiResponse,
+  type AssetItemsParams,
+  type GetAssetByTagValueApiResponse,
+  type IotDevicesByHouseApiResponse,
 } from "../types/api";
 
 /**
@@ -74,6 +75,7 @@ function normalizeAssetItemFromResponse(
     ...raw,
     nfcTag: nfcStr !== "" ? nfcStr : null,
     qrTag: qrStr !== "" ? qrStr : null,
+    status: normalizeAssetItemStatusFromApi(raw.status),
     functionAreaId:
       functionAreaId != null && String(functionAreaId).trim() !== ""
         ? String(functionAreaId).trim()

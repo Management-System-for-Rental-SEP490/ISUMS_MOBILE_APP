@@ -13,6 +13,10 @@ import { TenantTabs } from "../shared/components/footerNavigator";
 import CameraScreen from "../features/modal/camera/CameraScreen";
 import TenantItemDescriptionScreen from "../features/tenant/screens/tenantItem/TenantItemDescription";
 import TicketScreen from "../features/tenant/screens/tenantTicket/ticket";
+import TenantTicketListScreen from "../features/tenant/screens/tenantTicket/tenantTicketList";
+import TenantTicketDetailScreen from "../features/tenant/screens/tenantTicket/tenantTicketDetail";
+import TenantQuestionListScreen from "../features/tenant/screens/tenantQuestion/tenantQuestionList";
+import TenantQuestionDetailScreen from "../features/tenant/screens/tenantQuestion/tenantQuestionDetail";
 import TenantHouseDescription from "../features/tenant/screens/tenantHouse/tenantHouseDescription";
 import { brandPrimary } from "../shared/theme/color";
 
@@ -95,6 +99,10 @@ const Navigation = () => {
                 component={TicketScreen}
                 options={{ presentation: "modal" }}
               />
+              <Stack.Screen name="TenantTicketList" component={TenantTicketListScreen} />
+              <Stack.Screen name="TenantTicketDetail" component={TenantTicketDetailScreen} />
+              <Stack.Screen name="TenantQuestionList" component={TenantQuestionListScreen} />
+              <Stack.Screen name="TenantQuestionDetail" component={TenantQuestionDetailScreen} />
               <Stack.Screen name="BuildingDetail" component={TenantHouseDescription} />
             </>
           )

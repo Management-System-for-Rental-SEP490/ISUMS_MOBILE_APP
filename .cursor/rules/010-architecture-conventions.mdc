@@ -17,6 +17,11 @@ alwaysApply: true
 - **React Query:** `useQuery` / `useInfiniteQuery` / `useMutation` trong `src/shared/hooks/*.ts`. Screen chỉ gọi hook.
 - **Types API:** `src/shared/types/api.ts`. Không nhét type response lớn trong screen.
 - **Format:** `src/shared/utils/`.
+- **Ngày & giờ (UI):** chỉ dùng **`src/shared/utils/dateTimeFormat.ts`** (re-export trong `utils/index.ts`). Import từ `shared/utils` / path tương đương. **Không** `toLocaleString` / `toLocaleDateString` / tự `padStart` ngày giờ trong screen hay component trừ khi user chỉ định rõ hoặc BE trả chuỗi hiển thị nguyên si.
+  - **`formatTenantIssueDateTime(iso, locale)`** — danh sách/chi tiết ticket & câu hỏi tenant (ISO → giờ+ngày theo locale, 24h).
+  - **`formatTimeAgoI18n(date, t, true)`** — thông báo IoT / “X phút trước”; tham số thứ ba **`true`** để dùng `notification.time_seconds` (app tenant có key này).
+  - **`toLocalYyyyMmDd`**, **`formatDayMonthNumeric`** — chọn ngày lọc thông báo & nhãn 7 ngày.
+  - Cần kiểu hiển thị mới → **thêm một hàm** trong `dateTimeFormat.ts` + export `index.ts`, không copy logic sang từng màn.
 - **Zustand:** **`src/store/`**.
 - **Kết nối BE:** mở rộng service/hook hiện có; có API → **bỏ mock**. Mock tạm: chuỗi qua i18n.
 - **File mới:** ưu tiên mở rộng cùng domain; tạo file mới khi tách domain rõ **hoặc** user đồng ý (mục 1 trong `000`).

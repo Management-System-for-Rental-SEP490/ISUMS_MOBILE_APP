@@ -26,3 +26,9 @@ export {
 } from "./pagination";
 export { mergeFunctionalAreasForHouse } from "./functionalAreas";
 export { mapLabelForFunctionalArea } from "./functionalAreaMapLabel";
+export {
+  formatDayMonthNumeric,
+  formatTenantIssueDateTime,
+  formatTimeAgoI18n,
+  toLocalYyyyMmDd,
+} from "./dateTimeFormat";

@@ -1,5 +1,5 @@
 /**
- * Sơ đồ mặt bằng một tầng – ảnh house.png làm nền, các khu vực vẽ theo position từ BE (hoặc mock).
+ * Sơ đồ mặt bằng một tầng – ảnh house.png làm nền, các khu vực vẽ theo position từ BE (hoặc layout mặc định theo areaType).
  * Mỗi khu vực có thể bấm; khu vực được chọn sẽ highlight và scale nhẹ.
  */
 import React, { useMemo } from "react";
@@ -23,7 +23,7 @@ interface FloorPlanSvgProps {
 
 type AreaLayout = { area: FunctionalAreaFromApi; rect: { x: number; y: number; w: number; h: number } };
 
-/** Layout khu vực theo position từ BE hoặc mock. */
+/** Layout khu vực theo position từ BE hoặc fallback trong floorPlanPositions. */
 function getAreaLayouts(areas: FunctionalAreaFromApi[]): AreaLayout[] {
   return areas.map((area, i) => {
     const pos = getPositionForArea(area, i);

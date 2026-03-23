@@ -33,7 +33,6 @@ import {
   useFunctionalAreasByHouseId,
 } from "../../../../shared/hooks";
 import { FloorPlanView } from "../../houseStructure";
-import { getMockFunctionalAreas } from "../../houseStructure/floorPlanPositions";
 import { useTenantIoTConnection, useTenantUsage } from "../../hooks/useTenantIoT";
 import { ExpandableLongText } from "../../../../shared/components/ExpandableLongText";
 import { DEFAULT_BE_SHORT_TEXT_MAX_CHARS } from "../../../../shared/utils";
@@ -51,6 +50,7 @@ import type {
   AssetCategoryFromApi,
   FunctionalAreaFromApi,
 } from "../../../../shared/types/api";
+import { normalizeAssetItemStatusFromApi } from "../../../../shared/types/api";
 import {
   formatHouseStatusForDisplay,
   getTotalPages,
@@ -147,13 +147,11 @@ const HomeScreen = ({ navigation }: HomeScreenProps) => {
   const { data: functionalAreasRes } = useFunctionalAreasByHouseId(houseIdForAreas);
 
   const effectiveFunctionalAreas = useMemo((): FunctionalAreaFromApi[] => {
-    const merged = mergeFunctionalAreasForHouse(
+    return mergeFunctionalAreasForHouse(
       myHouse ?? undefined,
       functionalAreasRes?.data
     );
-    if (merged.length > 0) return merged;
-    return getMockFunctionalAreas(houseIdForAreas || "mock");
-  }, [myHouse, functionalAreasRes?.data, houseIdForAreas]);
+  }, [myHouse, functionalAreasRes?.data]);
 
   const floorOptions = useMemo(() => {
     const fk = (a: FunctionalAreaFromApi) => String(a.floorNo ?? "").trim() || "1";
@@ -161,7 +159,7 @@ const HomeScreen = ({ navigation }: HomeScreenProps) => {
     const list = Array.from(floors).sort(
       (a, b) => parseInt(a, 10) - parseInt(b, 10)
     );
-    return list.length > 0 ? list : ["1", "2", "3"];
+    return list;
   }, [effectiveFunctionalAreas]);
 
   useEffect(() => {
@@ -352,8 +350,7 @@ const HomeScreen = ({ navigation }: HomeScreenProps) => {
 
   // Hàm render từng item thiết bị
   const renderDeviceItem = ({ item }: { item: AssetItemFromApi }) => {
-    // AssetStatus: API có thể trả về "AVAILABLE" nhưng app coi như "IN_USE"
-    const normalizedStatus = item.status === "AVAILABLE" ? "IN_USE" : item.status;
+    const normalizedStatus = normalizeAssetItemStatusFromApi(item.status);
 
     // Trạng thái thiết bị — chỉ dùng palette thương hiệu (theme/color).
     let statusColor = brandPrimary;
@@ -366,9 +363,8 @@ const HomeScreen = ({ navigation }: HomeScreenProps) => {
       statusLabel = t('home.device_list.status.maintenance');
     } else if (
       item.status === "INACTIVE" ||
-      item.status === "DISPOSED" ||
-      item.status === "BROKEN" ||
-      item.status === "DELETED"
+      normalizedStatus === "DISPOSED" ||
+      normalizedStatus === "BROKEN"
     ) {
       statusColor = brandSecondary;
       statusBg = brandBlueMutedBg;

@@ -12,7 +12,6 @@ import { useTranslation } from "react-i18next";
 import Header from "../../../../shared/components/header";
 import Icons from "../../../../shared/theme/icon";
 import { FloorPlanView } from "../../houseStructure";
-import { getMockFunctionalAreas } from "../../houseStructure/floorPlanPositions";
 import { electricUsageStyles } from "./electricUsageStyles";
 import { useTenantContext } from "../../../../shared/hooks";
 import { useTenantIoTConnection, useTenantTelemetry, useTenantUsage } from "../../hooks/useTenantIoT";
@@ -27,12 +26,7 @@ const ElectricUsageScreen = () => {
   const { t } = useTranslation();
   const { width: screenWidth } = useWindowDimensions();
   const { houseId, functionalAreas, thingId } = useTenantContext();
-  const safeFunctionalAreas = Array.isArray(functionalAreas) ? functionalAreas : [];
-  /** Dùng mock khi BE trả rỗng (demo 3 tầng). */
-  const effectiveAreas =
-    safeFunctionalAreas.length > 0
-      ? safeFunctionalAreas
-      : getMockFunctionalAreas(houseId ?? "mock");
+  const effectiveAreas = Array.isArray(functionalAreas) ? functionalAreas : [];
   const iotConnected = useTenantIoTConnection(thingId);
   const usage = useTenantUsage({ houseId, metric: "electricity" });
   const { power, powerHistory } = useTenantTelemetry(thingId);
@@ -48,11 +42,10 @@ const ElectricUsageScreen = () => {
 
   /** Tầng đang chọn: mặc định Tầng 1 (không còn "all"). */
   const [selectedFloor, setSelectedFloor] = useState<string>("1");
-  /** Danh sách tầng (Tầng 1, 2, 3). Dùng effectiveAreas; nếu rỗng fallback ["1","2","3"]. */
+  /** Danh sách tầng suy ra từ khu vực chức năng (BE / house). */
   const floorOptions = useMemo(() => {
     const floors = new Set(effectiveAreas.map((a) => a.floorNo).filter(Boolean));
-    const list = Array.from(floors).sort((a, b) => parseInt(a, 10) - parseInt(b, 10));
-    return list.length > 0 ? list : ["1", "2", "3"];
+    return Array.from(floors).sort((a, b) => parseInt(a, 10) - parseInt(b, 10));
   }, [effectiveAreas]);
 
   /** Dữ liệu cho biểu đồ "Tất cả": 3 cột Day / Week / Month từ AWS. */

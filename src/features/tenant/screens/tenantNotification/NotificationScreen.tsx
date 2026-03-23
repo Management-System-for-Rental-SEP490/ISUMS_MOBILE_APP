@@ -11,33 +11,17 @@ import {
   getNotificationAlertLevelStyle,
 } from "../../../../shared/theme/color";
 import { PaginationBar } from "../../../../shared/components/PaginationBar";
-import { CLIENT_LIST_PAGE_SIZE, getTotalPages, slicePage } from "../../../../shared/utils";
+import {
+  CLIENT_LIST_PAGE_SIZE,
+  formatDayMonthNumeric,
+  formatTimeAgoI18n,
+  getTotalPages,
+  slicePage,
+  toLocalYyyyMmDd,
+} from "../../../../shared/utils";
 import type { IotAlertItem } from "../../../../shared/types/api";
 
-/**
- * Chuỗi "X phút/giờ/ngày trước" — dùng key i18n notification.time_* với {{n}}.
- */
-function formatTimeAgo(
-  date: Date,
-  t: (key: string, opts?: { n?: number }) => string
-): string {
-  const now = Date.now();
-  const diffMs = now - date.getTime();
-  const diffSeconds = Math.floor(diffMs / 1000);
-  const diffMins = Math.floor(diffMs / (60 * 1000));
-  const diffHours = Math.floor(diffMs / (60 * 60 * 1000));
-  const diffDays = Math.floor(diffMs / (24 * 60 * 60 * 1000));
-
-  if (diffSeconds < 60) return t("notification.time_seconds", { n: Math.max(diffSeconds, 1) });
-  if (diffMins < 60) return t("notification.time_minutes", { n: diffMins || 1 });
-  if (diffHours < 24) return t("notification.time_hours", { n: diffHours });
-  return t("notification.time_days", { n: diffDays });
-}
-
-const pad2 = (n: number) => String(n).padStart(2, "0");
-const toDateStr = (date: Date) =>
-  `${date.getFullYear()}-${pad2(date.getMonth() + 1)}-${pad2(date.getDate())}`;
-const todayStr = () => toDateStr(new Date());
+const todayStr = () => toLocalYyyyMmDd(new Date());
 
 const normalizeAlertLevel = (level: string) => String(level ?? "").trim().toUpperCase();
 
@@ -47,7 +31,7 @@ const NotificationScreen = () => {
 
   const PAGE_SIZE = CLIENT_LIST_PAGE_SIZE;
 
-  const [selectedDate, setSelectedDate] = useState<string>(todayStr());
+  const [selectedDate, setSelectedDate] = useState<string>(() => todayStr());
   const [currentPage, setCurrentPage] = useState<number>(1);
 
   const scrollRef = useRef<ScrollView | null>(null);
@@ -112,13 +96,13 @@ const NotificationScreen = () => {
     return Array.from({ length: 7 }, (_, i) => {
       const d = new Date();
       d.setDate(d.getDate() - i);
-      const str = toDateStr(d);
+      const str = toLocalYyyyMmDd(d);
       const label =
         i === 0
           ? t("notification.today")
           : i === 1
             ? t("notification.yesterday")
-            : d.toLocaleDateString(locale, { day: "2-digit", month: "2-digit" });
+            : formatDayMonthNumeric(d, locale);
       return { str, label };
     });
   }, [locale, t]);
@@ -126,7 +110,7 @@ const NotificationScreen = () => {
   const AlertCard = ({ alert }: { alert: IotAlertItem }) => {
     const level = normalizeAlertLevel(String(alert.level));
     const { fg: color, bg } = getNotificationAlertLevelStyle(level);
-    const timeStr = formatTimeAgo(new Date(alert.ts), t);
+    const timeStr = formatTimeAgoI18n(new Date(alert.ts), t, true);
     return (
       <View style={[notificationStyles.alertCard, { borderLeftColor: color }]}>
         <View style={[notificationStyles.alertBadge, { backgroundColor: bg }]}>

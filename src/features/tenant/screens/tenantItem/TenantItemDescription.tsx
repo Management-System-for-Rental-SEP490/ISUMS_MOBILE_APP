@@ -17,8 +17,9 @@ import { useNavigation, useRoute, useFocusEffect } from "@react-navigation/nativ
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import type { RouteProp } from "@react-navigation/native";
 import { RootStackParamList } from "../../../../shared/types";
-import type { Device, DeviceStatus } from "../../../../shared/types";
+import type { DeviceStatus } from "../../../../shared/types";
 import type { AssetItemFromApi } from "../../../../shared/types/api";
+import { normalizeAssetItemStatusFromApi } from "../../../../shared/types/api";
 import Icons from "../../../../shared/theme/icon";
 import {
   useAssetCategoryById,
@@ -29,6 +30,7 @@ import {
 import { mergeFunctionalAreasForHouse } from "../../../../shared/utils";
 import { tenantItemDescriptionStyles as itemScreenStyles } from "./tenantItemDescriptionStyles";
 import { getAssetItemById } from "../../../../shared/services/assetItemApi";
+import { CustomAlert as Alert } from "../../../../shared/components/alert";
 import { brandPrimary, neutral } from "../../../../shared/theme/color";
 import {
   StackScreenTitleBadge,
@@ -45,38 +47,19 @@ type NavProp = NativeStackNavigationProp<RootStackParamList, "TenantItemDetail">
 type RoutePropType = RouteProp<RootStackParamList, "TenantItemDetail">;
 
 function mapApiStatusToDeviceStatus(apiStatus: string): DeviceStatus {
-  // AssetStatus: API có thể trả về "AVAILABLE" nhưng app coi như "IN_USE"
-  const normalized = apiStatus === "AVAILABLE" ? "IN_USE" : apiStatus;
+  const raw = apiStatus != null ? String(apiStatus).trim() : "";
+  if (raw === "MAINTENANCE") return "maintenance";
+  const normalized = normalizeAssetItemStatusFromApi(apiStatus);
   switch (normalized) {
     case "IN_USE":
+    case "ACTIVE":
       return "active";
     case "DISPOSED":
+    case "BROKEN":
       return "inactive";
-    case "MAINTENANCE":
-      return "maintenance";
     default:
       return "pending";
   }
-}
-
-function mapAssetItemToDevice(
-  item: AssetItemFromApi,
-  houseName?: string | null
-): Device {
-  return {
-    id: item.id,
-    name: item.displayName,
-    type: "other",
-    nfcTagId: item.nfcTag ?? "",
-    location: houseName ?? "",
-    status: mapApiStatusToDeviceStatus(item.status),
-    metadata: {
-      serialNumber: item.serialNumber,
-      manufacturer: "",
-      model: "",
-      installationDate: "",
-    },
-  };
 }
 
 export default function TenantItemDescriptionScreen() {
@@ -151,24 +134,22 @@ export default function TenantItemDescriptionScreen() {
   }, [item.functionAreaId, placementFunctionalAreas, t]);
 
   const getStatusStyle = () => {
-    const normalizedStatus = item.status === "AVAILABLE" ? "IN_USE" : item.status;
+    const normalizedStatus = normalizeAssetItemStatusFromApi(item.status);
     if (normalizedStatus === "IN_USE" || normalizedStatus === "ACTIVE") {
       return itemScreenStyles.descriptionStatusInUse;
     }
     if (normalizedStatus === "DISPOSED" || normalizedStatus === "BROKEN") {
       return itemScreenStyles.descriptionStatusDisposed;
     }
-    if (normalizedStatus === "DELETED") return itemScreenStyles.descriptionStatusOther;
     return itemScreenStyles.descriptionStatusOther;
   };
 
   const getStatusLabel = () => {
-    const normalizedStatus = item.status === "AVAILABLE" ? "IN_USE" : item.status;
+    const normalizedStatus = normalizeAssetItemStatusFromApi(item.status);
     if (normalizedStatus === "IN_USE") return t("staff_item_create.status_in_use");
     if (normalizedStatus === "ACTIVE") return t("staff_item_create.status_active");
     if (normalizedStatus === "DISPOSED") return t("staff_item_create.status_disposed");
     if (normalizedStatus === "BROKEN") return t("staff_item_create.status_broken");
-    if (normalizedStatus === "DELETED") return t("staff_item_create.status_deleted");
     return normalizedStatus ?? "—";
   };
 
@@ -284,11 +265,20 @@ export default function TenantItemDescriptionScreen() {
 
             <TouchableOpacity
               style={itemScreenStyles.descriptionEditBtn}
-              onPress={() =>
+              onPress={() => {
+                const hid = String(item.houseId ?? house?.id ?? "").trim();
+                if (!hid) {
+                  Alert.alert(t("ticket.validation_error_title"), t("ticket.house_missing"));
+                  return;
+                }
                 navigation.navigate("Ticket", {
-                  device: mapAssetItemToDevice(item, houseName),
-                })
-              }
+                  houseId: hid,
+                  presetAsset: {
+                    id: item.id,
+                    displayName: (item.displayName ?? "").trim() || item.id,
+                  },
+                });
+              }}
               activeOpacity={0.8}
             >
               <View style={itemScreenStyles.descriptionEditBtnContentRow}>
