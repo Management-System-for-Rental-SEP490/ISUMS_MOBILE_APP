@@ -2,7 +2,9 @@ import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
   FlatList,
+  KeyboardAvoidingView,
   Modal,
+  Platform,
   Pressable,
   Text,
   TextInput,
@@ -25,9 +27,9 @@ type Props = {
   onChange: (next: TicketAssetSelection | null) => void;
 };
 
-function normalizeName(item: AssetItemFromApi): string {
+function normalizeName(item: AssetItemFromApi, unnamedLabel: string): string {
   const n = item.displayName?.trim();
-  return n || item.id;
+  return n || unnamedLabel;
 }
 
 export function TicketAssetSelect({ houseId, value, onChange }: Props) {
@@ -65,14 +67,14 @@ export function TicketAssetSelect({ houseId, value, onChange }: Props) {
     const q = query.trim().toLowerCase();
     if (!q) return items;
     return items.filter((it) => {
-      const name = normalizeName(it).toLowerCase();
+      const name = normalizeName(it, t("ticket.asset_unnamed")).toLowerCase();
       const serial = (it.serialNumber ?? "").toLowerCase();
       return name.includes(q) || serial.includes(q) || it.id.toLowerCase().includes(q);
     });
-  }, [items, query]);
+  }, [items, query, t]);
 
   const onPick = (it: AssetItemFromApi) => {
-    onChange({ id: it.id, displayName: normalizeName(it) });
+    onChange({ id: it.id, displayName: normalizeName(it, t("ticket.asset_unnamed")) });
     setOpen(false);
   };
 
@@ -95,57 +97,64 @@ export function TicketAssetSelect({ houseId, value, onChange }: Props) {
       </TouchableOpacity>
 
       <Modal visible={open} animationType="slide" transparent onRequestClose={() => setOpen(false)}>
-        <Pressable style={styles.modalRoot} onPress={() => setOpen(false)}>
-          <Pressable style={[styles.sheet, { paddingBottom: Math.max(insets.bottom, 16) }]} onPress={(e) => e.stopPropagation()}>
-            <View style={styles.sheetHeader}>
-              <Text style={styles.sheetTitle}>{t("ticket.asset_picker_title")}</Text>
-              <TouchableOpacity onPress={() => setOpen(false)} hitSlop={12} accessibilityRole="button">
-                <Icons.close size={22} color={neutral.textSecondary} />
-              </TouchableOpacity>
-            </View>
-            <View style={styles.searchWrap}>
-              <Icons.search size={20} color={neutral.textMuted} />
-              <TextInput
-                style={styles.searchInput}
-                placeholder={t("ticket.asset_search_placeholder")}
-                placeholderTextColor={neutral.textMuted}
-                value={query}
-                onChangeText={setQuery}
-                autoCorrect={false}
-                autoCapitalize="none"
-              />
-            </View>
-            {loading ? (
-              <View style={styles.loadingBox}>
-                <ActivityIndicator size="large" color={brandSecondary} />
+        <KeyboardAvoidingView
+          style={{ flex: 1 }}
+          behavior={Platform.OS === "ios" ? "padding" : "height"}
+          keyboardVerticalOffset={Platform.OS === "ios" ? insets.top + 16 : 0}
+        >
+          <Pressable style={styles.modalRoot} onPress={() => setOpen(false)}>
+            <Pressable style={[styles.sheet, { paddingBottom: Math.max(insets.bottom, 16) }]} onPress={(e) => e.stopPropagation()}>
+              <View style={styles.sheetHeader}>
+                <Text style={styles.sheetTitle}>{t("ticket.asset_picker_title")}</Text>
+                <TouchableOpacity onPress={() => setOpen(false)} hitSlop={12} accessibilityRole="button">
+                  <Icons.close size={22} color={neutral.textSecondary} />
+                </TouchableOpacity>
               </View>
-            ) : loadError ? (
-              <Text style={styles.emptyText}>{t("ticket.asset_load_error")}</Text>
-            ) : (
-              <FlatList
-                style={styles.list}
-                data={filtered}
-                keyExtractor={(it) => it.id}
-                keyboardShouldPersistTaps="handled"
-                ListEmptyComponent={
-                  <Text style={styles.emptyText}>{t("ticket.asset_empty_list")}</Text>
-                }
-                renderItem={({ item: it }) => (
-                  <TouchableOpacity style={styles.assetRow} onPress={() => onPick(it)} activeOpacity={0.7}>
-                    <Text style={styles.assetRowTitle} numberOfLines={2}>
-                      {normalizeName(it)}
-                    </Text>
-                    {(it.serialNumber ?? "").trim() ? (
-                      <Text style={styles.assetRowSub} numberOfLines={1}>
-                        {t("staff_item_create.serial_number_label")}: {it.serialNumber}
+              <View style={styles.searchWrap}>
+                <Icons.search size={20} color={neutral.textMuted} />
+                <TextInput
+                  style={styles.searchInput}
+                  placeholder={t("ticket.asset_search_placeholder")}
+                  placeholderTextColor={neutral.textMuted}
+                  value={query}
+                  onChangeText={setQuery}
+                  autoCorrect={false}
+                  autoCapitalize="none"
+                />
+              </View>
+              {loading ? (
+                <View style={styles.loadingBox}>
+                  <ActivityIndicator size="large" color={brandSecondary} />
+                </View>
+              ) : loadError ? (
+                <Text style={styles.emptyText}>{t("ticket.asset_load_error")}</Text>
+              ) : (
+                <FlatList
+                  style={styles.list}
+                  data={filtered}
+                  keyExtractor={(it) => it.id}
+                  keyboardShouldPersistTaps="handled"
+                  keyboardDismissMode="on-drag"
+                  ListEmptyComponent={
+                    <Text style={styles.emptyText}>{t("ticket.asset_empty_list")}</Text>
+                  }
+                  renderItem={({ item: it }) => (
+                    <TouchableOpacity style={styles.assetRow} onPress={() => onPick(it)} activeOpacity={0.7}>
+                      <Text style={styles.assetRowTitle} numberOfLines={2}>
+                        {normalizeName(it, t("ticket.asset_unnamed"))}
                       </Text>
-                    ) : null}
-                  </TouchableOpacity>
-                )}
-              />
-            )}
+                      {(it.serialNumber ?? "").trim() ? (
+                        <Text style={styles.assetRowSub} numberOfLines={1}>
+                          {t("staff_item_create.serial_number_label")}: {it.serialNumber}
+                        </Text>
+                      ) : null}
+                    </TouchableOpacity>
+                  )}
+                />
+              )}
+            </Pressable>
           </Pressable>
-        </Pressable>
+        </KeyboardAvoidingView>
       </Modal>
     </>
   );

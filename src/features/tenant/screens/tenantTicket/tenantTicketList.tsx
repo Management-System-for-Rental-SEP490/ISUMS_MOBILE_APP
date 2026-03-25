@@ -129,11 +129,14 @@ const TenantTicketListScreen = () => {
     if (s === "IN_PROGRESS") {
       return { pill: styles.statusInProgress, dot: styles.statusInProgressDot, text: styles.statusInProgressText };
     }
-    if (
-      s === "WAITING_MANAGER_APPROVAL" ||
-      s === "WAITING_TENANT_APPROVAL" ||
-      s === "WAITING_PAYMENT"
-    ) {
+    if (s === "WAITING_TENANT_APPROVAL") {
+      return {
+        pill: styles.statusWaitingTenant,
+        dot: styles.statusWaitingTenantDot,
+        text: styles.statusWaitingTenantText,
+      };
+    }
+    if (s === "WAITING_MANAGER_APPROVAL" || s === "WAITING_PAYMENT") {
       return { pill: styles.statusCreated, dot: styles.statusCreatedDot, text: styles.statusCreatedText };
     }
     if (s === "DONE") {
@@ -205,15 +208,27 @@ const TenantTicketListScreen = () => {
               {statusLabel(item.status)}
             </Text>
           </View>
-          <TouchableOpacity
-            style={styles.detailsBtn}
-            onPress={() => onPressDetail(item)}
-            activeOpacity={0.65}
-            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-          >
-            <Text style={styles.detailsText}>{t("tenant_ticket_list.details_link")}</Text>
-            <Icons.chevronForward size={16} color={DETAIL_LINK_COLOR} />
-          </TouchableOpacity>
+          <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
+            {String(item.status || "").toUpperCase() === "WAITING_PAYMENT" ? (
+              <TouchableOpacity
+                style={styles.payBtn}
+                onPress={() => onPressDetail(item)}
+                activeOpacity={0.7}
+                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+              >
+                <Text style={styles.payText}>{t("tenant_ticket_list.pay_btn")}</Text>
+              </TouchableOpacity>
+            ) : null}
+            <TouchableOpacity
+              style={styles.detailsBtn}
+              onPress={() => onPressDetail(item)}
+              activeOpacity={0.65}
+              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+            >
+              <Text style={styles.detailsText}>{t("tenant_ticket_list.details_link")}</Text>
+              <Icons.chevronForward size={16} color={DETAIL_LINK_COLOR} />
+            </TouchableOpacity>
+          </View>
         </View>
       </View>
     );

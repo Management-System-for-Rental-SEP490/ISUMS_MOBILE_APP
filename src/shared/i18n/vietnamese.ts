@@ -3,7 +3,7 @@ export default {
     "welcome": "Chào mừng bạn đến với ISUMS",
     "description": "Vui lòng đăng nhập để tiếp tục sử dụng ứng dụng",
     "technical_blocked_title": "Không thể đăng nhập",
-    "technical_blocked_message": "Ứng dụng này chỉ dành cho cư dân. Vui lòng sử dụng ứng dụng dành cho nhân viên kỹ thuật.",
+    "technical_blocked_message": "Ứng dụng này chỉ dành cho người thuê. Vui lòng sử dụng ứng dụng dành cho nhân viên kỹ thuật.",
     "common": {
         "back": "Quay lại",
         "no_data": "Không có dữ liệu",
@@ -44,7 +44,9 @@ export default {
             "maintenance": "Đang bảo trì",
             "pending": "Chờ xử lý"
         },
-        "report_button": "Báo cáo sự cố"
+        "report_button": "Báo cáo sự cố",
+        "images_label": "Ảnh thiết bị",
+        "images_empty": "Chưa có ảnh thiết bị"
     },
     "ticket": {
         "title": "Gửi ticket",
@@ -57,12 +59,20 @@ export default {
         "asset_load_error": "Không tải được danh sách thiết bị. Thử lại sau.",
         "asset_empty_list": "Không có thiết bị khớp tìm kiếm.",
         "asset_required": "Vui lòng chọn thiết bị.",
+        "asset_unnamed": "Thiết bị chưa đặt tên",
         "house_missing": "Tài khoản chưa gắn căn nhà thuê, chưa thể gửi ticket.",
         "submit_error": "Gửi ticket thất bại. Vui lòng thử lại.",
         "title_label": "Tiêu đề",
         "title_placeholder": "Tóm tắt ngắn vấn đề",
         "description_label": "Mô tả",
         "description_placeholder": "Mô tả chi tiết sự cố hoặc câu hỏi…",
+        "images_label": "Ảnh đính kèm",
+        "images_camera": "Chụp ảnh",
+        "images_library": "Chọn từ thư viện",
+        "images_remove": "Xóa ảnh",
+        "images_hint": "Không bắt buộc. Bạn có thể thêm tối đa 6 ảnh.",
+        "images_empty": "Không có ảnh đính kèm",
+        "library_permission_no_permission": "Không có quyền truy cập thư viện ảnh",
         "submit_button": "Gửi ticket",
         "validation_error_title": "Lỗi xác thực",
         "title_required": "Vui lòng nhập tiêu đề",
@@ -88,25 +98,36 @@ export default {
         "status_SCHEDULED": "Đã lên lịch",
         "status_IN_PROGRESS": "Đang xử lý",
         "status_WAITING_MANAGER_APPROVAL": "Chờ quản lý duyệt",
-        "status_WAITING_TENANT_APPROVAL": "Chờ cư dân duyệt",
+        "status_WAITING_TENANT_APPROVAL": "Chờ người thuê duyệt",
         "status_WAITING_PAYMENT": "Chờ thanh toán",
         "status_DONE": "Hoàn thành",
         "status_CLOSED": "Đã đóng",
         "status_CANCELLED": "Đã hủy",
         "type_REPAIR": "Sửa chữa",
-        "type_QUESTION": "Hỏi đáp"
+        "type_QUESTION": "Hỏi đáp",
+        "pay_btn": "Bắt đầu thanh toán"
     },
     "tenant_ticket_detail": {
         "screen_title": "Chi tiết ticket",
         "sent_at": "Gửi lúc",
         "section_info": "Thông tin",
         "section_description": "Mô tả",
+        "section_quote": "Báo giá",
+        "quote_total_label": "Tổng",
+        "quote_items_label": "Hạng mục",
+        "quote_price_label": "Giá",
+        "confirm_quote_btn": "Xác nhận",
+        "confirm_quote_loading": "Đang xác nhận...",
+        "confirm_quote_error": "Xác nhận báo giá thất bại. Vui lòng thử lại.",
+        "confirm_quote_success_title": "Xác nhận thành công",
+        "confirm_quote_success_message": "Bạn đã xác nhận báo giá thành công.",
         "field_device": "Thiết bị",
         "asset_loading": "Đang tải tên thiết bị…",
-        "asset_fallback": "Không tải được tên. Mã thiết bị:",
+        "asset_fallback": "Không tải được tên thiết bị.",
         "field_assigned_staff": "Nhân viên phụ trách",
+        "field_staff_phone": "Số điện thoại",
         "not_assigned": "Chưa phân công",
-        "field_slot": "Giờ dự kiến sửa",
+        "field_slot": "Thời gian dự kiến xử lý",
         "no_slot": "Chưa có lịch"
     },
     "tenant_question_list": {
@@ -128,8 +149,8 @@ export default {
         "field_created_at": "Thời gian (ISO)"
     },
     "tenants": {
-        "title": "Quản lý cư dân thuê",
-        "subtitle": "Theo dõi hợp đồng, thông tin liên hệ và lịch sử thanh toán của từng cư dân."
+        "title": "Quản lý người thuê thuê",
+        "subtitle": "Theo dõi hợp đồng, thông tin liên hệ và lịch sử thanh toán của từng người thuê."
     },
     "onboarding": {
         "slide1": {
@@ -187,7 +208,7 @@ export default {
         "ElectricUsage": "Điện",
         "WaterUsage": "Nước",
         "Billing": "Hóa đơn",
-        "tenants": "Cư dân",
+        "tenants": "người thuê",
         "Profile": "Hồ sơ",
         "Calendar": "Lịch",
         "Notification": "Thông báo",
@@ -305,7 +326,7 @@ export default {
     },
     "staff_notification": {
         "tenant_sent_ticket_title": "Có ticket mới từ người thuê",
-        "tenant_sent_ticket_body": "Người thuê tại {{house}} đã gửi ticket #{{id}}. Vui lòng xem và xử lý.",
+        "tenant_sent_ticket_body": "người thuê tại {{house}} đã gửi ticket #{{id}}. Vui lòng xem và xử lý.",
         "schedule_updated_title": "Lịch làm việc đã được cập nhật",
         "schedule_updated_body": "Lịch tuần này có thay đổi. Vui lòng kiểm tra lại lịch của bạn.",
         "ticket_assigned_title": "Bạn được phân công ticket #{{id}}",
@@ -318,7 +339,7 @@ export default {
     "staff_ticket_list": {
         "title": "Danh sách Ticket",
         "empty": "Chưa có ticket nào",
-        "tenant": "Người thuê",
+        "tenant": "người thuê",
         "today": "Hôm nay",
         "yesterday": "Hôm qua",
         "days_ago": "{{n}} ngày trước",
@@ -339,7 +360,7 @@ export default {
         "description": "Mô tả",
         "device": "Thiết bị",
         "building": "Căn nhà",
-        "tenant": "Người thuê",
+        "tenant": "người thuê",
         "created_at": "Ngày tạo",
         "accept_ticket": "Nhận ticket",
         "choose_slot_modal_title": "Chọn khung giờ trong lịch tuần này",
@@ -432,7 +453,7 @@ export default {
         "logout_confirm_msg": "Bạn có chắc chắn muốn đăng xuất không?",
         "cancel": "Hủy",
         "role_technical": "Kỹ thuật viên",
-        "role_tenant": "Cư dân",
+        "role_tenant": "người thuê",
         "role_manager": "Quản lý",
         "role_landlord": "Chủ nhà",
         "role_guest": "Khách"

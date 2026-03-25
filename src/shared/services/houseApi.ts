@@ -32,7 +32,9 @@ export const getHouses = async (): Promise<HousesApiResponse> => {
  */
 export const getTenantHouses = async (): Promise<HousesApiResponse> => {
   const response = await axiosClient.get<HousesApiResponse>(
-    `${BACKEND_API_BASE}/houses/house`
+    //`${BACKEND_API_BASE}/houses/house`
+     `${ASSETS_API_BASE}/houses/house`
+
   );
   return response.data;
 };

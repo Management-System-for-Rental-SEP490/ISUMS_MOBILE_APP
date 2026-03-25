@@ -13,6 +13,12 @@ import {
   type IotDevicesByHouseApiResponse,
 } from "../types/api";
 
+export type AssetItemImageFromApi = {
+  id: string;
+  url: string;
+  createdAt?: string | null;
+};
+
 /**
  * Chuẩn hóa tagValue trước khi gửi lên BE.
  * - Giữ nguyên cấu trúc có khoảng trắng giữa các byte (\"04 9C 59 A2 ...\")
@@ -185,6 +191,20 @@ export const getAssetItemById = async (id: string): Promise<AssetItemFromApi | u
   } catch {
     return undefined;
   }
+};
+
+/**
+ * Lấy danh sách ảnh của asset item.
+ * Endpoint: GET /api/assets/items/:id/images
+ */
+export const getAssetItemImages = async (itemId: string): Promise<AssetItemImageFromApi[]> => {
+  if (!itemId?.trim()) return [];
+  const url = `${ASSETS_API_BASE}/assets/items/${encodeURIComponent(itemId)}/images`;
+  const response = await axiosClient.get<ApiResponse<AssetItemImageFromApi[]>>(url);
+  if (response.data?.success && Array.isArray(response.data.data)) {
+    return response.data.data;
+  }
+  return [];
 };
 
 

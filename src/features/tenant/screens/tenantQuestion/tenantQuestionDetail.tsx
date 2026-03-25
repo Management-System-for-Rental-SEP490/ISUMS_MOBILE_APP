@@ -79,34 +79,10 @@ const TenantQuestionDetailScreen = () => {
 
         <Text style={styles.sectionLabel}>{t("tenant_question_detail.section_meta")}</Text>
         <View style={styles.panel}>
-          <View style={styles.panelRow}>
-            <Text style={styles.fieldLabel}>{t("tenant_question_detail.field_id")}</Text>
-            <Text style={styles.fieldValueMono} selectable>
-              {r.id}
-            </Text>
-          </View>
-          <View style={styles.panelRow}>
-            <Text style={styles.fieldLabel}>{t("tenant_question_detail.field_ticket_id")}</Text>
-            <Text style={styles.fieldValueMono} selectable>
-              {r.ticketId}
-            </Text>
-          </View>
-          <View style={styles.panelRow}>
-            <Text style={styles.fieldLabel}>{t("tenant_question_detail.field_actor_id")}</Text>
-            <Text style={styles.fieldValueMono} selectable>
-              {r.actorId}
-            </Text>
-          </View>
-          <View style={styles.panelRow}>
+          <View style={[styles.panelRow, styles.panelRowLast]}>
             <Text style={styles.fieldLabel}>{t("tenant_question_detail.field_content")}</Text>
             <Text style={styles.fieldValue} selectable>
               {r.content ?? ""}
-            </Text>
-          </View>
-          <View style={[styles.panelRow, styles.panelRowLast]}>
-            <Text style={styles.fieldLabel}>{t("tenant_question_detail.field_created_at")}</Text>
-            <Text style={styles.fieldValueMono} selectable>
-              {r.createdAt}
             </Text>
           </View>
         </View>

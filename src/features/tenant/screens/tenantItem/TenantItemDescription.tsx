@@ -10,6 +10,8 @@ import {
   TouchableOpacity,
   ScrollView,
   ActivityIndicator,
+  Image,
+  Modal,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useTranslation } from "react-i18next";
@@ -29,7 +31,7 @@ import {
 } from "../../../../shared/hooks";
 import { mergeFunctionalAreasForHouse } from "../../../../shared/utils";
 import { tenantItemDescriptionStyles as itemScreenStyles } from "./tenantItemDescriptionStyles";
-import { getAssetItemById } from "../../../../shared/services/assetItemApi";
+import { getAssetItemById, getAssetItemImages, type AssetItemImageFromApi } from "../../../../shared/services/assetItemApi";
 import { CustomAlert as Alert } from "../../../../shared/components/alert";
 import { brandPrimary, neutral } from "../../../../shared/theme/color";
 import {
@@ -74,6 +76,9 @@ export default function TenantItemDescriptionScreen() {
   const initialItem = route.params.item;
   const [item, setItem] = useState<AssetItemFromApi>(initialItem);
   const [loading, setLoading] = useState(false);
+  const [imagesLoading, setImagesLoading] = useState(false);
+  const [itemImages, setItemImages] = useState<AssetItemImageFromApi[]>([]);
+  const [activeImageUrl, setActiveImageUrl] = useState<string | null>(null);
 
   const houseIdForAreas = String(item.houseId ?? "").trim();
   const { data: functionalAreasByHouseRes } =
@@ -106,7 +111,19 @@ export default function TenantItemDescriptionScreen() {
           if (isActive) setLoading(false);
         }
       };
+      const fetchImages = async () => {
+        try {
+          setImagesLoading(true);
+          const imgs = await getAssetItemImages(initialItem.id);
+          if (isActive) setItemImages(imgs);
+        } catch {
+          if (isActive) setItemImages([]);
+        } finally {
+          if (isActive) setImagesLoading(false);
+        }
+      };
       fetchLatest();
+      fetchImages();
       return () => { isActive = false; };
     }, [initialItem.id])
   );
@@ -263,6 +280,31 @@ export default function TenantItemDescriptionScreen() {
               </View>
             </View>
 
+            <View style={itemScreenStyles.imagesSection}>
+              <Text style={itemScreenStyles.imagesLabel}>{t("device_detail.images_label")}</Text>
+              {imagesLoading ? (
+                <View style={{ flexDirection: "row", alignItems: "center", gap: 8, paddingVertical: 8 }}>
+                  <ActivityIndicator size="small" color={brandPrimary} />
+                  <Text style={itemScreenStyles.imagesHint}>{t("common.loading")}</Text>
+                </View>
+              ) : itemImages.length > 0 ? (
+                <View style={itemScreenStyles.imageGrid}>
+                  {itemImages.map((img) => (
+                    <TouchableOpacity
+                      key={img.id}
+                      style={itemScreenStyles.imageThumb}
+                      activeOpacity={0.85}
+                      onPress={() => setActiveImageUrl(img.url)}
+                    >
+                      <Image source={{ uri: img.url }} style={itemScreenStyles.imageThumbImg} resizeMode="cover" />
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              ) : (
+                <Text style={itemScreenStyles.imagesHint}>{t("device_detail.images_empty")}</Text>
+              )}
+            </View>
+
             <TouchableOpacity
               style={itemScreenStyles.descriptionEditBtn}
               onPress={() => {
@@ -291,6 +333,36 @@ export default function TenantItemDescriptionScreen() {
           </View>
         </ScrollView>
       )}
+
+      <Modal
+        visible={activeImageUrl != null}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setActiveImageUrl(null)}
+      >
+        <TouchableOpacity
+          style={itemScreenStyles.imageModalBackdrop}
+          activeOpacity={1}
+          onPress={() => setActiveImageUrl(null)}
+        >
+          <TouchableOpacity
+            activeOpacity={1}
+            onPress={(e) => e.stopPropagation()}
+            style={itemScreenStyles.imageModalContent}
+          >
+            <TouchableOpacity
+              style={itemScreenStyles.imageModalClose}
+              activeOpacity={0.8}
+              onPress={() => setActiveImageUrl(null)}
+            >
+              <Text style={itemScreenStyles.imageModalCloseText}>×</Text>
+            </TouchableOpacity>
+            {activeImageUrl && (
+              <Image source={{ uri: activeImageUrl }} style={itemScreenStyles.imageModalImage} resizeMode="contain" />
+            )}
+          </TouchableOpacity>
+        </TouchableOpacity>
+      </Modal>
     </View>
   );
 }

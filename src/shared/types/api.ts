@@ -456,6 +456,16 @@ export interface TenantTicketFromApi {
   houseId: string;
   assetId: string;
   assignedStaffId: string | null;
+  /**
+   * Tên nhân viên phụ trách (BE có thể trả ở endpoint ticket-by-id).
+   * Nếu endpoint danh sách không có, có thể null/undefined.
+   */
+  staffName?: string | null;
+  /**
+   * Số điện thoại nhân viên phụ trách (BE có thể trả ở endpoint ticket-by-id).
+   * Nếu endpoint danh sách không có, có thể null/undefined.
+   */
+  staffPhone?: string | null;
   slotId: string | null;
   type: string;
   status: IssueStatus;
@@ -463,6 +473,40 @@ export interface TenantTicketFromApi {
   title: string;
   description: string;
   createdAt: string;
+}
+
+// =========================================================
+// Work Slots API (/api/schedules/work_slots/staff/{staffId}) — dùng cho tenant hiển thị thời gian dự kiến
+// =========================================================
+
+export interface WorkSlotFromApi {
+  id: string;
+  staffId: string;
+  jobId: string;
+  /** ID căn nhà mà job thuộc về (BE có thể trả thêm trường này). */
+  houseId?: string;
+  jobType: string;
+  /** Thời gian bắt đầu (ISO 8601). */
+  startTime: string;
+  /** Thời gian kết thúc (ISO 8601). */
+  endTime: string;
+  /** Trạng thái job: CREATED, SCHEDULED, NEED_RESCHEDULE, IN_PROGRESS, COMPLETED, FAILED, CANCELLED, OVERDUE */
+  status: string;
+}
+
+export interface WorkSlotsApiResponse {
+  data: WorkSlotFromApi[];
+  message: string;
+  statusCode: number;
+  success: boolean;
+}
+
+/** Response body của GET /api/schedules/work_slots/{slotId}. */
+export interface WorkSlotByIdApiResponse {
+  data: WorkSlotFromApi;
+  message: string;
+  statusCode: number;
+  success: boolean;
 }
 
 /** Một phản hồi từ staff cho ticket (GET /api/issues/responses). */
@@ -473,3 +517,36 @@ export interface IssueTicketResponseFromApi {
   content: string;
   createdAt: string;
 }
+
+/** Banner báo giá/sửa chữa cho luồng quote + payment (GET /api/issues/banners). */
+export interface IssueBannerFromApi {
+  id: string;
+  name: string;
+  currentPrice: number;
+}
+
+// =========================================================
+// Issues / Quotes (tenant quote + payment flow)
+// =========================================================
+
+/** Một item bên trong quote (GET /api/issues/quotes/ticket/:ticketId) */
+export interface IssueQuoteItemFromApi {
+  id: string;
+  itemName: string;
+  description?: string | null;
+  price: number;
+}
+
+/** Một quote cho một ticket (GET /api/issues/quotes/ticket/:ticketId) */
+export interface IssueQuoteFromApi {
+  id: string;
+  issueId: string;
+  staffId?: string | null;
+  assetId?: string | null;
+  tenantId?: string | null;
+  totalPrice: number;
+  status: QuoteStatus | string;
+  items: IssueQuoteItemFromApi[];
+  createdAt?: string | null;
+}
+

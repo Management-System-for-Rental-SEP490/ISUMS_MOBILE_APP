@@ -2,12 +2,14 @@ import React, { useMemo, useState } from "react";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import {
   ActivityIndicator,
+  Image,
   ScrollView,
   Text,
   TextInput,
   TouchableOpacity,
   View,
 } from "react-native";
+import * as ImagePicker from "expo-image-picker";
 import { CustomAlert as Alert } from "../../../../shared/components/alert";
 import { RouteProp, useNavigation, useRoute } from "@react-navigation/native";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
@@ -28,7 +30,12 @@ import {
   stackScreenTitleRowStyle,
   stackScreenTitleSideSlotStyle,
 } from "../../../../shared/components/StackScreenTitleBadge";
-import { createTenantTicket, type TenantTicketCreateType } from "../../../../shared/services/issuesApi";
+import {
+  createTenantTicket,
+  type TenantTicketCreateType,
+  uploadTenantTicketImages,
+  type TicketImageToUpload,
+} from "../../../../shared/services/issuesApi";
 import { TicketAssetSelect, type TicketAssetSelection } from "./TicketAssetSelect";
 
 type TicketRouteProp = RouteProp<RootStackParamList, "Ticket">;
@@ -49,6 +56,7 @@ const TicketScreen = () => {
   const [ticketType, setTicketType] = useState<TenantTicketCreateType>("REPAIR");
   const [pickedAsset, setPickedAsset] = useState<TicketAssetSelection | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const [selectedImages, setSelectedImages] = useState<TicketImageToUpload[]>([]);
 
   const resolvedAsset = useMemo<TicketAssetSelection | null>(() => {
     if (presetAsset) return { id: presetAsset.id, displayName: presetAsset.displayName };
@@ -78,13 +86,26 @@ const TicketScreen = () => {
 
     setSubmitting(true);
     try {
-      await createTenantTicket({
+      const createdTicket = await createTenantTicket({
         houseId,
         assetId: resolvedAsset.id,
         title: title.trim(),
         description: description.trim(),
         type: ticketType,
       });
+
+      if (selectedImages.length > 0) {
+        console.log("[TicketScreen] created ticket ok, uploading images", {
+          ticketId: createdTicket.id,
+          selectedImagesCount: selectedImages.length,
+        });
+        await uploadTenantTicketImages(createdTicket.id, selectedImages);
+      } else {
+        console.log("[TicketScreen] created ticket ok, no images to upload", {
+          ticketId: createdTicket.id,
+        });
+      }
+
       Alert.alert(t("ticket.success_title"), t("ticket.success_message"), [
         { text: t("common.close"), onPress: () => navigation.goBack() },
       ]);
@@ -93,6 +114,59 @@ const TicketScreen = () => {
       Alert.alert(t("ticket.validation_error_title"), msg);
     } finally {
       setSubmitting(false);
+    }
+  };
+
+  const addPickedImages = (assets: ImagePicker.ImagePickerAsset[]) => {
+    const normalized: TicketImageToUpload[] = assets
+      .filter((a) => Boolean(a.uri))
+      .map((a) => ({
+        uri: a.uri,
+        fileName: a.fileName ?? undefined,
+        mimeType: a.mimeType ?? undefined,
+      }));
+
+    setSelectedImages((prev) => {
+      const merged = [...prev, ...normalized];
+      // Hard cap để tránh upload quá nhiều ảnh gây chậm.
+      return merged.slice(0, 6);
+    });
+  };
+
+  const handlePickFromLibrary = async () => {
+    const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (perm.status !== "granted") {
+      Alert.alert(t("ticket.validation_error_title"), t("ticket.library_permission_no_permission"));
+      return;
+    }
+
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ["images"] as ImagePicker.MediaType[],
+      allowsMultipleSelection: true,
+      // Giảm chất lượng để hạn chế vượt giới hạn upload của BE.
+      quality: 0.45,
+    });
+
+    if (!result.canceled) {
+      addPickedImages(result.assets);
+    }
+  };
+
+  const handleTakePhoto = async () => {
+    const perm = await ImagePicker.requestCameraPermissionsAsync();
+    if (perm.status !== "granted") {
+      Alert.alert(t("ticket.validation_error_title"), t("camera.no_permission"));
+      return;
+    }
+
+    const result = await ImagePicker.launchCameraAsync({
+      mediaTypes: ["images"] as ImagePicker.MediaType[],
+      // Giảm chất lượng để hạn chế vượt giới hạn upload của BE.
+      quality: 0.45,
+    });
+
+    if (!result.canceled && result.assets.length > 0) {
+      addPickedImages(result.assets);
     }
   };
 
@@ -135,10 +209,6 @@ const TicketScreen = () => {
               <>
                 <Text style={ticketStyles.deviceInfoLabel}>{t("device_detail.device_name")}</Text>
                 <Text style={ticketStyles.deviceInfoValue}>{presetAsset!.displayName}</Text>
-                <Text style={ticketStyles.deviceInfoLabel}>{t("device_detail.id")}</Text>
-                <Text style={ticketStyles.deviceInfoValue} selectable>
-                  {presetAsset!.id}
-                </Text>
               </>
             )}
           </View>
@@ -174,6 +244,59 @@ const TicketScreen = () => {
               textAlignVertical="top"
               maxLength={2000}
             />
+          </View>
+
+          <View style={ticketStyles.imagesSection}>
+            <Text style={ticketStyles.label}>{t("ticket.images_label")}</Text>
+
+            <View style={ticketStyles.imageButtonsRow}>
+              <TouchableOpacity
+                style={ticketStyles.imageButton}
+                onPress={handleTakePhoto}
+                activeOpacity={0.9}
+              >
+                <Text style={ticketStyles.imageButtonText}>{t("ticket.images_camera")}</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={ticketStyles.imageButton}
+                onPress={handlePickFromLibrary}
+                activeOpacity={0.9}
+              >
+                <Text style={ticketStyles.imageButtonText}>{t("ticket.images_library")}</Text>
+              </TouchableOpacity>
+            </View>
+
+            {selectedImages.length > 0 && (
+              <View style={ticketStyles.imageGrid}>
+                {selectedImages.map((img, idx) => (
+                  <View key={`${img.uri}-${idx}`} style={ticketStyles.imageThumb}>
+                    <View style={ticketStyles.imageThumbInner}>
+                      <Image
+                        source={{ uri: img.uri }}
+                        style={ticketStyles.imageThumbImg}
+                        resizeMode="cover"
+                      />
+                    </View>
+
+                    <TouchableOpacity
+                      style={ticketStyles.removeImageBtn}
+                      onPress={() =>
+                        setSelectedImages((prev) => prev.filter((_, i) => i !== idx))
+                      }
+                      hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                      activeOpacity={0.8}
+                      accessibilityRole="button"
+                      accessibilityLabel={t("ticket.images_remove")}
+                    >
+                      <Text style={ticketStyles.removeImageBtnText}>×</Text>
+                    </TouchableOpacity>
+                  </View>
+                ))}
+              </View>
+            )}
+
+            <Text style={ticketStyles.imagesHint}>{t("ticket.images_hint")}</Text>
           </View>
 
           <View style={ticketStyles.inputGroup}>
