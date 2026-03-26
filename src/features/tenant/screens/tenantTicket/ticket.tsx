@@ -268,32 +268,42 @@ const TicketScreen = () => {
             </View>
 
             {selectedImages.length > 0 && (
-              <View style={ticketStyles.imageGrid}>
-                {selectedImages.map((img, idx) => (
-                  <View key={`${img.uri}-${idx}`} style={ticketStyles.imageThumb}>
-                    <View style={ticketStyles.imageThumbInner}>
-                      <Image
-                        source={{ uri: img.uri }}
-                        style={ticketStyles.imageThumbImg}
-                        resizeMode="cover"
-                      />
-                    </View>
-
-                    <TouchableOpacity
-                      style={ticketStyles.removeImageBtn}
-                      onPress={() =>
-                        setSelectedImages((prev) => prev.filter((_, i) => i !== idx))
-                      }
-                      hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-                      activeOpacity={0.8}
-                      accessibilityRole="button"
-                      accessibilityLabel={t("ticket.images_remove")}
+              <>
+                <ScrollView
+                  horizontal
+                  showsHorizontalScrollIndicator={false}
+                  style={ticketStyles.ticketImagesScroll}
+                  contentContainerStyle={ticketStyles.ticketImagesStrip}
+                >
+                  {selectedImages.map((img, idx) => (
+                    <View
+                      key={`${img.uri}-${idx}`}
+                      style={[ticketStyles.imageThumb, ticketStyles.ticketImageThumbHorizontal]}
                     >
-                      <Text style={ticketStyles.removeImageBtnText}>×</Text>
-                    </TouchableOpacity>
-                  </View>
-                ))}
-              </View>
+                      <View style={ticketStyles.imageThumbInner}>
+                        <Image
+                          source={{ uri: img.uri }}
+                          style={ticketStyles.imageThumbImg}
+                          resizeMode="cover"
+                        />
+                      </View>
+
+                      <TouchableOpacity
+                        style={ticketStyles.removeImageBtn}
+                        onPress={() =>
+                          setSelectedImages((prev) => prev.filter((_, i) => i !== idx))
+                        }
+                        hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                        activeOpacity={0.8}
+                        accessibilityRole="button"
+                        accessibilityLabel={t("ticket.images_remove")}
+                      >
+                        <Text style={ticketStyles.removeImageBtnText}>×</Text>
+                      </TouchableOpacity>
+                    </View>
+                  ))}
+                </ScrollView>
+              </>
             )}
 
             <Text style={ticketStyles.imagesHint}>{t("ticket.images_hint")}</Text>

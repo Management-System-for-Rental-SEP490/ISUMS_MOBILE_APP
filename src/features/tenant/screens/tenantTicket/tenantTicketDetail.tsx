@@ -436,18 +436,25 @@ const TenantTicketDetailScreen = () => {
               <Text style={styles.fieldValueMuted}>{t("ticket.images_label")}</Text>
             </View>
           ) : ticketImages.length > 0 ? (
-            <View style={styles.ticketImagesGrid}>
-              {ticketImages.map((img) => (
-                <TouchableOpacity
-                  key={img.id}
-                  style={styles.ticketImageThumb}
-                  activeOpacity={0.85}
-                  onPress={() => setActiveImageUrl(img.url)}
-                >
-                  <Image source={{ uri: img.url }} style={styles.ticketImage} resizeMode="cover" />
-                </TouchableOpacity>
-              ))}
-            </View>
+            <>
+              <ScrollView
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                style={styles.ticketImagesScroll}
+                contentContainerStyle={styles.ticketImagesStrip}
+              >
+                {ticketImages.map((img) => (
+                  <TouchableOpacity
+                    key={img.id}
+                    style={[styles.ticketImageThumb, styles.ticketImageThumbHorizontal]}
+                    activeOpacity={0.85}
+                    onPress={() => setActiveImageUrl(img.url)}
+                  >
+                    <Image source={{ uri: img.url }} style={styles.ticketImage} resizeMode="cover" />
+                  </TouchableOpacity>
+                ))}
+              </ScrollView>
+            </>
           ) : (
             <Text style={styles.fieldValueMuted}>{t("ticket.images_empty")}</Text>
           )}

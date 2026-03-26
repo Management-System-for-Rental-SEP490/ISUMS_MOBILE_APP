@@ -70,7 +70,6 @@ export default {
         "images_camera": "Chụp ảnh",
         "images_library": "Chọn từ thư viện",
         "images_remove": "Xóa ảnh",
-        "images_hint": "Không bắt buộc. Bạn có thể thêm tối đa 6 ảnh.",
         "images_empty": "Không có ảnh đính kèm",
         "library_permission_no_permission": "Không có quyền truy cập thư viện ảnh",
         "submit_button": "Gửi ticket",

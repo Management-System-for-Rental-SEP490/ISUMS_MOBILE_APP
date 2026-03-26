@@ -288,18 +288,25 @@ export default function TenantItemDescriptionScreen() {
                   <Text style={itemScreenStyles.imagesHint}>{t("common.loading")}</Text>
                 </View>
               ) : itemImages.length > 0 ? (
-                <View style={itemScreenStyles.imageGrid}>
-                  {itemImages.map((img) => (
-                    <TouchableOpacity
-                      key={img.id}
-                      style={itemScreenStyles.imageThumb}
-                      activeOpacity={0.85}
-                      onPress={() => setActiveImageUrl(img.url)}
-                    >
-                      <Image source={{ uri: img.url }} style={itemScreenStyles.imageThumbImg} resizeMode="cover" />
-                    </TouchableOpacity>
-                  ))}
-                </View>
+                <>
+                  <ScrollView
+                    horizontal
+                    showsHorizontalScrollIndicator={false}
+                    style={itemScreenStyles.imageStripScroll}
+                    contentContainerStyle={itemScreenStyles.imageStrip}
+                  >
+                    {itemImages.map((img) => (
+                      <TouchableOpacity
+                        key={img.id}
+                        style={[itemScreenStyles.imageThumb, itemScreenStyles.imageThumbHorizontal]}
+                        activeOpacity={0.85}
+                        onPress={() => setActiveImageUrl(img.url)}
+                      >
+                        <Image source={{ uri: img.url }} style={itemScreenStyles.imageThumbImg} resizeMode="cover" />
+                      </TouchableOpacity>
+                    ))}
+                  </ScrollView>
+                </>
               ) : (
                 <Text style={itemScreenStyles.imagesHint}>{t("device_detail.images_empty")}</Text>
               )}

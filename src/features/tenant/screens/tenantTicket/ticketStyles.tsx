@@ -162,6 +162,34 @@ export const ticketStyles = StyleSheet.create({
     fontWeight: "800",
     lineHeight: 16,
   },
+  ticketImagesScroll: {
+    maxHeight: 170,
+  },
+  ticketImagesStrip: {
+    flexDirection: "row",
+    gap: 10,
+    paddingVertical: 4,
+    paddingHorizontal: 2,
+  },
+  ticketImageThumbHorizontal: {
+    width: 150,
+    aspectRatio: 1,
+  },
+  ticketImagesMoreBtn: {
+    marginTop: 8,
+    alignSelf: "flex-start",
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: neutral.borderMuted ?? neutral.border,
+    backgroundColor: neutral.canvasMuted,
+  },
+  ticketImagesMoreBtnText: {
+    fontSize: 12,
+    fontWeight: "600",
+    color: neutral.textSecondary,
+  },
   priorityContainer: {
     flexDirection: "row",
     gap: 8,
@@ -849,6 +877,15 @@ export const tenantTicketDetailStyles = StyleSheet.create({
     paddingVertical: 10,
     paddingHorizontal: 4,
   },
+  ticketImagesScroll: {
+    maxHeight: 170,
+  },
+  ticketImagesStrip: {
+    flexDirection: "row",
+    gap: 10,
+    paddingVertical: 10,
+    paddingHorizontal: 4,
+  },
   ticketImageThumb: {
     width: "48%",
     aspectRatio: 1,
@@ -858,9 +895,28 @@ export const tenantTicketDetailStyles = StyleSheet.create({
     borderColor: neutral.borderMuted ?? neutral.border,
     backgroundColor: neutral.canvasMuted,
   },
+  ticketImageThumbHorizontal: {
+    width: 150,
+    aspectRatio: 1,
+  },
   ticketImage: {
     width: "100%",
     height: "100%",
+  },
+  ticketImagesMoreBtn: {
+    marginTop: 6,
+    alignSelf: "flex-start",
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: neutral.border,
+    backgroundColor: neutral.canvasMuted,
+  },
+  ticketImagesMoreBtnText: {
+    fontSize: 12,
+    fontWeight: "600",
+    color: neutral.textSecondary,
   },
   ticketImagesEmpty: {
     paddingVertical: 12,

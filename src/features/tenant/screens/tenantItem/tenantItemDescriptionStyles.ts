@@ -103,6 +103,15 @@ export const tenantItemDescriptionStyles = StyleSheet.create({
     gap: 10,
     paddingVertical: 6,
   },
+  imageStrip: {
+    flexDirection: "row",
+    gap: 10,
+    paddingVertical: 6,
+    paddingHorizontal: 2,
+  },
+  imageStripScroll: {
+    maxHeight: 170,
+  },
   imageThumb: {
     width: "48%",
     aspectRatio: 1,
@@ -111,6 +120,25 @@ export const tenantItemDescriptionStyles = StyleSheet.create({
     borderWidth: 1,
     borderColor: neutral.borderMuted ?? neutral.border,
     backgroundColor: neutral.background,
+  },
+  imageThumbHorizontal: {
+    width: 150,
+    aspectRatio: 1,
+  },
+  imageMoreBtn: {
+    marginTop: 8,
+    alignSelf: "flex-start",
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: neutral.borderMuted ?? neutral.border,
+    backgroundColor: neutral.background,
+  },
+  imageMoreBtnText: {
+    ...appTypography.secondary,
+    fontWeight: "600",
+    color: neutral.textSecondary,
   },
   imageThumbImg: {
     width: "100%",
