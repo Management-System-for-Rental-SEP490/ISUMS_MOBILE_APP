@@ -1,10 +1,13 @@
 /**
- * Vị trí khu vực trên sơ đồ mặt bằng (house.png).
+ * Vị trí khu vực trên sơ đồ mặt bằng (Cover_Floor_Plan.png, viewBox 0–100).
  * Ưu tiên `position` từ BE; nếu thiếu thì đặt theo areaType hoặc chỉ số (layout mặc định).
  */
 import type { FunctionalAreaFromApi, FunctionalAreaPosition } from "../../../shared/types/api";
 
-/** Slots theo layout house.png – tâm chữ nằm giữa từng phòng (trên: phòng ngủ, bếp, toilet; dưới: phòng khách, hành lang). */
+/** width/height của assets/Cover_Floor_Plan.png (945×831) — giữ tỉ lệ khung hiển thị. */
+export const FLOOR_PLAN_IMAGE_ASPECT = 945 / 831;
+
+/** Slots theo layout mặt bằng – tâm chữ giữa từng khu (trên: ngủ, bếp, tắm; dưới: khách, hành lang). */
 const SLOTS_BY_AREA_TYPE: Record<string, FunctionalAreaPosition> = {
   BEDROOM: { x: 4, y: 20, width: 30, height: 34 },
   KITCHEN: { x: 45, y: 20, width: 30, height: 34 },

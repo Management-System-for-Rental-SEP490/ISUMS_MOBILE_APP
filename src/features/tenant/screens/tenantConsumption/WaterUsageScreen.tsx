@@ -190,7 +190,7 @@ const WaterUsageScreen = () => {
           })}
         </ScrollView>
 
-        {/* Sơ đồ nhà: house.png nền, khu vực theo position */}
+        {/* Sơ đồ nhà: Cover_Floor_Plan nền, khu vực theo position */}
         <FloorPlanView
           selectedFloor={selectedFloor}
           selectedAreaId="all"

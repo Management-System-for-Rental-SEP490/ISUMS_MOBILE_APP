@@ -67,7 +67,7 @@ export interface FunctionalAreaFromApi {
   description: string | null;
   /** Trạng thái (VD: NORMAL). */
   status?: string;
-  /** Vị trí trong sơ đồ mặt bằng (từ BE; thiếu thì app đặt theo areaType). Dùng khi vẽ theo house.png. */
+  /** Vị trí trong sơ đồ mặt bằng (từ BE; thiếu thì app đặt theo areaType). ViewBox 0–100 trên Cover_Floor_Plan. */
   position?: FunctionalAreaPosition;
   createdAt?: string;
   updatedAt?: string;
