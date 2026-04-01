@@ -9,6 +9,7 @@ import {
 } from "react-native";
 import { buildPaginationSequence } from "../utils/pagination";
 import { brandPrimary, neutral } from "../theme/color";
+import { appTypography } from "../utils";
 
 export type PaginationBarProps = {
   currentPage: number;
@@ -77,7 +78,7 @@ const styles = StyleSheet.create({
     borderColor: brandPrimary,
   },
   btnText: {
-    fontSize: 14,
+    ...appTypography.body,
     fontWeight: "600",
     color: neutral.text,
   },
@@ -85,7 +86,7 @@ const styles = StyleSheet.create({
     color: "#FFF",
   },
   ellipsis: {
-    fontSize: 16,
+    ...appTypography.sectionHeading,
     fontWeight: "700",
     color: neutral.textSecondary,
     paddingHorizontal: 4,

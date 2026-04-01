@@ -59,6 +59,10 @@ const Icons = {
   chevronBack: ({ size = 24, color = 'black' }: IconProps = {}) => (
     <Ionicons name="chevron-back" size={size} color={color} />
   ),
+  /** Đồng hồ (giờ gửi ticket). */
+  clock: ({ size = 24, color = 'black' }: IconProps = {}) => (
+    <Ionicons name="time-outline" size={size} color={color} />
+  ),
   chevronDown: ({ size = 24, color = 'black' }: IconProps = {}) => (
     <Ionicons name="chevron-down" size={size} color={color} />
   ),

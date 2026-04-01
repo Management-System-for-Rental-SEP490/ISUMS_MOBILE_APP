@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { View, Text, TouchableOpacity, ScrollView, Platform } from "react-native";
 import { CustomAlert as Alert } from "../../../shared/components/alert";
-import { useNavigation } from "@react-navigation/native";
+import { NavigationProp, useNavigation } from "@react-navigation/native";
 import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons } from "@expo/vector-icons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -9,6 +9,7 @@ import userProfileStyles from "./UserProfileScreenStyles";
 import { useAuthStore } from "../../../store/useAuthStore";
 import { logoutKeycloak, openChangePasswordPage } from "../../../shared/services/keycloakAuth";
 import { UserProfileResponse } from "../../../shared/types/api";
+import { RootStackParamList } from "../../../shared/types";
 import { getUserProfile } from "../../../shared/services/userApi";
 import Icons from "../../../shared/theme/icon";
 import {
@@ -89,6 +90,16 @@ const UserProfileScreen = () => {
       return;
     }
     nav.navigate("Dashboard");
+  };
+
+  const goTenantTicketList = () => {
+    const parentNav = navigation.getParent() as NavigationProp<RootStackParamList> | undefined;
+    parentNav?.navigate("TenantTicketList");
+  };
+
+  const goTenantQuestionList = () => {
+    const parentNav = navigation.getParent() as NavigationProp<RootStackParamList> | undefined;
+    parentNav?.navigate("TenantQuestionList");
   };
 
   return (
@@ -181,6 +192,28 @@ const UserProfileScreen = () => {
             <View style={userProfileStyles.menuContent}>
               <Text style={userProfileStyles.menuLabel}>{t('profile.notifications')}</Text>
               <Text style={userProfileStyles.menuDescription}>{t('profile.notifications_desc')}</Text>
+            </View>
+            <Icons.chevronForward size={20} color={neutral.textOnDarkSoft} />
+          </TouchableOpacity>
+
+          <TouchableOpacity style={userProfileStyles.menuItem} onPress={goTenantTicketList}>
+            <View style={[userProfileStyles.menuIcon, { backgroundColor: brandTintBg }]}>
+              <Icons.ticket size={22} color="#666" />
+            </View>
+            <View style={userProfileStyles.menuContent}>
+              <Text style={userProfileStyles.menuLabel}>{t('profile.my_tickets')}</Text>
+              <Text style={userProfileStyles.menuDescription}>{t('profile.my_tickets_desc')}</Text>
+            </View>
+            <Icons.chevronForward size={20} color={neutral.textOnDarkSoft} />
+          </TouchableOpacity>
+
+          <TouchableOpacity style={userProfileStyles.menuItem} onPress={goTenantQuestionList}>
+            <View style={[userProfileStyles.menuIcon, { backgroundColor: brandTintBg }]}>
+              <Icons.brain size={22} color="#666" />
+            </View>
+            <View style={userProfileStyles.menuContent}>
+              <Text style={userProfileStyles.menuLabel}>{t('profile.qa_answers')}</Text>
+              <Text style={userProfileStyles.menuDescription}>{t('profile.qa_answers_desc')}</Text>
             </View>
             <Icons.chevronForward size={20} color={neutral.textOnDarkSoft} />
           </TouchableOpacity>

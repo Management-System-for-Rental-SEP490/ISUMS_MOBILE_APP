@@ -1,5 +1,11 @@
 import { BottomTabScreenProps } from "@react-navigation/bottom-tabs";
-import type { AssetCategoryFromApi, AssetItemFromApi, FunctionalAreaFromApi } from "./api";
+import type {
+  AssetCategoryFromApi,
+  AssetItemFromApi,
+  FunctionalAreaFromApi,
+  IssueTicketResponseFromApi,
+  TenantTicketFromApi,
+} from "./api";
 
 export type AuthStackParamList = {
   AuthLogin: undefined;
@@ -25,7 +31,19 @@ export type RootStackParamList = AuthStackParamList & {
   Camera: undefined | { initialScanMode?: "qr" | "nfc" };
   /** Chi tiết thiết bị (tenant): nhận item từ danh sách, fetch theo id, hiển thị giống ItemDescription, có nút Báo cáo sự cố. */
   TenantItemDetail: { item: AssetItemFromApi };
-  Ticket: { device: Device };
+  /**
+   * Tạo ticket tenant (POST /issues/tickets).
+   * `houseId` bắt buộc; có `presetAsset` khi vào từ chi tiết thiết bị, không có khi vào từ danh sách ticket (+ chọn thiết bị trong form).
+   */
+  Ticket: { houseId: string; presetAsset?: { id: string; displayName: string } };
+  /** Danh sách ticket tenant đã gửi (từ hồ sơ / ứng dụng). */
+  TenantTicketList: undefined;
+  /** Chi tiết một ticket (dữ liệu từ danh sách + tên thiết bị fetch theo assetId). */
+  TenantTicketDetail: { ticket: TenantTicketFromApi };
+  /** Danh sách phản hồi cho ticket hỏi đáp (GET /issues/responses + lọc theo ticket QUESTION). */
+  TenantQuestionList: undefined;
+  /** Chi tiết một phản hồi (đủ trường từ API). */
+  TenantQuestionDetail: { response: IssueTicketResponseFromApi };
   /** Chi tiết nhà (tenant): mô tả căn nhà, khu vực chức năng. */
   BuildingDetail: {
     buildingId: string;
@@ -143,6 +161,7 @@ export interface RentalHouse {
 // Tại đây chỉ re-export lại để ai đang import từ "shared/types" vẫn dùng được.
 export type {
   ApiResponse,
+  HouseStatus,
   HouseFromApi,
   HousesApiResponse,
   FunctionalAreaFromApi,
@@ -152,6 +171,11 @@ export type {
   AssetItemFromApi,
   AssetItemsApiResponse,
   UserProfileResponse,
+  TenantTicketFromApi,
+  IssueStatus,
+  QuoteStatus,
+  TenantTicketStatus,
+  IssueTicketResponseFromApi,
 } from "./api";
 
 export type { TelemetryMessage, UsageData } from "./iot";

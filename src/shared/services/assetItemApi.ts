@@ -3,14 +3,21 @@
  */
 import axiosClient from "../api/axiosClient";
 import { ASSETS_API_BASE, BACKEND_API_BASE} from "../api/config";
-import type {
-  ApiResponse,
-  AssetItemFromApi,
-  AssetItemsApiResponse,
-  AssetItemsParams,
-  GetAssetByTagValueApiResponse,
-  IotDevicesByHouseApiResponse,
+import {
+  normalizeAssetItemStatusFromApi,
+  type ApiResponse,
+  type AssetItemFromApi,
+  type AssetItemsApiResponse,
+  type AssetItemsParams,
+  type GetAssetByTagValueApiResponse,
+  type IotDevicesByHouseApiResponse,
 } from "../types/api";
+
+export type AssetItemImageFromApi = {
+  id: string;
+  url: string;
+  createdAt?: string | null;
+};
 
 /**
  * Chuẩn hóa tagValue trước khi gửi lên BE.
@@ -74,6 +81,7 @@ function normalizeAssetItemFromResponse(
     ...raw,
     nfcTag: nfcStr !== "" ? nfcStr : null,
     qrTag: qrStr !== "" ? qrStr : null,
+    status: normalizeAssetItemStatusFromApi(raw.status),
     functionAreaId:
       functionAreaId != null && String(functionAreaId).trim() !== ""
         ? String(functionAreaId).trim()
@@ -183,6 +191,20 @@ export const getAssetItemById = async (id: string): Promise<AssetItemFromApi | u
   } catch {
     return undefined;
   }
+};
+
+/**
+ * Lấy danh sách ảnh của asset item.
+ * Endpoint: GET /api/assets/items/:id/images
+ */
+export const getAssetItemImages = async (itemId: string): Promise<AssetItemImageFromApi[]> => {
+  if (!itemId?.trim()) return [];
+  const url = `${ASSETS_API_BASE}/assets/items/${encodeURIComponent(itemId)}/images`;
+  const response = await axiosClient.get<ApiResponse<AssetItemImageFromApi[]>>(url);
+  if (response.data?.success && Array.isArray(response.data.data)) {
+    return response.data.data;
+  }
+  return [];
 };
 
 

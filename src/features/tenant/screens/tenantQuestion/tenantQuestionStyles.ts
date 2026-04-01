@@ -1,0 +1,218 @@
+import { StyleSheet } from "react-native";
+import { brandSecondary, neutral } from "../../../../shared/theme/color";
+import { appTypography } from "../../../../shared/utils/typography";
+
+/** Danh sách phản hồi hỏi đáp — cùng tông với tenantTicketList. */
+export const tenantQuestionListStyles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: neutral.canvasMuted,
+  },
+  pageHeading: {
+    paddingHorizontal: 20,
+    paddingTop: 10,
+    paddingBottom: 14,
+  },
+  pageTitle: {
+    ...appTypography.ticketScreenTitle,
+    fontSize: 22,
+    color: neutral.heading,
+    marginBottom: 6,
+  },
+  pageSubtitle: {
+    fontSize: 13,
+    lineHeight: 18,
+    color: neutral.textMuted,
+  },
+  listContent: {
+    paddingHorizontal: 20,
+    paddingTop: 4,
+    paddingBottom: 8,
+    gap: 12,
+  },
+  listEmptyGrow: {
+    flexGrow: 1,
+    justifyContent: "center",
+  },
+  card: {
+    backgroundColor: neutral.surface,
+    borderRadius: 14,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: neutral.border,
+    shadowColor: neutral.slate900,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 8,
+    elevation: 2,
+  },
+  contentPreview: {
+    fontSize: 16,
+    fontWeight: "600",
+    color: neutral.text,
+    marginBottom: 10,
+    lineHeight: 22,
+  },
+  dateRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    marginBottom: 14,
+  },
+  dateLine: {
+    fontSize: 12,
+    color: neutral.textMuted,
+  },
+  cardBottomRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "flex-end",
+  },
+  detailsBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+  },
+  detailsText: {
+    fontSize: 13,
+    fontWeight: "600",
+    color: "#3D8BA8",
+  },
+  centered: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    padding: 24,
+  },
+  hint: {
+    marginTop: 14,
+    ...appTypography.body,
+    color: neutral.textSecondary,
+  },
+  errorText: {
+    ...appTypography.body,
+    color: neutral.textSecondary,
+    textAlign: "center",
+    marginBottom: 18,
+    lineHeight: 22,
+  },
+  retryBtn: {
+    backgroundColor: brandSecondary,
+    paddingHorizontal: 24,
+    paddingVertical: 14,
+    borderRadius: 12,
+    minWidth: 160,
+    alignItems: "center",
+    shadowColor: brandSecondary,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.18,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  retryBtnText: {
+    ...appTypography.dialogButton,
+    color: neutral.surface,
+    fontWeight: "600",
+  },
+  empty: {
+    ...appTypography.body,
+    color: neutral.textMuted,
+    textAlign: "center",
+    paddingVertical: 40,
+    paddingHorizontal: 24,
+    lineHeight: 22,
+  },
+});
+
+/** Chi tiết phản hồi — cùng tông tenantTicketDetail. */
+export const tenantQuestionDetailStyles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: neutral.canvasMuted,
+  },
+  scroll: {
+    flex: 1,
+  },
+  scrollContent: {
+    paddingHorizontal: 20,
+    paddingTop: 8,
+    paddingBottom: 32,
+    gap: 14,
+  },
+  heroCard: {
+    backgroundColor: neutral.surface,
+    borderRadius: 14,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: neutral.border,
+    shadowColor: neutral.slate900,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 8,
+    elevation: 2,
+  },
+  heroTitle: {
+    fontSize: 17,
+    fontWeight: "700",
+    color: neutral.text,
+    lineHeight: 26,
+    marginBottom: 12,
+  },
+  heroDateRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+  },
+  heroDateText: {
+    fontSize: 13,
+    color: neutral.textMuted,
+  },
+  sectionLabel: {
+    fontSize: 11,
+    fontWeight: "700",
+    letterSpacing: 0.6,
+    color: neutral.textMuted,
+    textTransform: "uppercase",
+    marginBottom: 8,
+    marginLeft: 2,
+  },
+  panel: {
+    backgroundColor: neutral.surface,
+    borderRadius: 14,
+    paddingHorizontal: 16,
+    paddingVertical: 4,
+    borderWidth: 1,
+    borderColor: neutral.border,
+    shadowColor: neutral.slate900,
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.04,
+    shadowRadius: 6,
+    elevation: 1,
+  },
+  panelRow: {
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: neutral.borderMuted,
+  },
+  panelRowLast: {
+    borderBottomWidth: 0,
+  },
+  fieldLabel: {
+    fontSize: 12,
+    fontWeight: "600",
+    color: neutral.textMuted,
+    marginBottom: 4,
+  },
+  fieldValue: {
+    fontSize: 15,
+    fontWeight: "500",
+    color: neutral.text,
+    lineHeight: 22,
+  },
+  fieldValueMono: {
+    fontSize: 12,
+    fontWeight: "500",
+    color: neutral.slate600,
+    lineHeight: 18,
+  },
+});

@@ -11,6 +11,7 @@ export function formatHouseStatusForDisplay(status: string | undefined, t: TFunc
   const u = status.trim().toUpperCase();
   if (u === "AVAILABLE") return t("staff_building_detail.house_status_available");
   if (u === "RENTED") return t("staff_building_detail.house_status_rented");
+  if (u === "REPAIRED") return t("staff_building_detail.house_status_repaired");
   if (u === "VACANT" || u === "EMPTY" || u === "UNOCCUPIED") {
     return t("staff_building_detail.house_status_vacant");
   }
