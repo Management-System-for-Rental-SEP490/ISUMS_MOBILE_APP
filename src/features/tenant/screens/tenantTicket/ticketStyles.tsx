@@ -122,6 +122,17 @@ export const ticketStyles = StyleSheet.create({
     fontWeight: "600",
     color: neutral.textSecondary,
   },
+  imageLibraryLink: {
+    marginTop: 6,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  imageLibraryLinkText: {
+    ...appTypography.dialogButton,
+    fontWeight: "600",
+    color: brandPrimary,
+    textDecorationLine: "underline",
+  },
   imageGrid: {
     flexDirection: "row",
     flexWrap: "wrap",

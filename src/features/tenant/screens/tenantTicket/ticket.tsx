@@ -20,6 +20,7 @@ import {
 } from "./ticketStyles";
 import { useTranslation } from "react-i18next";
 import Icons from "../../../../shared/theme/icon";
+import { ImageCaptureModal } from "../../../modal/imageCapture/ImageCaptureModal";
 import {
   StackScreenTitleBadge,
   StackScreenTitleBarBalance,
@@ -57,6 +58,7 @@ const TicketScreen = () => {
   const [pickedAsset, setPickedAsset] = useState<TicketAssetSelection | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [selectedImages, setSelectedImages] = useState<TicketImageToUpload[]>([]);
+  const [imageCaptureVisible, setImageCaptureVisible] = useState(false);
 
   const resolvedAsset = useMemo<TicketAssetSelection | null>(() => {
     if (presetAsset) return { id: presetAsset.id, displayName: presetAsset.displayName };
@@ -133,41 +135,8 @@ const TicketScreen = () => {
     });
   };
 
-  const handlePickFromLibrary = async () => {
-    const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
-    if (perm.status !== "granted") {
-      Alert.alert(t("ticket.validation_error_title"), t("ticket.library_permission_no_permission"));
-      return;
-    }
-
-    const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ["images"] as ImagePicker.MediaType[],
-      allowsMultipleSelection: true,
-      // Giảm chất lượng để hạn chế vượt giới hạn upload của BE.
-      quality: 0.45,
-    });
-
-    if (!result.canceled) {
-      addPickedImages(result.assets);
-    }
-  };
-
   const handleTakePhoto = async () => {
-    const perm = await ImagePicker.requestCameraPermissionsAsync();
-    if (perm.status !== "granted") {
-      Alert.alert(t("ticket.validation_error_title"), t("camera.no_permission"));
-      return;
-    }
-
-    const result = await ImagePicker.launchCameraAsync({
-      mediaTypes: ["images"] as ImagePicker.MediaType[],
-      // Giảm chất lượng để hạn chế vượt giới hạn upload của BE.
-      quality: 0.45,
-    });
-
-    if (!result.canceled && result.assets.length > 0) {
-      addPickedImages(result.assets);
-    }
+    setImageCaptureVisible(true);
   };
 
   return (
@@ -257,14 +226,6 @@ const TicketScreen = () => {
               >
                 <Text style={ticketStyles.imageButtonText}>{t("ticket.images_camera")}</Text>
               </TouchableOpacity>
-
-              <TouchableOpacity
-                style={ticketStyles.imageButton}
-                onPress={handlePickFromLibrary}
-                activeOpacity={0.9}
-              >
-                <Text style={ticketStyles.imageButtonText}>{t("ticket.images_library")}</Text>
-              </TouchableOpacity>
             </View>
 
             {selectedImages.length > 0 && (
@@ -306,7 +267,7 @@ const TicketScreen = () => {
               </>
             )}
 
-            <Text style={ticketStyles.imagesHint}>{t("ticket.images_hint")}</Text>
+            
           </View>
 
           <View style={ticketStyles.inputGroup}>
@@ -359,6 +320,16 @@ const TicketScreen = () => {
           </TouchableOpacity>
         </View>
       </ScrollView>
+
+      <ImageCaptureModal
+        visible={imageCaptureVisible}
+        onClose={() => setImageCaptureVisible(false)}
+        onPicked={(assets) => {
+          addPickedImages(assets);
+        }}
+        libraryLabel={t("ticket.images_library")}
+        libraryPermissionErrorMessage={t("ticket.library_permission_no_permission")}
+      />
     </View>
   );
 };

@@ -71,7 +71,10 @@ export const getHouseIotAlerts = async (
   sp.set("date", params.date);
   const c = params.cursor;
   if (c) sp.set("cursor", c);
-  const url = `${FALLBACK_BACKEND_URL}/assets/houses/${encodeURIComponent(
+  // const url = `${FALLBACK_BACKEND_URL}/assets/houses/${encodeURIComponent(
+  //   houseId
+  // )}/iot/alerts?${sp.toString()}`;
+  const url = `https://api-dev.isums.pro/api/assets/houses/${encodeURIComponent(
     houseId
   )}/iot/alerts?${sp.toString()}`;
   const response = await axiosClient.get<HouseIotAlertsApiResponse>(url);
