@@ -18,6 +18,15 @@ import { brandPrimary, neutral, waterAccent } from "../theme/color";
 
 export const Tab = createBottomTabNavigator<MainTabParamList>();
 
+/** Thứ tự `Tab.Screen` trong TenantTabs — dùng khi reset navigation về tab Dashboard. */
+export const TENANT_MAIN_TAB_ROUTES: (keyof MainTabParamList)[] = [
+  "Notification",
+  "ElectricUsage",
+  "Dashboard",
+  "WaterUsage",
+  "Profile",
+];
+
 const tabIconMap: Record<keyof MainTabParamList, (props: IconProps) => React.ReactElement> = { // Record<K, V> là một loại (type) tiện ích trong TypeScript, đại diện cho một object với các key là kiểu K và value là kiểu V.
   Dashboard: (props) => <Icons.logoHome {...props} />,
   ElectricUsage: (props) => <Icons.electric {...props} />,

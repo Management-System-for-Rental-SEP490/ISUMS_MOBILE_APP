@@ -1,5 +1,16 @@
-import React, { useEffect, useState } from "react";
-import { View, ActivityIndicator } from "react-native";
+import React, { useEffect, useState, useCallback } from "react";
+import {
+  View,
+  ActivityIndicator,
+  Text,
+  TouchableOpacity,
+  StyleSheet,
+  BackHandler,
+  Platform,
+  AppState,
+  type AppStateStatus,
+} from "react-native";
+import WebView from "react-native-webview";
 import { useTranslation } from "react-i18next";
 import { NavigationContainer } from "@react-navigation/native";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
@@ -7,7 +18,13 @@ import { CustomAlert } from "../shared/components/alert";
 import Login from "../features/screens/authentication/LoginScreen";
 import OnBoarding from "../features/screens/onBoarding/onBoarding";
 import { useAuthStore } from "../store/useAuthStore";
-import { logoutKeycloak } from "../shared/services/keycloakAuth";
+import {
+  logoutKeycloak,
+  getKeycloakRedirectUri,
+  keycloakInAppNotifyAppRedirect,
+  keycloakInAppUserDismissed,
+} from "../shared/services/keycloakAuth";
+import loginStyles from "../features/screens/authentication/loginStyles";
 import { RootStackParamList } from "../shared/types";
 import { TenantTabs } from "../shared/components/footerNavigator";
 import CameraScreen from "../features/modal/camera/CameraScreen";
@@ -18,9 +35,25 @@ import TenantTicketDetailScreen from "../features/tenant/screens/tenantTicket/te
 import TenantQuestionListScreen from "../features/tenant/screens/tenantQuestion/tenantQuestionList";
 import TenantQuestionDetailScreen from "../features/tenant/screens/tenantQuestion/tenantQuestionDetail";
 import TenantHouseDescription from "../features/tenant/screens/tenantHouse/tenantHouseDescription";
+import TenantRentPaymentScreen from "../features/tenant/screens/tenantPayment/TenantRentPaymentScreen";
+import TenantInvoiceListScreen from "../features/tenant/screens/tenantInvoice/TenantInvoiceListScreen";
+import TenantInvoiceDetailScreen from "../features/tenant/screens/tenantInvoice/TenantInvoiceDetailScreen";
 import { brandPrimary } from "../shared/theme/color";
+import { ensureTenantMainHouseSynced } from "../shared/services/userApi";
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
+
+const navStyles = StyleSheet.create({
+  root: { flex: 1 },
+  keycloakOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: "#fff",
+    zIndex: 99999,
+    elevation: 99999,
+    flexDirection: "column",
+  },
+  keycloakWebView: { flex: 1 },
+});
 
 const Navigation = () => {
   const { t } = useTranslation();
@@ -28,8 +61,18 @@ const Navigation = () => {
   const user = useAuthStore((state) => state.user);
   const role = useAuthStore((state) => state.role);
   const onboardedUsers = useAuthStore((state) => state.onboardedUsers);
-  
+  const keycloakSession = useAuthStore((state) => state.keycloakInAppSession);
+
   const [isReady, setIsReady] = useState(false);
+
+  const handleKeycloakWebViewRequest = useCallback((request: { url: string }) => {
+    const redirectUri = getKeycloakRedirectUri();
+    if (request.url.startsWith(redirectUri)) {
+      void keycloakInAppNotifyAppRedirect(request.url);
+      return false;
+    }
+    return true;
+  }, []);
 
   // Kiểm tra xem User hiện tại đã xem Onboarding chưa
   const showOnboarding = isLoggedIn && user && !onboardedUsers.includes(user);
@@ -65,6 +108,35 @@ const Navigation = () => {
     }
   }, [isReady, isLoggedIn, role, t]);
 
+  // Đồng bộ nhà chính (GET /users/me + PUT /users/main-house khi cần) sau đăng nhập / mở lại app.
+  useEffect(() => {
+    if (!isReady || !isLoggedIn || role !== "tenant") return;
+    void ensureTenantMainHouseSynced();
+  }, [isReady, isLoggedIn, role, user]);
+
+  // Tenant nhiều nhà: khi quay lại app (sau thanh toán / đổi nhà chính trên BE) lấy lại mainHouseId → houseId trong store.
+  useEffect(() => {
+    if (!isReady || !isLoggedIn || role !== "tenant") return;
+    const onChange = (next: AppStateStatus) => {
+      if (next === "active") void ensureTenantMainHouseSynced();
+    };
+    const sub = AppState.addEventListener("change", onChange);
+    return () => sub.remove();
+  }, [isReady, isLoggedIn, role]);
+
+  // Android: cho phép bấm nút Back để đóng overlay Keycloak khi session cho phép đóng tay.
+  useEffect(() => {
+    if (Platform.OS !== "android") return;
+    if (!keycloakSession?.allowManualClose) return;
+
+    const subscription = BackHandler.addEventListener("hardwareBackPress", () => {
+      keycloakInAppUserDismissed();
+      return true;
+    });
+
+    return () => subscription.remove();
+  }, [keycloakSession]);
+
   if (!isReady) {
       return (
           <View style={{flex: 1, justifyContent: 'center', alignItems: 'center'}}>
@@ -75,43 +147,81 @@ const Navigation = () => {
   }
 
   return (
-    <NavigationContainer>
-      <Stack.Navigator screenOptions={{ headerShown: false }}>
-        {isLoggedIn ? (
-          showOnboarding ? (
-             // User mới (chưa có trong onboardedUsers) -> Hiện Onboarding
-             <Stack.Screen name="OnBoarding" component={OnBoarding} />
+    <View style={navStyles.root}>
+      <NavigationContainer>
+        <Stack.Navigator screenOptions={{ headerShown: false }}>
+          {isLoggedIn ? (
+            showOnboarding ? (
+              <Stack.Screen name="OnBoarding" component={OnBoarding} />
+            ) : (
+              <>
+                <Stack.Screen name="Main" component={TenantTabs} />
+                <Stack.Screen
+                  name="Camera"
+                  component={CameraScreen}
+                  options={{ presentation: "modal" }}
+                />
+                <Stack.Screen
+                  name="TenantItemDetail"
+                  component={TenantItemDescriptionScreen}
+                />
+                <Stack.Screen
+                  name="Ticket"
+                  component={TicketScreen}
+                  options={{ presentation: "modal" }}
+                />
+                <Stack.Screen name="TenantTicketList" component={TenantTicketListScreen} />
+                <Stack.Screen name="TenantTicketDetail" component={TenantTicketDetailScreen} />
+                <Stack.Screen name="TenantQuestionList" component={TenantQuestionListScreen} />
+                <Stack.Screen name="TenantQuestionDetail" component={TenantQuestionDetailScreen} />
+                <Stack.Screen name="BuildingDetail" component={TenantHouseDescription} />
+                <Stack.Screen name="TenantInvoiceList" component={TenantInvoiceListScreen} />
+                <Stack.Screen name="TenantInvoiceDetail" component={TenantInvoiceDetailScreen} />
+                <Stack.Screen
+                  name="TenantRentPayment"
+                  component={TenantRentPaymentScreen}
+                  options={{ presentation: "modal" }}
+                />
+              </>
+            )
           ) : (
-            // User cũ (đã có trong onboardedUsers) -> Vào thẳng Main (chỉ Tenant)
-            <>
-              <Stack.Screen name="Main" component={TenantTabs} />
-              <Stack.Screen
-                name="Camera"
-                component={CameraScreen}
-                options={{ presentation: "modal" }}
-              />
-              <Stack.Screen
-                name="TenantItemDetail"
-                component={TenantItemDescriptionScreen}
-              />
-              <Stack.Screen 
-                name="Ticket" 
-                component={TicketScreen}
-                options={{ presentation: "modal" }}
-              />
-              <Stack.Screen name="TenantTicketList" component={TenantTicketListScreen} />
-              <Stack.Screen name="TenantTicketDetail" component={TenantTicketDetailScreen} />
-              <Stack.Screen name="TenantQuestionList" component={TenantQuestionListScreen} />
-              <Stack.Screen name="TenantQuestionDetail" component={TenantQuestionDetailScreen} />
-              <Stack.Screen name="BuildingDetail" component={TenantHouseDescription} />
-            </>
-          )
-        ) : (
-          // Chưa đăng nhập -> Hiện Login
-          <Stack.Screen name="AuthLogin" component={Login} />
-        )}
-      </Stack.Navigator>
-    </NavigationContainer>
+            <Stack.Screen name="AuthLogin" component={Login} />
+          )}
+        </Stack.Navigator>
+      </NavigationContainer>
+      {keycloakSession ? (
+        <View style={navStyles.keycloakOverlay}>
+          {keycloakSession.allowManualClose ? (
+            <View style={loginStyles.webViewHeader}>
+              <TouchableOpacity
+                onPress={keycloakInAppUserDismissed}
+                activeOpacity={0.7}
+              >
+                <Text style={loginStyles.webViewCloseText}>
+                  {t("common.close")}
+                </Text>
+              </TouchableOpacity>
+            </View>
+          ) : null}
+          <WebView
+            style={navStyles.keycloakWebView}
+            source={{ uri: keycloakSession.url }}
+            onShouldStartLoadWithRequest={handleKeycloakWebViewRequest}
+            startInLoadingState
+            renderLoading={() => (
+              <View style={loginStyles.webViewLoadingOverlay}>
+                <ActivityIndicator size="large" color={brandPrimary} />
+                <Text
+                  style={{ color: "#666", textAlign: "center", marginTop: 10 }}
+                >
+                  {t("common.loading")}
+                </Text>
+              </View>
+            )}
+          />
+        </View>
+      ) : null}
+    </View>
   );
 };
 

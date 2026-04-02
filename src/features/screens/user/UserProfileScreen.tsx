@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { View, Text, TouchableOpacity, ScrollView, Platform } from "react-native";
 import { CustomAlert as Alert } from "../../../shared/components/alert";
 import { NavigationProp, useNavigation } from "@react-navigation/native";
@@ -19,6 +19,8 @@ import {
   neutral,
 } from "../../../shared/theme/color";
 import { useTranslation } from "react-i18next";
+import { useTenantContext } from "../../../shared/hooks";
+import { getTenantAccessBlock, isHandoverDateReached } from "../../../shared/utils";
 
 const UserProfileScreen = () => {
   const { t } = useTranslation();
@@ -26,6 +28,25 @@ const UserProfileScreen = () => {
   const { user, role, idToken, logout } = useAuthStore();
   const insets = useSafeAreaInsets();
   const [userInfo, setUserInfo] = useState<UserProfileResponse | null>(null);
+
+  const { house, isLoading: tenantAccessLoading } = useTenantContext();
+  const accessBlock = useMemo(() => {
+    if (tenantAccessLoading) return null;
+    if (!house) return null;
+    return getTenantAccessBlock(house);
+  }, [tenantAccessLoading, house]);
+  const isTenantAccessRestricted = Boolean(accessBlock);
+  /**
+   * Ẩn thông tin nhạy cảm khi chưa bàn giao.
+   * Bao gồm cả lúc đang tải context để tránh lóe dữ liệu trong vài frame đầu.
+   */
+  const isPreHandoverRestricted = useMemo(() => {
+    if (tenantAccessLoading) return true;
+    if (!house) return true;
+    const status = String(house.accessStatus ?? "").trim().toUpperCase();
+    if (status === "PENDING_HANDOVER") return true;
+    return !isHandoverDateReached(house.handoverDate);
+  }, [tenantAccessLoading, house]);
 
   useEffect(() => {
     const fetchProfile = async () => {
@@ -47,7 +68,13 @@ const UserProfileScreen = () => {
           text: t('profile.logout'),
           style: "destructive",
           onPress: async () => {
-            await logoutKeycloak(idToken);
+            // Không chờ vô hạn logout SSO: nếu Keycloak không redirect về app,
+            // vẫn cho phép app logout cục bộ và quay lại màn Login.
+            const logoutTimeoutMs = 7000;
+            await Promise.race([
+              logoutKeycloak(idToken),
+              new Promise<void>((resolve) => setTimeout(resolve, logoutTimeoutMs)),
+            ]);
             logout();
           },
         },
@@ -102,6 +129,11 @@ const UserProfileScreen = () => {
     parentNav?.navigate("TenantQuestionList");
   };
 
+  const goTenantInvoiceList = () => {
+    const parentNav = navigation.getParent() as NavigationProp<RootStackParamList> | undefined;
+    parentNav?.navigate("TenantInvoiceList");
+  };
+
   return (
     <View style={userProfileStyles.container}>
       <ScrollView
@@ -138,29 +170,31 @@ const UserProfileScreen = () => {
         </View>
 
         {/* Section: Thông tin chung (Từ BE) */}
-        <View style={userProfileStyles.sectionContainer}>
-          <Text style={userProfileStyles.sectionTitle}>{t('profile.contact_info')}</Text>
-          
-          <View style={userProfileStyles.infoItem}>
-            <View style={userProfileStyles.infoIcon}>
-                <Icons.mail size={20} color="#666" />
-            </View>
-            <View style={userProfileStyles.infoContent}>
-                <Text style={userProfileStyles.infoLabel}>{t('profile.email')}</Text>
-                <Text style={userProfileStyles.infoValue}>{displayEmail}</Text>
-            </View>
-          </View>
+        {!isPreHandoverRestricted ? (
+          <View style={userProfileStyles.sectionContainer}>
+            <Text style={userProfileStyles.sectionTitle}>{t("profile.contact_info")}</Text>
 
-          <View style={[userProfileStyles.infoItem, { borderBottomWidth: 0 }]}>
-            <View style={userProfileStyles.infoIcon}>
-                <Icons.call size={20} color="#666" />
+            <View style={userProfileStyles.infoItem}>
+              <View style={userProfileStyles.infoIcon}>
+                <Icons.mail size={20} color="#666" />
+              </View>
+              <View style={userProfileStyles.infoContent}>
+                <Text style={userProfileStyles.infoLabel}>{t("profile.email")}</Text>
+                <Text style={userProfileStyles.infoValue}>{displayEmail}</Text>
+              </View>
             </View>
-            <View style={userProfileStyles.infoContent}>
-                <Text style={userProfileStyles.infoLabel}>{t('profile.phone')}</Text>
+
+            <View style={[userProfileStyles.infoItem, { borderBottomWidth: 0 }]}>
+              <View style={userProfileStyles.infoIcon}>
+                <Icons.call size={20} color="#666" />
+              </View>
+              <View style={userProfileStyles.infoContent}>
+                <Text style={userProfileStyles.infoLabel}>{t("profile.phone")}</Text>
                 <Text style={userProfileStyles.infoValue}>{displayPhone}</Text>
+              </View>
             </View>
           </View>
-        </View>
+        ) : null}
 
         {/* Section: Bảo mật (Custom Page) */}
         <View style={userProfileStyles.sectionContainer}>
@@ -185,38 +219,56 @@ const UserProfileScreen = () => {
         <View style={userProfileStyles.sectionContainer}>
           <Text style={userProfileStyles.sectionTitle}>{t('profile.app_settings')}</Text>
 
-          <TouchableOpacity style={userProfileStyles.menuItem} onPress={() => navigation.navigate("Notification")}>
+          <TouchableOpacity style={userProfileStyles.menuItem} onPress={goTenantInvoiceList}>
             <View style={[userProfileStyles.menuIcon, { backgroundColor: brandTintBg }]}>
-              <Icons.notification size={22} color="#666" />
+              <Icons.invoice size={22} color="#666" />
             </View>
             <View style={userProfileStyles.menuContent}>
-              <Text style={userProfileStyles.menuLabel}>{t('profile.notifications')}</Text>
-              <Text style={userProfileStyles.menuDescription}>{t('profile.notifications_desc')}</Text>
+              <Text style={userProfileStyles.menuLabel}>{t('profile.my_invoices')}</Text>
+              <Text style={userProfileStyles.menuDescription}>{t('profile.my_invoices_desc')}</Text>
             </View>
             <Icons.chevronForward size={20} color={neutral.textOnDarkSoft} />
           </TouchableOpacity>
 
-          <TouchableOpacity style={userProfileStyles.menuItem} onPress={goTenantTicketList}>
-            <View style={[userProfileStyles.menuIcon, { backgroundColor: brandTintBg }]}>
-              <Icons.ticket size={22} color="#666" />
-            </View>
-            <View style={userProfileStyles.menuContent}>
-              <Text style={userProfileStyles.menuLabel}>{t('profile.my_tickets')}</Text>
-              <Text style={userProfileStyles.menuDescription}>{t('profile.my_tickets_desc')}</Text>
-            </View>
-            <Icons.chevronForward size={20} color={neutral.textOnDarkSoft} />
-          </TouchableOpacity>
+          {!isTenantAccessRestricted ? (
+            <>
+              <TouchableOpacity
+                style={userProfileStyles.menuItem}
+                onPress={() => navigation.navigate("Notification")}
+              >
+                <View style={[userProfileStyles.menuIcon, { backgroundColor: brandTintBg }]}>
+                  <Icons.notification size={22} color="#666" />
+                </View>
+                <View style={userProfileStyles.menuContent}>
+                  <Text style={userProfileStyles.menuLabel}>{t("profile.notifications")}</Text>
+                  <Text style={userProfileStyles.menuDescription}>{t("profile.notifications_desc")}</Text>
+                </View>
+                <Icons.chevronForward size={20} color={neutral.textOnDarkSoft} />
+              </TouchableOpacity>
 
-          <TouchableOpacity style={userProfileStyles.menuItem} onPress={goTenantQuestionList}>
-            <View style={[userProfileStyles.menuIcon, { backgroundColor: brandTintBg }]}>
-              <Icons.brain size={22} color="#666" />
-            </View>
-            <View style={userProfileStyles.menuContent}>
-              <Text style={userProfileStyles.menuLabel}>{t('profile.qa_answers')}</Text>
-              <Text style={userProfileStyles.menuDescription}>{t('profile.qa_answers_desc')}</Text>
-            </View>
-            <Icons.chevronForward size={20} color={neutral.textOnDarkSoft} />
-          </TouchableOpacity>
+              <TouchableOpacity style={userProfileStyles.menuItem} onPress={goTenantTicketList}>
+                <View style={[userProfileStyles.menuIcon, { backgroundColor: brandTintBg }]}>
+                  <Icons.ticket size={22} color="#666" />
+                </View>
+                <View style={userProfileStyles.menuContent}>
+                  <Text style={userProfileStyles.menuLabel}>{t("profile.my_tickets")}</Text>
+                  <Text style={userProfileStyles.menuDescription}>{t("profile.my_tickets_desc")}</Text>
+                </View>
+                <Icons.chevronForward size={20} color={neutral.textOnDarkSoft} />
+              </TouchableOpacity>
+
+              <TouchableOpacity style={userProfileStyles.menuItem} onPress={goTenantQuestionList}>
+                <View style={[userProfileStyles.menuIcon, { backgroundColor: brandTintBg }]}>
+                  <Icons.brain size={22} color="#666" />
+                </View>
+                <View style={userProfileStyles.menuContent}>
+                  <Text style={userProfileStyles.menuLabel}>{t("profile.qa_answers")}</Text>
+                  <Text style={userProfileStyles.menuDescription}>{t("profile.qa_answers_desc")}</Text>
+                </View>
+                <Icons.chevronForward size={20} color={neutral.textOnDarkSoft} />
+              </TouchableOpacity>
+            </>
+          ) : null}
         </View>
 
         {/* Logout Button */}

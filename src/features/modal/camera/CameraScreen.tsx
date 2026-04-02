@@ -1,7 +1,7 @@
 import { useNavigation, useRoute, RouteProp } from "@react-navigation/native";
 import { Text, TouchableOpacity, View, ActivityIndicator } from "react-native";
 import { CustomAlert as Alert } from "../../../shared/components/alert";
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useMemo, useState, useRef } from "react";
 import { CameraView, useCameraPermissions } from "expo-camera";
 import { cameraStyles } from "./cameraStyles";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
@@ -11,6 +11,8 @@ import { ScanMode } from "../../../shared/types";
 import { useTranslation } from "react-i18next";
 import { useAuthStore } from "../../../store/useAuthStore";
 import { getAssetItemByNfcId } from "../../../shared/services/assetItemApi";
+import { useTenantContext } from "../../../shared/hooks";
+import { getTenantAccessBlock } from "../../../shared/utils";
 
 
 const CameraScreen = () => {
@@ -19,6 +21,11 @@ const CameraScreen = () => {
   const route = useRoute<RouteProp<RootStackParamList, "Camera">>();
   const currentHouseId = useAuthStore((s) => s.houseId);
   const initialScanMode = route.params?.initialScanMode;
+  const { house } = useTenantContext();
+  const handoverBlocked = useMemo(
+    () => getTenantAccessBlock(house) === "handover",
+    [house]
+  );
 
   const [permission, requestPermission] = useCameraPermissions(); 
   const [scanned, setScanned] = useState(false);
@@ -60,16 +67,31 @@ const CameraScreen = () => {
   }, []);
 // → Tránh Alert hiện ra sau khi đã đóng màn hình
   useEffect(() => {
-    // Khi chuyển sang chế độ NFC, tự động bắt đầu scan
+    // Chưa bàn giao: không cho dùng NFC (kể cả mở từ footer / deep link).
+    if (handoverBlocked) {
+      if (scanMode === "nfc") {
+        setScanMode("qr");
+        setScanned(false);
+        void stopNfcScan();
+      }
+      return;
+    }
     if (scanMode === "nfc" && !scanned && !nfcScanning) {
       startNfcScan();
     } else if (scanMode === "qr") {
-      // Dừng NFC scan khi chuyển về QR
       stopNfcScan();
     }
-  }, [scanMode]);
+  }, [scanMode, handoverBlocked]);
 
   const startNfcScan = async () => {
+    if (handoverBlocked) {
+      Alert.alert(
+        t("camera.nfc_handover_blocked_title"),
+        t("camera.nfc_handover_blocked_body"),
+        [{ text: t("common.close") }]
+      );
+      return;
+    }
     if (nfcScanning || scanned) return;
     
     try {
@@ -367,8 +389,18 @@ const CameraScreen = () => {
           style={[
             cameraStyles.modeButton,
             scanMode === "nfc" && cameraStyles.modeButtonActive,
+            handoverBlocked && { opacity: 0.45 },
           ]}
+          disabled={handoverBlocked}
           onPress={() => {
+            if (handoverBlocked) {
+              Alert.alert(
+                t("camera.nfc_handover_blocked_title"),
+                t("camera.nfc_handover_blocked_body"),
+                [{ text: t("common.close") }]
+              );
+              return;
+            }
             setScanMode("nfc");
             setScanned(false);
           }}

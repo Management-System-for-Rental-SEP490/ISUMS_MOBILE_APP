@@ -77,6 +77,10 @@ const Icons = {
   plus: ({ size = 24, color = 'black' }: IconProps = {}) => (
     <AntDesign name="plus" size={size} color={color} />
   ),
+  /** Hóa đơn / thanh toán (tenant). */
+  invoice: ({ size = 24, color = 'black' }: IconProps = {}) => (
+    <FontAwesome5 name="file-invoice-dollar" size={size} color={color} />
+  ),
   /** Icon cảnh báo (dấu hiệu sự cố/alert). */
   warning: ({ size = 24, color = 'black' }: IconProps = {}) => (
     <MaterialIcons name="warning" size={size} color={color} />

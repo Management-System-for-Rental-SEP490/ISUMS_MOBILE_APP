@@ -1,0 +1,119 @@
+import type { HouseFromApi, TenantHouseAccessFromApi, TenantHouseAccessStatus } from "../types/api";
+
+/** Chặn dùng app: chưa tới ngày bàn giao, thiếu cọc, hoặc chưa thanh toán tháng đầu. */
+export type TenantAccessBlockKind = "handover" | "deposit" | "payment";
+
+/**
+ * Map một phần tử my-access sang HouseFromApi (id = houseId, name = houseName).
+ */
+export function mapTenantAccessItemToHouse(
+  item: TenantHouseAccessFromApi
+): HouseFromApi {
+  return {
+    id: item.houseId,
+    userRentalId: null,
+    name: item.houseName,
+    address: item.address ?? "",
+    status: "RENTED",
+    handoverDate: item.handoverDate,
+    accessStatus: item.accessStatus,
+    accessReason: item.reason ?? undefined,
+    hasUnpaidInvoice: item.hasUnpaidInvoice ?? false,
+    pendingInvoiceId: item.pendingInvoiceId ?? undefined,
+    memberRole: item.memberRole,
+    contractDocuments: item.contractDocuments,
+  };
+}
+
+/** Đã tới hoặc qua ngày bàn giao theo lịch local (so sánh phần ngày). */
+export function isHandoverDateReached(handoverDate?: string | null): boolean {
+  if (!handoverDate?.trim()) return true;
+  const d = new Date(handoverDate);
+  if (Number.isNaN(d.getTime())) return true;
+  const now = new Date();
+  const ymd = (x: Date) =>
+    x.getFullYear() * 10_000 + (x.getMonth() + 1) * 100 + x.getDate();
+  return ymd(now) >= ymd(d);
+}
+
+/**
+ * Xác định loại chặn cho nhà đang chọn. `null` = được dùng app bình thường.
+ */
+export function getTenantAccessBlock(
+  house: HouseFromApi | null | undefined
+): TenantAccessBlockKind | null {
+  if (!house) return null;
+  const st = (house.accessStatus ?? "").trim().toUpperCase();
+
+  // Ưu tiên hiển thị “chưa thanh toán” trước (yêu cầu của app):
+  // - Nếu còn hóa đơn chưa thanh toán => block payment
+  // - Chỉ khi đã thanh toán xong mà vẫn chưa tới ngày bàn giao => block handover
+  if (st === "PENDING_DEPOSIT") return "deposit";
+
+  if (st === "PENDING_FIRST_RENT" || house.hasUnpaidInvoice) return "payment";
+
+  if (st === "PENDING_HANDOVER") return "handover";
+  if (!isHandoverDateReached(house.handoverDate)) return "handover";
+
+  return null;
+}
+
+/**
+ * Dịch `reason` / `accessStatus` từ API sang câu thân thiện.
+ * Không trả về mã thô (ví dụ ACCESS_PENDING_FIRST_RENT) khi thiếu key — để UI fallback sang `home.access.*_body`.
+ */
+export function translateTenantAccessReason(
+  accessReason: string | null | undefined,
+  accessStatus: string | null | undefined,
+  t: (key: string) => string
+): string {
+  const codes: string[] = [];
+  const push = (s?: string | null) => {
+    const u = String(s ?? "").trim().toUpperCase();
+    if (!u) return;
+    codes.push(u);
+    if (u.startsWith("PENDING_") && !u.startsWith("ACCESS_")) {
+      codes.push(`ACCESS_${u}`);
+    }
+    if (u.startsWith("ACCESS_PENDING_")) {
+      codes.push(u.replace(/^ACCESS_/, ""));
+    }
+  };
+  push(accessReason);
+  push(accessStatus);
+  const seen = new Set<string>();
+  for (const code of codes) {
+    if (seen.has(code)) continue;
+    seen.add(code);
+    const key = `home.access_reason.${code}`;
+    const label = t(key);
+    if (label !== key) return label;
+  }
+  return "";
+}
+
+/** Nhãn hiển thị `accessStatus` từ my-access (fallback: mã gốc). */
+export function formatTenantAccessStatusForDisplay(
+  status: TenantHouseAccessStatus | string | undefined,
+  t: (key: string) => string
+): string {
+  const u = String(status ?? "").trim().toUpperCase();
+  if (!u) return "—";
+  const key = `home.house_access_status.${u}`;
+  const label = t(key);
+  if (label !== key) return label;
+  return String(status ?? "").trim() || "—";
+}
+
+/** Nhãn vai trò thành viên (OWNER, …). */
+export function formatTenantMemberRoleForDisplay(
+  role: string | undefined,
+  t: (key: string) => string
+): string {
+  const u = String(role ?? "").trim().toUpperCase();
+  if (!u) return "—";
+  const key = `home.house_member_role.${u}`;
+  const label = t(key);
+  if (label !== key) return label;
+  return String(role ?? "").trim();
+}

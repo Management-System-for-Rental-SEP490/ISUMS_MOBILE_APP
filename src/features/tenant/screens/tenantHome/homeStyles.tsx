@@ -255,6 +255,61 @@ export const homeStyles = StyleSheet.create({
         fontWeight: "600",
         color: neutral.heading,
     },
+
+    /** Banner chặn khi chưa đủ điều kiện truy cập app/nhà (GET /api/houses/my-access). */
+    accessGateOverlay: {
+        ...StyleSheet.absoluteFillObject,
+        backgroundColor: "rgba(0,0,0,0.16)",
+        justifyContent: "flex-start",
+        alignItems: "center",
+        paddingHorizontal: 16,
+        zIndex: 100,
+    },
+    accessGateBannerCard: {
+        backgroundColor: neutral.surface,
+        borderRadius: 14,
+        padding: 16,
+        borderWidth: StyleSheet.hairlineWidth,
+        borderColor: neutral.border,
+        width: "100%",
+        maxWidth: 560,
+    },
+    accessGateCardTitle: {
+        fontSize: 18,
+        fontWeight: "700",
+        color: neutral.heading,
+        marginBottom: 10,
+        textAlign: "center",
+    },
+    accessGateCardBody: {
+        fontSize: 15,
+        lineHeight: 22,
+        color: neutral.textSecondary,
+        textAlign: "center",
+        marginBottom: 16,
+    },
+    accessGatePrimaryBtn: {
+        backgroundColor: brandPrimary,
+        paddingVertical: 14,
+        borderRadius: 10,
+        alignItems: "center",
+    },
+    accessGatePrimaryBtnText: {
+        color: "#fff",
+        fontSize: 16,
+        fontWeight: "600",
+    },
+    accessGateEmptyWrap: {
+        flex: 1,
+        justifyContent: "center",
+        paddingHorizontal: 24,
+    },
+    accessGateEmptyText: {
+        textAlign: "center",
+        color: neutral.textSecondary,
+        fontSize: 15,
+        lineHeight: 22,
+    },
     
     // Styles cho Modal chọn nhà
     modalOverlay: {

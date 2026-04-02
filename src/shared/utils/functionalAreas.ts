@@ -2,7 +2,7 @@ import type { FunctionalAreaFromApi, HouseFromApi } from "../types/api";
 
 /**
  * Gộp khu vực chức năng theo đúng `houseId`:
- * - từ object nhà (GET /api/houses/house có thể nhúng `functionalAreas`)
+ * - từ object nhà (GET /api/houses hoặc my-access nếu BE nhúng `functionalAreas`)
  * - từ GET /api/houses/functionalAreas/{houseId}
  *
  * Trùng `id` → ưu tiên bản từ endpoint (thường đầy đủ hơn).

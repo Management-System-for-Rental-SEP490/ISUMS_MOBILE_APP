@@ -32,3 +32,12 @@ export {
   formatTimeAgoI18n,
   toLocalYyyyMmDd,
 } from "./dateTimeFormat";
+export {
+  formatTenantAccessStatusForDisplay,
+  formatTenantMemberRoleForDisplay,
+  getTenantAccessBlock,
+  isHandoverDateReached,
+  mapTenantAccessItemToHouse,
+  translateTenantAccessReason,
+  type TenantAccessBlockKind,
+} from "./tenantAccess";

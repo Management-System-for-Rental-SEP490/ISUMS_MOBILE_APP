@@ -137,5 +137,11 @@ export const statusBadgeBg = {
   disposed: "#fee2e2",
 } as const;
 
+/** Badge trạng thái hóa đơn (tenant list / detail) */
+export const tenantInvoiceUnpaidBadgeBg = "#FEF3C7";
+export const tenantInvoiceUnpaidBadgeFg = "#B45309";
+export const tenantInvoicePaidBadgeBg = "#DCFCE7";
+export const tenantInvoicePaidBadgeFg = "#15803D";
+
 /** Chữ badge IoT offline (đỏ đậm trên nền nhạt) */
 export const iotOfflineLabelColor = "#991B1B";

@@ -43,6 +43,8 @@ const useAuthStore = create<AuthState>()(
       houseId: null,
       isLoggedIn: false,
       onboardedUsers: [], // Danh sách các user đã xem Intro
+      keycloakInAppSession: null,
+      setKeycloakInAppSession: (s) => set({ keycloakInAppSession: s }),
 
       setHouseId: (id: string | null) => set({ houseId: id }),
 
@@ -71,6 +73,8 @@ const useAuthStore = create<AuthState>()(
           refreshToken: null,
           houseId: null,
           isLoggedIn: false,
+          // Đảm bảo đóng WebView Keycloak nếu còn mở (tránh kẹt màn trắng khi logout).
+          keycloakInAppSession: null,
           // KHÔNG reset onboardedUsers để ghi nhớ lịch sử của các user trên máy này
           onboardedUsers: state.onboardedUsers, 
         })),

@@ -104,8 +104,8 @@ export const getAssetItems = async (
 
   const query = searchParams.toString();
   const url = query
-    ? `${ASSETS_API_BASE}/assets/items?${query}`
-    : `${ASSETS_API_BASE}/assets/items`;
+    ? `${BACKEND_API_BASE}/assets/items?${query}`
+    : `${BACKEND_API_BASE}/assets/items`;
 
   const response = await axiosClient.get<AssetItemsApiResponse>(url);
   const data = response.data;
@@ -130,7 +130,7 @@ export const getAssetItemsByHouseId = async (
   houseId: string
 ): Promise<AssetItemsApiResponse> => {
   const response = await axiosClient.get<AssetItemsApiResponse>(
-    `${ASSETS_API_BASE}/assets/items/house/${encodeURIComponent(houseId)}`
+    `${BACKEND_API_BASE}/assets/items/house/${encodeURIComponent(houseId)}`
   );
   const data = response.data;
   if (Array.isArray(data.data)) {
@@ -163,7 +163,7 @@ export const getIotDevicesByHouseId = async (
 export const getAssetItemById = async (id: string): Promise<AssetItemFromApi | undefined> => {
   try {
     const response = await axiosClient.get<ApiResponse<AssetItemFromApi> | AssetItemFromApi>(
-      `${ASSETS_API_BASE}/assets/items/${id}`
+      `${BACKEND_API_BASE}/assets/items/${id}`
     );
     const envelope = response.data as unknown;
     let rawUnknown: unknown;
@@ -199,7 +199,7 @@ export const getAssetItemById = async (id: string): Promise<AssetItemFromApi | u
  */
 export const getAssetItemImages = async (itemId: string): Promise<AssetItemImageFromApi[]> => {
   if (!itemId?.trim()) return [];
-  const url = `${ASSETS_API_BASE}/assets/items/${encodeURIComponent(itemId)}/images`;
+  const url = `${BACKEND_API_BASE}/assets/items/${encodeURIComponent(itemId)}/images`;
   const response = await axiosClient.get<ApiResponse<AssetItemImageFromApi[]>>(url);
   if (response.data?.success && Array.isArray(response.data.data)) {
     return response.data.data;
@@ -227,7 +227,7 @@ export const getAssetItemByTag = async (
 
   try {
     const response = await axiosClient.get<GetAssetByTagValueApiResponse>(
-      `${ASSETS_API_BASE}/assets/tags/asset/${encodeURIComponent(apiTagValue)}`
+      `${BACKEND_API_BASE}/assets/tags/asset/${encodeURIComponent(apiTagValue)}`
     );
 
     const responseData = response.data.data;
