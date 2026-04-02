@@ -23,9 +23,13 @@ import { HomeScreenProps, RootStackParamList } from "../../../../shared/types";
 import { useTranslation } from "react-i18next";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { NavigationProp } from "@react-navigation/native";
+import { useQueryClient } from "@tanstack/react-query";
 import homeStyles from "./homeStyles";
 import {
+  TENANT_INVOICES_QUERY_KEY,
   useTenantHouses,
+  useUserProfile,
+  useUpdateMainHouseMutation,
   useAssetItems,
   useAssetCategories,
   useAssetCategoryNamesByIds,
@@ -52,13 +56,17 @@ import type {
 } from "../../../../shared/types/api";
 import { normalizeAssetItemStatusFromApi } from "../../../../shared/types/api";
 import {
+  formatDayMonthNumeric,
   formatHouseStatusForDisplay,
   getTotalPages,
+  getTenantAccessBlock,
   mergeFunctionalAreasForHouse,
   parentScrollOffsetForDropdownField,
   slicePage,
+  translateTenantAccessReason,
 } from "../../../../shared/utils";
 import { PaginationBar } from "../../../../shared/components/PaginationBar";
+import { CustomAlert } from "../../../../shared/components/alert";
 
 /** Trạng thái nhà “đang gắn với tenant” (nhấn màu brand trên Home). */
 const isTenantHouseStatusHighlighted = (status?: string) => {
@@ -67,8 +75,9 @@ const isTenantHouseStatusHighlighted = (status?: string) => {
 };
 
 const HomeScreen = ({ navigation }: HomeScreenProps) => {
+  const queryClient = useQueryClient();
   const { houseId, setHouseId } = useAuthStore();
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const insets = useSafeAreaInsets();
   const deviceListRef = useRef<FlatList<AssetItemFromApi>>(null);
   const deviceCategoryFilterYRef = useRef(0);
@@ -82,18 +91,93 @@ const HomeScreen = ({ navigation }: HomeScreenProps) => {
     });
   }, []);
   const [houseModalVisible, setHouseModalVisible] = useState(false);
+  const autoSetMainHouseRef = useRef<string>("");
+  const [isSubmittingMainHouse, setIsSubmittingMainHouse] = useState(false);
+  const updateMainHouseMutation = useUpdateMainHouseMutation();
+  const mutateMainHouse = updateMainHouseMutation.mutate;
+  const mutateMainHouseAsync = updateMainHouseMutation.mutateAsync;
 
-  // 1. Lấy danh sách nhà GẮN VỚI TENANT hiện tại (API mới /api/houses/house)
+  // 1. Lấy danh sách nhà + trạng thái truy cập (GET /api/houses/my-access)
   const {
     data: housesData,
     isLoading: loadingHouses,
     refetch: refetchHouses,
   } = useTenantHouses();
   const tenantHouses: HouseFromApi[] = housesData?.data ?? [];
+  const { data: userProfile, isPending: profilePending } = useUserProfile();
+
+  // Gỡ houseId lưu cục bộ nếu không còn trong danh sách tenant (đổi tài khoản / dữ liệu mới).
+  useEffect(() => {
+    if (loadingHouses || tenantHouses.length === 0) return;
+    if (houseId && !tenantHouses.some((h) => h.id === houseId)) {
+      setHouseId(null);
+    }
+  }, [loadingHouses, tenantHouses, houseId, setHouseId]);
+
+  // Một căn → mặc định là nhà chính.
+  useEffect(() => {
+    if (loadingHouses) return;
+    if (tenantHouses.length !== 1) return;
+    const only = tenantHouses[0]!;
+    if (houseId !== only.id) setHouseId(only.id);
+    if (autoSetMainHouseRef.current === only.id) return;
+    autoSetMainHouseRef.current = only.id;
+    mutateMainHouse({ houseId: only.id });
+  }, [loadingHouses, tenantHouses, houseId, setHouseId, mutateMainHouse]);
+
+  // Hai căn trở lên: chờ GET /users/me xong — có mainHouseId thì gán store; chưa có thì mở modal chọn lần đầu (PUT main-house).
+  useEffect(() => {
+    if (loadingHouses || tenantHouses.length <= 1) return;
+    if (profilePending) return;
+
+    const mainFromProfile = String(userProfile?.mainHouseId ?? "").trim();
+    if (mainFromProfile && tenantHouses.some((h) => h.id === mainFromProfile)) {
+      if (houseId !== mainFromProfile) setHouseId(mainFromProfile);
+      setHouseModalVisible(false);
+      return;
+    }
+
+    const valid = houseId && tenantHouses.some((h) => h.id === houseId);
+    if (valid) {
+      setHouseModalVisible(false);
+      return;
+    }
+
+    setHouseModalVisible(true);
+  }, [
+    loadingHouses,
+    tenantHouses,
+    houseId,
+    setHouseId,
+    profilePending,
+    userProfile?.mainHouseId,
+  ]);
 
   // Sử dụng context để lấy nhà hiện tại (đồng bộ với houseId trong store)
   const { house: myHouse, houseId: tenantHouseId, thingId } = useTenantContext();
   const hasTenantHouse = Boolean(myHouse);
+
+  const accessBlock = useMemo(() => {
+    if (loadingHouses || !myHouse) return null;
+    return getTenantAccessBlock(myHouse);
+  }, [loadingHouses, myHouse]);
+
+  const accessReasonText = useMemo(
+    () => translateTenantAccessReason(myHouse?.accessReason, myHouse?.accessStatus, t),
+    [myHouse?.accessReason, myHouse?.accessStatus, t]
+  );
+
+  const openPaymentScreen = useCallback(() => {
+    const parentNav = navigation.getParent<NavigationProp<RootStackParamList>>();
+    const allPendingIds = tenantHouses
+      .map((h) => String(h.pendingInvoiceId ?? "").trim())
+      .filter((id) => id.length > 0);
+    parentNav?.navigate("TenantRentPayment", {
+      invoiceId: myHouse?.pendingInvoiceId ?? undefined,
+      invoiceIds: allPendingIds,
+      afterSuccess: "home",
+    });
+  }, [navigation, myHouse?.pendingInvoiceId, tenantHouses]);
 
   // 2. Lấy danh sách thiết bị của nhà đó
   const {
@@ -293,6 +377,48 @@ const HomeScreen = ({ navigation }: HomeScreenProps) => {
     refetchCategories();
   };
 
+  const handleSelectMainHouse = useCallback(
+    async (selectedHouseId: string) => {
+      if (!selectedHouseId || isSubmittingMainHouse) return;
+      const needsInitialMainHousePick =
+        !houseId || !tenantHouses.some((h) => h.id === houseId);
+      try {
+        setIsSubmittingMainHouse(true);
+        await mutateMainHouseAsync({ houseId: selectedHouseId });
+        setHouseId(selectedHouseId);
+        setHouseModalVisible(false);
+        // Đổi nhà xong thì làm mới cache hóa đơn ngay để các màn hóa đơn nhận dữ liệu nhà mới.
+        await queryClient.invalidateQueries({ queryKey: TENANT_INVOICES_QUERY_KEY });
+        onRefresh();
+        if (needsInitialMainHousePick) {
+          // Luồng đăng nhập lần đầu: sau khi gán nhà chính, mở luôn màn chọn hóa đơn để thanh toán.
+          const parentNav = navigation.getParent<NavigationProp<RootStackParamList>>();
+          parentNav?.navigate("TenantInvoiceList");
+        }
+      } catch {
+        CustomAlert.alert(
+          t("home.main_house_update_failed_title"),
+          t("home.main_house_update_failed_message"),
+          [{ text: t("common.close"), style: "default" }],
+          { type: "error" }
+        );
+      } finally {
+        setIsSubmittingMainHouse(false);
+      }
+    },
+    [
+      houseId,
+      tenantHouses,
+      isSubmittingMainHouse,
+      onRefresh,
+      navigation,
+      queryClient,
+      setHouseId,
+      t,
+      mutateMainHouseAsync,
+    ]
+  );
+
   /**
    * Nhóm thiết bị theo danh mục để hiển thị “xếp theo danh mục”.
    * Mỗi phần tử: { categoryId, categoryName, items }.
@@ -433,6 +559,12 @@ const HomeScreen = ({ navigation }: HomeScreenProps) => {
                 city: myHouse.city,
                 status: myHouse.status,
                 functionalAreas: myHouse.functionalAreas ?? [],
+                contractDocuments: myHouse.contractDocuments,
+                hasUnpaidInvoice: myHouse.hasUnpaidInvoice,
+                pendingInvoiceId: myHouse.pendingInvoiceId ?? null,
+                accessStatus: myHouse.accessStatus,
+                accessReason: myHouse.accessReason ?? null,
+                memberRole: myHouse.memberRole,
               });
             }
           }}
@@ -500,88 +632,116 @@ const HomeScreen = ({ navigation }: HomeScreenProps) => {
           </View>
         </TouchableOpacity>
 
-        {/* Tổng quan tiêu thụ điện/nước từ IoT AWS – tổng theo tháng, nhấn xem chi tiết */}
-        <View style={homeStyles.usageSummarySection}>
-          <View style={homeStyles.usageSummaryHeader}>
-            <Text style={homeStyles.usageSummaryTitle}>
-              {t("consumption.summary_title")}
-            </Text>
-            <View
-              style={[
-                homeStyles.usageSummaryLiveChip,
-                {
-                  backgroundColor: iotConnected ? brandTintBg : brandBlueMutedBg,
-                  borderColor: iotConnected ? "rgba(59, 181, 130, 0.45)" : brandBlueMutedBorder,
-                },
-              ]}
-            >
+        {/* Tổng quan tiêu thụ điện/nước chỉ hiển thị khi đủ điều kiện vào nhà */}
+        {!accessBlock ? (
+          <View style={homeStyles.usageSummarySection}>
+            <View style={homeStyles.usageSummaryHeader}>
+              <Text style={homeStyles.usageSummaryTitle}>
+                {t("consumption.summary_title")}
+              </Text>
               <View
                 style={[
-                  homeStyles.usageSummaryLiveDot,
-                  { backgroundColor: iotConnected ? brandPrimary : brandSecondary },
-                ]}
-              />
-              <Text
-                style={[
-                  homeStyles.usageSummaryLiveText,
-                  { color: iotConnected ? brandPrimary : brandSecondary },
+                  homeStyles.usageSummaryLiveChip,
+                  {
+                    backgroundColor: iotConnected ? brandTintBg : brandBlueMutedBg,
+                    borderColor: iotConnected ? "rgba(59, 181, 130, 0.45)" : brandBlueMutedBorder,
+                  },
                 ]}
               >
-                {iotConnected ? t("consumption.iot_live") : t("consumption.iot_offline")}
-              </Text>
+                <View
+                  style={[
+                    homeStyles.usageSummaryLiveDot,
+                    { backgroundColor: iotConnected ? brandPrimary : brandSecondary },
+                  ]}
+                />
+                <Text
+                  style={[
+                    homeStyles.usageSummaryLiveText,
+                    { color: iotConnected ? brandPrimary : brandSecondary },
+                  ]}
+                >
+                  {iotConnected
+                    ? t("consumption.iot_live")
+                    : t("consumption.iot_offline")}
+                </Text>
+              </View>
+            </View>
+            <View style={homeStyles.usageSummaryCards}>
+              <TouchableOpacity
+                style={[homeStyles.usageSummaryCard, { borderLeftColor: brandPrimary }]}
+                onPress={() => navigation.navigate("ElectricUsage")}
+                activeOpacity={0.8}
+              >
+                <Text style={homeStyles.usageSummaryCardTitle}>
+                  {t("consumption.electric_summary")}
+                </Text>
+                {electricUsage.loading ? (
+                  <ActivityIndicator
+                    size="small"
+                    color={brandPrimary}
+                    style={{ marginVertical: 8 }}
+                  />
+                ) : (
+                  <>
+                    <Text style={homeStyles.usageSummaryCardRow}>
+                      {t("consumption.period_day")}:{" "}
+                      {electricUsage.dayVal.toFixed(2)} {electricUsage.unit}
+                    </Text>
+                    <Text style={homeStyles.usageSummaryCardRow}>
+                      {t("consumption.period_week")}:{" "}
+                      {electricUsage.weekVal.toFixed(2)} {electricUsage.unit}
+                    </Text>
+                    <Text
+                      style={[
+                        homeStyles.usageSummaryCardRow,
+                        homeStyles.usageSummaryCardMonth,
+                      ]}
+                    >
+                      {t("consumption.period_month")}:{" "}
+                      {electricUsage.monthVal.toFixed(2)} {electricUsage.unit}
+                    </Text>
+                  </>
+                )}
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[homeStyles.usageSummaryCard, { borderLeftColor: brandPrimary }]}
+                onPress={() => navigation.navigate("WaterUsage")}
+                activeOpacity={0.8}
+              >
+                <Text style={homeStyles.usageSummaryCardTitle}>
+                  {t("consumption.water_summary")}
+                </Text>
+                {waterUsage.loading ? (
+                  <ActivityIndicator
+                    size="small"
+                    color={brandPrimary}
+                    style={{ marginVertical: 8 }}
+                  />
+                ) : (
+                  <>
+                    <Text style={homeStyles.usageSummaryCardRow}>
+                      {t("consumption.period_day")}:{" "}
+                      {waterUsage.dayVal.toFixed(2)} {waterUsage.unit}
+                    </Text>
+                    <Text style={homeStyles.usageSummaryCardRow}>
+                      {t("consumption.period_week")}:{" "}
+                      {waterUsage.weekVal.toFixed(2)} {waterUsage.unit}
+                    </Text>
+                    <Text
+                      style={[
+                        homeStyles.usageSummaryCardRow,
+                        homeStyles.usageSummaryCardMonth,
+                      ]}
+                    >
+                      {t("consumption.period_month")}:{" "}
+                      {waterUsage.monthVal.toFixed(2)} {waterUsage.unit}
+                    </Text>
+                  </>
+                )}
+              </TouchableOpacity>
             </View>
           </View>
-          <View style={homeStyles.usageSummaryCards}>
-            <TouchableOpacity
-              style={[homeStyles.usageSummaryCard, { borderLeftColor: brandPrimary }]}
-              onPress={() => navigation.navigate("ElectricUsage")}
-              activeOpacity={0.8}
-            >
-              <Text style={homeStyles.usageSummaryCardTitle}>
-                {t("consumption.electric_summary")}
-              </Text>
-              {electricUsage.loading ? (
-                <ActivityIndicator size="small" color={brandPrimary} style={{ marginVertical: 8 }} />
-              ) : (
-                <>
-                  <Text style={homeStyles.usageSummaryCardRow}>
-                    {t("consumption.period_day")}: {electricUsage.dayVal.toFixed(2)} {electricUsage.unit}
-                  </Text>
-                  <Text style={homeStyles.usageSummaryCardRow}>
-                    {t("consumption.period_week")}: {electricUsage.weekVal.toFixed(2)} {electricUsage.unit}
-                  </Text>
-                  <Text style={[homeStyles.usageSummaryCardRow, homeStyles.usageSummaryCardMonth]}>
-                    {t("consumption.period_month")}: {electricUsage.monthVal.toFixed(2)} {electricUsage.unit}
-                  </Text>
-                </>
-              )}
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={[homeStyles.usageSummaryCard, { borderLeftColor: brandPrimary }]}
-              onPress={() => navigation.navigate("WaterUsage")}
-              activeOpacity={0.8}
-            >
-              <Text style={homeStyles.usageSummaryCardTitle}>
-                {t("consumption.water_summary")}
-              </Text>
-              {waterUsage.loading ? (
-                <ActivityIndicator size="small" color={brandPrimary} style={{ marginVertical: 8 }} />
-              ) : (
-                <>
-                  <Text style={homeStyles.usageSummaryCardRow}>
-                    {t("consumption.period_day")}: {waterUsage.dayVal.toFixed(2)} {waterUsage.unit}
-                  </Text>
-                  <Text style={homeStyles.usageSummaryCardRow}>
-                    {t("consumption.period_week")}: {waterUsage.weekVal.toFixed(2)} {waterUsage.unit}
-                  </Text>
-                  <Text style={[homeStyles.usageSummaryCardRow, homeStyles.usageSummaryCardMonth]}>
-                    {t("consumption.period_month")}: {waterUsage.monthVal.toFixed(2)} {waterUsage.unit}
-                  </Text>
-                </>
-              )}
-            </TouchableOpacity>
-          </View>
-        </View>
+        ) : null}
 
         {/* Thiết bị: chọn tầng (gọn) → sơ đồ → danh mục → danh sách */}
         <Text style={[homeStyles.sectionTitle, { marginBottom: 4 }]}>
@@ -651,6 +811,17 @@ const HomeScreen = ({ navigation }: HomeScreenProps) => {
     );
   };
 
+  if (!loadingHouses && tenantHouses.length === 0) {
+    return (
+      <View style={homeStyles.container}>
+        <Header variant="default" />
+        <View style={homeStyles.accessGateEmptyWrap}>
+          <Text style={homeStyles.accessGateEmptyText}>{t("home.access.no_house")}</Text>
+        </View>
+      </View>
+    );
+  }
+
   return (
     <View style={homeStyles.container}>
       <Header
@@ -716,13 +887,23 @@ const HomeScreen = ({ navigation }: HomeScreenProps) => {
         visible={houseModalVisible}
         transparent={true}
         animationType="fade"
-        onRequestClose={() => setHouseModalVisible(false)}
+        onRequestClose={() => {
+          const picked = houseId && tenantHouses.some((h) => h.id === houseId);
+          if (tenantHouses.length > 1 && !picked) return;
+          setHouseModalVisible(false);
+        }}
       >
-        <TouchableWithoutFeedback onPress={() => setHouseModalVisible(false)}>
+        <TouchableWithoutFeedback
+          onPress={() => {
+            const picked = houseId && tenantHouses.some((h) => h.id === houseId);
+            if (tenantHouses.length > 1 && !picked) return;
+            setHouseModalVisible(false);
+          }}
+        >
           <View style={homeStyles.modalOverlay}>
             <TouchableWithoutFeedback>
               <View style={homeStyles.modalContent}>
-                <Text style={homeStyles.modalTitle}>{t("home.select_house") || "Chọn nhà"}</Text>
+                <Text style={homeStyles.modalTitle}>{t("home.select_main_house") || "Chọn nhà chính"}</Text>
                 <FlatList
                   data={tenantHouses}
                   keyExtractor={(item) => item.id}
@@ -732,12 +913,8 @@ const HomeScreen = ({ navigation }: HomeScreenProps) => {
                         homeStyles.houseItem,
                         item.id === myHouse?.id && homeStyles.houseItemActive
                       ]}
-                      onPress={() => {
-                        setHouseId(item.id);
-                        setHouseModalVisible(false);
-                        // Refresh data khi đổi nhà
-                        setTimeout(() => onRefresh(), 100);
-                      }}
+                      onPress={() => handleSelectMainHouse(item.id)}
+                      disabled={isSubmittingMainHouse}
                     >
                       <Text style={[
                         homeStyles.houseItemText,
@@ -745,9 +922,11 @@ const HomeScreen = ({ navigation }: HomeScreenProps) => {
                       ]}>
                         {item.name}
                       </Text>
-                      {item.id === myHouse?.id && (
+                      {isSubmittingMainHouse && item.id === myHouse?.id ? (
+                        <ActivityIndicator size="small" color={brandPrimary} />
+                      ) : item.id === myHouse?.id ? (
                         <Text style={{ color: brandPrimary, fontWeight: 'bold' }}>✓</Text>
-                      )}
+                      ) : null}
                     </TouchableOpacity>
                   )}
                   ItemSeparatorComponent={() => <View style={homeStyles.separator} />}
@@ -757,6 +936,46 @@ const HomeScreen = ({ navigation }: HomeScreenProps) => {
           </View>
         </TouchableWithoutFeedback>
       </Modal>
+
+      {accessBlock ? (
+        <View
+          style={[homeStyles.accessGateOverlay, { paddingTop: insets.top + 74 }]}
+          pointerEvents="auto"
+        >
+          <View style={homeStyles.accessGateBannerCard}>
+            <Text style={homeStyles.accessGateCardTitle}>
+              {accessBlock === "handover"
+                ? t("home.access.handover_title")
+                : accessBlock === "deposit"
+                  ? t("home.access.deposit_title")
+                  : t("home.access.payment_title")}
+            </Text>
+            <Text style={homeStyles.accessGateCardBody}>
+              {accessBlock === "handover"
+                ? (accessReasonText ||
+                    t("home.access.handover_body", {
+                      date: myHouse?.handoverDate
+                        ? formatDayMonthNumeric(new Date(myHouse.handoverDate), i18n.language)
+                        : "—",
+                    }))
+                : accessBlock === "deposit"
+                  ? accessReasonText || t("home.access.deposit_body")
+                  : accessReasonText || t("home.access.payment_body")}
+            </Text>
+            {accessBlock === "payment" ? (
+              <TouchableOpacity
+                style={homeStyles.accessGatePrimaryBtn}
+                onPress={openPaymentScreen}
+                activeOpacity={0.85}
+              >
+                <Text style={homeStyles.accessGatePrimaryBtnText}>
+                  {t("home.access.pay_now")}
+                </Text>
+              </TouchableOpacity>
+            ) : null}
+          </View>
+        </View>
+      ) : null}
     </View>
   );
 };

@@ -7,15 +7,23 @@ import {
   ActivityIndicator,
   RefreshControl,
   TouchableOpacity,
+  StyleSheet,
 } from "react-native";
 import { useTranslation } from "react-i18next";
+import { NavigationProp, useNavigation } from "@react-navigation/native";
 import Header from "../../../../shared/components/header";
+import { RootStackParamList } from "../../../../shared/types";
 import Icons from "../../../../shared/theme/icon";
 import { FloorPlanView } from "../../houseStructure";
 import { waterUsageStyles } from "./waterUsageStyles";
-import { useTenantContext } from "../../../../shared/hooks";
+import { useTenantContext, useTenantHouses } from "../../../../shared/hooks";
 import { useTenantIoTConnection, useTenantTelemetry, useTenantUsage } from "../../hooks/useTenantIoT";
-import { waterAccent } from "../../../../shared/theme/color";
+import { waterAccent, brandPrimary, neutral } from "../../../../shared/theme/color";
+import {
+  formatDayMonthNumeric,
+  getTenantAccessBlock,
+  translateTenantAccessReason,
+} from "../../../../shared/utils";
 
 /** ID khu vực: "all" = tổng cả nhà (dữ liệu thật từ AWS), còn lại = id từ functionalAreas (chưa có dữ liệu). */
 export type AreaId = string;
@@ -23,9 +31,31 @@ export type AreaId = string;
 const MAX_BAR_HEIGHT = 180;
 
 const WaterUsageScreen = () => {
-  const { t } = useTranslation();
+  const navigation = useNavigation<NavigationProp<RootStackParamList>>();
+  const { t, i18n } = useTranslation();
   const { width: screenWidth } = useWindowDimensions();
-  const { houseId, functionalAreas, thingId } = useTenantContext();
+  const { houseId, functionalAreas, thingId, house } = useTenantContext();
+  const { data: tenantHousesData } = useTenantHouses();
+  const tenantHouses = tenantHousesData?.data ?? [];
+
+  const accessBlock = useMemo(() => {
+    if (!house) return null;
+    return getTenantAccessBlock(house);
+  }, [house]);
+
+  const openPaymentScreen = useCallback(() => {
+    const parentNav = navigation.getParent<NavigationProp<RootStackParamList>>();
+    const allPendingIds = tenantHouses
+      .map((h) => String(h.pendingInvoiceId ?? "").trim())
+      .filter((id) => id.length > 0);
+
+    parentNav?.navigate?.("TenantRentPayment", {
+      invoiceId: house?.pendingInvoiceId ?? undefined,
+      invoiceIds: allPendingIds,
+      afterSuccess: "home",
+    });
+  }, [navigation, tenantHouses, house?.pendingInvoiceId]);
+
   const effectiveAreas = Array.isArray(functionalAreas) ? functionalAreas : [];
   const iotConnected = useTenantIoTConnection(thingId);
   const usage = useTenantUsage({ houseId, metric: "water" });
@@ -60,6 +90,49 @@ const WaterUsageScreen = () => {
     () => Math.max(...summaryBars.map((b) => b.value), 0.001),
     [summaryBars]
   );
+
+  if (accessBlock) {
+    const title =
+      accessBlock === "handover"
+        ? t("home.access.handover_title")
+        : accessBlock === "deposit"
+          ? t("home.access.deposit_title")
+          : t("home.access.payment_title");
+
+    const accessReasonText = translateTenantAccessReason(house?.accessReason, house?.accessStatus, t);
+    const body =
+      accessBlock === "handover"
+        ? accessReasonText ||
+          t("home.access.handover_body", {
+            date: house?.handoverDate
+              ? formatDayMonthNumeric(new Date(house.handoverDate), i18n.language)
+              : "—",
+          })
+        : accessBlock === "deposit"
+          ? accessReasonText || t("home.access.deposit_body")
+          : accessReasonText || t("home.access.payment_body");
+
+    return (
+      <View style={waterUsageStyles.container}>
+        <Header variant="water" />
+        <View style={gateStyles.gateWrap}>
+          <View style={gateStyles.gateBox}>
+            <Text style={gateStyles.gateTitle}>{title}</Text>
+            <Text style={gateStyles.gateBody}>{body}</Text>
+            {accessBlock === "payment" ? (
+              <TouchableOpacity
+                style={gateStyles.payBtn}
+                onPress={openPaymentScreen}
+                activeOpacity={0.85}
+              >
+                <Text style={gateStyles.payBtnText}>{t("home.access.pay_now")}</Text>
+              </TouchableOpacity>
+            ) : null}
+          </View>
+        </View>
+      </View>
+    );
+  }
 
   const w = water?.features;
 
@@ -335,3 +408,46 @@ const WaterUsageScreen = () => {
 };
 
 export default WaterUsageScreen;
+
+const gateStyles = StyleSheet.create({
+  gateWrap: {
+    flex: 1,
+    justifyContent: "center",
+    paddingHorizontal: 16,
+    paddingBottom: 24,
+  },
+  gateBox: {
+    backgroundColor: neutral.surface,
+    borderRadius: 14,
+    padding: 16,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: neutral.border,
+    alignItems: "center",
+  },
+  gateTitle: {
+    fontSize: 18,
+    fontWeight: "700",
+    color: neutral.heading,
+    textAlign: "center",
+    marginBottom: 10,
+  },
+  gateBody: {
+    fontSize: 15,
+    lineHeight: 22,
+    color: neutral.textSecondary,
+    textAlign: "center",
+    marginBottom: 16,
+  },
+  payBtn: {
+    backgroundColor: brandPrimary,
+    paddingVertical: 14,
+    borderRadius: 10,
+    paddingHorizontal: 18,
+    alignItems: "center",
+  },
+  payBtnText: {
+    color: "#fff",
+    fontSize: 16,
+    fontWeight: "600",
+  },
+});

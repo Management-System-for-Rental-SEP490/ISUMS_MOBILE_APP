@@ -51,3 +51,12 @@ export const IOT_REST_BASE = readEnvTrimmed(
   "EXPO_PUBLIC_IOT_REST_BASE",
   DEFAULT_IOT_REST
 );
+
+/**
+ * Legacy: URL template tự ghép (trước khi có POST /api/payments/vnpay).
+ * Luồng tenant hiện dùng `createVnpayPaymentLink` trong `tenantPaymentApi.ts`.
+ */
+export const TENANT_PAYMENT_URL_TEMPLATE = readEnvTrimmed(
+  "EXPO_PUBLIC_TENANT_PAYMENT_URL_TEMPLATE",
+  ""
+);

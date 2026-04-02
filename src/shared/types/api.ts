@@ -37,7 +37,28 @@ export interface UserProfileResponse {
   phoneNumber: string;
   /** Danh sách roles (VD: ["TENANT", "ADMIN"]). */
   roles: string[];
+  /** Nhà chính trên BE (GET /api/users/me). `null`/thiếu → tenant chưa gán; app gọi PUT /api/users/main-house. */
+  mainHouseId?: string | null;
 }
+
+// =========================================================
+// Payments — VNPay (POST /api/payments/vnpay)
+// =========================================================
+
+/** Body tạo link thanh toán VNPay (tenant đã đăng nhập). */
+export interface VnpayPaymentCreateRequest {
+  invoiceIds: string[];
+  /** Ngôn ngữ cổng thanh toán (VD: `vn`, `en`). Mặc định app gửi `vn`. */
+  language: string;
+}
+
+/** BE trả URL đầy đủ tới cổng VNPay trong `data` (chuỗi). */
+export type VnpayPaymentLinkApiResponse = ApiResponse<string>;
+
+/**
+ * GET /api/payments/vnpay/return — BE đọc query VNPay, kiểm tra `vnp_SecureHash`, trả `message`/`data` đáng tin.
+ */
+export type VnpayReturnValidationApiResponse = ApiResponse<string>;
 
 // =========================================================
 // Houses API (/api/houses)
@@ -76,6 +97,96 @@ export interface FunctionalAreaFromApi {
 /** Dữ liệu căn nhà trả về từ API GET /api/houses (dùng cho Staff). */
 export type HouseStatus = "AVAILABLE" | "RENTED" | "REPAIRED" | string;
 
+/** Trạng thái truy cập nhà (tenant) từ GET /api/houses/my-access. */
+export type TenantHouseAccessStatus =
+  | "ACCESSIBLE"
+  | "PENDING_HANDOVER"
+  | "PENDING_DEPOSIT"
+  | "PENDING_FIRST_RENT"
+  | string;
+
+/**
+ * Vai trò thành viên trong nhóm thuê (GET /api/houses/my-access), VD: OWNER.
+ */
+export type TenantHouseMemberRole = "OWNER" | "MEMBER" | string;
+
+/**
+ * Một dòng trong `data` của GET /api/houses/my-access.
+ * Luồng thanh toán: `hasUnpaidInvoice` + `pendingInvoiceId`; `accessStatus` / `reason` cho banner và chặn tính năng.
+ */
+export interface TenantHouseAccessFromApi {
+  houseId: string;
+  houseName: string;
+  address: string;
+  handoverDate: string;
+  accessStatus: TenantHouseAccessStatus;
+  /** Mã lý do từ BE (VD: ACCESS_PENDING_FIRST_RENT). */
+  reason?: string | null;
+  /** Còn hóa đơn chưa thanh toán — FE hiển thị banner / CTA thanh toán. */
+  hasUnpaidInvoice?: boolean;
+  /** Hóa đơn ưu tiên thanh toán (VNPay / chi tiết hóa đơn). */
+  pendingInvoiceId?: string | null;
+  /** Vai trò trong nhóm thuê nhà. */
+  memberRole?: TenantHouseMemberRole;
+  /** Tài liệu hợp đồng PDF — khi BE trả trong my-access. */
+  contractDocuments?: TenantContractDocumentFromApi[];
+}
+
+/** Response GET /api/houses/my-access (wrapper giống các API khác). */
+export interface TenantHouseAccessApiResponse {
+  data: TenantHouseAccessFromApi[];
+  message: string;
+  statusCode: number;
+  success: boolean;
+}
+
+/**
+ * Một file hợp đồng / phụ lục (PDF) gắn với căn nhà.
+ * BE có thể trả trong GET houses/my-access hoặc chi tiết nhà — map vào `HouseFromApi.contractDocuments`.
+ */
+export interface TenantContractDocumentFromApi {
+  id?: string;
+  title: string;
+  /** URL đầy đủ (https) để mở/tải PDF. */
+  pdfUrl: string;
+}
+
+// =========================================================
+// Tenant invoices (endpoint thực tế sẽ bổ sung sau)
+// =========================================================
+
+export type TenantInvoicePaymentStatus =
+  | "UNPAID"
+  | "PAID"
+  | "PENDING"
+  | "OVERDUE"
+  | "WAITING_PAYMENT"
+  | string;
+
+/** Một hóa đơn của tenant (danh sách + chi tiết — BE có thể gộp hoặc tách GET by id). */
+export interface TenantInvoiceFromApi {
+  id: string;
+  /** Kỳ / mô tả ngắn (VD: Tiền thuê tháng 3/2026). */
+  title: string;
+  amount: number;
+  currency?: string;
+  dueDate?: string | null;
+  issuedAt?: string | null;
+  paidAt?: string | null;
+  status: TenantInvoicePaymentStatus;
+  houseId?: string | null;
+  houseName?: string | null;
+  notes?: string | null;
+  /** Các trường chi tiết từ GET /api/payments/invoices */
+  contractId?: string | null;
+  type?: string | null;
+  periodKey?: string | null;
+  totalAmount?: number | null;
+  baseAmount?: number | null;
+  penaltyAmount?: number | null;
+  createdAt?: string | null;
+}
+
 /** Dữ liệu căn nhà trả về từ API GET /api/houses (dùng cho Staff). */
 export interface HouseFromApi {
   /** ID căn nhà. */
@@ -100,6 +211,20 @@ export interface HouseFromApi {
   status?: HouseStatus;
   /** Danh sách khu vực chức năng trong nhà (phòng khách, bếp, phòng tắm...). */
   functionalAreas?: FunctionalAreaFromApi[];
+  /** Ngày bàn giao / bắt đầu hiệu lực ở nhà (ISO 8601) — từ my-access. */
+  handoverDate?: string;
+  /** Trạng thái truy cập tenant — từ my-access. */
+  accessStatus?: TenantHouseAccessStatus;
+  /** Lý do khi chưa được vào nhà — từ my-access. */
+  accessReason?: string | null;
+  /** Còn hóa đơn chưa thanh toán — từ my-access. */
+  hasUnpaidInvoice?: boolean;
+  /** Hóa đơn chờ thanh toán (VNPay) — từ my-access. */
+  pendingInvoiceId?: string | null;
+  /** Vai trò trong nhóm thuê (OWNER, …) — từ my-access. */
+  memberRole?: TenantHouseMemberRole;
+  /** Tài liệu hợp đồng (PDF…) — khi BE trả về. */
+  contractDocuments?: TenantContractDocumentFromApi[];
 }
 
 /** Response body của API GET /api/houses. */

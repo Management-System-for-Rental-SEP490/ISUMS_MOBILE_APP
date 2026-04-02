@@ -1,6 +1,11 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { getUserProfile, updateUserProfile } from "../services/userApi";
+import {
+  getUserProfile,
+  updateMainHouse,
+  updateUserProfile,
+} from "../services/userApi";
 import { UserProfileResponse } from "../types/api";
+import { useAuthStore } from "../../store/useAuthStore";
 
 // Query Key
 export const USER_KEYS = {
@@ -10,9 +15,11 @@ export const USER_KEYS = {
 
 // Hook lấy thông tin user
 export const useUserProfile = () => {
+  const token = useAuthStore((s) => s.token);
   return useQuery({
-    queryKey: USER_KEYS.profile(), 
-    queryFn: getUserProfile,       
+    queryKey: USER_KEYS.profile(),
+    queryFn: getUserProfile,
+    enabled: Boolean(token),
   });
 };
 
@@ -28,6 +35,19 @@ export const useUpdateUserMutation = () => {
     },
     onError: (error) => {
       console.error("Update profile failed:", error);
+    },
+  });
+};
+
+/** Hook cập nhật nhà chính tenant. */
+export const useUpdateMainHouseMutation = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: updateMainHouse,
+    onSuccess: (_data, variables) => {
+      useAuthStore.getState().setHouseId(variables.houseId);
+      queryClient.invalidateQueries({ queryKey: ["houses", "tenant"] });
+      queryClient.invalidateQueries({ queryKey: USER_KEYS.profile() });
     },
   });
 };

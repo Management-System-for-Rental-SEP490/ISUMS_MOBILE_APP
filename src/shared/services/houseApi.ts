@@ -4,12 +4,14 @@
  * và xử lý refresh token khi 401.
  */
 import axiosClient from "../api/axiosClient";
-import { ASSETS_API_BASE, BACKEND_API_BASE, FALLBACK_BACKEND_URL } from "../api/config";
+import { BACKEND_API_BASE } from "../api/config";
+import { mapTenantAccessItemToHouse } from "../utils/tenantAccess";
 import type {
   ApiResponse,
   FunctionalAreaFromApi,
   HouseIotAlertsApiResponse,
   HousesApiResponse,
+  TenantHouseAccessApiResponse,
 } from "../types/api";
 
 /**
@@ -26,16 +28,21 @@ export const getHouses = async (): Promise<HousesApiResponse> => {
 };
 
 /**
- * Lấy danh sách căn nhà gắn với user hiện tại (tenant) (GET /api/houses/house).
- * BE dựa trên userId trong access token (userRentalId) để trả về các nhà mà tenant đang thuê.
- * Dùng cho luồng Tenant Home để không phải filter thủ công theo userId trên FE.
+ * Lấy danh sách nhà + trạng thái truy cập tenant (GET /api/houses/my-access).
+ * Thay thế endpoint cũ `/houses/house`. BE đọc user từ Bearer token.
  */
 export const getTenantHouses = async (): Promise<HousesApiResponse> => {
-  const response = await axiosClient.get<HousesApiResponse>(
-    //`${BACKEND_API_BASE}/houses/house`
-     `${FALLBACK_BACKEND_URL}/houses/house`
+  const response = await axiosClient.get<TenantHouseAccessApiResponse>(
+    `${BACKEND_API_BASE}/houses/my-access`
   );
-  return response.data;
+  const body = response.data;
+  const rows = Array.isArray(body.data) ? body.data : [];
+  return {
+    message: body.message,
+    statusCode: body.statusCode,
+    success: body.success,
+    data: rows.map(mapTenantAccessItemToHouse),
+  };
 };
 
 /**
@@ -44,7 +51,7 @@ export const getTenantHouses = async (): Promise<HousesApiResponse> => {
 export const getFunctionalAreasByHouseId = async (
   houseId: string
 ): Promise<ApiResponse<FunctionalAreaFromApi[]>> => {
-  const url = `${FALLBACK_BACKEND_URL}/houses/functionalAreas/${encodeURIComponent(
+  const url = `${BACKEND_API_BASE}/houses/functionalAreas/${encodeURIComponent(
     houseId
   )}`;
   const response =
@@ -71,12 +78,12 @@ export const getHouseIotAlerts = async (
   sp.set("date", params.date);
   const c = params.cursor;
   if (c) sp.set("cursor", c);
-  // const url = `${FALLBACK_BACKEND_URL}/assets/houses/${encodeURIComponent(
-  //   houseId
-  // )}/iot/alerts?${sp.toString()}`;
-  const url = `https://api-dev.isums.pro/api/assets/houses/${encodeURIComponent(
+  const url = `${BACKEND_API_BASE}/assets/houses/${encodeURIComponent(
     houseId
   )}/iot/alerts?${sp.toString()}`;
+  // const url = `https://api-dev.isums.pro/api/assets/houses/${encodeURIComponent(
+  //   houseId
+  // )}/iot/alerts?${sp.toString()}`;
   const response = await axiosClient.get<HouseIotAlertsApiResponse>(url);
   return response.data;
 };

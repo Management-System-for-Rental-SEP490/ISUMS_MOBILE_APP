@@ -1,5 +1,5 @@
 import { StyleSheet } from "react-native";
-import { neutral } from "../../../../shared/theme/color";
+import { brandPrimary, neutral } from "../../../../shared/theme/color";
 import { appTypography } from "../../../../shared/utils";
 
 const tenantHouseStyles = StyleSheet.create({
@@ -46,6 +46,55 @@ const tenantHouseStyles = StyleSheet.create({
     ...appTypography.labelRowValue,
     flex: 1,
     color: neutral.text,
+  },
+  contractsSectionTitle: {
+    ...appTypography.cardTitle,
+    color: neutral.text,
+    marginTop: 20,
+    marginBottom: 10,
+  },
+  contractLinkRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingVertical: 12,
+    paddingHorizontal: 4,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: neutral.border,
+  },
+  contractLinkRowLast: {
+    borderBottomWidth: 0,
+  },
+  contractLinkText: {
+    ...appTypography.modalListItem,
+    flex: 1,
+    color: brandPrimary,
+    fontWeight: "600",
+  },
+  paymentBanner: {
+    backgroundColor: "#FFFBEB",
+    borderWidth: 1,
+    borderColor: "#FDE68A",
+    borderRadius: 12,
+    padding: 14,
+    marginTop: 16,
+  },
+  paymentBannerText: {
+    ...appTypography.labelRowValue,
+    color: neutral.text,
+    marginBottom: 12,
+    lineHeight: 20,
+  },
+  paymentBannerBtn: {
+    alignSelf: "flex-start",
+    backgroundColor: brandPrimary,
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+    borderRadius: 10,
+  },
+  paymentBannerBtnText: {
+    ...appTypography.dialogButton,
+    color: neutral.surface,
+    fontWeight: "700",
   },
 });
 

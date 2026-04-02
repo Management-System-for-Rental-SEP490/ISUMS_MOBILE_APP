@@ -46,11 +46,11 @@ export function useTenantContext(): TenantContextValue {
   const house = useMemo<HouseFromApi | null>(() => {
     if (!tenantHouses.length) return null;
     if (authHouseId) {
-      return (
-        tenantHouses.find((h) => h.id === authHouseId) ?? tenantHouses[0]
-      );
+      return tenantHouses.find((h) => h.id === authHouseId) ?? null;
     }
-    return tenantHouses[0];
+    // Một căn: mặc định. Nhiều căn: houseId từ store (đồng bộ mainHouseId BE sau đăng nhập / chọn nhà chính).
+    if (tenantHouses.length === 1) return tenantHouses[0]!;
+    return null;
   }, [tenantHouses, authHouseId]);
 
   const functionalAreas = useMemo<FunctionalAreaFromApi[]>(() => {

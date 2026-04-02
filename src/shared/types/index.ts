@@ -4,6 +4,10 @@ import type {
   AssetItemFromApi,
   FunctionalAreaFromApi,
   IssueTicketResponseFromApi,
+  TenantContractDocumentFromApi,
+  TenantHouseAccessStatus,
+  TenantHouseMemberRole,
+  TenantInvoiceFromApi,
   TenantTicketFromApi,
 } from "./api";
 
@@ -61,6 +65,33 @@ export type RootStackParamList = AuthStackParamList & {
     status?: string;
     /** Danh sách khu vực chức năng trong nhà (từ API houses.functionalAreas). */
     functionalAreas?: FunctionalAreaFromApi[];
+    /** File hợp đồng PDF (khi BE/map từ `HouseFromApi.contractDocuments`). */
+    contractDocuments?: TenantContractDocumentFromApi[];
+    /** Từ GET /api/houses/my-access — hiển thị banner thanh toán / trạng thái truy cập. */
+    hasUnpaidInvoice?: boolean;
+    pendingInvoiceId?: string | null;
+    accessStatus?: TenantHouseAccessStatus;
+    accessReason?: string | null;
+    memberRole?: TenantHouseMemberRole;
+  };
+  /** Danh sách hóa đơn của tenant (chờ API). */
+  TenantInvoiceList: undefined;
+  /** Chi tiết một hóa đơn + thanh toán đơn. */
+  TenantInvoiceDetail: { invoice: TenantInvoiceFromApi };
+  /**
+   * Thanh toán tiền thuê (VNPay): một `invoiceId` hoặc nhiều `invoiceIds`.
+   * Template URL có thể dùng {{invoiceId}} — khi nhiều id, tạm dùng phần tử đầu cho placeholder.
+   */
+  TenantRentPayment: {
+    invoiceId?: string | null;
+    invoiceIds?: string[];
+    /** Khi đã tạo xong link ở màn trước thì mở thẳng WebView VNPay. */
+    checkoutUrl?: string;
+    /**
+     * Sau VNPay thành công: `invoiceList` = về danh sách hóa đơn (mặc định);
+     * `home` = về tab Home (thanh toán mở khóa truy cập nhà từ Home / điện / nước / thông báo / chi tiết nhà).
+     */
+    afterSuccess?: "invoiceList" | "home";
   };
 };
 
@@ -87,6 +118,12 @@ export type AuthPayload = {
   houseId?: string;
 };
 
+/** Phiên WebView Keycloak toàn cục (logout / đổi MK / account), giống overlay đăng nhập. */
+export type KeycloakInAppSession = {
+  url: string;
+  allowManualClose: boolean;
+};
+
 export type AuthState = {
   user: string | null;
   role: UserRole | null;
@@ -97,6 +134,8 @@ export type AuthState = {
   houseId: string | null;
   isLoggedIn: boolean;
   onboardedUsers: string[]; // Danh sách username đã xem onboarding
+  keycloakInAppSession: KeycloakInAppSession | null;
+  setKeycloakInAppSession: (s: KeycloakInAppSession | null) => void;
   login: (data: AuthPayload) => void;
   logout: () => void;
   completeOnboarding: () => void; // Hàm xác nhận user hiện tại đã xem xong
@@ -176,6 +215,15 @@ export type {
   QuoteStatus,
   TenantTicketStatus,
   IssueTicketResponseFromApi,
+  TenantContractDocumentFromApi,
+  TenantHouseAccessFromApi,
+  TenantHouseAccessStatus,
+  TenantHouseMemberRole,
+  TenantInvoiceFromApi,
+  TenantInvoicePaymentStatus,
+  VnpayPaymentCreateRequest,
+  VnpayPaymentLinkApiResponse,
+  VnpayReturnValidationApiResponse,
 } from "./api";
 
 export type { TelemetryMessage, UsageData } from "./iot";

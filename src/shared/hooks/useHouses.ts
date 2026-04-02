@@ -37,9 +37,7 @@ export const useHouses = () => {
 };
 
 /**
- * Hook lấy danh sách nhà gắn với user hiện tại (tenant).
- * - Dùng API mới GET /api/houses/house (BE đọc userId trong token để tìm houseId tương ứng).
- * - Áp dụng cho các màn hình Tenant (Home, chi tiết nhà tenant).
+ * Hook lấy danh sách nhà + quyền truy cập của tenant (GET /api/houses/my-access).
  */
 export const useTenantHouses = () => {
   return useQuery({
