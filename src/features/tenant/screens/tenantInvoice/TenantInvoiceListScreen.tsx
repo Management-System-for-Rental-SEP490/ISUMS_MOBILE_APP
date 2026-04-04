@@ -29,6 +29,7 @@ import { tenantInvoiceStyles as styles } from "./tenantInvoiceStyles";
 import { PaginationBar } from "../../../../shared/components/PaginationBar";
 import { CustomAlert as Alert } from "../../../../shared/components/alert";
 import { createVnpayPaymentLink } from "../../../../shared/services/tenantPaymentApi";
+import { useAuthStore } from "../../../../store/useAuthStore";
 import {
   StackScreenTitleBadge,
   StackScreenTitleBarBalance,
@@ -50,6 +51,7 @@ export default function TenantInvoiceListScreen() {
   const { t, i18n } = useTranslation();
   const navigation = useNavigation<NavProp>();
   const insets = useSafeAreaInsets();
+  const { houseId: mainHouseIdFromStore } = useAuthStore();
   const { data: rawInvoiceData = [], isLoading, isRefetching, refetch, isError } =
     useTenantInvoices();
   const { data: housesData } = useTenantHouses();
@@ -60,6 +62,25 @@ export default function TenantInvoiceListScreen() {
   const [selected, setSelected] = useState<Set<string>>(() => new Set());
   const [creatingLink, setCreatingLink] = useState(false);
   const [linkError, setLinkError] = useState<string | null>(null);
+
+  const normalizedMainHouseId = useMemo(
+    () => String(mainHouseIdFromStore ?? "").trim(),
+    [mainHouseIdFromStore]
+  );
+
+  const mandatoryMainInvoiceIds = useMemo(() => {
+    if (!normalizedMainHouseId) return [] as string[];
+    return rawInvoiceData
+      .filter(
+        (inv) =>
+          isTenantInvoicePayable(inv.status) &&
+          String(inv.houseId ?? "").trim() === normalizedMainHouseId
+      )
+      .map((inv) => String(inv.id ?? "").trim())
+      .filter((id) => id.length > 0);
+  }, [rawInvoiceData, normalizedMainHouseId]);
+
+  const hasMainHousePriorityLock = mandatoryMainInvoiceIds.length > 0;
 
   const locale = useMemo(() => {
     const lang = String(i18n.language || "").toLowerCase();
@@ -129,9 +150,9 @@ export default function TenantInvoiceListScreen() {
 
   useEffect(() => {
     setInvoicePage(1);
-    setSelected(new Set());
+    setSelected(new Set(mandatoryMainInvoiceIds));
     setLinkError(null);
-  }, [filterHouseId]);
+  }, [filterHouseId, mandatoryMainInvoiceIds]);
 
   useEffect(() => {
     setInvoicePage((p) => Math.min(Math.max(1, p), totalPages));
@@ -178,23 +199,28 @@ export default function TenantInvoiceListScreen() {
   const toggle = useCallback((id: string) => {
     setLinkError(null);
     setSelected((prev) => {
+      if (prev.has(id) && mandatoryMainInvoiceIds.includes(id)) {
+        setLinkError(t("tenant_payment.primary_house_required_action"));
+        return prev;
+      }
       const next = new Set(prev);
       if (next.has(id)) next.delete(id);
       else next.add(id);
       return next;
     });
-  }, []);
+  }, [mandatoryMainInvoiceIds, t]);
 
   const totalSelected = selected.size;
-  const allSelected = payableList.length > 0 && totalSelected === payableList.length;
+  const allSelected =
+    payableList.length > 0 && payableList.every((inv) => selected.has(inv.id));
   const toggleSelectAll = useCallback(() => {
     setLinkError(null);
     setSelected((prev) => {
       if (payableList.length === 0) return prev;
-      if (prev.size === payableList.length) return new Set();
-      return new Set(payableList.map((x) => x.id));
+      if (prev.size === payableList.length) return new Set(mandatoryMainInvoiceIds);
+      return new Set([...payableList.map((x) => x.id), ...mandatoryMainInvoiceIds]);
     });
-  }, [payableList]);
+  }, [payableList, mandatoryMainInvoiceIds]);
 
   const selectedTotalAmount = useMemo(() => {
     let sum = 0;
@@ -204,14 +230,34 @@ export default function TenantInvoiceListScreen() {
     return sum;
   }, [payableList, selected]);
 
-  const paySelectionLocked = totalSelected === 0 || creatingLink;
+  const hasMissingMandatoryMainInvoice = useMemo(
+    () => mandatoryMainInvoiceIds.some((id) => !selected.has(id)),
+    [mandatoryMainInvoiceIds, selected]
+  );
+
+  const paySelectionLocked = totalSelected === 0 || creatingLink || hasMissingMandatoryMainInvoice;
 
   const confirmPay = useCallback(async () => {
     if (totalSelected === 0) {
       Alert.alert(t("tenant_invoice.multi_none_title"), t("tenant_invoice.multi_none_body"));
       return;
     }
-    const ids = payableList.filter((x) => selected.has(x.id)).map((x) => x.id);
+    if (hasMissingMandatoryMainInvoice) {
+      setLinkError(t("tenant_payment.primary_house_required_action"));
+      return;
+    }
+    const payableMapById = new Map(
+      rawInvoiceData
+        .filter((x) => isTenantInvoicePayable(x.status))
+        .map((x) => [String(x.id ?? "").trim(), x] as const)
+    );
+    const ids = Array.from(selected).filter((id) => payableMapById.has(id));
+    ids.sort((a, b) => {
+      const aMain = mandatoryMainInvoiceIds.includes(a) ? 0 : 1;
+      const bMain = mandatoryMainInvoiceIds.includes(b) ? 0 : 1;
+      if (aMain !== bMain) return aMain - bMain;
+      return a.localeCompare(b);
+    });
     setCreatingLink(true);
     setLinkError(null);
     try {
@@ -233,7 +279,16 @@ export default function TenantInvoiceListScreen() {
     } finally {
       setCreatingLink(false);
     }
-  }, [totalSelected, t, payableList, selected, i18n.language, navigation]);
+  }, [
+    totalSelected,
+    t,
+    hasMissingMandatoryMainInvoice,
+    rawInvoiceData,
+    selected,
+    mandatoryMainInvoiceIds,
+    i18n.language,
+    navigation,
+  ]);
 
   const renderDetailLink = () => (
     <View style={{ flexDirection: "row", alignItems: "center" }}>
@@ -382,6 +437,11 @@ export default function TenantInvoiceListScreen() {
         <View style={styles.pageHeading}>
           <Text style={styles.pageTitle}>{t("tenant_invoice.list_heading")}</Text>
           <Text style={styles.pageSubtitle}>{t("tenant_invoice.list_subtitle")}</Text>
+          {hasMainHousePriorityLock ? (
+            <Text style={[styles.meta, { marginTop: 6, color: brandPrimary }]}>
+              {t("tenant_payment.primary_house_required_title")}
+            </Text>
+          ) : null}
           {distinctHouseIds.length > 0 ? (
             <ScrollView
               horizontal

@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback } from "react";
+import React, { useEffect, useState, useCallback, useRef } from "react";
 import {
   View,
   ActivityIndicator,
@@ -12,6 +12,7 @@ import {
 } from "react-native";
 import WebView from "react-native-webview";
 import { useTranslation } from "react-i18next";
+import { useQueryClient } from "@tanstack/react-query";
 import { NavigationContainer } from "@react-navigation/native";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import { CustomAlert } from "../shared/components/alert";
@@ -62,8 +63,12 @@ const Navigation = () => {
   const role = useAuthStore((state) => state.role);
   const onboardedUsers = useAuthStore((state) => state.onboardedUsers);
   const keycloakSession = useAuthStore((state) => state.keycloakInAppSession);
+  const queryClient = useQueryClient();
+  const wasLoggedInRef = useRef(isLoggedIn);
+  const loginEdgeHandledRef = useRef(isLoggedIn);
 
   const [isReady, setIsReady] = useState(false);
+  const [isSyncingMainHouseOnLogin, setIsSyncingMainHouseOnLogin] = useState(false);
 
   const handleKeycloakWebViewRequest = useCallback((request: { url: string }) => {
     const redirectUri = getKeycloakRedirectUri();
@@ -92,6 +97,16 @@ const Navigation = () => {
     rehydrate();
   }, []);
 
+  // Khi logout (kể cả do user bấm logout hay interceptor tự logout), dọn sạch cache React Query
+  // để tránh user mới thấy dữ liệu phiên trước.
+  useEffect(() => {
+    const wasLoggedIn = wasLoggedInRef.current;
+    if (wasLoggedIn && !isLoggedIn) {
+      queryClient.clear();
+    }
+    wasLoggedInRef.current = isLoggedIn;
+  }, [isLoggedIn, queryClient]);
+
   // Tenant app: nếu có session cũ với role technical (persisted) → logout, thông báo, xóa Keycloak session
   useEffect(() => {
     if (!isReady) return;
@@ -113,6 +128,28 @@ const Navigation = () => {
     if (!isReady || !isLoggedIn || role !== "tenant") return;
     void ensureTenantMainHouseSynced();
   }, [isReady, isLoggedIn, role, user]);
+
+  // Mỗi lần tenant login mới: reset houseId, sync mainHouseId từ /users/me,
+  // và giữ loading cho tới khi sync xong để không nháy nhà phụ cũ.
+  useEffect(() => {
+    if (!isReady) return;
+    const prev = loginEdgeHandledRef.current;
+    loginEdgeHandledRef.current = isLoggedIn;
+
+    if (!prev && isLoggedIn && role === "tenant") {
+      let cancelled = false;
+      setIsSyncingMainHouseOnLogin(true);
+      useAuthStore.getState().setHouseId(null);
+      void ensureTenantMainHouseSynced().finally(() => {
+        if (!cancelled) setIsSyncingMainHouseOnLogin(false);
+      });
+      return () => { cancelled = true; };
+    }
+
+    if (prev && !isLoggedIn) {
+      setIsSyncingMainHouseOnLogin(false);
+    }
+  }, [isReady, isLoggedIn, role]);
 
   // Tenant nhiều nhà: khi quay lại app (sau thanh toán / đổi nhà chính trên BE) lấy lại mainHouseId → houseId trong store.
   useEffect(() => {
@@ -144,6 +181,14 @@ const Navigation = () => {
               <ActivityIndicator size="large" color={brandPrimary} /> 
           </View>
       );
+  }
+
+  if (isLoggedIn && role === "tenant" && isSyncingMainHouseOnLogin) {
+    return (
+      <View style={{ flex: 1, justifyContent: "center", alignItems: "center" }}>
+        <ActivityIndicator size="large" color={brandPrimary} />
+      </View>
+    );
   }
 
   return (

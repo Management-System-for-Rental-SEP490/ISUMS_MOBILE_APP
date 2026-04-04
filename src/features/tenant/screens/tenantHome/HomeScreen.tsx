@@ -93,6 +93,7 @@ const HomeScreen = ({ navigation }: HomeScreenProps) => {
   const [houseModalVisible, setHouseModalVisible] = useState(false);
   const autoSetMainHouseRef = useRef<string>("");
   const [isSubmittingMainHouse, setIsSubmittingMainHouse] = useState(false);
+  const [pendingMainHouseId, setPendingMainHouseId] = useState<string | null>(null);
   const updateMainHouseMutation = useUpdateMainHouseMutation();
   const mutateMainHouse = updateMainHouseMutation.mutate;
   const mutateMainHouseAsync = updateMainHouseMutation.mutateAsync;
@@ -105,6 +106,13 @@ const HomeScreen = ({ navigation }: HomeScreenProps) => {
   } = useTenantHouses();
   const tenantHouses: HouseFromApi[] = housesData?.data ?? [];
   const { data: userProfile, isPending: profilePending } = useUserProfile();
+  const profileMainHouseId = String(userProfile?.mainHouseId ?? "").trim();
+  const hasPersistedMainHouse = useMemo(
+    () =>
+      profileMainHouseId.length > 0 &&
+      tenantHouses.some((h) => h.id === profileMainHouseId),
+    [profileMainHouseId, tenantHouses]
+  );
 
   // Gỡ houseId lưu cục bộ nếu không còn trong danh sách tenant (đổi tài khoản / dữ liệu mới).
   useEffect(() => {
@@ -128,21 +136,22 @@ const HomeScreen = ({ navigation }: HomeScreenProps) => {
   // Hai căn trở lên: chờ GET /users/me xong — có mainHouseId thì gán store; chưa có thì mở modal chọn lần đầu (PUT main-house).
   useEffect(() => {
     if (loadingHouses || tenantHouses.length <= 1) return;
-    if (profilePending) return;
-
+    const hasValidSelectedHouse =
+      Boolean(houseId) && tenantHouses.some((h) => h.id === houseId);
     const mainFromProfile = String(userProfile?.mainHouseId ?? "").trim();
     if (mainFromProfile && tenantHouses.some((h) => h.id === mainFromProfile)) {
-      if (houseId !== mainFromProfile) setHouseId(mainFromProfile);
+      // Chỉ gán từ mainHouseId khi chưa có nhà hợp lệ trong session hiện tại.
+      // Nếu user đang đổi nhà bằng nút "Đổi nhà" thì giữ lựa chọn local, không ép ngược về main.
+      if (!hasValidSelectedHouse) setHouseId(mainFromProfile);
       setHouseModalVisible(false);
       return;
     }
-
-    const valid = houseId && tenantHouses.some((h) => h.id === houseId);
-    if (valid) {
+    if (hasValidSelectedHouse) {
       setHouseModalVisible(false);
       return;
     }
-
+    // Nếu chưa có nhà hợp lệ trong store thì mở chọn nhà chính ngay,
+    // không đợi profile để tránh cảm giác "kẹt" ở Home khi đăng nhập lần đầu.
     setHouseModalVisible(true);
   }, [
     loadingHouses,
@@ -169,15 +178,13 @@ const HomeScreen = ({ navigation }: HomeScreenProps) => {
 
   const openPaymentScreen = useCallback(() => {
     const parentNav = navigation.getParent<NavigationProp<RootStackParamList>>();
-    const allPendingIds = tenantHouses
-      .map((h) => String(h.pendingInvoiceId ?? "").trim())
-      .filter((id) => id.length > 0);
+    const selectedPendingInvoiceId = String(myHouse?.pendingInvoiceId ?? "").trim();
     parentNav?.navigate("TenantRentPayment", {
-      invoiceId: myHouse?.pendingInvoiceId ?? undefined,
-      invoiceIds: allPendingIds,
+      invoiceId: selectedPendingInvoiceId || undefined,
+      invoiceIds: selectedPendingInvoiceId ? [selectedPendingInvoiceId] : undefined,
       afterSuccess: "home",
     });
-  }, [navigation, myHouse?.pendingInvoiceId, tenantHouses]);
+  }, [navigation, myHouse?.pendingInvoiceId]);
 
   // 2. Lấy danh sách thiết bị của nhà đó
   const {
@@ -226,6 +233,7 @@ const HomeScreen = ({ navigation }: HomeScreenProps) => {
   const [deviceFloor, setDeviceFloor] = useState("1");
   /** null = mọi thiết bị (theo danh mục); chọn id = chỉ thiết bị gắn khu vực đó. */
   const [selectedFunctionAreaId, setSelectedFunctionAreaId] = useState<string | null>(null);
+  const [isRefreshing, setIsRefreshing] = useState(false);
 
   const houseIdForAreas = String(myHouse?.id ?? "").trim();
   const { data: functionalAreasRes } = useFunctionalAreasByHouseId(houseIdForAreas);
@@ -371,30 +379,42 @@ const HomeScreen = ({ navigation }: HomeScreenProps) => {
     }
   };
 
-  const onRefresh = () => {
-    refetchHouses();
-    refetchItems();
-    refetchCategories();
-  };
+  const onRefresh = useCallback(async () => {
+    setIsRefreshing(true);
+    try {
+      await Promise.all([refetchHouses(), refetchItems(), refetchCategories()]);
+    } finally {
+      setIsRefreshing(false);
+    }
+  }, [refetchHouses, refetchItems, refetchCategories]);
 
   const handleSelectMainHouse = useCallback(
     async (selectedHouseId: string) => {
       if (!selectedHouseId || isSubmittingMainHouse) return;
-      const needsInitialMainHousePick =
-        !houseId || !tenantHouses.some((h) => h.id === houseId);
+      // Đã có nhà chính từ BE: nút "đổi nhà" chỉ đổi context local, KHÔNG đổi mainHouseId server.
+      if (hasPersistedMainHouse) {
+        setHouseId(selectedHouseId);
+        setHouseModalVisible(false);
+        await queryClient.invalidateQueries({ queryKey: TENANT_INVOICES_QUERY_KEY });
+        refetchItems();
+        refetchCategories();
+        return;
+      }
       try {
         setIsSubmittingMainHouse(true);
+        setPendingMainHouseId(selectedHouseId);
         await mutateMainHouseAsync({ houseId: selectedHouseId });
         setHouseId(selectedHouseId);
         setHouseModalVisible(false);
-        // Đổi nhà xong thì làm mới cache hóa đơn ngay để các màn hóa đơn nhận dữ liệu nhà mới.
+        // Đổi nhà xong thì làm mới cache + lấy lại my-access mới nhất để quyết định bước tiếp theo.
         await queryClient.invalidateQueries({ queryKey: TENANT_INVOICES_QUERY_KEY });
-        onRefresh();
-        if (needsInitialMainHousePick) {
-          // Luồng đăng nhập lần đầu: sau khi gán nhà chính, mở luôn màn chọn hóa đơn để thanh toán.
-          const parentNav = navigation.getParent<NavigationProp<RootStackParamList>>();
-          parentNav?.navigate("TenantInvoiceList");
-        }
+        const latestHouses = await refetchHouses();
+        const latestList = latestHouses.data?.data ?? tenantHouses;
+        const pickedHouse =
+          latestList.find((h) => h.id === selectedHouseId) ??
+          tenantHouses.find((h) => h.id === selectedHouseId);
+        refetchItems();
+        refetchCategories();
       } catch {
         CustomAlert.alert(
           t("home.main_house_update_failed_title"),
@@ -404,16 +424,19 @@ const HomeScreen = ({ navigation }: HomeScreenProps) => {
         );
       } finally {
         setIsSubmittingMainHouse(false);
+        setPendingMainHouseId(null);
       }
     },
     [
-      houseId,
-      tenantHouses,
       isSubmittingMainHouse,
-      onRefresh,
+      hasPersistedMainHouse,
       navigation,
       queryClient,
+      refetchCategories,
+      refetchHouses,
+      refetchItems,
       setHouseId,
+      tenantHouses,
       t,
       mutateMainHouseAsync,
     ]
@@ -815,9 +838,20 @@ const HomeScreen = ({ navigation }: HomeScreenProps) => {
     return (
       <View style={homeStyles.container}>
         <Header variant="default" />
-        <View style={homeStyles.accessGateEmptyWrap}>
+        <ScrollView
+          style={{ flex: 1 }}
+          contentContainerStyle={homeStyles.accessGateEmptyWrap}
+          refreshControl={
+            <RefreshControl
+              refreshing={isRefreshing || loading}
+              onRefresh={onRefresh}
+              colors={[brandPrimary]}
+              tintColor={brandPrimary}
+            />
+          }
+        >
           <Text style={homeStyles.accessGateEmptyText}>{t("home.access.no_house")}</Text>
-        </View>
+        </ScrollView>
       </View>
     );
   }
@@ -870,7 +904,12 @@ const HomeScreen = ({ navigation }: HomeScreenProps) => {
                 : null
             }
             refreshControl={
-              <RefreshControl refreshing={loading} onRefresh={onRefresh} />
+              <RefreshControl
+                refreshing={isRefreshing || loading}
+                onRefresh={onRefresh}
+                colors={[brandPrimary]}
+                tintColor={brandPrimary}
+              />
             }
           />
         )}
@@ -922,7 +961,7 @@ const HomeScreen = ({ navigation }: HomeScreenProps) => {
                       ]}>
                         {item.name}
                       </Text>
-                      {isSubmittingMainHouse && item.id === myHouse?.id ? (
+                      {isSubmittingMainHouse && item.id === pendingMainHouseId ? (
                         <ActivityIndicator size="small" color={brandPrimary} />
                       ) : item.id === myHouse?.id ? (
                         <Text style={{ color: brandPrimary, fontWeight: 'bold' }}>✓</Text>

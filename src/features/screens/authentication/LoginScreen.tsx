@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { View, Text, TouchableOpacity, Linking, Image, ActivityIndicator, BackHandler, Platform } from "react-native";
 import WebView from "react-native-webview";
+import * as WebBrowser from "expo-web-browser";
 import { CustomAlert as Alert } from "../../../shared/components/alert";
 import { useNavigation, useFocusEffect } from "@react-navigation/native";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
@@ -23,6 +24,7 @@ const LoginScreen = () => {
   const [showWebView, setShowWebView] = useState(false);
   const [authUrl, setAuthUrl] = useState<string | null>(null);
   const isProcessing = useRef(false); //useRef là một hook trong React để lưu trữ giá trị không thay đổi (immutable) trong suốt cả quá trình render của component.
+  const isGoogleBrowserFlowProcessing = useRef(false);
   const hasShownUpdatePasswordAlert = useRef(false);
   const pendingUpdatePasswordUrl = useRef<string | null>(null);
 
@@ -44,11 +46,28 @@ const LoginScreen = () => {
 
   // Hàm xử lý deep link callback từ Keycloak, bắt deep link, giải nghĩa lấy code để đổi lấy token
   const handleDeepLink = async (event: { url: string }) => {
+    const normalizeAuthCallbackUrl = (rawUrl: string): string => {
+      try {
+        const parsed = new URL(rawUrl);
+        if (parsed.pathname.includes("expo-development-client")) {
+          const nestedUrl = parsed.searchParams.get("url");
+          if (nestedUrl) {
+            return decodeURIComponent(nestedUrl);
+          }
+        }
+      } catch {
+        return rawUrl;
+      }
+      return rawUrl;
+    };
+
+    const normalizedUrl = normalizeAuthCallbackUrl(event.url);
+
     if (isProcessing.current) {
         return; //nếu isProcessing.current là true thì không xử lý deep link callback.
     }
 
-    const code = handleKeycloakCallback(event.url);
+    const code = handleKeycloakCallback(normalizedUrl);
     
     if (code) {
       isProcessing.current = true;
@@ -94,7 +113,7 @@ const LoginScreen = () => {
     } else {
       // Kiểm tra lỗi từ URL
       try {
-        const url = new URL(event.url);
+        const url = new URL(normalizedUrl);
         const error = url.searchParams.get("error");
         const errorDescription = url.searchParams.get("error_description");
         if (error) {
@@ -158,14 +177,59 @@ const LoginScreen = () => {
     setShowWebView(true);
   };
 
+  const openGoogleFlowInBrowser = useCallback(
+    async (googleUrl: string) => {
+      if (isGoogleBrowserFlowProcessing.current || isProcessing.current) {
+        return;
+      }
+
+      isGoogleBrowserFlowProcessing.current = true;
+      setShowWebView(false);
+      setIsLoading(true);
+
+      try {
+        const redirectUri = getKeycloakRedirectUri();
+        const authUrlFromBrowser = `${getKeycloakAuthUrl(i18n.language)}&kc_idp_hint=google`;
+
+        const result = await WebBrowser.openAuthSessionAsync(authUrlFromBrowser, redirectUri);
+
+        if (result.type === "success" && result.url) {
+          await handleDeepLink({ url: result.url });
+          return;
+        }
+
+        setIsLoading(false);
+      } catch (error) {
+        setIsLoading(false);
+        Alert.alert(
+          "Đăng nhập thất bại",
+          error instanceof Error ? error.message : "Không thể mở trình duyệt đăng nhập Google"
+        );
+      } finally {
+        isGoogleBrowserFlowProcessing.current = false;
+      }
+    },
+    [handleDeepLink]
+  );
+
   const handleWebViewRequest = useCallback(
     (request: any) => {
       const redirectUri = getKeycloakRedirectUri();
       const currentUrl: string = request.url;
+      const currentUrlLower = currentUrl.toLowerCase();
+
+      const isGoogleBrokerFlow =
+        currentUrlLower.includes("/broker/google/login") ||
+        currentUrlLower.includes("kc_idp_hint=google") ||
+        currentUrlLower.includes("identity_provider=google");
+
+      if (isGoogleBrokerFlow) {
+        void openGoogleFlowInBrowser(currentUrl);
+        return false;
+      }
 
       // Khi Keycloak chuyển sang trang bắt buộc đổi mật khẩu (required action),
       // chặn request lần đầu để hiển thị CustomAlert trước, sau đó mới cho tải trang đổi mật khẩu.
-      const currentUrlLower = currentUrl.toLowerCase();
       const isUpdatePasswordFlow =
         currentUrlLower.includes("kc_action=update_password") ||
         currentUrlLower.includes("update-password");
@@ -207,7 +271,7 @@ const LoginScreen = () => {
 
       return true;
     },
-    [handleDeepLink, t]
+    [handleDeepLink, openGoogleFlowInBrowser, t]
   );
 
   if (isLoading) {

@@ -48,6 +48,12 @@ function sortByCreatedDesc(a: TenantTicketFromApi, b: TenantTicketFromApi) {
 
 const PAGE_SIZE = CLIENT_LIST_PAGE_SIZE;
 
+function normalizeIssueStatus(status: string | undefined): string {
+  return String(status ?? "")
+    .trim()
+    .toUpperCase();
+}
+
 const TenantTicketListScreen = () => {
   const { t, i18n } = useTranslation();
   const navigation = useNavigation<NavProp>();
@@ -109,14 +115,15 @@ const TenantTicketListScreen = () => {
   }, []);
 
   const statusLabel = (status: string) => {
-    const key = `tenant_ticket_list.status_${String(status || "").toUpperCase()}`;
+    const normalized = normalizeIssueStatus(status);
+    const key = `tenant_ticket_list.status_${normalized}`;
     const label = t(key);
     if (label !== key) return label;
-    return status;
+    return normalized || status;
   };
 
   const statusVisual = (status: string) => {
-    const s = String(status || "").toUpperCase();
+    const s = normalizeIssueStatus(status);
     if (s === "CREATED") {
       return { pill: styles.statusCreated, dot: styles.statusCreatedDot, text: styles.statusCreatedText };
     }
@@ -129,14 +136,19 @@ const TenantTicketListScreen = () => {
     if (s === "IN_PROGRESS") {
       return { pill: styles.statusInProgress, dot: styles.statusInProgressDot, text: styles.statusInProgressText };
     }
-    if (s === "WAITING_TENANT_APPROVAL") {
+    if (s === "WAITING_TENANT_APPROVAL" || s === "WAITING_TENANT_APPROVAL_QUOTE") {
       return {
         pill: styles.statusWaitingTenant,
         dot: styles.statusWaitingTenantDot,
         text: styles.statusWaitingTenantText,
       };
     }
-    if (s === "WAITING_MANAGER_APPROVAL" || s === "WAITING_PAYMENT") {
+    if (
+      s === "WAITING_MANAGER_CONFIRM" ||
+      s === "WAITING_MANAGER_APPROVAL" ||
+      s === "WAITING_MANAGER_APPROVAL_QUOTE" ||
+      s === "WAITING_PAYMENT"
+    ) {
       return { pill: styles.statusCreated, dot: styles.statusCreatedDot, text: styles.statusCreatedText };
     }
     if (s === "DONE") {
@@ -209,7 +221,7 @@ const TenantTicketListScreen = () => {
             </Text>
           </View>
           <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
-            {String(item.status || "").toUpperCase() === "WAITING_PAYMENT" ? (
+            {normalizeIssueStatus(item.status) === "WAITING_PAYMENT" ? (
               <TouchableOpacity
                 style={styles.payBtn}
                 onPress={() => onPressDetail(item)}

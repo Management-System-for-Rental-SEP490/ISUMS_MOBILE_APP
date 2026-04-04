@@ -40,7 +40,29 @@ import {
 } from "../../../../shared/components/StackScreenTitleBadge";
 
 type Route = RouteProp<RootStackParamList, "TenantTicketDetail">;
-type Nav = NativeStackNavigationProp<RootStackParamList, "TenantTicketDetail">;
+type Nav = NativeStackNavigationProp<RootStackParamList>;
+
+function normalizeIssueStatus(status: string | undefined): string {
+  return String(status ?? "")
+    .trim()
+    .toUpperCase();
+}
+
+/** Trạng thái ticket: tenant cần bấm xác nhận báo giá (đồng bộ BE mới). */
+const TICKET_STATUSES_NEED_QUOTE_CONFIRM = new Set([
+  "WAITING_TENANT_APPROVAL_QUOTE",
+  "WAITING_TENANT_APPROVAL",
+]);
+
+function ticketNeedsTenantQuoteConfirm(status: string | undefined): boolean {
+  return TICKET_STATUSES_NEED_QUOTE_CONFIRM.has(normalizeIssueStatus(status));
+}
+
+/** Quote đang chờ tenant duyệt (hỗ trợ cả tên trạng thái cũ/mới từ BE). */
+function quoteAwaitingTenantConfirm(q: { status?: string | null }): boolean {
+  const st = normalizeIssueStatus(q?.status ?? "");
+  return st === "WAITING_TENANT_APPROVAL" || st === "WAITING_TENANT_APPROVAL_QUOTE";
+}
 
 const TenantTicketDetailScreen = () => {
   const { t, i18n } = useTranslation();
@@ -109,8 +131,15 @@ const TenantTicketDetailScreen = () => {
 
   const activeQuote = useMemo(() => {
     if (!quotes?.length) return null;
-    const waiting = quotes.find((q) => String(q.status || "").toUpperCase() === "WAITING_TENANT_APPROVAL");
+    const waiting = quotes.find((q) => quoteAwaitingTenantConfirm(q));
     return waiting ?? quotes[0] ?? null;
+  }, [quotes]);
+
+  /** Báo giá đã duyệt — hiển thị kèm nút thanh toán (WAITING_PAYMENT). */
+  const paymentQuote = useMemo(() => {
+    if (!quotes?.length) return null;
+    const approved = quotes.find((q) => normalizeIssueStatus(q.status) === "APPROVED");
+    return approved ?? quotes[0] ?? null;
   }, [quotes]);
 
   const formatMoney = useCallback(
@@ -196,8 +225,8 @@ const TenantTicketDetailScreen = () => {
       return;
     }
 
-    // Chỉ fetch quote ở bước chờ tenant xác nhận.
-    if (String(ticket.status || "").toUpperCase() !== "WAITING_TENANT_APPROVAL") {
+    const st = normalizeIssueStatus(ticket.status);
+    if (!ticketNeedsTenantQuoteConfirm(ticket.status) && st !== "WAITING_PAYMENT") {
       setQuotes([]);
       return;
     }
@@ -227,13 +256,13 @@ const TenantTicketDetailScreen = () => {
     setConfirmQuoteLoading(true);
     try {
       await confirmIssueQuoteStatus(activeQuote.id);
-      // Sau khi xác nhận: ticket đổi sang WAITING_PAYMENT
       await refreshTicket();
       await loadQuotes();
+      navigation.navigate("TenantTicketList");
       Alert.alert(
         t("tenant_ticket_detail.confirm_quote_success_title"),
         t("tenant_ticket_detail.confirm_quote_success_message"),
-        undefined,
+        [{ text: t("common.close") }],
         { type: "success" },
       );
     } catch (e) {
@@ -242,17 +271,18 @@ const TenantTicketDetailScreen = () => {
     } finally {
       setConfirmQuoteLoading(false);
     }
-  }, [activeQuote?.id, confirmQuoteLoading, loadQuotes, refreshTicket, t]);
+  }, [activeQuote?.id, confirmQuoteLoading, loadQuotes, navigation, refreshTicket, t]);
 
   const statusLabel = (status: string) => {
-    const key = `tenant_ticket_list.status_${String(status || "").toUpperCase()}`;
+    const normalized = normalizeIssueStatus(status);
+    const key = `tenant_ticket_list.status_${normalized}`;
     const label = t(key);
     if (label !== key) return label;
-    return status;
+    return normalized || status;
   };
 
   const statusVisual = (status: string) => {
-    const s = String(status || "").toUpperCase();
+    const s = normalizeIssueStatus(status);
     if (s === "CREATED") {
       return { pill: badge.statusCreated, dot: badge.statusCreatedDot, text: badge.statusCreatedText };
     }
@@ -266,8 +296,11 @@ const TenantTicketDetailScreen = () => {
       return { pill: badge.statusInProgress, dot: badge.statusInProgressDot, text: badge.statusInProgressText };
     }
     if (
+      s === "WAITING_MANAGER_CONFIRM" ||
       s === "WAITING_MANAGER_APPROVAL" ||
+      s === "WAITING_MANAGER_APPROVAL_QUOTE" ||
       s === "WAITING_TENANT_APPROVAL" ||
+      s === "WAITING_TENANT_APPROVAL_QUOTE" ||
       s === "WAITING_PAYMENT"
     ) {
       return { pill: badge.statusCreated, dot: badge.statusCreatedDot, text: badge.statusCreatedText };
@@ -460,7 +493,7 @@ const TenantTicketDetailScreen = () => {
           )}
         </View>
 
-        {String(ticket.status || "").toUpperCase() === "WAITING_TENANT_APPROVAL" && (
+        {ticketNeedsTenantQuoteConfirm(ticket.status) && (
           <>
             <Text style={styles.sectionLabel}>{t("tenant_ticket_detail.section_quote")}</Text>
             <View style={styles.panel}>
@@ -469,35 +502,41 @@ const TenantTicketDetailScreen = () => {
                   <ActivityIndicator size="small" color={brandSecondary} />
                   <Text style={styles.fieldValueMuted}>{t("common.loading")}</Text>
                 </View>
-              ) : activeQuote?.items?.length ? (
+              ) : activeQuote?.id ? (
                 <>
-                  <View style={styles.quoteTotalRow}>
-                    <Text style={styles.quoteTotalLabel}>{t("tenant_ticket_detail.quote_items_label")}</Text>
-                    <Text style={styles.quoteTotalLabel}>{t("tenant_ticket_detail.quote_price_label")}</Text>
-                  </View>
+                  {Array.isArray(activeQuote.items) && activeQuote.items.length > 0 ? (
+                    <>
+                      <View style={styles.quoteTotalRow}>
+                        <Text style={styles.quoteTotalLabel}>{t("tenant_ticket_detail.quote_items_label")}</Text>
+                        <Text style={styles.quoteTotalLabel}>{t("tenant_ticket_detail.quote_price_label")}</Text>
+                      </View>
 
-                  {activeQuote.items.map((it, idx) => (
-                    <View
-                      key={it.id}
-                      style={[
-                        styles.panelRow,
-                        idx === activeQuote.items.length - 1 && styles.panelRowLast,
-                        { flexDirection: "row", alignItems: "flex-start" },
-                      ]}
-                    >
-                      <Text style={styles.quoteItemName} numberOfLines={2}>
-                        {it.itemName}
-                      </Text>
-                      <Text style={styles.quoteItemPrice}>
-                        {t("tenant_ticket_detail.quote_price_label")}: {formatMoney(it.price)}
-                      </Text>
-                    </View>
-                  ))}
+                      {activeQuote.items.map((it, idx) => (
+                        <View
+                          key={it.id}
+                          style={[
+                            styles.panelRow,
+                            idx === activeQuote.items.length - 1 && styles.panelRowLast,
+                            { flexDirection: "row", alignItems: "flex-start" },
+                          ]}
+                        >
+                          <Text style={styles.quoteItemName} numberOfLines={2}>
+                            {it.itemName}
+                          </Text>
+                          <Text style={styles.quoteItemPrice}>
+                            {t("tenant_ticket_detail.quote_price_label")}: {formatMoney(it.price)}
+                          </Text>
+                        </View>
+                      ))}
 
-                  <View style={styles.quoteTotalRow}>
-                    <Text style={styles.quoteTotalLabel}>{t("tenant_ticket_detail.quote_total_label")}</Text>
-                    <Text style={styles.quoteTotalValue}>{formatMoney(activeQuote.totalPrice)}</Text>
-                  </View>
+                      <View style={styles.quoteTotalRow}>
+                        <Text style={styles.quoteTotalLabel}>{t("tenant_ticket_detail.quote_total_label")}</Text>
+                        <Text style={styles.quoteTotalValue}>{formatMoney(activeQuote.totalPrice)}</Text>
+                      </View>
+                    </>
+                  ) : (
+                    <Text style={styles.fieldValueMuted}>{t("common.no_data")}</Text>
+                  )}
 
                   {!!confirmQuoteError && (
                     <Text style={styles.fieldValueMuted}>{confirmQuoteError}</Text>
@@ -524,6 +563,64 @@ const TenantTicketDetailScreen = () => {
               ) : (
                 <Text style={styles.fieldValueMuted}>{t("common.no_data")}</Text>
               )}
+            </View>
+          </>
+        )}
+
+        {normalizeIssueStatus(ticket.status) === "WAITING_PAYMENT" && (
+          <>
+            <Text style={styles.sectionLabel}>{t("tenant_ticket_detail.section_payment")}</Text>
+            <View style={styles.panel}>
+              {quotesLoading ? (
+                <View style={styles.assetLoadingRow}>
+                  <ActivityIndicator size="small" color={brandSecondary} />
+                  <Text style={styles.fieldValueMuted}>{t("common.loading")}</Text>
+                </View>
+              ) : paymentQuote?.items?.length ? (
+                <>
+                  <View style={styles.quoteTotalRow}>
+                    <Text style={styles.quoteTotalLabel}>{t("tenant_ticket_detail.quote_items_label")}</Text>
+                    <Text style={styles.quoteTotalLabel}>{t("tenant_ticket_detail.quote_price_label")}</Text>
+                  </View>
+                  {paymentQuote.items.map((it, idx) => (
+                    <View
+                      key={it.id}
+                      style={[
+                        styles.panelRow,
+                        idx === paymentQuote.items.length - 1 && styles.panelRowLast,
+                        { flexDirection: "row", alignItems: "flex-start" },
+                      ]}
+                    >
+                      <Text style={styles.quoteItemName} numberOfLines={2}>
+                        {it.itemName}
+                      </Text>
+                      <Text style={styles.quoteItemPrice}>
+                        {t("tenant_ticket_detail.quote_price_label")}: {formatMoney(it.price)}
+                      </Text>
+                    </View>
+                  ))}
+                  <View style={styles.quoteTotalRow}>
+                    <Text style={styles.quoteTotalLabel}>{t("tenant_ticket_detail.quote_total_label")}</Text>
+                    <Text style={styles.quoteTotalValue}>{formatMoney(paymentQuote.totalPrice)}</Text>
+                  </View>
+                </>
+              ) : (
+                <Text style={styles.fieldValueMuted}>{t("tenant_ticket_detail.payment_quote_hint")}</Text>
+              )}
+              <TouchableOpacity
+                style={styles.confirmQuoteBtn}
+                onPress={() =>
+                  navigation.navigate("TenantRentPayment", {
+                    issueTicketId: ticket.id,
+                    afterSuccess: "home",
+                  })
+                }
+                activeOpacity={0.8}
+              >
+                <Text style={styles.confirmQuoteBtnText}>
+                  {t("tenant_ticket_detail.pay_repair_btn")}
+                </Text>
+              </TouchableOpacity>
             </View>
           </>
         )}

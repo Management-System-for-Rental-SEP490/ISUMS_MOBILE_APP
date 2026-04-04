@@ -87,6 +87,8 @@ export type RootStackParamList = AuthStackParamList & {
     invoiceIds?: string[];
     /** Khi đã tạo xong link ở màn trước thì mở thẳng WebView VNPay. */
     checkoutUrl?: string;
+    /** Mở từ ticket sửa chữa (WAITING_PAYMENT) — BE có thể map hóa đơn theo ticket sau này. */
+    issueTicketId?: string | null;
     /**
      * Sau VNPay thành công: `invoiceList` = về danh sách hóa đơn (mặc định);
      * `home` = về tab Home (thanh toán mở khóa truy cập nhà từ Home / điện / nước / thông báo / chi tiết nhà).

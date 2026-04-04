@@ -25,7 +25,12 @@ import {
   slicePage,
 } from "../../../../shared/utils";
 import { PaginationBar } from "../../../../shared/components/PaginationBar";
-import { HOUSES_KEYS, TENANT_INVOICES_QUERY_KEY, useTenantInvoices } from "../../../../shared/hooks";
+import {
+  HOUSES_KEYS,
+  TENANT_INVOICES_QUERY_KEY,
+  useTenantHouses,
+  useTenantInvoices,
+} from "../../../../shared/hooks";
 import { formatTenantInvoiceAmount } from "../../../../shared/utils/tenantInvoice";
 import { formatTenantIssueDateTime } from "../../../../shared/utils";
 import { neutral } from "../../../../shared/theme/color";
@@ -43,6 +48,8 @@ import {
 } from "../../../../shared/components/StackScreenTitleBadge";
 import styles from "./TenantRentPaymentStyles";
 import { TENANT_MAIN_TAB_ROUTES } from "../../../../shared/components/footerNavigator";
+import { useAuthStore } from "../../../../store/useAuthStore";
+import { isTenantInvoicePayable } from "../../../../shared/utils/tenantInvoice";
 
 type Props = NativeStackScreenProps<RootStackParamList, "TenantRentPayment">;
 
@@ -50,7 +57,7 @@ function navigateAfterSuccessfulRentPayment(
   navigation: Props["navigation"],
   afterSuccess: RootStackParamList["TenantRentPayment"]["afterSuccess"] | undefined
 ) {
-  const mode = afterSuccess ?? "invoiceList";
+  const mode = afterSuccess ?? "home";
   if (mode === "home") {
     const di = TENANT_MAIN_TAB_ROUTES.indexOf("Dashboard");
     const dashboardIndex = di >= 0 ? di : 2;
@@ -107,6 +114,10 @@ function resolvePrimaryInvoiceId(
   return one.length ? one : null;
 }
 
+function normalizeHouseId(id: string | null | undefined): string {
+  return String(id ?? "").trim();
+}
+
 /**
  * Thanh toán VNPay: chọn một hoặc nhiều `invoiceIds` → POST /api/payments/vnpay → mở URL trong WebView.
  */
@@ -114,13 +125,17 @@ const TenantRentPaymentScreen = ({ navigation, route }: Props) => {
   const queryClient = useQueryClient();
   const { t, i18n } = useTranslation();
   const insets = useSafeAreaInsets();
+  const { houseId: mainHouseIdFromStore } = useAuthStore();
   const [selectedInvoiceIds, setSelectedInvoiceIds] = useState<string[]>([]);
   const [expandedInvoiceIds, setExpandedInvoiceIds] = useState<Set<string>>(new Set());
   const [invoicePage, setInvoicePage] = useState(1);
   const { data: invoiceData = [] } = useTenantInvoices();
+  const { data: housesData } = useTenantHouses();
   const [checkoutUrl, setCheckoutUrl] = useState<string | null>(route.params?.checkoutUrl ?? null);
   const [creatingLink, setCreatingLink] = useState(false);
   const [linkError, setLinkError] = useState<string | null>(null);
+  const [isReturnProcessing, setIsReturnProcessing] = useState(false);
+  const [isNavigatingAfterSuccess, setIsNavigatingAfterSuccess] = useState(false);
   /** Tránh gọi validate trùng cho cùng một URL redirect. */
   const handledVnpayReturnUrlsRef = useRef<Set<string>>(new Set());
 
@@ -138,18 +153,63 @@ const TenantRentPaymentScreen = ({ navigation, route }: Props) => {
     return Array.from(set);
   }, [route.params?.invoiceIds, invoiceId]);
 
+  const houseNameById = useMemo(() => {
+    const list = Array.isArray(housesData?.data) ? housesData.data : [];
+    const map = new Map<string, string>();
+    for (const house of list) {
+      const hid = String(house.id ?? "").trim();
+      if (!hid) continue;
+      const name = String(house.name ?? "").trim();
+      map.set(hid, name.length ? name : hid);
+    }
+    return map;
+  }, [housesData?.data]);
+
   const invoiceMapById = useMemo(() => {
     const map = new Map(invoiceData.map((x) => [x.id, x]));
     return map;
   }, [invoiceData]);
 
+  const resolvedMainHouseId = useMemo(() => {
+    const normalizedMain = normalizeHouseId(mainHouseIdFromStore);
+    if (normalizedMain) return normalizedMain;
+    if (invoiceCandidates.length === 1) {
+      const only = invoiceMapById.get(invoiceCandidates[0]);
+      return normalizeHouseId(only?.houseId);
+    }
+    return "";
+  }, [mainHouseIdFromStore, invoiceCandidates, invoiceMapById]);
+
+  const payableInvoiceIds = useMemo(
+    () =>
+      invoiceData
+        .filter((inv) => isTenantInvoicePayable(inv.status))
+        .sort((a, b) => {
+          const aMain = normalizeHouseId(a.houseId) === resolvedMainHouseId ? 0 : 1;
+          const bMain = normalizeHouseId(b.houseId) === resolvedMainHouseId ? 0 : 1;
+          if (aMain !== bMain) return aMain - bMain;
+          const aDue = new Date(a.dueDate ?? "").getTime();
+          const bDue = new Date(b.dueDate ?? "").getTime();
+          if (Number.isNaN(aDue) || Number.isNaN(bDue)) return 0;
+          return aDue - bDue;
+        })
+        .map((inv) => String(inv.id ?? "").trim())
+        .filter((id) => id.length > 0),
+    [invoiceData, resolvedMainHouseId]
+  );
+
+  const effectiveInvoiceCandidates = useMemo(() => {
+    return payableInvoiceIds;
+  }, [payableInvoiceIds]);
+
   useEffect(() => {
-    setSelectedInvoiceIds(invoiceCandidates);
+    const firstSelection = new Set<string>(effectiveInvoiceCandidates);
+    setSelectedInvoiceIds(Array.from(firstSelection));
     setInvoicePage(1);
     setCheckoutUrl(route.params?.checkoutUrl ?? null);
     setLinkError(null);
     setExpandedInvoiceIds(new Set());
-  }, [invoiceCandidates, route.params?.checkoutUrl]);
+  }, [effectiveInvoiceCandidates, route.params?.checkoutUrl]);
 
   useEffect(() => {
     if (checkoutUrl) {
@@ -157,10 +217,10 @@ const TenantRentPaymentScreen = ({ navigation, route }: Props) => {
     }
   }, [checkoutUrl]);
 
-  const invoiceTotalPages = getTotalPages(invoiceCandidates.length);
+  const invoiceTotalPages = getTotalPages(effectiveInvoiceCandidates.length);
   const pagedInvoiceIds = useMemo(
-    () => slicePage(invoiceCandidates, invoicePage),
-    [invoiceCandidates, invoicePage]
+    () => slicePage(effectiveInvoiceCandidates, invoicePage),
+    [effectiveInvoiceCandidates, invoicePage]
   );
 
   const locale = useMemo(() => {
@@ -181,9 +241,13 @@ const TenantRentPaymentScreen = ({ navigation, route }: Props) => {
   const toggleSelectAll = () => {
     setCheckoutUrl(null);
     setLinkError(null);
-    setSelectedInvoiceIds((prev) =>
-      prev.length === invoiceCandidates.length ? [] : [...invoiceCandidates]
-    );
+    setSelectedInvoiceIds((prev) => {
+      if (prev.length === effectiveInvoiceCandidates.length) {
+        return [];
+      }
+      const next = new Set<string>(effectiveInvoiceCandidates);
+      return Array.from(next);
+    });
   };
 
   const toggleExpanded = useCallback((id: string) => {
@@ -196,12 +260,13 @@ const TenantRentPaymentScreen = ({ navigation, route }: Props) => {
   }, []);
 
   const allSelected =
-    invoiceCandidates.length > 0 &&
-    selectedInvoiceIds.length === invoiceCandidates.length;
+    effectiveInvoiceCandidates.length > 0 &&
+    selectedInvoiceIds.length === effectiveInvoiceCandidates.length;
 
   const onCreatePaymentLink = useCallback(async () => {
     if (selectedInvoiceIds.length === 0) return;
     setCreatingLink(true);
+    setIsNavigatingAfterSuccess(false);
     setLinkError(null);
     try {
       const uri = await createVnpayPaymentLink(selectedInvoiceIds, {
@@ -231,6 +296,7 @@ const TenantRentPaymentScreen = ({ navigation, route }: Props) => {
       if (!isLikelyVnpayReturnNavigation(url)) return;
       if (handledVnpayReturnUrlsRef.current.has(url)) return;
       handledVnpayReturnUrlsRef.current.add(url);
+      setIsReturnProcessing(true);
       try {
         const payload = await validateVnpayReturnUrl(url);
         setCheckoutUrl(null);
@@ -242,6 +308,8 @@ const TenantRentPaymentScreen = ({ navigation, route }: Props) => {
             queryClient.invalidateQueries({ queryKey: HOUSES_KEYS.tenant }),
           ]);
         }
+        // Giữ loading ngắn để người dùng thấy trạng thái "đang xử lý" trước khi hiện alert.
+        await new Promise((resolve) => setTimeout(resolve, 350));
         const afterSuccessParam = route.params?.afterSuccess;
         CustomAlert.alert(
           ok ? t("tenant_payment.return_success_title") : t("tenant_payment.return_failed_title"),
@@ -250,7 +318,14 @@ const TenantRentPaymentScreen = ({ navigation, route }: Props) => {
             {
               text: t("common.close"),
               onPress: () => {
-                if (ok) navigateAfterSuccessfulRentPayment(navigation, afterSuccessParam);
+                if (!ok) {
+                  setIsReturnProcessing(false);
+                  return;
+                }
+                setIsNavigatingAfterSuccess(true);
+                requestAnimationFrame(() => {
+                  navigateAfterSuccessfulRentPayment(navigation, afterSuccessParam);
+                });
               },
             },
           ],
@@ -258,6 +333,7 @@ const TenantRentPaymentScreen = ({ navigation, route }: Props) => {
         );
       } catch (e: unknown) {
         handledVnpayReturnUrlsRef.current.delete(url);
+        await new Promise((resolve) => setTimeout(resolve, 250));
         const ax = e as { message?: string; response?: { data?: { message?: string } } };
         const apiMsg = ax?.response?.data?.message;
         const raw =
@@ -269,12 +345,41 @@ const TenantRentPaymentScreen = ({ navigation, route }: Props) => {
             ? raw
             : t("tenant_payment.return_validate_error");
         CustomAlert.alert(t("tenant_payment.return_validate_error_title"), msg, [
-          { text: t("common.close") },
+          {
+            text: t("common.close"),
+            onPress: () => setIsReturnProcessing(false),
+          },
         ], { type: "error" });
       }
     },
     [navigation, queryClient, route.params?.afterSuccess, t]
   );
+
+  if (isReturnProcessing) {
+    return (
+      <SafeAreaView style={[styles.container, { flex: 1 }]} edges={["top"]}>
+        <View style={styles.loadingWrap}>
+          <ActivityIndicator size="large" color={brandPrimary} />
+          <Text style={{ color: neutral.textSecondary, marginTop: 10 }}>
+            {t("common.loading")}
+          </Text>
+        </View>
+      </SafeAreaView>
+    );
+  }
+
+  if (isNavigatingAfterSuccess) {
+    return (
+      <SafeAreaView style={[styles.container, { flex: 1 }]} edges={["top"]}>
+        <View style={styles.loadingWrap}>
+          <ActivityIndicator size="large" color={brandPrimary} />
+          <Text style={{ color: neutral.textSecondary, marginTop: 10 }}>
+            {t("common.loading")}
+          </Text>
+        </View>
+      </SafeAreaView>
+    );
+  }
 
   if (checkoutUrl) {
     return (
@@ -348,12 +453,19 @@ const TenantRentPaymentScreen = ({ navigation, route }: Props) => {
         contentContainerStyle={{ paddingBottom: Math.max(24, insets.bottom + 8) }}
         keyboardShouldPersistTaps="handled"
       >
+          {route.params?.issueTicketId ? (
+            <View style={styles.issueTicketBanner}>
+              <Text style={styles.issueTicketBannerText}>
+                {t("tenant_payment.issue_ticket_context")}
+              </Text>
+            </View>
+          ) : null}
           <View style={styles.checklistCard}>
             <Text style={styles.checklistTitle}>{t("tenant_payment.checklist_title")}</Text>
             <Text style={styles.checklistSubTitle}>
               {t("tenant_invoice.multi_subtitle")}
             </Text>
-            {invoiceCandidates.length > 0 ? (
+            {effectiveInvoiceCandidates.length > 0 ? (
               <>
                 <TouchableOpacity onPress={toggleSelectAll} style={styles.selectAllRow}>
                   <View style={[styles.checkboxRound, allSelected && styles.checkboxRoundOn]}>
@@ -365,10 +477,13 @@ const TenantRentPaymentScreen = ({ navigation, route }: Props) => {
                   </Text>
                 </TouchableOpacity>
                 {pagedInvoiceIds.map((id) => {
-                  const rowIndex = invoiceCandidates.indexOf(id) + 1;
+                  const rowIndex = effectiveInvoiceCandidates.indexOf(id) + 1;
                   const selected = selectedInvoiceIds.includes(id);
                   const isOpen = expandedInvoiceIds.has(id);
                   const inv = invoiceMapById.get(id);
+                  const invoiceHouseId = normalizeHouseId(inv?.houseId);
+                  const isMainHouseInvoice =
+                    Boolean(resolvedMainHouseId) && invoiceHouseId === resolvedMainHouseId;
                   const displayTitle =
                     inv?.title && inv.title !== inv.id
                       ? inv.title
@@ -395,6 +510,21 @@ const TenantRentPaymentScreen = ({ navigation, route }: Props) => {
                                 ? `${t("tenant_invoice.due")}: ${formatTenantIssueDateTime(inv.dueDate, locale)}`
                                 : `${t("tenant_payment.invoice_id_label")}: ${id}`}
                             </Text>
+                            {inv?.houseId ? (
+                              <View style={styles.houseMetaRow}>
+                                <Text style={styles.invoiceMetaText}>
+                                  {t("tenant_invoice.field_house")}:{" "}
+                                  {houseNameById.get(invoiceHouseId) ?? invoiceHouseId}
+                                </Text>
+                                {isMainHouseInvoice ? (
+                                  <View style={styles.mainHouseBadge}>
+                                    <Text style={styles.mainHouseBadgeText}>
+                                      {t("tenant_payment.main_house_badge")}
+                                    </Text>
+                                  </View>
+                                ) : null}
+                              </View>
+                            ) : null}
                           </View>
                         </TouchableOpacity>
                         <TouchableOpacity
@@ -461,7 +591,9 @@ const TenantRentPaymentScreen = ({ navigation, route }: Props) => {
           <TouchableOpacity
             style={[
               styles.payButton,
-              (creatingLink || selectedInvoiceIds.length === 0) && styles.payButtonDisabled,
+              (creatingLink ||
+                selectedInvoiceIds.length === 0) &&
+                styles.payButtonDisabled,
             ]}
             onPress={onCreatePaymentLink}
             disabled={creatingLink || selectedInvoiceIds.length === 0}

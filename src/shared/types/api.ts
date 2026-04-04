@@ -554,15 +554,16 @@ export type IssueStatus =
   | "NEED_RESCHEDULE"
   | "SCHEDULED"
   | "IN_PROGRESS"
-  | "WAITING_MANAGER_APPROVAL"
-  | "WAITING_TENANT_APPROVAL"
+  | "WAITING_MANAGER_CONFIRM"
+  | "WAITING_MANAGER_APPROVAL_QUOTE"
+  | "WAITING_TENANT_APPROVAL_QUOTE"
   | "WAITING_PAYMENT"
   | "DONE"
   | "CLOSED"
   | "CANCELLED"
   | string;
 
-/** Trạng thái báo giá từ BE (QuoteStatus) để chuẩn bị luồng quote + payment. */
+/** Trạng thái báo giá từ BE (QuoteStatus). */
 export type QuoteStatus =
   | "DRAFT"
   | "WAITING_MANAGER_APPROVAL"

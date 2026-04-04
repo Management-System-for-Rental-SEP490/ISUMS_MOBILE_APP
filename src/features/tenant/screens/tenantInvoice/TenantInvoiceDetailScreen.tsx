@@ -12,6 +12,8 @@ import { formatTenantIssueDateTime } from "../../../../shared/utils";
 import Icons from "../../../../shared/theme/icon";
 import { createVnpayPaymentLink } from "../../../../shared/services/tenantPaymentApi";
 import { iotOfflineLabelColor, neutral } from "../../../../shared/theme/color";
+import { useAuthStore } from "../../../../store/useAuthStore";
+import { useTenantInvoices } from "../../../../shared/hooks";
 import {
   StackScreenTitleBadge,
   StackScreenTitleHeaderStrip,
@@ -31,6 +33,8 @@ export default function TenantInvoiceDetailScreen({ navigation, route }: Props) 
   const { t, i18n } = useTranslation();
   const insets = useSafeAreaInsets();
   const { invoice } = route.params;
+  const { houseId: mainHouseIdFromStore } = useAuthStore();
+  const { data: rawInvoiceData = [] } = useTenantInvoices();
   const [creatingLink, setCreatingLink] = useState(false);
 
   const locale = useMemo(() => {
@@ -58,6 +62,21 @@ export default function TenantInvoiceDetailScreen({ navigation, route }: Props) 
   };
 
   const payable = isTenantInvoicePayable(invoice.status);
+  const normalizedMainHouseId = useMemo(
+    () => String(mainHouseIdFromStore ?? "").trim(),
+    [mainHouseIdFromStore]
+  );
+  const mandatoryMainInvoiceIds = useMemo(() => {
+    if (!normalizedMainHouseId) return [] as string[];
+    return rawInvoiceData
+      .filter(
+        (inv) =>
+          isTenantInvoicePayable(inv.status) &&
+          String(inv.houseId ?? "").trim() === normalizedMainHouseId
+      )
+      .map((inv) => String(inv.id ?? "").trim())
+      .filter((id) => id.length > 0);
+  }, [rawInvoiceData, normalizedMainHouseId]);
 
   const statusLabel = () => {
     const key = `tenant_invoice.status_${String(invoice.status || "").toUpperCase()}`;
@@ -94,14 +113,18 @@ export default function TenantInvoiceDetailScreen({ navigation, route }: Props) 
 
   const openPay = useCallback(async () => {
     if (creatingLink) return;
+    const selectedIds = Array.from(
+      new Set([invoice.id, ...mandatoryMainInvoiceIds].filter((id) => String(id ?? "").trim().length > 0))
+    );
+    if (selectedIds.length === 0) return;
     setCreatingLink(true);
     try {
-      const checkoutUrl = await createVnpayPaymentLink([invoice.id], {
+      const checkoutUrl = await createVnpayPaymentLink(selectedIds, {
         appLanguage: i18n.language,
       });
       navigation.navigate("TenantRentPayment", {
-        invoiceId: invoice.id,
-        invoiceIds: [invoice.id],
+        invoiceId: selectedIds[0] ?? invoice.id,
+        invoiceIds: selectedIds,
         checkoutUrl,
         afterSuccess: "invoiceList",
       });
@@ -116,7 +139,7 @@ export default function TenantInvoiceDetailScreen({ navigation, route }: Props) 
     } finally {
       setCreatingLink(false);
     }
-  }, [creatingLink, invoice.id, i18n.language, navigation, t]);
+  }, [creatingLink, invoice.id, mandatoryMainInvoiceIds, i18n.language, navigation, t]);
 
   const statusUpper = String(invoice.status || "").toUpperCase();
   const isPaidVisual = !payable;

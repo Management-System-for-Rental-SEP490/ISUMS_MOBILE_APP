@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   View,
   Text,
@@ -48,13 +48,41 @@ type SectionBlock = {
 };
 
 function norm(s: string) {
-  return s.trim().toLowerCase();
+  return s
+    .trim()
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/đ/g, "d");
 }
 
 function itemMatches(item: DropdownBoxItem, q: string) {
   if (!q) return true;
   const n = norm(q);
-  return item.label.toLowerCase().includes(n) || item.id.toLowerCase().includes(n);
+  return norm(item.label).includes(n) || norm(item.id).includes(n);
+}
+
+function itemScore(item: DropdownBoxItem, q: string): number {
+  const query = norm(q);
+  if (!query) return 0;
+  const label = norm(item.label);
+  const id = norm(item.id);
+  if (label === query) return 120;
+  if (label.startsWith(query)) return 100;
+  if (label.includes(query)) return 80;
+  if (id === query) return 70;
+  if (id.startsWith(query)) return 60;
+  if (id.includes(query)) return 40;
+  return 0;
+}
+
+function sortFilteredItems(items: DropdownBoxItem[], q: string): DropdownBoxItem[] {
+  if (!q) return items;
+  return [...items].sort((a, b) => {
+    const scoreDiff = itemScore(b, q) - itemScore(a, q);
+    if (scoreDiff !== 0) return scoreDiff;
+    return a.label.localeCompare(b.label, undefined, { sensitivity: "base" });
+  });
 }
 
 function buildSectionBlocks(
@@ -68,7 +96,10 @@ function buildSectionBlocks(
     const allLabel = sec.allLabel ?? defaultAllLabel;
     const showAll = sec.showAllOption !== false;
     const allVisible = showAll && (!q || norm(allLabel).includes(q));
-    const filteredItems = sec.items.filter((it) => itemMatches(it, q));
+    const filteredItems = sortFilteredItems(
+      sec.items.filter((it) => itemMatches(it, q)),
+      q
+    );
     if (!allVisible && filteredItems.length === 0) continue;
     blocks.push({ sec, allVisible, allLabel, filteredItems });
   }
@@ -91,13 +122,21 @@ export function DropdownBox({
   const { height: windowH } = useWindowDimensions();
   const [expanded, setExpanded] = useState(false);
   const [search, setSearch] = useState("");
+  /** Tránh gọi callback cuộn cha lặp nhiều lần khi search input focus lại. */
+  const parentScrollForSearchDoneRef = useRef(false);
 
   useEffect(() => {
     if (expanded) setSearch("");
   }, [expanded]);
 
+  useEffect(() => {
+    if (!expanded) parentScrollForSearchDoneRef.current = false;
+  }, [expanded]);
+
   const notifyParentScrollForSearch = useCallback(() => {
     if (!onSearchInputFocus) return;
+    if (parentScrollForSearchDoneRef.current) return;
+    parentScrollForSearchDoneRef.current = true;
     requestAnimationFrame(() => {
       requestAnimationFrame(() => onSearchInputFocus());
     });
@@ -109,7 +148,7 @@ export function DropdownBox({
     [sections, search, defaultAllLabel]
   );
 
-  const chipsMaxHeight = Math.min(360, Math.round(windowH * 0.45));
+  const resultsViewportHeight = Math.min(360, Math.round(windowH * 0.45));
 
   const collapse = useCallback(() => setExpanded(false), []);
 
@@ -142,7 +181,7 @@ export function DropdownBox({
         </Pressable>
       ) : (
         <KeyboardAvoidingView
-          behavior={Platform.OS === "ios" ? "padding" : undefined}
+          behavior={Platform.OS === "ios" ? "padding" : "height"}
           keyboardVerticalOffset={keyboardVerticalOffset}
           style={styles.avoidingWrap}
         >
@@ -175,8 +214,10 @@ export function DropdownBox({
             </View>
 
             <ScrollView
-              style={[styles.chipsScroll, { maxHeight: chipsMaxHeight }]}
+              style={[styles.chipsScroll, { height: resultsViewportHeight }]}
+              contentContainerStyle={sectionBlocks.length === 0 ? styles.chipsScrollContentEmpty : undefined}
               keyboardShouldPersistTaps="handled"
+              keyboardDismissMode={Platform.OS === "ios" ? "interactive" : "on-drag"}
               nestedScrollEnabled
               showsVerticalScrollIndicator
             >
@@ -310,6 +351,10 @@ const styles = StyleSheet.create({
     minHeight: 22,
   },
   chipsScroll: {},
+  chipsScrollContentEmpty: {
+    flexGrow: 1,
+    justifyContent: "center",
+  },
   sectionTitle: {
     ...appTypography.captionStrong,
     color: neutral.textSecondary,

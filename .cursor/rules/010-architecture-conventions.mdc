@@ -59,20 +59,28 @@ alwaysApply: true
 
 ## 9. DropdownBox
 
-- Lọc/chọn danh sách → **`DropdownBox`** + `dropdown_box.*`. Cuộn parent khi focus search; Android `softwareKeyboardLayoutMode: "resize"`.
+- Lọc/chọn danh sách → **`DropdownBox`** + `dropdown_box.*`.
+- Search trong dropdown phải mượt: chuẩn hoá chuỗi (`trim`, `lowercase`, bỏ dấu tiếng Việt), ưu tiên đề xuất kết quả khớp nhất (exact/prefix trước, contains sau).
+- Khi mở dropdown + focus search: phải cuộn parent để ô search và danh sách không bị bàn phím che (`onSearchInputFocus`, `keyboardVerticalOffset`, `softwareKeyboardLayoutMode: "resize"`).
+- Trong lúc gõ/filter: giữ vị trí ô search cố định, không để panel “nhảy” theo số lượng kết quả (vùng kết quả có chiều cao ổn định).
 
 ## 10. Phân trang
 
 - **`PaginationBar`**, `CLIENT_LIST_PAGE_SIZE`, `slicePage`, `getTotalPages` — đồng bộ Staff app.
 
-## 11. React Native
+## 11. Luồng thanh toán tenant
+
+- Khi tenant có nhiều nhà, **nhà chính (`houseId` trong auth store) phải được thanh toán trước**: không cho bỏ chọn hóa đơn chưa thanh toán của nhà chính trong flow `TenantRentPayment`.
+- UI thanh toán phải hiển thị rõ ràng lý do chặn và đánh dấu hóa đơn nhà chính (badge/notice) để user hiểu vì sao chưa thể thanh toán nhà khác trước.
+
+## 12. React Native
 
 - Tuân thủ `.agents/skills/vercel-react-native-skills`.
 
-## 12. File `.cursor/rules`
+## 13. File `.cursor/rules`
 
 - Không tự thêm `.mdc` chủ đề nhỏ — trừ khi user đồng ý (`000` mục 1).
 
-## 13. Phân biệt role
+## 14. Phân biệt role
 
 - Tenant vs Staff: đúng folder feature / endpoint; không lộn luồng (xem thêm `000` mục 6–8).
