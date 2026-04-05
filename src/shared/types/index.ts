@@ -1,4 +1,4 @@
-import { BottomTabScreenProps } from "@react-navigation/bottom-tabs";
+import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import type {
   AssetCategoryFromApi,
   AssetItemFromApi,
@@ -15,18 +15,6 @@ export type AuthStackParamList = {
   AuthLogin: undefined;
 };
 
-export type MainTabParamList = {
-  Dashboard: undefined;
-  ElectricUsage: undefined;
-  WaterUsage: undefined;
-  Billing: undefined;
-  tenants: undefined;
-  Profile: undefined;
-  Calendar: undefined;
-  Notification: undefined;
-  /** Tab danh sách ticket dành cho Staff (thay vì Billing) */
-  Ticket: undefined;
-};
 export type HeaderVariant = "default" | "electric" | "water"; // định nghĩa các loại variant của header
 export type RootStackParamList = AuthStackParamList & {
   Main: undefined;
@@ -95,6 +83,12 @@ export type RootStackParamList = AuthStackParamList & {
      */
     afterSuccess?: "invoiceList" | "home";
   };
+  /** Trang tiêu thụ (gộp điện + nước) với switch toggle. */
+  ConsumptionScreen: { initialTab?: "electric" | "water" } | undefined;
+  /** Thông báo (chuyển từ tab sang stack screen). */
+  NotificationScreen: undefined;
+  /** Hồ sơ cá nhân (chuyển từ tab sang stack screen). */
+  ProfileScreen: undefined;
 };
 
 export type IconProps = {
@@ -231,7 +225,7 @@ export type {
 export type { TelemetryMessage, UsageData } from "./iot";
 
 export type ScanMode = "qr" | "nfc";
-export type HomeScreenProps = BottomTabScreenProps<MainTabParamList, "Dashboard">; // HomeScreenProps là một type alias cho BottomTabScreenProps<MainTabParamList, "Dashboard">.
+export type HomeScreenProps = NativeStackScreenProps<RootStackParamList, "Main">;
 
 // Alert Types
 export type AlertType = 'success' | 'error' | 'warning' | 'info';

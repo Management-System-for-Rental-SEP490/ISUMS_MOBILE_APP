@@ -28,9 +28,11 @@ import {
 /** ID khu vực: "all" = tổng cả nhà (dữ liệu thật từ AWS), còn lại = id từ functionalAreas (chưa có dữ liệu). */
 export type AreaId = string;
 
+export type ElectricUsageScreenProps = { showHeader?: boolean };
+
 const MAX_BAR_HEIGHT = 180;
 
-const ElectricUsageScreen = () => {
+const ElectricUsageScreen = ({ showHeader = true }: ElectricUsageScreenProps) => {
   const navigation = useNavigation<NavigationProp<RootStackParamList>>();
   const { t, i18n } = useTranslation();
   const { width: screenWidth } = useWindowDimensions();
@@ -131,7 +133,7 @@ const ElectricUsageScreen = () => {
 
     return (
       <View style={electricUsageStyles.container}>
-        <Header variant="electric" />
+        {showHeader ? <Header variant="electric" /> : null}
         <View style={gateStyles.gateWrap}>
           <View style={gateStyles.gateBox}>
             <Text style={gateStyles.gateTitle}>{title}</Text>
@@ -198,7 +200,7 @@ const ElectricUsageScreen = () => {
 
   return (
     <View style={electricUsageStyles.container}>
-      <Header variant="electric" />
+      {showHeader ? <Header variant="electric" /> : null}
       <ScrollView
         style={electricUsageStyles.content}
         contentContainerStyle={electricUsageStyles.contentContainer}

@@ -28,9 +28,11 @@ import {
 /** ID khu vực: "all" = tổng cả nhà (dữ liệu thật từ AWS), còn lại = id từ functionalAreas (chưa có dữ liệu). */
 export type AreaId = string;
 
+export type WaterUsageScreenProps = { showHeader?: boolean };
+
 const MAX_BAR_HEIGHT = 180;
 
-const WaterUsageScreen = () => {
+const WaterUsageScreen = ({ showHeader = true }: WaterUsageScreenProps) => {
   const navigation = useNavigation<NavigationProp<RootStackParamList>>();
   const { t, i18n } = useTranslation();
   const { width: screenWidth } = useWindowDimensions();
@@ -114,7 +116,7 @@ const WaterUsageScreen = () => {
 
     return (
       <View style={waterUsageStyles.container}>
-        <Header variant="water" />
+        {showHeader ? <Header variant="water" /> : null}
         <View style={gateStyles.gateWrap}>
           <View style={gateStyles.gateBox}>
             <Text style={gateStyles.gateTitle}>{title}</Text>
@@ -179,7 +181,7 @@ const WaterUsageScreen = () => {
 
   return (
     <View style={waterUsageStyles.container}>
-      <Header variant="water" />
+      {showHeader ? <Header variant="water" /> : null}
       <ScrollView
         style={waterUsageStyles.content}
         contentContainerStyle={waterUsageStyles.contentContainer}

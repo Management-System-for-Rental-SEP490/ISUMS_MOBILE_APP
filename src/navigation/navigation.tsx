@@ -16,7 +16,7 @@ import OnBoarding from "../features/screens/onBoarding/onBoarding";
 import { useAuthStore } from "../store/useAuthStore";
 import { logoutKeycloak } from "../shared/services/keycloakAuth";
 import { RootStackParamList } from "../shared/types";
-import { TenantTabs } from "../shared/components/footerNavigator";
+import HomeScreen from "../features/tenant/screens/tenantHome/HomeScreen";
 import CameraScreen from "../features/modal/camera/CameraScreen";
 import TenantItemDescriptionScreen from "../features/tenant/screens/tenantItem/TenantItemDescription";
 import TicketScreen from "../features/tenant/screens/tenantTicket/ticket";
@@ -31,6 +31,9 @@ import TenantInvoiceDetailScreen from "../features/tenant/screens/tenantInvoice/
 import { brandPrimary } from "../shared/theme/color";
 import { ensureTenantMainHouseSynced } from "../shared/services/userApi";
 import KeycloakChangePasswordWebViewOverlay from "../shared/components/KeycloakChangePasswordWebViewOverlay";
+import NotificationScreen from "../features/tenant/screens/tenantNotification/NotificationScreen";
+import UserProfileScreen from "../features/screens/user/UserProfileScreen";
+import ConsumptionScreen from "../features/tenant/screens/tenantConsumption/ConsumptionScreen";
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
 
@@ -160,7 +163,7 @@ const Navigation = () => {
               <Stack.Screen name="OnBoarding" component={OnBoarding} />
             ) : (
               <>
-                <Stack.Screen name="Main" component={TenantTabs} />
+                <Stack.Screen name="Main" component={HomeScreen} />
                 <Stack.Screen
                   name="Camera"
                   component={CameraScreen}
@@ -187,6 +190,9 @@ const Navigation = () => {
                   component={TenantRentPaymentScreen}
                   options={{ presentation: "modal" }}
                 />
+                <Stack.Screen name="ConsumptionScreen" component={ConsumptionScreen} />
+                <Stack.Screen name="NotificationScreen" component={NotificationScreen} />
+                <Stack.Screen name="ProfileScreen" component={UserProfileScreen} />
               </>
             )
           ) : (

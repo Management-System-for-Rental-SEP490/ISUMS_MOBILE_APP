@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import {
   View,
   Text,
@@ -7,8 +7,10 @@ import {
   ScrollView,
   StyleSheet,
   useWindowDimensions,
-  KeyboardAvoidingView,
   Platform,
+  Keyboard,
+  Animated,
+  Easing,
   type ViewStyle,
   type StyleProp,
 } from "react-native";
@@ -16,6 +18,15 @@ import { useTranslation } from "react-i18next";
 import Icons from "../theme/icon";
 import { brandBlueMutedBorder, brandPrimary, brandTintBg, neutral } from "../theme/color";
 import { appTypography } from "../utils";
+
+/** Độ trượt khi mở/đóng panel — nhỏ = mở “Khu vực nhà” nhẹ nhàng, ít giật. */
+const PANEL_SLIDE_PX = 6;
+const PANEL_OPEN_MS = 300;
+/** Đóng: height hơi dài hơn opacity để nội dung “biến” trước khi khung co — tránh nhịp đẩy/lag. */
+const PANEL_CLOSE_MS = 240;
+const PANEL_CLOSE_OPACITY_MS = 160;
+
+const MIN_TRIGGER_HEIGHT = 48;
 
 export type DropdownBoxItem = {
   id: string;
@@ -55,11 +66,6 @@ export type DropdownBoxProps = {
    */
   onSearchChange?: (query: string) => void;
   /**
-   * Bù chiều cao header/status bar cho KeyboardAvoidingView (iOS).
-   * Gợi ý: `insets.top + ~52` khi màn có header stack.
-   */
-  keyboardVerticalOffset?: number;
-  /**
    * Gọi khi ô tìm trong panel được focus (sau khi mở panel).
    * Dùng để `scrollToOffset` / `scrollTo` trên FlatList/ScrollView cha — tránh bàn phím che.
    */
@@ -82,6 +88,8 @@ export type DropdownBoxProps = {
    * Giữ `0` khi không cần mở từ bên ngoài.
    */
   expandSignal?: number;
+  /** Báo cho màn cha khi đóng/mở panel (vd. xoá padding bàn phím dư). */
+  onExpandedChange?: (expanded: boolean) => void;
 };
 
 type SectionBlock = {
@@ -167,7 +175,6 @@ export function DropdownBox({
   style,
   onAfterSelect,
   onSearchChange,
-  keyboardVerticalOffset = 0,
   onSearchInputFocus,
   itemLayout = "chips",
   triggerAccent = false,
@@ -175,26 +182,222 @@ export function DropdownBox({
   searchAutoFocus = true,
   defaultExpanded = false,
   expandSignal = 0,
+  onExpandedChange,
 }: DropdownBoxProps) {
   const { t } = useTranslation();
   const { height: windowH } = useWindowDimensions();
   const [expanded, setExpanded] = useState(defaultExpanded);
   const [search, setSearch] = useState("");
   const prevExpandSignalRef = useRef(0);
+  const opacityAnim = useRef(new Animated.Value(0)).current;
+  const translateAnim = useRef(new Animated.Value(-PANEL_SLIDE_PX)).current;
+  const heightAnim = useRef(
+    new Animated.Value(defaultExpanded ? MIN_TRIGGER_HEIGHT : 0)
+  ).current;
+  /** Lần mở đầu nếu defaultExpanded — hiển thị ngay, không animate. */
+  const skipEntranceSpringRef = useRef(defaultExpanded);
+  /** Chiều cao row “Khu vực nhà” / trigger — dùng làm điểm đầu khi mở & điểm cuối khi đóng. */
+  const triggerHeightRef = useRef(MIN_TRIGGER_HEIGHT);
+  const openEntranceStartedRef = useRef(false);
+  const lastPanelHeightRef = useRef(0);
+  /** Chiều cao hàng tìm kiếm — onLayout (không dùng measure() vì bị clip bởi heightAnim). */
+  const searchRowHeightRef = useRef(52);
+  /** Chiều cao nội dung cuộn dọc (chip + section) từ ScrollView.onContentSizeChange. */
+  const scrollBodyContentHRef = useRef(0);
+  const wasExpandedRef = useRef(false);
+  /** Tránh nhiều `Animated.timing` co giãn panel chồng chéo khi `onContentSizeChange` bắn liên tục. */
+  const panelGrowAnimLockRef = useRef(false);
+  const onExpandedChangeRef = useRef(onExpandedChange);
+  onExpandedChangeRef.current = onExpandedChange;
+  const onSearchChangeRef = useRef(onSearchChange);
+  onSearchChangeRef.current = onSearchChange;
 
+  /** rAF: tránh parent gọi scroll/setState trong cùng commit với layout panel → hạn chế vòng cập nhật. */
   useEffect(() => {
-    if (expanded) {
-      setSearch("");
-      onSearchChange?.("");
-    }
+    let cancelled = false;
+    const id = requestAnimationFrame(() => {
+      if (!cancelled) onExpandedChangeRef.current?.(expanded);
+    });
+    return () => {
+      cancelled = true;
+      cancelAnimationFrame(id);
+    };
   }, [expanded]);
 
   useEffect(() => {
-    if (expandSignal > 0 && expandSignal !== prevExpandSignalRef.current) {
-      prevExpandSignalRef.current = expandSignal;
+    if (!expanded) return;
+    setSearch("");
+    onSearchChangeRef.current?.("");
+  }, [expanded]);
+
+  useEffect(() => {
+    if (expandSignal <= 0) return;
+    if (expandSignal === prevExpandSignalRef.current) return;
+    prevExpandSignalRef.current = expandSignal;
+    if (!expanded) {
+      const th = Math.max(triggerHeightRef.current, MIN_TRIGGER_HEIGHT);
+      heightAnim.setValue(th);
+      openEntranceStartedRef.current = false;
+      scrollBodyContentHRef.current = 0;
       setExpanded(true);
     }
-  }, [expandSignal]);
+  }, [expandSignal, expanded]);
+
+  useEffect(() => {
+    if (!expanded) {
+      openEntranceStartedRef.current = false;
+    }
+  }, [expanded]);
+
+  const beginOpenEntrance = useCallback(() => {
+    const th = Math.max(triggerHeightRef.current, MIN_TRIGGER_HEIGHT);
+    heightAnim.setValue(th);
+    openEntranceStartedRef.current = false;
+    scrollBodyContentHRef.current = 0;
+    setExpanded(true);
+  }, [heightAnim]);
+
+  const runOpenEntranceAnimation = useCallback(
+    (fullPanelH: number) => {
+      if (openEntranceStartedRef.current) return;
+      if (fullPanelH <= 0) return;
+      panelGrowAnimLockRef.current = false;
+      const th = Math.max(triggerHeightRef.current, MIN_TRIGGER_HEIGHT);
+      openEntranceStartedRef.current = true;
+      lastPanelHeightRef.current = fullPanelH;
+
+      if (skipEntranceSpringRef.current) {
+        skipEntranceSpringRef.current = false;
+        heightAnim.setValue(fullPanelH);
+        opacityAnim.setValue(1);
+        translateAnim.setValue(0);
+        return;
+      }
+
+      heightAnim.setValue(th);
+      opacityAnim.setValue(0);
+      translateAnim.setValue(-PANEL_SLIDE_PX);
+
+      const easeOut = Easing.out(Easing.cubic);
+      Animated.parallel([
+        Animated.timing(heightAnim, {
+          toValue: fullPanelH,
+          duration: PANEL_OPEN_MS,
+          easing: easeOut,
+          useNativeDriver: false,
+        }),
+        Animated.timing(opacityAnim, {
+          toValue: 1,
+          duration: PANEL_OPEN_MS,
+          easing: easeOut,
+          useNativeDriver: true,
+        }),
+        Animated.timing(translateAnim, {
+          toValue: 0,
+          duration: PANEL_OPEN_MS,
+          easing: easeOut,
+          useNativeDriver: true,
+        }),
+      ]).start();
+    },
+    [heightAnim, opacityAnim, translateAnim]
+  );
+
+  /** Giới hạn cuộn dọc; đồng bộ với style ScrollView. */
+  const resultsMaxHeight = Math.min(320, Math.round(windowH * 0.42));
+
+  const requestPanelOpenFromScrollMetrics = useCallback(() => {
+    if (!expanded) return;
+    if (openEntranceStartedRef.current) return;
+    const ch = scrollBodyContentHRef.current;
+    const sr = Math.max(searchRowHeightRef.current, 44);
+    if (ch <= 0) return;
+    const bodyH = Math.min(resultsMaxHeight, ch);
+    /** Viền panel + sai số layout; onContentSizeChange là nội dung, thêm phần khung. */
+    const panelFramePad = 8;
+    const h = sr + bodyH + panelFramePad;
+    runOpenEntranceAnimation(h);
+  }, [expanded, resultsMaxHeight, runOpenEntranceAnimation]);
+
+  /** Khi nội dung báo cao hơn sau lúc mở (ScrollView bị clip lúc đầu) — kéo panel thêm. */
+  const growPanelHeightIfNeeded = useCallback(
+    (contentH: number) => {
+      if (!expanded) return;
+      const ch = Math.ceil(contentH);
+      if (ch <= 0) return;
+      scrollBodyContentHRef.current = Math.max(scrollBodyContentHRef.current, ch);
+      const sr = Math.max(searchRowHeightRef.current, 44);
+      const bodyH = Math.min(resultsMaxHeight, scrollBodyContentHRef.current);
+      const panelFramePad = 8;
+      const h = sr + bodyH + panelFramePad;
+      if (!openEntranceStartedRef.current) {
+        requestPanelOpenFromScrollMetrics();
+        return;
+      }
+      if (h > lastPanelHeightRef.current + 6) {
+        if (panelGrowAnimLockRef.current) return;
+        panelGrowAnimLockRef.current = true;
+        Animated.timing(heightAnim, {
+          toValue: h,
+          duration: 180,
+          easing: Easing.out(Easing.cubic),
+          useNativeDriver: false,
+        }).start(() => {
+          panelGrowAnimLockRef.current = false;
+        });
+        lastPanelHeightRef.current = h;
+      }
+    },
+    [expanded, heightAnim, requestPanelOpenFromScrollMetrics, resultsMaxHeight]
+  );
+
+  /** Mỗi lần chuyển từ đóng → mở: reset metric nội dung, tránh dùng chiều cao lần mở trước. */
+  useLayoutEffect(() => {
+    if (!expanded) {
+      wasExpandedRef.current = false;
+      return;
+    }
+    if (!wasExpandedRef.current) {
+      wasExpandedRef.current = true;
+      const th = Math.max(triggerHeightRef.current, MIN_TRIGGER_HEIGHT);
+      heightAnim.setValue(th);
+      openEntranceStartedRef.current = false;
+      scrollBodyContentHRef.current = 0;
+    }
+  }, [expanded]);
+
+  const fadeOutAndClose = useCallback(() => {
+    panelGrowAnimLockRef.current = false;
+    const th = Math.max(triggerHeightRef.current, MIN_TRIGGER_HEIGHT);
+    heightAnim.stopAnimation();
+    opacityAnim.stopAnimation();
+    translateAnim.stopAnimation();
+    /** Không trượt âm khi đóng — tránh hai chuyển động “đẩy lên” (translate + co height). */
+    translateAnim.setValue(0);
+
+    const easeHeight = Easing.bezier(0.22, 1, 0.36, 1);
+    const easeOpacity = Easing.out(Easing.quad);
+
+    Animated.parallel([
+      Animated.timing(heightAnim, {
+        toValue: th,
+        duration: PANEL_CLOSE_MS,
+        easing: easeHeight,
+        useNativeDriver: false,
+      }),
+      Animated.timing(opacityAnim, {
+        toValue: 0,
+        duration: PANEL_CLOSE_OPACITY_MS,
+        easing: easeOpacity,
+        useNativeDriver: true,
+      }),
+    ]).start(({ finished }) => {
+      if (finished) {
+        /** Một frame trước khi đổi trigger — tránh trùng layout với giá trị height vừa dừng. */
+        requestAnimationFrame(() => setExpanded(false));
+      }
+    });
+  }, [heightAnim, opacityAnim, translateAnim]);
 
   const notifyParentScrollForSearch = useCallback(() => {
     if (!onSearchInputFocus) return;
@@ -209,17 +412,19 @@ export function DropdownBox({
     [sections, search, defaultAllLabel]
   );
 
-  const resultsViewportHeight = Math.min(360, Math.round(windowH * 0.45));
-
-  const collapse = useCallback(() => setExpanded(false), []);
+  const collapse = useCallback(() => {
+    Keyboard.dismiss();
+    fadeOutAndClose();
+  }, [fadeOutAndClose]);
 
   const handleSelect = useCallback(
     (sectionId: string, itemId: string | null) => {
+      Keyboard.dismiss();
       onSelect(sectionId, itemId);
-      setExpanded(false);
       onAfterSelect?.(sectionId, itemId);
+      fadeOutAndClose();
     },
-    [onSelect, onAfterSelect]
+    [onSelect, onAfterSelect, fadeOutAndClose]
   );
 
   if (sections.length === 0) {
@@ -230,7 +435,11 @@ export function DropdownBox({
     <View style={style}>
       {!expanded ? (
         <Pressable
-          onPress={() => setExpanded(true)}
+          onLayout={(ev) => {
+            const h = Math.ceil(ev.nativeEvent.layout.height);
+            if (h > 0) triggerHeightRef.current = h;
+          }}
+          onPress={beginOpenEntrance}
           style={[styles.trigger, triggerAccent && styles.triggerAccent]}
           accessibilityRole="button"
           accessibilityLabel={`${t("dropdown_box.open_a11y")}: ${summary}`}
@@ -241,13 +450,25 @@ export function DropdownBox({
           <Icons.chevronDown size={22} color={neutral.textSecondary} />
         </Pressable>
       ) : (
-        <KeyboardAvoidingView
-          behavior={Platform.OS === "ios" ? "padding" : "height"}
-          keyboardVerticalOffset={keyboardVerticalOffset}
-          style={styles.avoidingWrap}
+        <Animated.View
+          collapsable={false}
+          style={[styles.avoidingWrap, { height: heightAnim, overflow: "hidden" }]}
         >
-          <View style={[styles.panel, triggerAccent && styles.panelAccent]}>
-            <View style={styles.searchRow}>
+          <Animated.View
+            style={{
+              opacity: opacityAnim,
+              transform: [{ translateY: translateAnim }],
+            }}
+          >
+            <View style={[styles.panel, triggerAccent && styles.panelAccent]}>
+            <View
+              style={styles.searchRow}
+              onLayout={(ev) => {
+                const h = Math.ceil(ev.nativeEvent.layout.height);
+                if (h > 0) searchRowHeightRef.current = h;
+                requestPanelOpenFromScrollMetrics();
+              }}
+            >
               <Icons.search size={20} color={neutral.iconMuted} />
               <TextInput
                 value={search}
@@ -279,12 +500,17 @@ export function DropdownBox({
             </View>
 
             <ScrollView
-              style={[styles.chipsScroll, { height: resultsViewportHeight }]}
-              contentContainerStyle={sectionBlocks.length === 0 ? styles.listScrollContentEmpty : undefined}
+              style={[styles.chipsScroll, { maxHeight: resultsMaxHeight }]}
+              contentContainerStyle={
+                sectionBlocks.length === 0 ? styles.listScrollContentEmpty : styles.chipsListContent
+              }
               keyboardShouldPersistTaps="handled"
               keyboardDismissMode={Platform.OS === "ios" ? "interactive" : "on-drag"}
               nestedScrollEnabled
               showsVerticalScrollIndicator
+              onContentSizeChange={(_w, ch) => {
+                growPanelHeightIfNeeded(ch);
+              }}
             >
               {sectionBlocks.length === 0 ? (
                 <View style={styles.emptyWrap}>
@@ -418,8 +644,9 @@ export function DropdownBox({
                 ))
               )}
             </ScrollView>
-          </View>
-        </KeyboardAvoidingView>
+            </View>
+          </Animated.View>
+        </Animated.View>
       )}
     </View>
   );
@@ -488,11 +715,19 @@ const styles = StyleSheet.create({
     color: neutral.text,
     minHeight: 22,
   },
-  chipsScroll: {},
-  /** Căn “Không có kết quả” giữa vùng list cố định chiều cao. */
+  chipsScroll: {
+    flexGrow: 0,
+  },
+  chipsListContent: {
+    flexGrow: 0,
+    paddingBottom: 8,
+  },
+  /** “Không có kết quả” — không flexGrow:1 để tránh ô trống cao cả viewport. */
   listScrollContentEmpty: {
-    flexGrow: 1,
+    flexGrow: 0,
     justifyContent: "center",
+    paddingVertical: 28,
+    paddingHorizontal: 12,
   },
   sectionTitle: {
     ...appTypography.captionStrong,

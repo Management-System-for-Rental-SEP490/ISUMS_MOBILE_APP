@@ -20,7 +20,10 @@ export default {
         "show_less": "折りたたむ",
         "images_limit_title": "写真の上限",
         "images_limit_max_message": "添付できる写真は最大{{max}}枚です。追加するには削除してください。",
-        "images_limit_truncated_message": "上限{{max}}枚のため、{{added}}枚のみ追加しました。"
+        "images_limit_truncated_message": "上限{{max}}枚のため、{{added}}枚のみ追加しました。",
+        "a11y_open_invoice_list": "請求一覧を開く",
+        "a11y_notifications": "通知を開く",
+        "a11y_app_logo": "ISUMSのロゴ"
     },
     "device_detail": {
         "title": "デバイス詳細",
@@ -472,11 +475,48 @@ export default {
         "role_tenant": "居住者",
         "role_manager": "管理者",
         "role_landlord": "大家",
-        "role_guest": "ゲスト"
+        "role_guest": "ゲスト",
+        "current_house": "現在の家"
     },
     "home": {
         "welcome_role": "あなたは{{role}}です",
+        "hello_user": "こんにちは、{{name}}",
+        "greeting_morning": "おはようございます、{{name}}",
+        "greeting_noon": "こんにちは、{{name}}",
+        "greeting_afternoon": "こんにちは、{{name}}",
+        "greeting_evening": "こんばんは、{{name}}",
+        "greeting_night": "こんばんは、{{name}}",
+        "area_subtitle": "住まいをスマートにコントロール",
+        "hero_devices_chip": "デバイス {{count}}台",
+        "hero_fallback_name": "ご利用者",
+        "utilities_title": "クイックアクション",
+        "utility_profile": "プロフィール",
+        "utility_electric": "電気",
+        "utility_water": "水",
+        "utility_invoice": "請求書",
+        "utility_ticket": "チケット",
+        "utility_qa": "質問",
+        "utility_scan": "検索",
+        "utility_house": "家",
+        "utility_notification": "通知",
+        "staying_at_house_label": "滞在中の物件",
+        "header_invoice_all_paid": "未払いの請求はありません。",
+        "header_invoice_payable_count": "お支払いが必要な請求が {{count}} 件あります。",
+        "header_invoice_payable_urgent":
+            "お支払いが必要な請求が {{count}} 件あります（期限間近または延滞があります）。",
         "loading_data": "データを読み込んでいます...",
+        "footer": {
+            "aria_label": "アプリの案内とサポートリンク",
+            "badge": "入居者版",
+            "build": "ビルド 2026.04.12",
+            "support_line":
+                "技術サポートが必要な場合は、ISUMS または建物管理窓口へご連絡ください。",
+            "link_privacy": "プライバシーポリシー",
+            "link_terms": "利用規約",
+            "link_support": "サポート",
+            "copyright": "© 2026 ISUMS – セキュア接続. All rights reserved.",
+            "link_sep": " · ",
+        },
         "switch_house": "家の切り替え",
         "select_house": "家を選択",
         "select_main_house": "メインの家を選択",
@@ -494,7 +534,7 @@ export default {
         },
         "device_list": {
             "title": "デバイス一覧 ({{count}})",
-            "by_area_title": "エリア別デバイス",
+            "by_area_title": "住居エリア",
             "areas_row_label": "エリアを選択",
             "area_all_devices": "すべてのエリア",
             "status": {
@@ -524,6 +564,9 @@ export default {
             "PENDING_HANDOVER": "契約上の引き渡し日がまだ到来していません。"
         },
         "house_detail": {
+            "set_main_house": "メインの家に設定",
+            "main_house_saved": "この物件をメインの家に設定しました。",
+            "main_house_current_label": "メインの家",
             "contracts_title": "契約書類",
             "contract_open_error_title": "このファイルを開けませんでした",
             "unpaid_invoice_banner": "この物件に未払いの請求があります。お支払いをお願いします。",
@@ -619,6 +662,9 @@ export default {
         "status_WAITING_PAYMENT": "支払待ち"
     },
     "consumption": {
+        "tab_electric": "電気",
+        "tab_water": "水",
+        "consumption_title": "消費",
         "area_all": "すべて",
         "floor_label": "{{floor}}階",
         "floor_all_areas": "{{floor}}階すべて",

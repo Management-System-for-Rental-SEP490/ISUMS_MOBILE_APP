@@ -8,16 +8,14 @@ import {
   RefreshControl,
   Modal,
   TouchableWithoutFeedback,
-  KeyboardAvoidingView,
   Platform,
   ScrollView,
+  Pressable,
+  useWindowDimensions,
+  Linking,
 } from "react-native";
 import { useAuthStore } from "../../../../store/useAuthStore";
-import Header from "../../../../shared/components/header";
-import {
-  DropdownBox,
-  type DropdownBoxSection,
-} from "../../../../shared/components/dropdownBox";
+import Header, { type HomeHeaderInvoiceStrip } from "../../../../shared/components/header";
 import { HomeScreenProps, RootStackParamList } from "../../../../shared/types";
 import { useTranslation } from "react-i18next";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -29,74 +27,47 @@ import {
   useTenantHouses,
   useUserProfile,
   useUpdateMainHouseMutation,
-  useAssetItems,
-  useAssetCategories,
   useTenantContext,
-  useFunctionalAreasByHouseId,
+  useTenantInvoices,
 } from "../../../../shared/hooks";
-import { FloorPlanView } from "../../houseStructure";
 import { useTenantIoTConnection, useTenantUsage } from "../../hooks/useTenantIoT";
-import { ExpandableLongText } from "../../../../shared/components/ExpandableLongText";
-import { DEFAULT_BE_SHORT_TEXT_MAX_CHARS } from "../../../../shared/utils";
+
 import {
-  brandBlueMutedBg,
-  brandBlueMutedBorder,
   brandPrimary,
   brandSecondary,
-  brandTintBg,
   neutral,
+  waterAccent,
 } from "../../../../shared/theme/color";
-import type {
-  AssetItemFromApi,
-  HouseFromApi,
-  AssetCategoryFromApi,
-  FunctionalAreaFromApi,
-} from "../../../../shared/types/api";
+import type { HouseFromApi } from "../../../../shared/types/api";
 import {
   formatDayMonthNumeric,
-  formatHouseStatusForDisplay,
   getTenantAccessBlock,
-  mergeFunctionalAreasForHouse,
-  parentScrollOffsetForDropdownField,
   translateTenantAccessReason,
 } from "../../../../shared/utils";
+import { getHomeGreetingI18nKey } from "../../../../shared/utils/homeTimeGreeting";
+import { isTenantInvoicePayable, isTenantInvoiceDueUrgent } from "../../../../shared/utils/tenantInvoice";
 import { CustomAlert } from "../../../../shared/components/alert";
+import Icons from "../../../../shared/theme/icon";
+import { tenantFooterLinks } from "../../../../shared/constants/tenantFooterLinks";
 
-/** Trạng thái nhà “đang gắn với tenant” (nhấn màu brand trên Home). */
-const isTenantHouseStatusHighlighted = (status?: string) => {
-  const u = status?.trim().toUpperCase();
-  return u === "AVAILABLE" || u === "RENTED";
-};
+const EMPTY_TENANT_HOUSES: HouseFromApi[] = [];
+
+/** Dưới ngưỡng này dùng 3 cột quick actions cho dễ đọc. */
+const UTILITY_GRID_BREAKPOINT = 390;
+/** marginHorizontal 16×2 + paddingHorizontal 16×2 của `utilitySection` */
+const UTILITY_SECTION_H_INSET = 64;
 
 const HomeScreen = ({ navigation }: HomeScreenProps) => {
   const queryClient = useQueryClient();
   const { houseId, setHouseId } = useAuthStore();
   const { t, i18n } = useTranslation();
+  const { width: windowWidth } = useWindowDimensions();
   const insets = useSafeAreaInsets();
-  const mainScrollRef = useRef<ScrollView>(null);
-  const deviceCategoryFilterYRef = useRef(0);
-  const prevSelectedAreaRef = useRef<string | null>(null);
-  /** Khi chọn khu vực: cuộn nhẹ xuống block dropdown để user thấy ngay danh mục/thiết bị. */
-  const scrollDropdownPreviewIntoView = useCallback(() => {
-    requestAnimationFrame(() => {
-      requestAnimationFrame(() => {
-        const target = parentScrollOffsetForDropdownField(
-          deviceCategoryFilterYRef.current,
-          180
-        );
-        mainScrollRef.current?.scrollTo({ y: target, animated: true });
-      });
-    });
-  }, []);
-  /** DropdownBox — cuộn để ô tìm nằm dưới header app. */
-  const scrollDeviceCategoryFilterIntoView = useCallback(() => {
-    requestAnimationFrame(() => {
-      requestAnimationFrame(() => {
-        const target = parentScrollOffsetForDropdownField(deviceCategoryFilterYRef.current);
-        mainScrollRef.current?.scrollTo({ y: target, animated: true });
-      });
-    });
-  }, []);
+  /** Home là màn `Main` trên root stack — dùng stack này; trước đây qua tab nên cần getParent. */
+  const rootNavigation = useMemo(
+    () => navigation.getParent<NavigationProp<RootStackParamList>>() ?? navigation,
+    [navigation]
+  );
   const [houseModalVisible, setHouseModalVisible] = useState(false);
   const autoSetMainHouseRef = useRef<string>("");
   const [isSubmittingMainHouse, setIsSubmittingMainHouse] = useState(false);
@@ -110,7 +81,10 @@ const HomeScreen = ({ navigation }: HomeScreenProps) => {
     isLoading: loadingHouses,
     refetch: refetchHouses,
   } = useTenantHouses();
-  const tenantHouses: HouseFromApi[] = housesData?.data ?? [];
+  const tenantHouses: HouseFromApi[] = useMemo(
+    () => housesData?.data ?? EMPTY_TENANT_HOUSES,
+    [housesData?.data]
+  );
   const { data: userProfile, isPending: profilePending } = useUserProfile();
   const profileMainHouseId = String(userProfile?.mainHouseId ?? "").trim();
   const hasPersistedMainHouse = useMemo(
@@ -161,8 +135,18 @@ const HomeScreen = ({ navigation }: HomeScreenProps) => {
     userProfile?.mainHouseId,
   ]);
 
-  const { house: myHouse, houseId: tenantHouseId, thingId } = useTenantContext();
+  const { house: myHouse, houseId: contextHouseId, thingId } = useTenantContext();
   const hasTenantHouse = Boolean(myHouse);
+
+  const iotConnected = useTenantIoTConnection(thingId);
+  const electricUsage = useTenantUsage({
+    houseId: contextHouseId,
+    metric: "electricity",
+  });
+  const waterUsage = useTenantUsage({
+    houseId: contextHouseId,
+    metric: "water",
+  });
 
   const accessBlock = useMemo(() => {
     if (loadingHouses || !myHouse) return null;
@@ -175,241 +159,58 @@ const HomeScreen = ({ navigation }: HomeScreenProps) => {
   );
 
   const openPaymentScreen = useCallback(() => {
-    const parentNav = navigation.getParent<NavigationProp<RootStackParamList>>();
     const selectedPendingInvoiceId = String(myHouse?.pendingInvoiceId ?? "").trim();
-    parentNav?.navigate("TenantRentPayment", {
+    rootNavigation.navigate("TenantRentPayment", {
       invoiceId: selectedPendingInvoiceId || undefined,
       invoiceIds: selectedPendingInvoiceId ? [selectedPendingInvoiceId] : undefined,
       afterSuccess: "home",
     });
-  }, [navigation, myHouse?.pendingInvoiceId]);
+  }, [rootNavigation, myHouse?.pendingInvoiceId]);
 
+  const effectiveHouseId = useMemo(
+    () => String(houseId ?? myHouse?.id ?? "").trim(),
+    [houseId, myHouse?.id]
+  );
+  const invoiceQueryEnabled = Boolean(hasTenantHouse && effectiveHouseId.length > 0);
   const {
-    data: itemsData,
-    isLoading: loadingItems,
-    refetch: refetchItems,
-  } = useAssetItems({
-    houseId: myHouse?.id,
-  });
+    data: invoiceListRaw,
+    isLoading: invoicesLoading,
+    refetch: refetchInvoices,
+  } = useTenantInvoices(invoiceQueryEnabled);
+  const invoiceList = invoiceListRaw ?? [];
 
-  const devices: AssetItemFromApi[] = useMemo(
-    () =>
-      (itemsData?.data ?? []).filter((item) =>
-        myHouse ? item.houseId === myHouse.id : false
-      ),
-    [itemsData?.data, myHouse]
-  );
+  const payableForMainHouse = useMemo(() => {
+    if (!effectiveHouseId) return [];
+    return invoiceList.filter(
+      (inv) =>
+        String(inv.houseId ?? "").trim() === effectiveHouseId &&
+        isTenantInvoicePayable(inv.status)
+    );
+  }, [invoiceList, effectiveHouseId]);
 
-  const { data: categoriesData, refetch: refetchCategories } = useAssetCategories();
-  const categories: AssetCategoryFromApi[] = categoriesData?.data ?? [];
+  const loading = loadingHouses;
 
-  const iotConnected = useTenantIoTConnection(thingId);
-  const electricUsage = useTenantUsage({
-    houseId: tenantHouseId,
-    metric: "electricity",
-  });
-  const waterUsage = useTenantUsage({
-    houseId: tenantHouseId,
-    metric: "water",
-  });
-
-  const loading = loadingHouses || loadingItems;
-
-  const [selectedCategoryId, setSelectedCategoryId] = useState<string | null>(null);
-  const [deviceFloor, setDeviceFloor] = useState("1");
-  const [selectedFunctionAreaId, setSelectedFunctionAreaId] = useState<string | null>(null);
   const [isRefreshing, setIsRefreshing] = useState(false);
-  const [deviceSearchQuery, setDeviceSearchQuery] = useState("");
-  const [dropdownExpandSignal, setDropdownExpandSignal] = useState(0);
-
-  const houseIdForAreas = String(myHouse?.id ?? "").trim();
-  const { data: functionalAreasRes } = useFunctionalAreasByHouseId(houseIdForAreas);
-
-  const effectiveFunctionalAreas = useMemo((): FunctionalAreaFromApi[] => {
-    return mergeFunctionalAreasForHouse(
-      myHouse ?? undefined,
-      functionalAreasRes?.data
-    );
-  }, [myHouse, functionalAreasRes?.data]);
-
-  const floorOptions = useMemo(() => {
-    const fk = (a: FunctionalAreaFromApi) => String(a.floorNo ?? "").trim() || "1";
-    const floors = new Set(effectiveFunctionalAreas.map(fk));
-    const list = Array.from(floors).sort(
-      (a, b) => parseInt(a, 10) - parseInt(b, 10)
-    );
-    return list;
-  }, [effectiveFunctionalAreas]);
-
-  useEffect(() => {
-    if (floorOptions.length && !floorOptions.includes(deviceFloor)) {
-      setDeviceFloor(floorOptions[0]!);
-    }
-  }, [floorOptions, deviceFloor]);
-
-  useEffect(() => {
-    setSelectedFunctionAreaId(null);
-  }, [deviceFloor, myHouse?.id]);
-
-  /** Thiết bị trong phạm vi khu vực (null = tất cả nhà). */
-  const rawItemsByArea = useMemo(() => {
-    if (selectedFunctionAreaId == null) return devices;
-    return devices.filter((d) => d.functionAreaId === selectedFunctionAreaId);
-  }, [devices, selectedFunctionAreaId]);
-
-  useEffect(() => {
-    if (
-      selectedFunctionAreaId != null &&
-      selectedFunctionAreaId !== prevSelectedAreaRef.current
-    ) {
-      setDropdownExpandSignal((n) => n + 1);
-      scrollDropdownPreviewIntoView();
-    }
-    prevSelectedAreaRef.current = selectedFunctionAreaId;
-  }, [selectedFunctionAreaId, scrollDropdownPreviewIntoView]);
-
-  useEffect(() => {
-    setSelectedCategoryId(null);
-  }, [myHouse?.id, selectedFunctionAreaId, deviceFloor]);
-
-  const groupItemsByCategory = useCallback(
-    (items: AssetItemFromApi[]) => {
-      const map = new Map<string, AssetItemFromApi[]>();
-      for (const item of items) {
-        const list = map.get(item.categoryId) ?? [];
-        list.push(item);
-        map.set(item.categoryId, list);
-      }
-      const result: {
-        categoryId: string;
-        categoryName: string;
-        items: AssetItemFromApi[];
-      }[] = [];
-      for (const cat of categories) {
-        const groupItems = map.get(cat.id);
-        if (groupItems?.length) {
-          const sorted = [...groupItems].sort((a, b) =>
-            (a.displayName ?? "").localeCompare(b.displayName ?? "", undefined, {
-              sensitivity: "base",
-            })
-          );
-          result.push({ categoryId: cat.id, categoryName: cat.name, items: sorted });
-          map.delete(cat.id);
-        }
-      }
-      for (const [categoryId, groupItems] of map) {
-        const sorted = [...groupItems].sort((a, b) =>
-          (a.displayName ?? "").localeCompare(b.displayName ?? "", undefined, {
-            sensitivity: "base",
-          })
-        );
-        result.push({
-          categoryId,
-          categoryName: t("staff_building_detail.category_other"),
-          items: sorted,
-        });
-      }
-      return result;
-    },
-    [categories, t]
-  );
-
-  const devicesByCategoryAll = useMemo(
-    () => groupItemsByCategory(devices),
-    [groupItemsByCategory, devices]
-  );
-
-  const devicesByCategory = useMemo(
-    () => groupItemsByCategory(rawItemsByArea),
-    [groupItemsByCategory, rawItemsByArea]
-  );
-
-  const filteredDevicesByCategory = useMemo(() => {
-    if (selectedCategoryId === null) return devicesByCategory;
-    return devicesByCategory.filter((g) => g.categoryId === selectedCategoryId);
-  }, [devicesByCategory, selectedCategoryId]);
-
-  const filteredDeviceRows = useMemo(() => {
-    const rows: { categoryName: string; item: AssetItemFromApi }[] = [];
-    for (const g of filteredDevicesByCategory) {
-      for (const item of g.items) {
-        rows.push({ categoryName: g.categoryName, item });
-      }
-    }
-    return rows;
-  }, [filteredDevicesByCategory]);
-
-  const categoryFilterSection = useMemo((): DropdownBoxSection | null => {
-    if (devices.length === 0 || devicesByCategoryAll.length === 0) return null;
-    return {
-      id: "category",
-      title: t("dropdown_box.section_category"),
-      itemLayout: "chips",
-      items: devicesByCategoryAll.map(({ categoryId, categoryName }) => ({
-        id: categoryId,
-        label: categoryName,
-      })),
-      selectedId: selectedCategoryId,
-      showAllOption: true,
-    };
-  }, [devices.length, devicesByCategoryAll, selectedCategoryId, t]);
-
-  const deviceFilterSection = useMemo((): DropdownBoxSection | null => {
-    if (filteredDeviceRows.length === 0) return null;
-    return {
-      id: "device",
-      title: t("staff_building_detail.devices_title", { count: filteredDeviceRows.length }),
-      itemLayout: "list",
-      selectedId: null,
-      showAllOption: false,
-      items: filteredDeviceRows.map(({ categoryName, item }) => ({
-        id: item.id,
-        label: item.displayName ?? item.id,
-        detail: categoryName,
-      })),
-    };
-  }, [filteredDeviceRows, t]);
-
-  const categoryFilterSummary = t("dropdown_box.compact_search_label");
-
-  const handleCategoryDropdownSelect = useCallback(
-    (_sectionId: string, itemId: string | null) => {
-      if (deviceSearchQuery.trim().length > 0) return;
-      setSelectedCategoryId(itemId);
-    },
-    [deviceSearchQuery]
-  );
-
-  const handleDeviceDropdownSelect = useCallback(
-    (_sectionId: string, itemId: string | null) => {
-      if (!itemId) return;
-      const found = filteredDeviceRows.find((row) => row.item.id === itemId)?.item;
-      if (!found) return;
-      const parentNav = navigation.getParent<NavigationProp<RootStackParamList>>();
-      parentNav?.navigate("TenantItemDetail", { item: found });
-    },
-    [filteredDeviceRows, navigation]
-  );
-
-  const handleHouseDropdownSelect = useCallback(
-    (sectionId: string, itemId: string | null) => {
-      if (sectionId === "device") {
-        handleDeviceDropdownSelect(sectionId, itemId);
-        return;
-      }
-      handleCategoryDropdownSelect(sectionId, itemId);
-    },
-    [handleCategoryDropdownSelect, handleDeviceDropdownSelect]
-  );
 
   const onRefresh = useCallback(async () => {
     setIsRefreshing(true);
     try {
-      await Promise.all([refetchHouses(), refetchItems(), refetchCategories()]);
+      await Promise.all([
+        refetchHouses(),
+        ...(invoiceQueryEnabled ? [refetchInvoices()] : []),
+        ...(contextHouseId ? [electricUsage.refetch(), waterUsage.refetch()] : []),
+      ]);
     } finally {
       setIsRefreshing(false);
     }
-  }, [refetchHouses, refetchItems, refetchCategories]);
+  }, [
+    refetchHouses,
+    refetchInvoices,
+    invoiceQueryEnabled,
+    contextHouseId,
+    electricUsage.refetch,
+    waterUsage.refetch,
+  ]);
 
   const handleSelectMainHouse = useCallback(
     async (selectedHouseId: string) => {
@@ -418,8 +219,6 @@ const HomeScreen = ({ navigation }: HomeScreenProps) => {
         setHouseId(selectedHouseId);
         setHouseModalVisible(false);
         await queryClient.invalidateQueries({ queryKey: TENANT_INVOICES_QUERY_KEY });
-        refetchItems();
-        refetchCategories();
         return;
       }
       try {
@@ -430,8 +229,6 @@ const HomeScreen = ({ navigation }: HomeScreenProps) => {
         setHouseModalVisible(false);
         await queryClient.invalidateQueries({ queryKey: TENANT_INVOICES_QUERY_KEY });
         await refetchHouses();
-        refetchItems();
-        refetchCategories();
       } catch {
         CustomAlert.alert(
           t("home.main_house_update_failed_title"),
@@ -448,15 +245,102 @@ const HomeScreen = ({ navigation }: HomeScreenProps) => {
       isSubmittingMainHouse,
       hasPersistedMainHouse,
       queryClient,
-      refetchCategories,
       refetchHouses,
-      refetchItems,
       setHouseId,
       tenantHouses,
       t,
       mutateMainHouseAsync,
     ]
   );
+
+  const displayWelcomeName = useMemo(() => {
+    const raw = String(userProfile?.name ?? "").trim();
+    return raw.length > 0 ? raw : t("home.hero_fallback_name");
+  }, [userProfile?.name, t]);
+
+  const homeHeaderWelcome = useMemo(() => {
+    const greetingKey = getHomeGreetingI18nKey();
+    return {
+      helloLine: t(greetingKey, { name: displayWelcomeName }),
+    };
+  }, [t, displayWelcomeName]);
+
+  const navigateToProfileFromHeader = useCallback(() => {
+    rootNavigation.navigate("ProfileScreen");
+  }, [rootNavigation]);
+
+  const navigateToInvoicesFromHeader = useCallback(() => {
+    rootNavigation.navigate("TenantInvoiceList");
+  }, [rootNavigation]);
+
+  const navigateToCurrentHouseDetail = useCallback(() => {
+    if (!myHouse) return;
+    rootNavigation.navigate("BuildingDetail", {
+      buildingId: myHouse.id,
+      buildingName: myHouse.name,
+      buildingAddress: myHouse.address,
+      description: myHouse.description,
+      ward: myHouse.ward,
+      commune: myHouse.commune,
+      city: myHouse.city,
+      status: myHouse.status,
+      functionalAreas: myHouse.functionalAreas ?? [],
+      contractDocuments: myHouse.contractDocuments,
+      hasUnpaidInvoice: myHouse.hasUnpaidInvoice,
+      pendingInvoiceId: myHouse.pendingInvoiceId ?? null,
+      accessStatus: myHouse.accessStatus,
+      accessReason: myHouse.accessReason ?? null,
+      memberRole: myHouse.memberRole,
+    });
+  }, [myHouse, rootNavigation]);
+
+  const homeInvoiceStrip = useMemo((): HomeHeaderInvoiceStrip => {
+    if (!hasTenantHouse || !effectiveHouseId) return { kind: "hidden" };
+    if (invoiceQueryEnabled && invoicesLoading && invoiceList.length === 0) {
+      return { kind: "loading" };
+    }
+    const n = payableForMainHouse.length;
+    if (n === 0) {
+      return { kind: "all_paid", caption: t("home.header_invoice_all_paid") };
+    }
+    const urgent = payableForMainHouse.some((inv) => isTenantInvoiceDueUrgent(inv));
+    const caption = urgent
+      ? t("home.header_invoice_payable_urgent", { count: n })
+      : t("home.header_invoice_payable_count", { count: n });
+    return { kind: "payable", caption, urgent };
+  }, [
+    hasTenantHouse,
+    effectiveHouseId,
+    invoiceQueryEnabled,
+    invoicesLoading,
+    invoiceList.length,
+    payableForMainHouse,
+    t,
+  ]);
+
+  const { utilityGridGap, utilityItemWidth } = useMemo(() => {
+    const cols = windowWidth < UTILITY_GRID_BREAKPOINT ? 3 : 4;
+    const gap = cols === 3 ? 12 : 10;
+    const inner = Math.max(0, windowWidth - UTILITY_SECTION_H_INSET);
+    const raw = Math.floor((inner - gap * (cols - 1)) / cols);
+    return {
+      utilityGridGap: gap,
+      utilityItemWidth: Math.max(cols === 3 ? 72 : 64, raw),
+    };
+  }, [windowWidth]);
+
+  const UTILITY_ICON = 18;
+
+  const formatUsageVal = useCallback((val: number, unit: string) => {
+    const digits = unit === "kWh" ? 2 : 1;
+    return `${val.toFixed(digits)} ${unit}`;
+  }, []);
+
+  const openTenantFooterUrl = useCallback((url: string) => {
+    const u = url.trim();
+    if (!u) return;
+    Linking.openURL(u).catch(() => {});
+  }, []);
 
   const renderHomeScrollContent = () => {
     if (!hasTenantHouse && !loadingHouses) {
@@ -465,300 +349,365 @@ const HomeScreen = ({ navigation }: HomeScreenProps) => {
 
     return (
       <View>
-        <TouchableOpacity
-          activeOpacity={0.85}
-          onPress={() => {
-            const parentNav =
-              navigation.getParent<NavigationProp<RootStackParamList>>();
-            if (myHouse && parentNav) {
-              parentNav.navigate("BuildingDetail", {
-                buildingId: myHouse.id,
-                buildingName: myHouse.name,
-                buildingAddress: myHouse.address,
-                description: myHouse.description,
-                ward: myHouse.ward,
-                commune: myHouse.commune,
-                city: myHouse.city,
-                status: myHouse.status,
-                functionalAreas: myHouse.functionalAreas ?? [],
-                contractDocuments: myHouse.contractDocuments,
-                hasUnpaidInvoice: myHouse.hasUnpaidInvoice,
-                pendingInvoiceId: myHouse.pendingInvoiceId ?? null,
-                accessStatus: myHouse.accessStatus,
-                accessReason: myHouse.accessReason ?? null,
-                memberRole: myHouse.memberRole,
-              });
-            }
-          }}
-        >
-          <View style={homeStyles.houseInfoCard}>
-            <View
-              style={{
-                flexDirection: "row",
-                justifyContent: "space-between",
-                alignItems: "center",
-                marginBottom: 8,
-              }}
-            >
-              <Text style={[homeStyles.houseTitle, { flex: 1 }]}>
-                {myHouse?.name || t("home.loading_data")}
-              </Text>
-              {tenantHouses.length > 1 && (
-                <TouchableOpacity
-                  style={homeStyles.switchHouseButton}
-                  onPress={() => setHouseModalVisible(true)}
-                >
-                  <Text style={homeStyles.switchHouseText}>
-                    {t("home.switch_house") || "Đổi nhà"}
-                  </Text>
-                </TouchableOpacity>
-              )}
-            </View>
-
-            <View style={homeStyles.houseDetailRow}>
-              <Text style={homeStyles.houseLabel}>
-                {t("home.house_info.address")}
-              </Text>
-              <ExpandableLongText
-                text={myHouse?.address}
-                maxLength={DEFAULT_BE_SHORT_TEXT_MAX_CHARS}
-                textStyle={homeStyles.houseValue}
-                containerStyle={{ flex: 1 }}
-              />
-            </View>
-
-            {myHouse?.description && (
-              <View style={homeStyles.houseDetailRow}>
-                <Text style={homeStyles.houseLabel}>
-                  {t("home.house_info.description")}
-                </Text>
-                <ExpandableLongText
-                  text={myHouse.description}
-                  textStyle={homeStyles.houseValue}
-                  containerStyle={{ flex: 1 }}
-                />
-              </View>
-            )}
-
-            <View style={homeStyles.houseDetailRow}>
-              <Text style={homeStyles.houseLabel}>
-                {t("home.house_info.status")}
-              </Text>
-              <Text
-                style={[
-                  homeStyles.houseValue,
-                  {
-                    color: isTenantHouseStatusHighlighted(myHouse?.status)
-                      ? brandPrimary
-                      : neutral.textSecondary,
-                  },
-                ]}
-              >
-                {formatHouseStatusForDisplay(myHouse?.status, t)}
-              </Text>
-            </View>
-          </View>
-        </TouchableOpacity>
-
         {!accessBlock ? (
-          <View style={homeStyles.usageSummarySection}>
-            <View style={homeStyles.usageSummaryHeader}>
-              <Text style={homeStyles.usageSummaryTitle}>
-                {t("consumption.summary_title")}
-              </Text>
-              <View
-                style={[
-                  homeStyles.usageSummaryLiveChip,
-                  {
-                    backgroundColor: iotConnected ? brandTintBg : brandBlueMutedBg,
-                    borderColor: iotConnected
-                      ? "rgba(59, 181, 130, 0.45)"
-                      : brandBlueMutedBorder,
-                  },
-                ]}
-              >
-                <View
-                  style={[
-                    homeStyles.usageSummaryLiveDot,
-                    { backgroundColor: iotConnected ? brandPrimary : brandSecondary },
-                  ]}
-                />
-                <Text
-                  style={[
-                    homeStyles.usageSummaryLiveText,
-                    { color: iotConnected ? brandPrimary : brandSecondary },
-                  ]}
-                >
-                  {iotConnected
-                    ? t("consumption.iot_live")
-                    : t("consumption.iot_offline")}
-                </Text>
+          <>
+          {myHouse ? (
+            <Pressable
+              style={({ pressed }) => [
+                homeStyles.currentHouseSection,
+                pressed && Platform.OS === "ios" ? { opacity: 0.92 } : null,
+              ]}
+              onPress={navigateToCurrentHouseDetail}
+              android_ripple={{ color: "rgba(0,0,0,0.06)" }}
+              accessibilityRole="button"
+              accessibilityLabel={`${t("home.staying_at_house_label")}, ${myHouse.name}`}
+            >
+              <View style={homeStyles.currentHouseRow}>
+                <View style={homeStyles.currentHouseTextBlock}>
+                  <Text style={homeStyles.currentHouseEyebrow}>
+                    {t("home.staying_at_house_label")}
+                  </Text>
+                  <Text style={homeStyles.currentHouseName} numberOfLines={2}>
+                    {myHouse.name}
+                  </Text>
+                </View>
+                {tenantHouses.length > 1 ? (
+                  <Pressable
+                    style={homeStyles.switchHousePill}
+                    onPress={() => setHouseModalVisible(true)}
+                    android_ripple={{ color: "rgba(0,0,0,0.08)" }}
+                  >
+                    <Text style={homeStyles.switchHousePillText}>{t("home.switch_house")}</Text>
+                    <Icons.chevronForward size={16} color={brandSecondary} />
+                  </Pressable>
+                ) : null}
               </View>
-            </View>
-            <View style={homeStyles.usageSummaryCards}>
-              <TouchableOpacity
-                style={[homeStyles.usageSummaryCard, { borderLeftColor: brandPrimary }]}
-                onPress={() => navigation.navigate("ElectricUsage")}
-                activeOpacity={0.8}
-              >
-                <Text style={homeStyles.usageSummaryCardTitle}>
-                  {t("consumption.electric_summary")}
-                </Text>
-                {electricUsage.loading ? (
-                  <ActivityIndicator
-                    size="small"
-                    color={brandPrimary}
-                    style={{ marginVertical: 8 }}
-                  />
-                ) : (
-                  <>
-                    <Text style={homeStyles.usageSummaryCardRow}>
-                      {t("consumption.period_day")}:{" "}
-                      {electricUsage.dayVal.toFixed(2)} {electricUsage.unit}
-                    </Text>
-                    <Text style={homeStyles.usageSummaryCardRow}>
-                      {t("consumption.period_week")}:{" "}
-                      {electricUsage.weekVal.toFixed(2)} {electricUsage.unit}
-                    </Text>
-                    <Text
-                      style={[
-                        homeStyles.usageSummaryCardRow,
-                        homeStyles.usageSummaryCardMonth,
-                      ]}
-                    >
-                      {t("consumption.period_month")}:{" "}
-                      {electricUsage.monthVal.toFixed(2)} {electricUsage.unit}
-                    </Text>
-                  </>
-                )}
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={[homeStyles.usageSummaryCard, { borderLeftColor: brandPrimary }]}
-                onPress={() => navigation.navigate("WaterUsage")}
-                activeOpacity={0.8}
-              >
-                <Text style={homeStyles.usageSummaryCardTitle}>
-                  {t("consumption.water_summary")}
-                </Text>
-                {waterUsage.loading ? (
-                  <ActivityIndicator
-                    size="small"
-                    color={brandPrimary}
-                    style={{ marginVertical: 8 }}
-                  />
-                ) : (
-                  <>
-                    <Text style={homeStyles.usageSummaryCardRow}>
-                      {t("consumption.period_day")}: {waterUsage.dayVal.toFixed(2)}{" "}
-                      {waterUsage.unit}
-                    </Text>
-                    <Text style={homeStyles.usageSummaryCardRow}>
-                      {t("consumption.period_week")}: {waterUsage.weekVal.toFixed(2)}{" "}
-                      {waterUsage.unit}
-                    </Text>
-                    <Text
-                      style={[
-                        homeStyles.usageSummaryCardRow,
-                        homeStyles.usageSummaryCardMonth,
-                      ]}
-                    >
-                      {t("consumption.period_month")}: {waterUsage.monthVal.toFixed(2)}{" "}
-                      {waterUsage.unit}
-                    </Text>
-                  </>
-                )}
-              </TouchableOpacity>
-            </View>
-          </View>
-        ) : null}
+            </Pressable>
+          ) : null}
 
-        <Text style={[homeStyles.sectionTitle, { marginBottom: 4 }]}>
-          {t("home.device_list.by_area_title")}
-        </Text>
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          style={homeStyles.deviceFloorScroll}
-          contentContainerStyle={homeStyles.deviceFloorContent}
-          keyboardShouldPersistTaps="handled"
-        >
-          {floorOptions.map((floor) => {
-            const active = deviceFloor === floor;
-            return (
-              <TouchableOpacity
-                key={floor}
-                style={[
-                  homeStyles.deviceFloorChip,
-                  active && homeStyles.deviceFloorChipActive,
+          <View style={homeStyles.utilitySection}>
+            <Text style={homeStyles.utilitySectionTitle}>
+              {t("home.utilities_title")}
+            </Text>
+            <View style={[homeStyles.utilityGrid, { gap: utilityGridGap }]}>
+              <Pressable
+                style={({ pressed }) => [
+                  homeStyles.utilityItem,
+                  { width: utilityItemWidth, backgroundColor: "#DBEAFE" },
+                  pressed && Platform.OS === "ios" ? { opacity: 0.92 } : null,
                 ]}
-                onPress={() => setDeviceFloor(floor)}
-                activeOpacity={0.8}
+                android_ripple={{ color: "rgba(0,0,0,0.06)" }}
+                onPress={navigateToCurrentHouseDetail}
               >
-                <Text
-                  style={[
-                    homeStyles.deviceFloorChipText,
-                    active && homeStyles.deviceFloorChipTextActive,
-                  ]}
-                >
-                  {t("consumption.floor_label", { floor })}
+                <View style={homeStyles.utilityIconSlot}>
+                  <Icons.home color={brandPrimary} size={UTILITY_ICON} />
+                </View>
+                <Text style={homeStyles.utilityLabel}>
+                  {t("home.utility_house")}
                 </Text>
-              </TouchableOpacity>
-            );
-          })}
-        </ScrollView>
+              </Pressable>
 
-        <FloorPlanView
-          selectedFloor={deviceFloor}
-          selectedAreaId={selectedFunctionAreaId ?? "all"}
-          functionalAreas={effectiveFunctionalAreas}
-          onSelectArea={(id) =>
-            setSelectedFunctionAreaId((prev) => (prev === id ? null : id))
-          }
-          accentColor={brandPrimary}
-        />
+              <Pressable
+                style={({ pressed }) => [
+                  homeStyles.utilityItem,
+                  { width: utilityItemWidth, backgroundColor: "#F5F0EB" },
+                  pressed && Platform.OS === "ios" ? { opacity: 0.92 } : null,
+                ]}
+                android_ripple={{ color: "rgba(0,0,0,0.06)" }}
+                onPress={() => {
+                  rootNavigation.navigate("ProfileScreen");
+                }}
+              >
+                <View style={homeStyles.utilityIconSlot}>
+                  <Icons.user color="#6D28D9" size={UTILITY_ICON} />
+                </View>
+                <Text style={homeStyles.utilityLabel}>{t("home.utility_profile")}</Text>
+              </Pressable>
 
-        {categoryFilterSection ? (
-          <View
-            onLayout={(e) => {
-              deviceCategoryFilterYRef.current = e.nativeEvent.layout.y;
-            }}
-          >
-            <DropdownBox
-              sections={
-                deviceFilterSection
-                  ? [categoryFilterSection, deviceFilterSection]
-                  : [categoryFilterSection]
-              }
-              summary={categoryFilterSummary}
-              onSelect={handleHouseDropdownSelect}
-              style={{ marginHorizontal: 16, marginBottom: 8, marginTop: 4 }}
-              keyboardVerticalOffset={insets.top + 52}
-              onSearchInputFocus={scrollDeviceCategoryFilterIntoView}
-              onSearchChange={setDeviceSearchQuery}
-              searchAutoFocus={false}
-              expandSignal={dropdownExpandSignal}
-            />
+              <Pressable
+                style={({ pressed }) => [
+                  homeStyles.utilityItem,
+                  { width: utilityItemWidth, backgroundColor: "#FEF3C7" },
+                  pressed && Platform.OS === "ios" ? { opacity: 0.92 } : null,
+                ]}
+                android_ripple={{ color: "rgba(0,0,0,0.06)" }}
+                onPress={() => {
+                  rootNavigation.navigate("TenantInvoiceList");
+                }}
+              >
+                <View style={homeStyles.utilityIconSlot}>
+                  <Icons.invoice color="#B45309" size={UTILITY_ICON} />
+                </View>
+                <Text style={homeStyles.utilityLabel}>{t("home.utility_invoice")}</Text>
+              </Pressable>
+
+              <Pressable
+                style={({ pressed }) => [
+                  homeStyles.utilityItem,
+                  { width: utilityItemWidth, backgroundColor: "#D1FAE5" },
+                  pressed && Platform.OS === "ios" ? { opacity: 0.92 } : null,
+                ]}
+                android_ripple={{ color: "rgba(0,0,0,0.06)" }}
+                onPress={() => {
+                  rootNavigation.navigate("TenantTicketList");
+                }}
+              >
+                <View style={homeStyles.utilityIconSlot}>
+                  <Icons.ticket color="#047857" size={UTILITY_ICON} />
+                </View>
+                <Text style={homeStyles.utilityLabel}>{t("home.utility_ticket")}</Text>
+              </Pressable>
+
+              <Pressable
+                style={({ pressed }) => [
+                  homeStyles.utilityItem,
+                  { width: utilityItemWidth, backgroundColor: "#F3F4F6" },
+                  pressed && Platform.OS === "ios" ? { opacity: 0.92 } : null,
+                ]}
+                android_ripple={{ color: "rgba(0,0,0,0.06)" }}
+                onPress={() => {
+                  rootNavigation.navigate("ConsumptionScreen", { initialTab: "electric" });
+                }}
+              >
+                <View style={homeStyles.utilityIconSlot}>
+                  <Icons.electric color="#059669" size={UTILITY_ICON} />
+                </View>
+                <Text style={homeStyles.utilityLabel}>{t("home.utility_electric")}</Text>
+              </Pressable>
+
+              <Pressable
+                style={({ pressed }) => [
+                  homeStyles.utilityItem,
+                  { width: utilityItemWidth, backgroundColor: "#E0E7FF" },
+                  pressed && Platform.OS === "ios" ? { opacity: 0.92 } : null,
+                ]}
+                android_ripple={{ color: "rgba(0,0,0,0.06)" }}
+                onPress={() => {
+                  rootNavigation.navigate("ConsumptionScreen", { initialTab: "water" });
+                }}
+              >
+                <View style={homeStyles.utilityIconSlot}>
+                  <Icons.water color="#2563EB" size={UTILITY_ICON} />
+                </View>
+                <Text style={homeStyles.utilityLabel}>{t("home.utility_water")}</Text>
+              </Pressable>
+
+              <Pressable
+                style={({ pressed }) => [
+                  homeStyles.utilityItem,
+                  { width: utilityItemWidth, backgroundColor: "#EDE9FE" },
+                  pressed && Platform.OS === "ios" ? { opacity: 0.92 } : null,
+                ]}
+                android_ripple={{ color: "rgba(0,0,0,0.06)" }}
+                onPress={() => {
+                  rootNavigation.navigate("TenantQuestionList");
+                }}
+              >
+                <View style={homeStyles.utilityIconSlot}>
+                  <Icons.brain color="#4F46E5" size={UTILITY_ICON} />
+                </View>
+                <Text style={homeStyles.utilityLabel}>{t("home.utility_qa")}</Text>
+              </Pressable>
+
+              <Pressable
+                style={({ pressed }) => [
+                  homeStyles.utilityItem,
+                  { width: utilityItemWidth, backgroundColor: "#D6D3D1" },
+                  pressed && Platform.OS === "ios" ? { opacity: 0.92 } : null,
+                ]}
+                android_ripple={{ color: "rgba(0,0,0,0.06)" }}
+                onPress={() => {
+                  rootNavigation.navigate("Camera");
+                }}
+              >
+                <View style={homeStyles.utilityIconSlot}>
+                  <Icons.scanLookup color={brandPrimary} size={UTILITY_ICON} />
+                </View>
+                <Text style={homeStyles.utilityLabel}>{t("home.utility_scan")}</Text>
+              </Pressable>
+            </View>
           </View>
+
+            {myHouse ? (
+              <View style={homeStyles.usageSummarySection}>
+                <View style={homeStyles.usageSummaryHeader}>
+                  <Text style={homeStyles.usageSummaryTitle}>
+                    {t("consumption.summary_title")}
+                  </Text>
+                  <View style={homeStyles.usageSummaryLiveRow}>
+                    <View
+                      style={[
+                        homeStyles.usageSummaryLiveDot,
+                        {
+                          backgroundColor: iotConnected
+                            ? brandPrimary
+                            : neutral.textMuted,
+                        },
+                      ]}
+                    />
+                    <Text
+                      style={[
+                        homeStyles.usageSummaryLiveText,
+                        {
+                          color: iotConnected ? brandSecondary : neutral.textSecondary,
+                        },
+                      ]}
+                      numberOfLines={1}
+                      ellipsizeMode="tail"
+                    >
+                      {iotConnected ? t("consumption.iot_live") : t("consumption.iot_offline")}
+                    </Text>
+                  </View>
+                </View>
+
+                <View style={homeStyles.usageSummaryCards}>
+                  <View
+                    style={[
+                      homeStyles.usageSummaryCardWrap,
+                      homeStyles.usageSummaryCardWrapFirst,
+                    ]}
+                  >
+                    <Pressable
+                      style={({ pressed }) => [
+                        homeStyles.usageSummaryCard,
+                        { borderLeftColor: brandPrimary },
+                        pressed && Platform.OS === "ios" ? { opacity: 0.92 } : null,
+                      ]}
+                      onPress={() =>
+                        rootNavigation.navigate("ConsumptionScreen", { initialTab: "electric" })
+                      }
+                      android_ripple={{ color: "rgba(0,0,0,0.06)" }}
+                    >
+                      <Text style={homeStyles.usageSummaryCardTitle}>
+                        {t("consumption.electric_summary")}
+                      </Text>
+                      {electricUsage.loading ? (
+                        <ActivityIndicator color={brandPrimary} style={{ marginVertical: 8 }} />
+                      ) : (
+                        <>
+                          <Text style={homeStyles.usageSummaryCardRow}>
+                            {t("consumption.period_day")}:{" "}
+                            <Text style={homeStyles.usageSummaryCardMonth}>
+                              {formatUsageVal(electricUsage.dayVal, electricUsage.unit)}
+                            </Text>
+                          </Text>
+                          <Text style={homeStyles.usageSummaryCardRow}>
+                            {t("consumption.period_week")}:{" "}
+                            <Text style={homeStyles.usageSummaryCardMonth}>
+                              {formatUsageVal(electricUsage.weekVal, electricUsage.unit)}
+                            </Text>
+                          </Text>
+                          <Text style={homeStyles.usageSummaryCardRow}>
+                            {t("consumption.period_month")}:{" "}
+                            <Text style={homeStyles.usageSummaryCardMonth}>
+                              {formatUsageVal(electricUsage.monthVal, electricUsage.unit)}
+                            </Text>
+                          </Text>
+                        </>
+                      )}
+                    </Pressable>
+                  </View>
+
+                  <View
+                    style={[
+                      homeStyles.usageSummaryCardWrap,
+                      homeStyles.usageSummaryCardWrapSecond,
+                    ]}
+                  >
+                    <Pressable
+                      style={({ pressed }) => [
+                        homeStyles.usageSummaryCard,
+                        { borderLeftColor: waterAccent },
+                        pressed && Platform.OS === "ios" ? { opacity: 0.92 } : null,
+                      ]}
+                      onPress={() =>
+                        rootNavigation.navigate("ConsumptionScreen", { initialTab: "water" })
+                      }
+                      android_ripple={{ color: "rgba(0,0,0,0.06)" }}
+                    >
+                      <Text style={homeStyles.usageSummaryCardTitle}>
+                        {t("consumption.water_summary")}
+                      </Text>
+                      {waterUsage.loading ? (
+                        <ActivityIndicator color={waterAccent} style={{ marginVertical: 8 }} />
+                      ) : (
+                        <>
+                          <Text style={homeStyles.usageSummaryCardRow}>
+                            {t("consumption.period_day")}:{" "}
+                            <Text style={homeStyles.usageSummaryCardMonth}>
+                              {formatUsageVal(waterUsage.dayVal, waterUsage.unit)}
+                            </Text>
+                          </Text>
+                          <Text style={homeStyles.usageSummaryCardRow}>
+                            {t("consumption.period_week")}:{" "}
+                            <Text style={homeStyles.usageSummaryCardMonth}>
+                              {formatUsageVal(waterUsage.weekVal, waterUsage.unit)}
+                            </Text>
+                          </Text>
+                          <Text style={homeStyles.usageSummaryCardRow}>
+                            {t("consumption.period_month")}:{" "}
+                            <Text style={homeStyles.usageSummaryCardMonth}>
+                              {formatUsageVal(waterUsage.monthVal, waterUsage.unit)}
+                            </Text>
+                          </Text>
+                        </>
+                      )}
+                    </Pressable>
+                  </View>
+                </View>
+              </View>
+            ) : null}
+          </>
         ) : null}
 
-        {!loading && hasTenantHouse && devices.length === 0 ? (
-          <View style={[homeStyles.devicesEmpty, { marginHorizontal: 16 }]}>
-            <Text style={homeStyles.devicesEmptyText}>
-              {t("staff_building_detail.no_devices")}
-            </Text>
+        <View
+          style={homeStyles.homeSiteFooter}
+          accessibilityLabel={t("home.footer.aria_label")}
+        >
+          <View style={homeStyles.homeSiteFooterVersionRow}>
+            <View style={homeStyles.homeSiteFooterPill}>
+              <Text style={homeStyles.homeSiteFooterPillText}>{t("home.footer.badge")}</Text>
+            </View>
+            <View style={homeStyles.homeSiteFooterDot} />
+            <Text style={homeStyles.homeSiteFooterBuild}>{t("home.footer.build")}</Text>
           </View>
-        ) : null}
-
-        {!loading &&
-        hasTenantHouse &&
-        devices.length > 0 &&
-        filteredDeviceRows.length === 0 ? (
-          <View style={[homeStyles.devicesEmpty, { marginHorizontal: 16 }]}>
-            <Text style={homeStyles.devicesEmptyText}>
-              {t("staff_home.all_devices_no_items")}
-            </Text>
+          <Text style={homeStyles.homeSiteFooterSupport}>{t("home.footer.support_line")}</Text>
+          <View style={homeStyles.homeSiteFooterLinksRow}>
+            {tenantFooterLinks.privacyPolicy.trim() ? (
+              <Pressable
+                onPress={() => openTenantFooterUrl(tenantFooterLinks.privacyPolicy)}
+                android_ripple={{ color: "rgba(0,0,0,0.06)" }}
+              >
+                <Text style={homeStyles.homeSiteFooterLink}>{t("home.footer.link_privacy")}</Text>
+              </Pressable>
+            ) : (
+              <Text style={homeStyles.homeSiteFooterLinkMuted}>{t("home.footer.link_privacy")}</Text>
+            )}
+            <Text style={homeStyles.homeSiteFooterLinkMuted}>{t("home.footer.link_sep")}</Text>
+            {tenantFooterLinks.termsOfUse.trim() ? (
+              <Pressable
+                onPress={() => openTenantFooterUrl(tenantFooterLinks.termsOfUse)}
+                android_ripple={{ color: "rgba(0,0,0,0.06)" }}
+              >
+                <Text style={homeStyles.homeSiteFooterLink}>{t("home.footer.link_terms")}</Text>
+              </Pressable>
+            ) : (
+              <Text style={homeStyles.homeSiteFooterLinkMuted}>{t("home.footer.link_terms")}</Text>
+            )}
+            <Text style={homeStyles.homeSiteFooterLinkMuted}>{t("home.footer.link_sep")}</Text>
+            {tenantFooterLinks.support.trim() ? (
+              <Pressable
+                onPress={() => openTenantFooterUrl(tenantFooterLinks.support)}
+                android_ripple={{ color: "rgba(0,0,0,0.06)" }}
+              >
+                <Text style={homeStyles.homeSiteFooterLink}>{t("home.footer.link_support")}</Text>
+              </Pressable>
+            ) : (
+              <Text style={homeStyles.homeSiteFooterLinkMuted}>{t("home.footer.link_support")}</Text>
+            )}
           </View>
-        ) : null}
+          <Text style={homeStyles.homeSiteFooterCopy}>{t("home.footer.copyright")}</Text>
+        </View>
       </View>
     );
   };
@@ -769,7 +718,10 @@ const HomeScreen = ({ navigation }: HomeScreenProps) => {
         <Header variant="default" />
         <ScrollView
           style={{ flex: 1 }}
-          contentContainerStyle={homeStyles.accessGateEmptyWrap}
+          contentContainerStyle={[
+            homeStyles.accessGateEmptyWrap,
+            { paddingBottom: 24 + insets.bottom },
+          ]}
           refreshControl={
             <RefreshControl
               refreshing={isRefreshing || loading}
@@ -787,40 +739,44 @@ const HomeScreen = ({ navigation }: HomeScreenProps) => {
 
   return (
     <View style={homeStyles.container}>
-      <Header variant="default" />
+      <Header
+        variant="default"
+        homeWelcome={homeHeaderWelcome}
+        onHomeWelcomeNamePress={navigateToProfileFromHeader}
+        homeInvoiceStrip={homeInvoiceStrip}
+        onHomeInvoicePress={navigateToInvoicesFromHeader}
+      />
 
-      <KeyboardAvoidingView
-        style={{ flex: 1 }}
-        behavior={Platform.OS === "ios" ? "padding" : undefined}
-        keyboardVerticalOffset={insets.top + 52}
-      >
-        {loading && !housesData ? (
-          <View style={homeStyles.loadingContainer}>
-            <ActivityIndicator size="large" color={brandPrimary} />
-            <Text style={{ marginTop: 10, color: neutral.textSecondary }}>
-              {t("home.loading_data")}
-            </Text>
-          </View>
-        ) : (
-          <ScrollView
-            ref={mainScrollRef}
-            style={{ flex: 1 }}
-            contentContainerStyle={homeStyles.deviceListContent}
-            showsVerticalScrollIndicator={false}
-            keyboardShouldPersistTaps="handled"
-            refreshControl={
-              <RefreshControl
-                refreshing={isRefreshing || loading}
-                onRefresh={onRefresh}
-                colors={[brandPrimary]}
-                tintColor={brandPrimary}
-              />
-            }
-          >
-            {renderHomeScrollContent()}
-          </ScrollView>
-        )}
-      </KeyboardAvoidingView>
+      {loading && !housesData ? (
+        <View style={homeStyles.loadingContainer}>
+          <ActivityIndicator size="large" color={brandPrimary} />
+          <Text style={{ marginTop: 10, color: neutral.textSecondary }}>
+            {t("home.loading_data")}
+          </Text>
+        </View>
+      ) : (
+        <ScrollView
+          style={{ flex: 1 }}
+          contentContainerStyle={[
+            homeStyles.deviceListContent,
+            {
+              paddingBottom: 24 + insets.bottom,
+            },
+          ]}
+          showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
+          refreshControl={
+            <RefreshControl
+              refreshing={isRefreshing || loading}
+              onRefresh={onRefresh}
+              colors={[brandPrimary]}
+              tintColor={brandPrimary}
+            />
+          }
+        >
+          {renderHomeScrollContent()}
+        </ScrollView>
+      )}
 
       <Modal
         visible={houseModalVisible}
@@ -843,7 +799,7 @@ const HomeScreen = ({ navigation }: HomeScreenProps) => {
             <TouchableWithoutFeedback>
               <View style={homeStyles.modalContent}>
                 <Text style={homeStyles.modalTitle}>
-                  {t("home.select_main_house") || "Chọn nhà chính"}
+                  {t("home.select_main_house")}
                 </Text>
                 <FlatList
                   data={tenantHouses}

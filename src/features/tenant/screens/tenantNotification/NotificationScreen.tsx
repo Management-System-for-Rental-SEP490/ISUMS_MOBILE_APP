@@ -5,12 +5,25 @@ import {
   ScrollView,
   Text,
   TouchableOpacity,
+  Pressable,
   View,
   StyleSheet,
 } from "react-native";
 import { useTranslation } from "react-i18next";
 import { useNavigation } from "@react-navigation/native";
-import Header from "../../../../shared/components/header";
+import { NativeStackNavigationProp } from "@react-navigation/native-stack";
+import { RootStackParamList } from "../../../../shared/types";
+import Icons from "../../../../shared/theme/icon";
+import {
+  StackScreenTitleBadge,
+  StackScreenTitleBarBalance,
+  StackScreenTitleHeaderStrip,
+  stackScreenTitleBackBtnOnBrand,
+  stackScreenTitleCenterSlotStyle,
+  stackScreenTitleOnBrandIconColor,
+  stackScreenTitleRowStyle,
+  stackScreenTitleSideSlotStyle,
+} from "../../../../shared/components/StackScreenTitleBadge";
 import { useTenantContext, useTenantHouseIotAlertsInfinite, useTenantHouses } from "../../../../shared/hooks";
 import { notificationStyles } from "./notificationStyles";
 import {
@@ -39,7 +52,20 @@ const normalizeAlertLevel = (level: string) => String(level ?? "").trim().toUppe
 
 const NotificationScreen = () => {
   const { t, i18n } = useTranslation();
-  const navigation = useNavigation<any>();
+  const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
+
+  const goHome = () => {
+    const parent = navigation.getParent?.();
+    if (parent && typeof parent.navigate === "function") {
+      parent.navigate("Main" as never);
+      return;
+    }
+    try {
+      navigation.navigate("Main" as never);
+    } catch {
+      /* ignore */
+    }
+  };
   const { houseId, house } = useTenantContext();
   const { data: tenantHousesData } = useTenantHouses();
   const tenantHouses = tenantHousesData?.data ?? [];
@@ -224,7 +250,26 @@ const NotificationScreen = () => {
 
     return (
       <View style={gateStyles.container}>
-        <Header variant="default" />
+        <StackScreenTitleHeaderStrip>
+          <View style={stackScreenTitleRowStyle}>
+            <View style={stackScreenTitleSideSlotStyle}>
+              <Pressable
+                style={stackScreenTitleBackBtnOnBrand}
+                onPress={() => navigation.goBack()}
+              >
+                <Icons.chevronBack size={22} color={stackScreenTitleOnBrandIconColor} />
+              </Pressable>
+            </View>
+            <View style={stackScreenTitleCenterSlotStyle}>
+              <Pressable onPress={goHome}>
+                <StackScreenTitleBadge numberOfLines={1}>
+                  {t("screens.notification")}
+                </StackScreenTitleBadge>
+              </Pressable>
+            </View>
+            <StackScreenTitleBarBalance />
+          </View>
+        </StackScreenTitleHeaderStrip>
         <View style={gateStyles.gateBox}>
           <Text style={gateStyles.gateTitle}>{title}</Text>
           <Text style={gateStyles.gateBody}>{body}</Text>
@@ -244,7 +289,26 @@ const NotificationScreen = () => {
 
   return (
     <View style={notificationStyles.container}>
-      <Header variant="default" />
+      <StackScreenTitleHeaderStrip>
+        <View style={stackScreenTitleRowStyle}>
+          <View style={stackScreenTitleSideSlotStyle}>
+            <Pressable
+              style={stackScreenTitleBackBtnOnBrand}
+              onPress={() => navigation.goBack()}
+            >
+              <Icons.chevronBack size={22} color={stackScreenTitleOnBrandIconColor} />
+            </Pressable>
+          </View>
+          <View style={stackScreenTitleCenterSlotStyle}>
+            <Pressable onPress={goHome}>
+              <StackScreenTitleBadge numberOfLines={1}>
+                {t("screens.notification")}
+              </StackScreenTitleBadge>
+            </Pressable>
+          </View>
+          <StackScreenTitleBarBalance />
+        </View>
+      </StackScreenTitleHeaderStrip>
       <ScrollView
         ref={scrollRef}
         showsVerticalScrollIndicator={false}
@@ -270,8 +334,6 @@ const NotificationScreen = () => {
         scrollEventThrottle={400}
       >
         <>
-          <Text style={notificationStyles.title}>{t("screens.notification")}</Text>
-
           <ScrollView
             horizontal
             showsHorizontalScrollIndicator={false}

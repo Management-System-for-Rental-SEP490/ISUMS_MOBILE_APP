@@ -1,16 +1,88 @@
 import { StyleSheet } from "react-native";
-import {
-  brandPrimary,
-  brandSecondary,
-  brandTintBg,
-  neutral,
-} from "../../../../shared/theme/color";
+import { brandPrimary, brandSecondary, brandTintBg, neutral } from "../../../../shared/theme/color";
+
+const ELEV_CARD = {
+  shadowColor: neutral.black,
+  shadowOffset: { width: 0, height: 8 },
+  shadowOpacity: 0.08,
+  shadowRadius: 20,
+  elevation: 6,
+};
+
+/** Khung trắng mềm — đồng bộ utility / khu vực nhà / sơ đồ */
+const SOFT_CARD = {
+  backgroundColor: neutral.surface,
+  borderRadius: 20,
+  borderWidth: 1,
+  borderColor: "rgba(0,0,0,0.04)",
+  shadowColor: neutral.black,
+  shadowOffset: { width: 0, height: 8 },
+  shadowOpacity: 0.06,
+  shadowRadius: 16,
+  elevation: 4,
+};
+
+/** Chip tầng — bóng nhẹ, bo mềm; active dùng bóng gắn brand */
+const SOFT_CHIP = {
+  shadowColor: neutral.black,
+  shadowOffset: { width: 0, height: 2 },
+  shadowOpacity: 0.05,
+  shadowRadius: 8,
+  elevation: 2,
+};
+
+/** Xanh đậm — viền/halo chip đang chọn (tương phản rõ hơn nền loãng cũ) */
+const brandPrimaryDark = "#2A9A6E";
+
 import { appTypography } from "../../../../shared/utils";
 
 export const homeStyles = StyleSheet.create({
     container: {
         flex: 1,
-        backgroundColor: neutral.background,
+        backgroundColor: "#F4F6F8",
+    },
+    screenPadH: {
+        paddingHorizontal: 16,
+    },
+    /** Thẻ khu vực + sơ đồ (màn chi tiết nhà). */
+    homeZoneCard: {
+        paddingHorizontal: 14,
+        paddingTop: 14,
+        paddingBottom: 16,
+        ...SOFT_CARD,
+    },
+    areaSectionTopRow: {
+        flexDirection: "row",
+        alignItems: "flex-start",
+        justifyContent: "space-between",
+        gap: 12,
+        marginBottom: 6,
+    },
+    areaSectionTitles: {
+        flex: 1,
+        minWidth: 0,
+    },
+    areaSectionTitle: {
+        fontSize: 20,
+        fontWeight: "700",
+        color: neutral.heading,
+        letterSpacing: -0.3,
+    },
+    areaSectionSubtitle: {
+        marginTop: 4,
+        fontSize: 13,
+        lineHeight: 18,
+        color: neutral.textSecondary,
+        fontWeight: "500",
+    },
+    floorChipsRow: {
+        flexShrink: 0,
+        maxWidth: "48%",
+    },
+    floorPlanInCard: {
+        alignItems: "center",
+        marginTop: 4,
+        marginBottom: 0,
     },
     loadingContainer: {
         flex: 1,
@@ -50,7 +122,7 @@ export const homeStyles = StyleSheet.create({
         flex: 1,
     },
     
-    // Style cho phần danh sách thiết bị
+    // Style cho phần danh sách thiết bị (dùng lại nơi khác)
     sectionTitle: {
         ...appTypography.sectionHeading,
         color: neutral.heading,
@@ -58,43 +130,55 @@ export const homeStyles = StyleSheet.create({
         marginBottom: 8,
         marginTop: 8,
     },
-    /** Thanh chọn tầng trên Home (gọn, sát sơ đồ). */
+    /** Thanh chọn tầng — gói gọn bên phải header */
     deviceFloorScroll: {
-        marginBottom: 2,
+        marginBottom: 0,
         marginTop: 0,
     },
     deviceFloorContent: {
         flexDirection: "row",
         alignItems: "center",
-        gap: 6,
+        gap: 8,
         paddingVertical: 2,
-        paddingLeft: 16,
-        paddingRight: 16,
+        paddingRight: 4,
+        paddingLeft: 0,
     },
+    /** Chip tầng: nghỉ = viền tinh; chọn = pill đặc brand + chữ trắng (tránh nền rgba “đục”) */
     deviceFloorChip: {
-        paddingHorizontal: 12,
-        paddingVertical: 6,
-        borderRadius: 14,
+        paddingHorizontal: 16,
+        paddingVertical: 8,
+        borderRadius: 20,
         backgroundColor: neutral.surface,
         borderWidth: 1,
-        borderColor: neutral.border,
-        minHeight: 32,
+        borderColor: "rgba(15, 23, 42, 0.08)",
+        minHeight: 36,
         justifyContent: "center",
+        ...SOFT_CHIP,
     },
     deviceFloorChipActive: {
-        backgroundColor: brandTintBg,
-        borderColor: brandPrimary,
+        backgroundColor: brandPrimary,
+        borderWidth: 0,
+        borderColor: "transparent",
+        shadowColor: brandPrimaryDark,
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.28,
+        shadowRadius: 10,
+        elevation: 5,
     },
     deviceFloorChipText: {
-        fontSize: 12,
+        fontSize: 13,
         fontWeight: "600",
-        color: neutral.textSecondary,
+        letterSpacing: -0.15,
+        color: neutral.slate600,
     },
     deviceFloorChipTextActive: {
-        color: brandPrimary,
+        color: neutral.surface,
+        fontWeight: "700",
+        letterSpacing: -0.2,
     },
     deviceListContent: {
         paddingBottom: 20,
+        paddingTop: 4,
     },
     deviceCard: {
         backgroundColor: neutral.surface,
@@ -190,47 +274,78 @@ export const homeStyles = StyleSheet.create({
         color: neutral.slate400,
         textAlign: "center",
     },
-    /** Block tổng quan tiêu thụ IoT (điện + nước) trên Home */
+    /**
+     * Tổng quan tiêu thụ — thẻ SOFT_CARD bọc ngoài (đồng bộ nhà đang ở / thao tác nhanh).
+     * Trong cùng thẻ: tiêu đề + IoT LIVE; bên dưới lồng 2 thẻ con Điện / Nước (kiểu cũ).
+     */
     usageSummarySection: {
         marginHorizontal: 16,
         marginTop: 12,
-        marginBottom: 4,
+        marginBottom: 12,
+        paddingHorizontal: 16,
+        paddingTop: 18,
+        paddingBottom: 16,
+        ...SOFT_CARD,
     },
     usageSummaryHeader: {
         flexDirection: "row",
         justifyContent: "space-between",
         alignItems: "center",
-        marginBottom: 10,
+        marginBottom: 14,
     },
+    /** Cùng độ đậm với `utilitySectionTitle` */
     usageSummaryTitle: {
-        ...appTypography.sectionHeading,
-        color: neutral.heading,
+        fontSize: 17,
+        fontWeight: "800",
+        color: neutral.black,
+        letterSpacing: -0.35,
+        flex: 1,
+        minWidth: 0,
+        paddingRight: 8,
     },
-    usageSummaryLiveChip: {
+    /** Trạng thái IoT — chỉ chấm + chữ, không nền/viền to (đặc biệt khi OFFLINE). */
+    usageSummaryLiveRow: {
         flexDirection: "row",
         alignItems: "center",
-        gap: 6,
-        paddingHorizontal: 10,
-        paddingVertical: 5,
-        borderRadius: 8,
-        borderWidth: 1,
+        gap: 5,
+        flexShrink: 0,
     },
     usageSummaryLiveDot: {
-        width: 6,
-        height: 6,
-        borderRadius: 3,
+        width: 5,
+        height: 5,
+        borderRadius: 2.5,
     },
     usageSummaryLiveText: {
-        ...appTypography.badge,
-        fontWeight: "700",
-        letterSpacing: 0.5,
+        fontSize: 11,
+        fontWeight: "500",
+        letterSpacing: 0.15,
+        flexShrink: 1,
     },
     usageSummaryCards: {
         flexDirection: "row",
-        gap: 12,
+        alignItems: "stretch",
+        width: "100%",
     },
+    /**
+     * Cột cố định 50/50 — bọc ngoài Pressable vì Android đôi khi không chia flex đều trực tiếp trên Pressable.
+     */
+    usageSummaryCardWrap: {
+        flexGrow: 1,
+        flexShrink: 1,
+        flexBasis: 0,
+        minWidth: 0,
+    },
+    usageSummaryCardWrapFirst: {
+        marginRight: 6,
+    },
+    usageSummaryCardWrapSecond: {
+        marginLeft: 6,
+    },
+    /** Thẻ con Điện / Nước — nằm trong `usageSummaryCardWrap`. */
     usageSummaryCard: {
         flex: 1,
+        width: "100%",
+        alignSelf: "stretch",
         backgroundColor: neutral.surface,
         padding: 12,
         borderRadius: 10,
@@ -254,6 +369,90 @@ export const homeStyles = StyleSheet.create({
     usageSummaryCardMonth: {
         fontWeight: "600",
         color: neutral.heading,
+    },
+
+    /**
+     * Footer Home — cấu trúc tương tự Keycloak `isumsSiteFooterV2` (badge + build, support, links, bản quyền).
+     */
+    homeSiteFooter: {
+        marginHorizontal: 16,
+        marginTop: 8,
+        marginBottom: 4,
+        paddingVertical: 16,
+        paddingHorizontal: 14,
+        backgroundColor: neutral.surface,
+        borderRadius: 16,
+        borderWidth: 1,
+        borderColor: "rgba(0,0,0,0.06)",
+        alignItems: "center",
+    },
+    homeSiteFooterVersionRow: {
+        flexDirection: "row",
+        alignItems: "center",
+        justifyContent: "center",
+        flexWrap: "wrap",
+        gap: 8,
+        marginBottom: 10,
+        alignSelf: "stretch",
+    },
+    homeSiteFooterPill: {
+        backgroundColor: brandTintBg,
+        paddingHorizontal: 10,
+        paddingVertical: 4,
+        borderRadius: 999,
+    },
+    homeSiteFooterPillText: {
+        fontSize: 10,
+        fontWeight: "800",
+        color: brandPrimaryDark,
+        letterSpacing: 0.5,
+    },
+    homeSiteFooterDot: {
+        width: 4,
+        height: 4,
+        borderRadius: 2,
+        backgroundColor: neutral.textMuted,
+    },
+    homeSiteFooterBuild: {
+        fontSize: 11,
+        fontWeight: "600",
+        color: neutral.textSecondary,
+    },
+    homeSiteFooterSupport: {
+        fontSize: 12,
+        lineHeight: 18,
+        color: neutral.textSecondary,
+        marginBottom: 12,
+        textAlign: "center",
+        alignSelf: "stretch",
+    },
+    homeSiteFooterLinksRow: {
+        flexDirection: "row",
+        flexWrap: "wrap",
+        alignItems: "center",
+        justifyContent: "center",
+        marginBottom: 12,
+        alignSelf: "stretch",
+    },
+    homeSiteFooterLink: {
+        fontSize: 12,
+        fontWeight: "600",
+        color: brandSecondary,
+        textDecorationLine: "underline",
+    },
+    homeSiteFooterLinkMuted: {
+        fontSize: 12,
+        fontWeight: "500",
+        color: neutral.textMuted,
+    },
+    homeSiteFooterCopy: {
+        fontSize: 10,
+        lineHeight: 14,
+        color: neutral.textMuted,
+        fontWeight: "500",
+        letterSpacing: 0.15,
+        textAlign: "center",
+        alignSelf: "stretch",
     },
 
     /** Banner chặn khi chưa đủ điều kiện truy cập app/nhà (GET /api/houses/my-access). */
@@ -361,16 +560,108 @@ export const homeStyles = StyleSheet.create({
         backgroundColor: neutral.border,
     },
     switchHouseButton: {
-        paddingHorizontal: 8, 
-        paddingVertical: 4, 
+        paddingHorizontal: 16, 
+        paddingVertical: 8, 
         backgroundColor: brandTintBg, 
-        borderRadius: 6,
+        borderRadius: 10,
     },
     switchHouseText: {
         ...appTypography.caption,
+        fontSize: 14,
         color: brandSecondary,
         fontWeight: '600',
-    }
+    },
+    /** Thẻ nhà đang ở + đổi nhà (phía trên thao tác nhanh) */
+    currentHouseSection: {
+        marginHorizontal: 16,
+        marginTop: 12,
+        paddingVertical: 14,
+        paddingHorizontal: 14,
+        ...SOFT_CARD,
+    },
+    currentHouseRow: {
+        flexDirection: "row",
+        alignItems: "center",
+        gap: 10,
+    },
+    currentHouseTextBlock: {
+        flex: 1,
+        minWidth: 0,
+    },
+    currentHouseEyebrow: {
+        fontSize: 12,
+        fontWeight: "600",
+        color: neutral.textSecondary,
+        marginBottom: 4,
+        letterSpacing: 0.2,
+    },
+    currentHouseName: {
+        fontSize: 16,
+        fontWeight: "800",
+        color: neutral.heading,
+        letterSpacing: -0.3,
+    },
+    switchHousePill: {
+        flexDirection: "row",
+        alignItems: "center",
+        gap: 3,
+        paddingHorizontal: 12,
+        paddingVertical: 8,
+        backgroundColor: brandTintBg,
+        borderRadius: 999,
+        flexShrink: 0,
+    },
+    switchHousePillText: {
+        fontSize: 13,
+        fontWeight: "700",
+        color: brandSecondary,
+    },
+    /** Khối “Quick actions” — cùng SOFT_CARD */
+    utilitySection: {
+        marginHorizontal: 16,
+        marginTop: 12,
+        marginBottom: 12,
+        paddingHorizontal: 16,
+        paddingTop: 18,
+        paddingBottom: 16,
+        ...SOFT_CARD,
+    },
+    utilitySectionTitle: {
+        fontSize: 17,
+        fontWeight: "800",
+        color: neutral.black,
+        marginBottom: 12,
+        letterSpacing: -0.35,
+    },
+    /** Căn trái + gap — số cột do Home gán động (3 màn hẹp / 4 màn rộng) */
+    utilityGrid: {
+        flexDirection: "row",
+        flexWrap: "wrap",
+        justifyContent: "flex-start",
+    },
+    /** Chiều rộng gán động ở màn Home theo useWindowDimensions */
+    utilityItem: {
+        minHeight: 76,
+        borderRadius: 14,
+        paddingVertical: 8,
+        paddingHorizontal: 4,
+        alignItems: "center",
+        justifyContent: "center",
+        /** Không dùng hidden — trên Android dễ cắt mất glyph vector icon trong ô hẹp. */
+    },
+    utilityIconSlot: {
+        marginBottom: 5,
+        minHeight: 22,
+        alignItems: "center",
+        justifyContent: "center",
+    },
+    utilityLabel: {
+        fontSize: 11,
+        lineHeight: 14,
+        color: neutral.text,
+        textAlign: "center",
+        fontWeight: "600",
+    },
 });
 
 export default homeStyles;

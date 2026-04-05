@@ -47,7 +47,6 @@ import {
   stackScreenTitleSideSlotStyle,
 } from "../../../../shared/components/StackScreenTitleBadge";
 import styles from "./TenantRentPaymentStyles";
-import { TENANT_MAIN_TAB_ROUTES } from "../../../../shared/components/footerNavigator";
 import { useAuthStore } from "../../../../store/useAuthStore";
 import { isTenantInvoicePayable } from "../../../../shared/utils/tenantInvoice";
 
@@ -59,20 +58,10 @@ function navigateAfterSuccessfulRentPayment(
 ) {
   const mode = afterSuccess ?? "home";
   if (mode === "home") {
-    const di = TENANT_MAIN_TAB_ROUTES.indexOf("Dashboard");
-    const dashboardIndex = di >= 0 ? di : 2;
     navigation.dispatch(
       CommonActions.reset({
         index: 0,
-        routes: [
-          {
-            name: "Main",
-            state: {
-              routes: TENANT_MAIN_TAB_ROUTES.map((name) => ({ name })),
-              index: dashboardIndex,
-            },
-          },
-        ],
+        routes: [{ name: "Main" }],
       })
     );
     return;

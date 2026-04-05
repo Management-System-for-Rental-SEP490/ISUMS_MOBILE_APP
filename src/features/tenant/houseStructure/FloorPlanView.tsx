@@ -21,6 +21,8 @@ export interface FloorPlanViewProps {
   accentColor?: string;
   /** Gộp thêm style wrapper (ví dụ margin gần thanh tầng). */
   containerStyle?: StyleProp<ViewStyle>;
+  /** Sơ đồ nhỏ gọn trong thẻ tổng hợp Home. */
+  compact?: boolean;
 }
 
 const FloorPlanView: React.FC<FloorPlanViewProps> = ({
@@ -30,6 +32,7 @@ const FloorPlanView: React.FC<FloorPlanViewProps> = ({
   onSelectArea,
   accentColor = brandPrimary,
   containerStyle,
+  compact = false,
 }) => {
   const safeAreas = Array.isArray(functionalAreas) ? functionalAreas : [];
   const areasOfFloor = useMemo(() => {
@@ -51,6 +54,7 @@ const FloorPlanView: React.FC<FloorPlanViewProps> = ({
         selectedAreaId={selectedAreaId}
         onSelectArea={onSelectArea}
         accentColor={accentColor}
+        compact={compact}
       />
     </View>
   );

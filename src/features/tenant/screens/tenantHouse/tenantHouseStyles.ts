@@ -1,5 +1,5 @@
 import { StyleSheet } from "react-native";
-import { brandPrimary, neutral } from "../../../../shared/theme/color";
+import { brandPrimary, brandTintBg, neutral } from "../../../../shared/theme/color";
 import { appTypography } from "../../../../shared/utils";
 
 const tenantHouseStyles = StyleSheet.create({
@@ -12,13 +12,14 @@ const tenantHouseStyles = StyleSheet.create({
   },
   contentContainer: {
     paddingHorizontal: 16,
+    paddingTop: 16,
     paddingBottom: 24,
   },
   card: {
     backgroundColor: neutral.surface,
     borderRadius: 12,
     padding: 16,
-    marginTop: 16,
+    marginTop: 0,
     borderWidth: 1,
     borderColor: neutral.border,
     shadowColor: neutral.black,
@@ -39,13 +40,57 @@ const tenantHouseStyles = StyleSheet.create({
   },
   houseLabel: {
     ...appTypography.labelRow,
-    width: 90,
+    minWidth: 110,
+    flexShrink: 0,
     color: neutral.textSecondary,
   },
   houseValue: {
     ...appTypography.labelRowValue,
     flex: 1,
     color: neutral.text,
+  },
+  actionsRow: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 10,
+    marginTop: 16,
+    alignItems: "stretch",
+  },
+  setMainButton: {
+    flex: 1,
+    minWidth: 120,
+    backgroundColor: brandPrimary,
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+    borderRadius: 10,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  setMainButtonText: {
+    ...appTypography.caption,
+    color: neutral.surface,
+    fontWeight: "700",
+    fontSize: 14,
+    textAlign: "center",
+  },
+  mainHouseBadge: {
+    flex: 1,
+    minWidth: 120,
+    backgroundColor: brandTintBg,
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+    borderRadius: 10,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  mainHouseBadgeOnly: {
+    flexGrow: 1,
+  },
+  mainHouseBadgeText: {
+    ...appTypography.caption,
+    color: brandPrimary,
+    fontWeight: "700",
+    fontSize: 14,
   },
   contractsSectionTitle: {
     ...appTypography.cardTitle,
@@ -95,6 +140,16 @@ const tenantHouseStyles = StyleSheet.create({
     ...appTypography.dialogButton,
     color: neutral.surface,
     fontWeight: "700",
+  },
+  housePlanSectionWrap: {
+    marginTop: 16,
+  },
+  housePlanEmptyText: {
+    ...appTypography.caption,
+    color: neutral.textSecondary,
+    textAlign: "center",
+    marginVertical: 14,
+    paddingHorizontal: 8,
   },
 });
 

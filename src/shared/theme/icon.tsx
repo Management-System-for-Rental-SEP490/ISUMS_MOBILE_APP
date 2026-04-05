@@ -2,7 +2,6 @@ import FontAwesome from '@expo/vector-icons/FontAwesome';
 import AntDesign from '@expo/vector-icons/AntDesign';
 import FontAwesome5 from '@expo/vector-icons/FontAwesome5';
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
-import Entypo from '@expo/vector-icons/Entypo';
 import FontAwesome6 from '@expo/vector-icons/FontAwesome6';
 import { IconProps } from '../types';
 import { LogoHomeIcon } from './LogoIcon';
@@ -10,11 +9,12 @@ import Ionicons from '@expo/vector-icons/build/Ionicons';
 
 
 const Icons = {
+  /** MaterialIcons — tránh Entypo/FontAwesome không vẽ trên một số bản Android (ô Home trống). */
   home: ({ size = 24, color = 'black' }: IconProps = {}) => (
-    <Entypo name="home" size={size} color={color} />
+    <MaterialIcons name="home" size={size} color={color} />
   ),
   user: ({ size = 24, color = 'black' }: IconProps = {}) => (
-    <FontAwesome name="user" size={size} color={color} />
+    <MaterialIcons name="person" size={size} color={color} />
   ),
   menu: ({ size = 24, color = 'black' }: IconProps = {}) => (
     <AntDesign name="menu" size={size} color={color} />
@@ -27,6 +27,10 @@ const Icons = {
   ),
   search: ({ size = 24, color = 'black' }: IconProps = {}) => (
     <MaterialIcons name="search" size={size} color={color} />
+  ),
+  /** Tra cứu thiết bị (quét QR). */
+  scanLookup: ({ size = 24, color = 'black' }: IconProps = {}) => (
+    <MaterialIcons name="qr-code" size={size} color={color} />
   ),
   contract: ({ size = 24, color = 'black' }: IconProps = {}) => (
     <FontAwesome5 name="file-contract" size={size} color={color} />

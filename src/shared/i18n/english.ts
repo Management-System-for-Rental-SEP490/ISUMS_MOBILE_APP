@@ -20,7 +20,10 @@ export default {
         "show_less": "Show less",
         "images_limit_title": "Photo limit",
         "images_limit_max_message": "You can attach at most {{max}} photos. Remove some to add more.",
-        "images_limit_truncated_message": "Only {{added}} photo(s) were added (maximum {{max}})."
+        "images_limit_truncated_message": "Only {{added}} photo(s) were added (maximum {{max}}).",
+        "a11y_open_invoice_list": "Open invoice list",
+        "a11y_notifications": "Open notifications",
+        "a11y_app_logo": "ISUMS logo"
     },
     "device_detail": {
         "title": "Device Details",
@@ -472,11 +475,48 @@ export default {
         "role_tenant": "tenant",
         "role_manager": "Manager",
         "role_landlord": "Landlord",
-        "role_guest": "Guest"
+        "role_guest": "Guest",
+        "current_house": "Current house"
     },
     "home": {
         "welcome_role": "You are a {{role}}",
+        "hello_user": "Hello, {{name}}",
+        "greeting_morning": "Good morning, {{name}}",
+        "greeting_noon": "Good afternoon, {{name}}",
+        "greeting_afternoon": "Good afternoon, {{name}}",
+        "greeting_evening": "Good evening, {{name}}",
+        "greeting_night": "Good evening, {{name}}",
+        "area_subtitle": "Control your sanctuary",
+        "hero_devices_chip": "{{count}} devices",
+        "hero_fallback_name": "there",
+        "utilities_title": "Quick Actions",
+        "utility_profile": "Profile",
+        "utility_electric": "Electric",
+        "utility_water": "Water",
+        "utility_invoice": "Invoices",
+        "utility_ticket": "Tickets",
+        "utility_qa": "Q&A",
+        "utility_scan": "Lookup",
+        "utility_house": "House",
+        "utility_notification": "Notification",
+        "staying_at_house_label": "Staying at",
+        "header_invoice_all_paid": "You're all paid up.",
+        "header_invoice_payable_count": "You have {{count}} invoice(s) to pay.",
+        "header_invoice_payable_urgent":
+            "You have {{count}} invoice(s) to pay — some are due soon or overdue.",
         "loading_data": "Loading data...",
+        "footer": {
+            "aria_label": "About this app and support links",
+            "badge": "RESIDENT EDITION",
+            "build": "Build 2026.04.12",
+            "support_line":
+                "Need technical support? Call ISUMS or contact your building management office.",
+            "link_privacy": "Privacy policy",
+            "link_terms": "Terms of use",
+            "link_support": "Support",
+            "copyright": "© 2026 ISUMS – SECURE CONNECTION. All rights reserved.",
+            "link_sep": " · ",
+        },
         "switch_house": "Switch House",
         "select_house": "Select House",
         "select_main_house": "Select Main House",
@@ -494,7 +534,7 @@ export default {
         },
         "device_list": {
             "title": "Device List ({{count}})",
-            "by_area_title": "Devices by area",
+            "by_area_title": "House areas",
             "areas_row_label": "Select area",
             "area_all_devices": "All areas",
             "status": {
@@ -524,6 +564,9 @@ export default {
             "PENDING_HANDOVER": "This property is not yet handed over based on the contract date."
         },
         "house_detail": {
+            "set_main_house": "Set as main house",
+            "main_house_saved": "Main house has been updated to this property.",
+            "main_house_current_label": "Main house",
             "contracts_title": "Contract documents",
             "contract_open_error_title": "Could not open this file",
             "unpaid_invoice_banner": "This property has an unpaid invoice. Pay now to continue without interruptions.",
@@ -619,6 +662,9 @@ export default {
         "status_WAITING_PAYMENT": "Awaiting payment"
     },
     "consumption": {
+        "tab_electric": "Electric",
+        "tab_water": "Water",
+        "consumption_title": "Consumption",
         "area_all": "All",
         "floor_label": "Floor {{floor}}",
         "floor_all_areas": "All floor {{floor}}",

@@ -20,7 +20,10 @@ export default {
         "show_less": "Thu gọn",
         "images_limit_title": "Giới hạn ảnh",
         "images_limit_max_message": "Chỉ được đính kèm tối đa {{max}} ảnh. Hãy xóa bớt ảnh để thêm mới.",
-        "images_limit_truncated_message": "Chỉ thêm được {{added}} ảnh (tối đa {{max}} ảnh)."
+        "images_limit_truncated_message": "Chỉ thêm được {{added}} ảnh (tối đa {{max}} ảnh).",
+        "a11y_open_invoice_list": "Mở danh sách hóa đơn",
+        "a11y_notifications": "Mở thông báo",
+        "a11y_app_logo": "Logo ISUMS"
     },
     "device_detail": {
         "title": "Chi tiết thiết bị",
@@ -471,11 +474,48 @@ export default {
         "role_tenant": "người thuê",
         "role_manager": "Quản lý",
         "role_landlord": "Chủ nhà",
-        "role_guest": "Khách"
+        "role_guest": "Khách",
+        "current_house": "Nhà hiện tại"
     },
     "home": {
         "welcome_role": "Bạn đang là {{role}}",
+        "hello_user": "Xin chào, {{name}}",
+        "greeting_morning": "Chào buổi sáng, {{name}}",
+        "greeting_noon": "Chào buổi trưa, {{name}}",
+        "greeting_afternoon": "Chào buổi chiều, {{name}}",
+        "greeting_evening": "Chào buổi tối, {{name}}",
+        "greeting_night": "Chào buổi đêm, {{name}}",
+        "area_subtitle": "Điều khiển không gian sống của bạn",
+        "hero_devices_chip": "{{count}} thiết bị",
+        "hero_fallback_name": "bạn",
+        "utilities_title": "Thao tác nhanh",
+        "utility_profile": "Hồ sơ",
+        "utility_electric": "Điện",
+        "utility_water": "Nước",
+        "utility_invoice": "Hóa đơn",
+        "utility_ticket": "Sự cố",
+        "utility_qa": "Giải đáp",
+        "utility_scan": "Tra cứu",
+        "utility_house": "Nhà",
+        "utility_notification": "Thông báo",
+        "staying_at_house_label": "Đang ở nhà",
+        "header_invoice_all_paid": "Bạn đã thanh toán đủ các khoản.",
+        "header_invoice_payable_count": "Bạn có {{count}} hóa đơn cần thanh toán.",
+        "header_invoice_payable_urgent":
+            "Bạn có {{count}} hóa đơn cần thanh toán — có khoản sắp đến hạn hoặc đã quá hạn.",
         "loading_data": "Đang tải dữ liệu...",
+        "footer": {
+            "aria_label": "Giới thiệu ứng dụng và liên kết hỗ trợ",
+            "badge": "PHIÊN BẢN CƯ DÂN",
+            "build": "Build 2026.04.12",
+            "support_line":
+                "Cần hỗ trợ kỹ thuật? Liên hệ tổng đài ISUMS hoặc bộ phận quản lý tòa nhà của bạn.",
+            "link_privacy": "Chính sách bảo mật",
+            "link_terms": "Điều khoản sử dụng",
+            "link_support": "Hỗ trợ",
+            "copyright": "© 2026 ISUMS – KẾT NỐI AN TOÀN. All rights reserved.",
+            "link_sep": " · ",
+        },
         "switch_house": "Đổi nhà",
         "select_house": "Chọn nhà",
         "select_main_house": "Chọn nhà chính",
@@ -493,7 +533,7 @@ export default {
         },
         "device_list": {
             "title": "Danh sách thiết bị ({{count}})",
-            "by_area_title": "Thiết bị theo khu vực",
+            "by_area_title": "Khu vực nhà",
             "areas_row_label": "Chọn khu vực",
             "area_all_devices": "Tất cả khu vực",
             "status": {
@@ -523,6 +563,9 @@ export default {
             "PENDING_HANDOVER": "Căn nhà chưa đến ngày bàn giao theo hợp đồng."
         },
         "house_detail": {
+            "set_main_house": "Đặt làm nhà chính",
+            "main_house_saved": "Đã cập nhật nhà chính thành căn này.",
+            "main_house_current_label": "Nhà chính",
             "contracts_title": "Tài liệu hợp đồng",
             "contract_open_error_title": "Không mở được tệp này",
             "unpaid_invoice_banner": "Căn nhà này còn hóa đơn chưa thanh toán. Thanh toán ngay để tránh gián đoạn.",
@@ -618,6 +661,9 @@ export default {
         "status_WAITING_PAYMENT": "Chờ thanh toán"
     },
     "consumption": {
+        "tab_electric": "Điện",
+        "tab_water": "Nước",
+        "consumption_title": "Tiêu thụ",
         "area_all": "Tất cả",
         "floor_label": "Tầng {{floor}}",
         "floor_all_areas": "Tất cả tầng {{floor}}",

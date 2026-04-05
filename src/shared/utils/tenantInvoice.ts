@@ -29,6 +29,24 @@ export function filterPayableInvoices(items: TenantInvoiceFromApi[]): TenantInvo
   return items.filter((x) => isTenantInvoicePayable(x.status));
 }
 
+const MS_PER_DAY = 86400000;
+
+/**
+ * Hóa đơn còn phải trả và có `dueDate` trong vòng `withinDays` ngày (kể cả quá hạn).
+ * Tiền nhà / ticket issue đều nằm chung danh sách invoice — lọc theo trạng thái payable + hạn.
+ */
+export function isTenantInvoiceDueUrgent(
+  inv: TenantInvoiceFromApi,
+  withinDays: number = 7
+): boolean {
+  if (!isTenantInvoicePayable(inv.status)) return false;
+  const raw = inv.dueDate;
+  if (raw == null || String(raw).trim() === "") return false;
+  const due = new Date(raw).getTime();
+  if (!Number.isFinite(due)) return false;
+  return due <= Date.now() + withinDays * MS_PER_DAY;
+}
+
 /** Sắp xếp theo căn (houseId), trong cùng căn: chưa thanh toán trước, rồi theo hạn. */
 export function sortTenantInvoicesForDisplay(items: TenantInvoiceFromApi[]): TenantInvoiceFromApi[] {
   return [...items].sort((a, b) => {

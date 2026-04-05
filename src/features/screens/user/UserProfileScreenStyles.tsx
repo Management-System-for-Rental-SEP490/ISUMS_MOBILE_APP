@@ -34,9 +34,9 @@ const userProfileStyles = StyleSheet.create({
   profileCard: {
     backgroundColor: neutral.surface,
     marginHorizontal: 20,
-    marginTop: -50,
-    borderRadius: 20,
-    padding: 20,
+    marginTop: 14,
+    borderRadius: 16,
+    padding: 18,
     alignItems: "center",
     shadowColor: neutral.slate900,
     shadowOffset: { width: 0, height: 4 },
