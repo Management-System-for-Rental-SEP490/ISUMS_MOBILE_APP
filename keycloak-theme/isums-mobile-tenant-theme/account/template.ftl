@@ -17,13 +17,11 @@
                 <img src="${url.resourcesPath}/img/logob.png" alt="ISUMS Logo" />
             </div>
             <h1 class="app-name">${msg("appName")}</h1>
-            <p class="tagline">${msg("accountTagline")}</p>
         </header>
         <main class="card">
-            <#if message?has_content>
+            <#if message?has_content && message.type == 'error'>
                 <div class="alert alert-${message.type}">
-                    <#if message.type=='success'><span class="pficon pficon-ok"></span></#if>
-                    <#if message.type=='error'><span class="pficon pficon-error-circle-o"></span></#if>
+                    <span class="pficon pficon-error-circle-o"></span>
                     <span class="kc-feedback-text">${kcSanitize(message.summary)?no_esc}</span>
                 </div>
             </#if>

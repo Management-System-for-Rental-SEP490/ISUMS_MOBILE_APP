@@ -25,8 +25,8 @@ export type CreateTenantTicketPayload = {
  * Danh sách ticket của tenant đang đăng nhập (GET /api/issues/tickets/tenant).
  */
 export const getTenantTickets = async (): Promise<TenantTicketFromApi[]> => {
-  //const url = `${BACKEND_API_BASE}/issues/tickets/tenant`;
-  const url = `${FALLBACK_BACKEND_URL}/issues/tickets/tenant`;
+  const url = `${BACKEND_API_BASE}/issues/tickets/tenant`;
+  //const url = `${FALLBACK_BACKEND_URL}/issues/tickets/tenant`;
   const response = await axiosClient.get<ApiResponse<TenantTicketFromApi[]>>(url);
   if (response.data?.success && Array.isArray(response.data.data)) {
     return response.data.data;
@@ -44,8 +44,8 @@ export const getTenantTicketById = async (
   const id = ticketId?.trim();
   if (!id) return null;
 
-  const url = `${FALLBACK_BACKEND_URL}/issues/tickets/${encodeURIComponent(id)}`;
-  //const url = `${BACKEND_API_BASE}/issues/tickets/${encodeURIComponent(id)}`;
+  //const url = `${FALLBACK_BACKEND_URL}/issues/tickets/${encodeURIComponent(id)}`;
+  const url = `${BACKEND_API_BASE}/issues/tickets/${encodeURIComponent(id)}`;
   const response = await axiosClient.get<ApiResponse<TenantTicketFromApi>>(url);
 
   if (response.data?.success && response.data.data && typeof response.data.data === "object") {
@@ -72,8 +72,8 @@ export const getIssueResponses = async (): Promise<IssueTicketResponseFromApi[]>
  * Dùng cho luồng quote + payment.
  */
 export const getIssueBanners = async (): Promise<IssueBannerFromApi[]> => {
-  const url = `${FALLBACK_BACKEND_URL}/issues/banners`;
-  //const url = `${BACKEND_API_BASE}/issues/banners`;
+  //const url = `${FALLBACK_BACKEND_URL}/issues/banners`;
+  const url = `${BACKEND_API_BASE}/issues/banners`;
   const response = await axiosClient.get<ApiResponse<IssueBannerFromApi[]>>(url);
   if (response.data?.success && Array.isArray(response.data.data)) {
     return response.data.data;
@@ -87,8 +87,8 @@ export const getIssueBanners = async (): Promise<IssueBannerFromApi[]> => {
 export const createTenantTicket = async (
   payload: CreateTenantTicketPayload
 ): Promise<TenantTicketFromApi> => {
-  const url = `${FALLBACK_BACKEND_URL}/issues/tickets`;
-  //const url = `${BACKEND_API_BASE}/issues/tickets`;
+  //const url = `${FALLBACK_BACKEND_URL}/issues/tickets`;
+  const url = `${BACKEND_API_BASE}/issues/tickets`;
   try {
     const response = await axiosClient.post<ApiResponse<TenantTicketFromApi>>(url, payload);
     const body = response.data;
@@ -128,7 +128,8 @@ export const uploadTenantTicketImages = async (
 ): Promise<void> => {
   if (!ticketId || images.length === 0) return;
 
-  const url = `${FALLBACK_BACKEND_URL}/issues/tickets/${encodeURIComponent(ticketId)}/images`;
+  //const url = `${FALLBACK_BACKEND_URL}/issues/tickets/${encodeURIComponent(ticketId)}/images`;
+  const url = `${BACKEND_API_BASE}/issues/tickets/${encodeURIComponent(ticketId)}/images`;
   //const url = `${BACKEND_API_BASE}/issues/tickets/${encodeURIComponent(ticketId)}/images`;
   const formData = new FormData();
 
@@ -225,8 +226,8 @@ export const getTenantTicketImages = async (
 ): Promise<TenantTicketImageFromApi[]> => {
   if (!ticketId) return [];
 
-  const url = `${FALLBACK_BACKEND_URL}/issues/tickets/${encodeURIComponent(ticketId)}/images`;
-  //const url = `${BACKEND_API_BASE}/issues/tickets/${encodeURIComponent(ticketId)}/images`;
+  //const url = `${FALLBACK_BACKEND_URL}/issues/tickets/${encodeURIComponent(ticketId)}/images`;
+  const url = `${BACKEND_API_BASE}/issues/tickets/${encodeURIComponent(ticketId)}/images`;
   const response = await axiosClient.get<ApiResponse<TenantTicketImageFromApi[]>>(url);
 
   if (response.data?.success && Array.isArray(response.data.data)) {
@@ -244,8 +245,8 @@ export const getIssueQuotesByTicket = async (
   ticketId: string
 ): Promise<IssueQuoteFromApi[]> => {
   if (!ticketId?.trim()) return [];
-  const url = `${FALLBACK_BACKEND_URL}/issues/quotes/ticket/${encodeURIComponent(ticketId)}`;
-  //const url = `${BACKEND_API_BASE}/issues/quotes/ticket/${encodeURIComponent(ticketId)}`;
+  //const url = `${FALLBACK_BACKEND_URL}/issues/quotes/ticket/${encodeURIComponent(ticketId)}`;
+  const url = `${BACKEND_API_BASE}/issues/quotes/ticket/${encodeURIComponent(ticketId)}`;
   const response = await axiosClient.get<ApiResponse<IssueQuoteFromApi[]>>(url);
   if (response.data?.success && Array.isArray(response.data.data)) {
     return response.data.data;
@@ -260,8 +261,8 @@ export const getIssueQuotesByTicket = async (
  */
 export const confirmIssueQuoteStatus = async (quoteId: string): Promise<void> => {
   if (!quoteId?.trim()) return;
-  //const url = `${BACKEND_API_BASE}/issues/quotes/${encodeURIComponent(quoteId)}/status`;
-  const url = `${FALLBACK_BACKEND_URL}/issues/quotes/${encodeURIComponent(quoteId)}/status`;
+  const url = `${BACKEND_API_BASE}/issues/quotes/${encodeURIComponent(quoteId)}/status`;
+ // const url = `${FALLBACK_BACKEND_URL}/issues/quotes/${encodeURIComponent(quoteId)}/status`;
   // BE yêu cầu PUT để xác nhận.
   // Theo Postman bạn cung cấp: body phải gửi { status: "APPROVED" }.
   const response = await axiosClient.put<ApiResponse<unknown>>(url, { status: "APPROVED" });

@@ -17,7 +17,10 @@ export default {
         "save": "Lưu",
         "warning_different_house": "Cảnh báo: Thiết bị này thuộc về {{houseName}}, không phải nhà đang chọn.",
         "read_more": "Xem thêm",
-        "show_less": "Thu gọn"
+        "show_less": "Thu gọn",
+        "images_limit_title": "Giới hạn ảnh",
+        "images_limit_max_message": "Chỉ được đính kèm tối đa {{max}} ảnh. Hãy xóa bớt ảnh để thêm mới.",
+        "images_limit_truncated_message": "Chỉ thêm được {{added}} ảnh (tối đa {{max}} ảnh)."
     },
     "device_detail": {
         "title": "Chi tiết thiết bị",
@@ -133,7 +136,8 @@ export default {
         "field_staff_phone": "Số điện thoại",
         "not_assigned": "Chưa phân công",
         "field_slot": "Thời gian dự kiến xử lý",
-        "no_slot": "Chưa có lịch"
+        "no_slot": "Chưa có lịch",
+        "slot_time_tbd": "Sẽ được liên hệ để xác định thời gian"
     },
     "tenant_question_list": {
         "screen_title": "Giải đáp thắc mắc",
@@ -448,6 +452,8 @@ export default {
         "security": "Bảo mật",
         "change_password": "Đổi mật khẩu",
         "change_password_desc": "Cập nhật mật khẩu bảo vệ tài khoản",
+        "change_password_success_title": "Đổi mật khẩu thành công",
+        "change_password_success_message": "Mật khẩu đã được cập nhật. Vui lòng đăng nhập lại bằng mật khẩu mới.",
         "app_settings": "Ứng dụng",
         "notifications": "Thông báo",
         "notifications_desc": "Cài đặt nhận tin",
@@ -683,7 +689,8 @@ export default {
     },
     "dropdown_box": {
         "title": "Bộ lọc & lựa chọn",
-        "search_placeholder": "Tìm theo tên, địa chỉ, tầng, danh mục…",
+        "compact_search_label": "Danh mục & thiết bị",
+        "search_placeholder": "Tìm danh mục hoặc tên thiết bị…",
         "no_results": "Không có mục phù hợp.",
         "section_floor": "Tầng",
         "section_category": "Danh mục thiết bị",
@@ -693,6 +700,6 @@ export default {
         "category_short": "Danh mục",
         "house_short": "Nhà",
         "status_short": "Trạng thái",
-        "open_a11y": "Mở bộ lọc"
+        "open_a11y": "Mở danh sách"
     }
 }

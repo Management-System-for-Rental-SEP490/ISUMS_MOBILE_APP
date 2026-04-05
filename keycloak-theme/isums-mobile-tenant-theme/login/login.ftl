@@ -2,14 +2,11 @@
 <@layout.registrationLayout; section>
     <#if section = "header">
         <header class="header">
-            <div class="logo">
-                <img src="${url.resourcesPath}/img/logob.png" alt="ISUMS Logo" />
-            </div>
             <h1 class="app-name">${msg("appName")}</h1>
             <p class="tagline">${msg("loginTitle")}</p>
         </header>
     <#elseif section = "form">
-        <form id="kc-form-login" action="${url.loginAction}" method="post">
+        <form id="kc-form-login" action="<@layout.isumsFormActionUrl rawAction=url.loginAction />" method="post">
             <div class="form-group">
                 <#if usernameEditDisabled??>
                     <input tabindex="1" id="username" class="input" name="username" value="${(login.username!'')}" type="text" disabled />
@@ -39,14 +36,20 @@
                     </div>
                 </div>
             </#if>
-
             <#if realm.resetPasswordAllowed>
-                <a href="${url.loginResetCredentialsUrl}" class="forgot-link">${msg("Forgot Password")}</a>
+                <a href="<@layout.isumsLinkUrl rawUrl=url.loginResetCredentialsUrl />" class="forgot-link">${msg("Forgot Password")}</a>
             </#if>
 
             <input type="hidden" id="id-hidden-input" name="credentialId" <#if auth.selectedCredential?has_content>value="${auth.selectedCredential}"</#if>/>
 
-            <button tabindex="4" type="submit" class="btn-login" name="login" id="kc-login">${msg("Login")}</button>
+            <button tabindex="4" type="submit" class="btn-login" name="login" id="kc-login">
+                <span class="btn-login-inner">
+                    <span class="btn-login-logo-wrap" aria-hidden="true">
+                        <img class="btn-login-logo" src="${url.resourcesPath}/img/logob.png" alt="" />
+                    </span>
+                    <span class="btn-login-label">${msg("Login")}</span>
+                </span>
+            </button>
         </form>
     </#if>
 </@layout.registrationLayout>

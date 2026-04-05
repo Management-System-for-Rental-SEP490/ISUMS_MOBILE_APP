@@ -18,7 +18,6 @@ import {
   DropdownBox,
   type DropdownBoxSection,
 } from "../../../../shared/components/dropdownBox";
-import SuggestionDropdown, { Suggestion } from "../../../../shared/components/SuggestionDropdown";
 import { HomeScreenProps, RootStackParamList } from "../../../../shared/types";
 import { useTranslation } from "react-i18next";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -32,7 +31,6 @@ import {
   useUpdateMainHouseMutation,
   useAssetItems,
   useAssetCategories,
-  useAssetCategoryNamesByIds,
   useTenantContext,
   useFunctionalAreasByHouseId,
 } from "../../../../shared/hooks";
@@ -54,18 +52,14 @@ import type {
   AssetCategoryFromApi,
   FunctionalAreaFromApi,
 } from "../../../../shared/types/api";
-import { normalizeAssetItemStatusFromApi } from "../../../../shared/types/api";
 import {
   formatDayMonthNumeric,
   formatHouseStatusForDisplay,
-  getTotalPages,
   getTenantAccessBlock,
   mergeFunctionalAreasForHouse,
   parentScrollOffsetForDropdownField,
-  slicePage,
   translateTenantAccessReason,
 } from "../../../../shared/utils";
-import { PaginationBar } from "../../../../shared/components/PaginationBar";
 import { CustomAlert } from "../../../../shared/components/alert";
 
 /** Trạng thái nhà “đang gắn với tenant” (nhấn màu brand trên Home). */
@@ -79,14 +73,27 @@ const HomeScreen = ({ navigation }: HomeScreenProps) => {
   const { houseId, setHouseId } = useAuthStore();
   const { t, i18n } = useTranslation();
   const insets = useSafeAreaInsets();
-  const deviceListRef = useRef<FlatList<AssetItemFromApi>>(null);
+  const mainScrollRef = useRef<ScrollView>(null);
   const deviceCategoryFilterYRef = useRef(0);
-  /** DropdownBox trong ListHeader — cuộn vừa đủ để thanh tìm nằm dưới header app, không kéo sát mép trên. */
+  const prevSelectedAreaRef = useRef<string | null>(null);
+  /** Khi chọn khu vực: cuộn nhẹ xuống block dropdown để user thấy ngay danh mục/thiết bị. */
+  const scrollDropdownPreviewIntoView = useCallback(() => {
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        const target = parentScrollOffsetForDropdownField(
+          deviceCategoryFilterYRef.current,
+          180
+        );
+        mainScrollRef.current?.scrollTo({ y: target, animated: true });
+      });
+    });
+  }, []);
+  /** DropdownBox — cuộn để ô tìm nằm dưới header app. */
   const scrollDeviceCategoryFilterIntoView = useCallback(() => {
     requestAnimationFrame(() => {
       requestAnimationFrame(() => {
         const target = parentScrollOffsetForDropdownField(deviceCategoryFilterYRef.current);
-        deviceListRef.current?.scrollToOffset({ offset: target, animated: true });
+        mainScrollRef.current?.scrollTo({ y: target, animated: true });
       });
     });
   }, []);
@@ -98,7 +105,6 @@ const HomeScreen = ({ navigation }: HomeScreenProps) => {
   const mutateMainHouse = updateMainHouseMutation.mutate;
   const mutateMainHouseAsync = updateMainHouseMutation.mutateAsync;
 
-  // 1. Lấy danh sách nhà + trạng thái truy cập (GET /api/houses/my-access)
   const {
     data: housesData,
     isLoading: loadingHouses,
@@ -114,7 +120,6 @@ const HomeScreen = ({ navigation }: HomeScreenProps) => {
     [profileMainHouseId, tenantHouses]
   );
 
-  // Gỡ houseId lưu cục bộ nếu không còn trong danh sách tenant (đổi tài khoản / dữ liệu mới).
   useEffect(() => {
     if (loadingHouses || tenantHouses.length === 0) return;
     if (houseId && !tenantHouses.some((h) => h.id === houseId)) {
@@ -122,7 +127,6 @@ const HomeScreen = ({ navigation }: HomeScreenProps) => {
     }
   }, [loadingHouses, tenantHouses, houseId, setHouseId]);
 
-  // Một căn → mặc định là nhà chính.
   useEffect(() => {
     if (loadingHouses) return;
     if (tenantHouses.length !== 1) return;
@@ -133,15 +137,12 @@ const HomeScreen = ({ navigation }: HomeScreenProps) => {
     mutateMainHouse({ houseId: only.id });
   }, [loadingHouses, tenantHouses, houseId, setHouseId, mutateMainHouse]);
 
-  // Hai căn trở lên: chờ GET /users/me xong — có mainHouseId thì gán store; chưa có thì mở modal chọn lần đầu (PUT main-house).
   useEffect(() => {
     if (loadingHouses || tenantHouses.length <= 1) return;
     const hasValidSelectedHouse =
       Boolean(houseId) && tenantHouses.some((h) => h.id === houseId);
     const mainFromProfile = String(userProfile?.mainHouseId ?? "").trim();
     if (mainFromProfile && tenantHouses.some((h) => h.id === mainFromProfile)) {
-      // Chỉ gán từ mainHouseId khi chưa có nhà hợp lệ trong session hiện tại.
-      // Nếu user đang đổi nhà bằng nút "Đổi nhà" thì giữ lựa chọn local, không ép ngược về main.
       if (!hasValidSelectedHouse) setHouseId(mainFromProfile);
       setHouseModalVisible(false);
       return;
@@ -150,8 +151,6 @@ const HomeScreen = ({ navigation }: HomeScreenProps) => {
       setHouseModalVisible(false);
       return;
     }
-    // Nếu chưa có nhà hợp lệ trong store thì mở chọn nhà chính ngay,
-    // không đợi profile để tránh cảm giác "kẹt" ở Home khi đăng nhập lần đầu.
     setHouseModalVisible(true);
   }, [
     loadingHouses,
@@ -162,7 +161,6 @@ const HomeScreen = ({ navigation }: HomeScreenProps) => {
     userProfile?.mainHouseId,
   ]);
 
-  // Sử dụng context để lấy nhà hiện tại (đồng bộ với houseId trong store)
   const { house: myHouse, houseId: tenantHouseId, thingId } = useTenantContext();
   const hasTenantHouse = Boolean(myHouse);
 
@@ -186,13 +184,11 @@ const HomeScreen = ({ navigation }: HomeScreenProps) => {
     });
   }, [navigation, myHouse?.pendingInvoiceId]);
 
-  // 2. Lấy danh sách thiết bị của nhà đó
   const {
     data: itemsData,
     isLoading: loadingItems,
     refetch: refetchItems,
   } = useAssetItems({
-    // Nếu chưa xác định được nhà thì không truyền houseId để tránh query sai.
     houseId: myHouse?.id,
   });
 
@@ -204,12 +200,9 @@ const HomeScreen = ({ navigation }: HomeScreenProps) => {
     [itemsData?.data, myHouse]
   );
 
-  // 3. Lấy danh mục để hiển thị tên loại thiết bị (GET /api/assets/categories)
   const { data: categoriesData, refetch: refetchCategories } = useAssetCategories();
   const categories: AssetCategoryFromApi[] = categoriesData?.data ?? [];
 
-  // 4. Ngữ cảnh IoT tenant (houseId, thingId) và dữ liệu usage từ AWS
-  // const { houseId: tenantHouseId, thingId } = useTenantContext(); // Đã lấy ở trên
   const iotConnected = useTenantIoTConnection(thingId);
   const electricUsage = useTenantUsage({
     houseId: tenantHouseId,
@@ -222,18 +215,12 @@ const HomeScreen = ({ navigation }: HomeScreenProps) => {
 
   const loading = loadingHouses || loadingItems;
 
-  // Category đang chọn: null = tất cả
-  const [selectedCategoryId, setSelectedCategoryId] = useState<string | null>(
-    null
-  );
-  /** Chuỗi tìm kiếm từ ô search trên Header. */
-  const [searchQuery, setSearchQuery] = useState("");
-  const [deviceListPage, setDeviceListPage] = useState(1);
-  /** Tầng đang xem trên sơ đồ / danh sách khu vực (giống màn điện–nước). */
+  const [selectedCategoryId, setSelectedCategoryId] = useState<string | null>(null);
   const [deviceFloor, setDeviceFloor] = useState("1");
-  /** null = mọi thiết bị (theo danh mục); chọn id = chỉ thiết bị gắn khu vực đó. */
   const [selectedFunctionAreaId, setSelectedFunctionAreaId] = useState<string | null>(null);
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [deviceSearchQuery, setDeviceSearchQuery] = useState("");
+  const [dropdownExpandSignal, setDropdownExpandSignal] = useState(0);
 
   const houseIdForAreas = String(myHouse?.id ?? "").trim();
   const { data: functionalAreasRes } = useFunctionalAreasByHouseId(houseIdForAreas);
@@ -264,120 +251,156 @@ const HomeScreen = ({ navigation }: HomeScreenProps) => {
     setSelectedFunctionAreaId(null);
   }, [deviceFloor, myHouse?.id]);
 
-  const filteredDevices = useMemo(() => {
-    let list = devices;
-    if (selectedCategoryId != null) {
-      list = list.filter((d) => d.categoryId === selectedCategoryId);
-    }
-    if (selectedFunctionAreaId != null) {
-      list = list.filter((d) => d.functionAreaId === selectedFunctionAreaId);
-    }
-    return list;
-  }, [devices, selectedCategoryId, selectedFunctionAreaId]);
-
-  // Tên category: nếu categories list chưa có categoryId của từng item thì gọi GET /assets/categories/:id.
-  const uniqueCategoryIds = useMemo(
-    () => Array.from(new Set(filteredDevices.map((d) => d.categoryId).filter(Boolean))),
-    [filteredDevices]
-  );
-
-  const { categoryNameById } = useAssetCategoryNamesByIds(uniqueCategoryIds, categories);
-
-  /** Lọc thiết bị (đã lọc category) theo từ khoá tìm kiếm (tên / tên danh mục). */
-  const displayDevices = useMemo(() => {
-    const q = searchQuery.trim().toLowerCase();
-    if (!q) return filteredDevices;
-    return filteredDevices.filter((item) => {
-      const catName =
-        categories.find((c) => c.id === item.categoryId)?.name ??
-        categoryNameById.get(item.categoryId) ??
-        "";
-      return (
-        (item.displayName ?? "").toLowerCase().includes(q) ||
-        catName.toLowerCase().includes(q)
-      );
-    });
-  }, [filteredDevices, categories, searchQuery, categoryNameById]);
-
-  const deviceTotalPages = getTotalPages(displayDevices.length);
-  const pagedDisplayDevices = useMemo(
-    () => slicePage(displayDevices, deviceListPage),
-    [displayDevices, deviceListPage]
-  );
-
-  /** Đổi nhà / lọc / tìm kiếm / khu trên sơ đồ / tầng → về trang 1 danh sách thiết bị. */
-  useEffect(() => {
-    setDeviceListPage(1);
-  }, [
-    myHouse?.id,
-    selectedCategoryId,
-    searchQuery,
-    selectedFunctionAreaId,
-    deviceFloor,
-  ]);
+  /** Thiết bị trong phạm vi khu vực (null = tất cả nhà). */
+  const rawItemsByArea = useMemo(() => {
+    if (selectedFunctionAreaId == null) return devices;
+    return devices.filter((d) => d.functionAreaId === selectedFunctionAreaId);
+  }, [devices, selectedFunctionAreaId]);
 
   useEffect(() => {
-    setDeviceListPage((pg) => Math.min(pg, deviceTotalPages));
-  }, [deviceTotalPages]);
-
-  const onDeviceListPageChange = useCallback((p: number) => {
-    setDeviceListPage(p);
-    requestAnimationFrame(() => {
-      deviceListRef.current?.scrollToOffset({ offset: 0, animated: true });
-    });
-  }, []);
-
-  const deviceCategoryFilterSections = useMemo((): DropdownBoxSection[] => {
-    return [
-      {
-        id: "category",
-        title: t("dropdown_box.section_category"),
-        items: categories.map((c) => ({ id: c.id, label: c.name })),
-        selectedId: selectedCategoryId,
-        showAllOption: true,
-      },
-    ];
-  }, [categories, selectedCategoryId, t]);
-
-  const deviceCategoryFilterSummary = useMemo(() => {
-    const all = t("staff_home.all_devices_category_all");
-    if (selectedCategoryId === null) {
-      return `${t("dropdown_box.category_short")}: ${all}`;
+    if (
+      selectedFunctionAreaId != null &&
+      selectedFunctionAreaId !== prevSelectedAreaRef.current
+    ) {
+      setDropdownExpandSignal((n) => n + 1);
+      scrollDropdownPreviewIntoView();
     }
-    const name = categories.find((c) => c.id === selectedCategoryId)?.name ?? "";
-    return `${t("dropdown_box.category_short")}: ${name}`;
-  }, [selectedCategoryId, categories, t]);
+    prevSelectedAreaRef.current = selectedFunctionAreaId;
+  }, [selectedFunctionAreaId, scrollDropdownPreviewIntoView]);
 
-  const onDeviceCategoryFilterSelect = useCallback(
-    (sectionId: string, itemId: string | null) => {
-      if (sectionId === "category") setSelectedCategoryId(itemId);
+  useEffect(() => {
+    setSelectedCategoryId(null);
+  }, [myHouse?.id, selectedFunctionAreaId, deviceFloor]);
+
+  const groupItemsByCategory = useCallback(
+    (items: AssetItemFromApi[]) => {
+      const map = new Map<string, AssetItemFromApi[]>();
+      for (const item of items) {
+        const list = map.get(item.categoryId) ?? [];
+        list.push(item);
+        map.set(item.categoryId, list);
+      }
+      const result: {
+        categoryId: string;
+        categoryName: string;
+        items: AssetItemFromApi[];
+      }[] = [];
+      for (const cat of categories) {
+        const groupItems = map.get(cat.id);
+        if (groupItems?.length) {
+          const sorted = [...groupItems].sort((a, b) =>
+            (a.displayName ?? "").localeCompare(b.displayName ?? "", undefined, {
+              sensitivity: "base",
+            })
+          );
+          result.push({ categoryId: cat.id, categoryName: cat.name, items: sorted });
+          map.delete(cat.id);
+        }
+      }
+      for (const [categoryId, groupItems] of map) {
+        const sorted = [...groupItems].sort((a, b) =>
+          (a.displayName ?? "").localeCompare(b.displayName ?? "", undefined, {
+            sensitivity: "base",
+          })
+        );
+        result.push({
+          categoryId,
+          categoryName: t("staff_building_detail.category_other"),
+          items: sorted,
+        });
+      }
+      return result;
     },
-    []
+    [categories, t]
   );
 
-  /** Gợi ý tìm kiếm: tối đa 6 thiết bị khớp với searchQuery. */
-  const suggestions = useMemo<Suggestion[]>(() => {
-    if (!searchQuery.trim()) return [];
-    return displayDevices.slice(0, 6).map((item) => ({
-      id: item.id,
-      label: item.displayName,
-      sublabel:
-        categories.find((c) => c.id === item.categoryId)?.name ??
-        categoryNameById.get(item.categoryId) ??
-        "",
-      typeLabel: t("search.type_item"),
-    }));
-  }, [searchQuery, displayDevices, categories, t, categoryNameById]);
+  const devicesByCategoryAll = useMemo(
+    () => groupItemsByCategory(devices),
+    [groupItemsByCategory, devices]
+  );
 
-  /** Xử lý khi chọn gợi ý: điều hướng tới màn chi tiết thiết bị. */
-  const handleSuggestionSelect = (sug: Suggestion) => {
-    setSearchQuery("");
-    const item = devices.find((i) => i.id === sug.id);
-    if (item) {
-      const parentNav = navigation.getParent<NavigationProp<RootStackParamList>>();
-      parentNav?.navigate("TenantItemDetail", { item });
+  const devicesByCategory = useMemo(
+    () => groupItemsByCategory(rawItemsByArea),
+    [groupItemsByCategory, rawItemsByArea]
+  );
+
+  const filteredDevicesByCategory = useMemo(() => {
+    if (selectedCategoryId === null) return devicesByCategory;
+    return devicesByCategory.filter((g) => g.categoryId === selectedCategoryId);
+  }, [devicesByCategory, selectedCategoryId]);
+
+  const filteredDeviceRows = useMemo(() => {
+    const rows: { categoryName: string; item: AssetItemFromApi }[] = [];
+    for (const g of filteredDevicesByCategory) {
+      for (const item of g.items) {
+        rows.push({ categoryName: g.categoryName, item });
+      }
     }
-  };
+    return rows;
+  }, [filteredDevicesByCategory]);
+
+  const categoryFilterSection = useMemo((): DropdownBoxSection | null => {
+    if (devices.length === 0 || devicesByCategoryAll.length === 0) return null;
+    return {
+      id: "category",
+      title: t("dropdown_box.section_category"),
+      itemLayout: "chips",
+      items: devicesByCategoryAll.map(({ categoryId, categoryName }) => ({
+        id: categoryId,
+        label: categoryName,
+      })),
+      selectedId: selectedCategoryId,
+      showAllOption: true,
+    };
+  }, [devices.length, devicesByCategoryAll, selectedCategoryId, t]);
+
+  const deviceFilterSection = useMemo((): DropdownBoxSection | null => {
+    if (filteredDeviceRows.length === 0) return null;
+    return {
+      id: "device",
+      title: t("staff_building_detail.devices_title", { count: filteredDeviceRows.length }),
+      itemLayout: "list",
+      selectedId: null,
+      showAllOption: false,
+      items: filteredDeviceRows.map(({ categoryName, item }) => ({
+        id: item.id,
+        label: item.displayName ?? item.id,
+        detail: categoryName,
+      })),
+    };
+  }, [filteredDeviceRows, t]);
+
+  const categoryFilterSummary = t("dropdown_box.compact_search_label");
+
+  const handleCategoryDropdownSelect = useCallback(
+    (_sectionId: string, itemId: string | null) => {
+      if (deviceSearchQuery.trim().length > 0) return;
+      setSelectedCategoryId(itemId);
+    },
+    [deviceSearchQuery]
+  );
+
+  const handleDeviceDropdownSelect = useCallback(
+    (_sectionId: string, itemId: string | null) => {
+      if (!itemId) return;
+      const found = filteredDeviceRows.find((row) => row.item.id === itemId)?.item;
+      if (!found) return;
+      const parentNav = navigation.getParent<NavigationProp<RootStackParamList>>();
+      parentNav?.navigate("TenantItemDetail", { item: found });
+    },
+    [filteredDeviceRows, navigation]
+  );
+
+  const handleHouseDropdownSelect = useCallback(
+    (sectionId: string, itemId: string | null) => {
+      if (sectionId === "device") {
+        handleDeviceDropdownSelect(sectionId, itemId);
+        return;
+      }
+      handleCategoryDropdownSelect(sectionId, itemId);
+    },
+    [handleCategoryDropdownSelect, handleDeviceDropdownSelect]
+  );
 
   const onRefresh = useCallback(async () => {
     setIsRefreshing(true);
@@ -391,7 +414,6 @@ const HomeScreen = ({ navigation }: HomeScreenProps) => {
   const handleSelectMainHouse = useCallback(
     async (selectedHouseId: string) => {
       if (!selectedHouseId || isSubmittingMainHouse) return;
-      // Đã có nhà chính từ BE: nút "đổi nhà" chỉ đổi context local, KHÔNG đổi mainHouseId server.
       if (hasPersistedMainHouse) {
         setHouseId(selectedHouseId);
         setHouseModalVisible(false);
@@ -406,13 +428,8 @@ const HomeScreen = ({ navigation }: HomeScreenProps) => {
         await mutateMainHouseAsync({ houseId: selectedHouseId });
         setHouseId(selectedHouseId);
         setHouseModalVisible(false);
-        // Đổi nhà xong thì làm mới cache + lấy lại my-access mới nhất để quyết định bước tiếp theo.
         await queryClient.invalidateQueries({ queryKey: TENANT_INVOICES_QUERY_KEY });
-        const latestHouses = await refetchHouses();
-        const latestList = latestHouses.data?.data ?? tenantHouses;
-        const pickedHouse =
-          latestList.find((h) => h.id === selectedHouseId) ??
-          tenantHouses.find((h) => h.id === selectedHouseId);
+        await refetchHouses();
         refetchItems();
         refetchCategories();
       } catch {
@@ -430,7 +447,6 @@ const HomeScreen = ({ navigation }: HomeScreenProps) => {
     [
       isSubmittingMainHouse,
       hasPersistedMainHouse,
-      navigation,
       queryClient,
       refetchCategories,
       refetchHouses,
@@ -442,133 +458,16 @@ const HomeScreen = ({ navigation }: HomeScreenProps) => {
     ]
   );
 
-  /**
-   * Nhóm thiết bị theo danh mục để hiển thị “xếp theo danh mục”.
-   * Mỗi phần tử: { categoryId, categoryName, items }.
-   */
-  const devicesByCategory = useMemo(
-    () => {
-      const map = new Map<string, AssetItemFromApi[]>();
-      for (const item of filteredDevices) {
-        const list = map.get(item.categoryId) ?? [];
-        list.push(item);
-        map.set(item.categoryId, list);
-      }
-      const result: {
-        categoryId: string;
-        categoryName: string;
-        items: AssetItemFromApi[];
-      }[] = [];
-
-      // Ưu tiên theo thứ tự categories từ API
-      for (const cat of categories) {
-        const list = map.get(cat.id);
-        if (list?.length) {
-          const sorted = [...list].sort((a, b) =>
-            (a.displayName ?? "").localeCompare(b.displayName ?? "", undefined, {
-              sensitivity: "base",
-            })
-          );
-          result.push({
-            categoryId: cat.id,
-            categoryName: cat.name,
-            items: sorted,
-          });
-          map.delete(cat.id);
-        }
-      }
-
-      // Phần còn lại gom vào "Khác"
-      for (const [categoryId, list] of map) {
-        const sorted = [...list].sort((a, b) =>
-          (a.displayName ?? "").localeCompare(b.displayName ?? "", undefined, {
-            sensitivity: "base",
-          })
-        );
-        result.push({
-          categoryId,
-          categoryName: t("staff_building_detail.category_other"),
-          items: sorted,
-        });
-      }
-
-      return result;
-    },
-    [filteredDevices, categories, t]
-  );
-
-  // Hàm render từng item thiết bị
-  const renderDeviceItem = ({ item }: { item: AssetItemFromApi }) => {
-    const normalizedStatus = normalizeAssetItemStatusFromApi(item.status);
-
-    // Trạng thái thiết bị — chỉ dùng palette thương hiệu (theme/color).
-    let statusColor = brandPrimary;
-    let statusBg = brandTintBg;
-    let statusLabel = t('home.device_list.status.active');
-
-    if (item.status === "MAINTENANCE") {
-      statusColor = brandSecondary;
-      statusBg = brandBlueMutedBg;
-      statusLabel = t('home.device_list.status.maintenance');
-    } else if (
-      item.status === "INACTIVE" ||
-      normalizedStatus === "DISPOSED" ||
-      normalizedStatus === "BROKEN"
-    ) {
-      statusColor = brandSecondary;
-      statusBg = brandBlueMutedBg;
-      statusLabel = t('home.device_list.status.inactive');
-    } else if (normalizedStatus === "IN_USE" || normalizedStatus === "ACTIVE") {
-      statusColor = brandPrimary;
-      statusBg = brandTintBg;
-      statusLabel = t("home.device_list.status.active");
-    }
-
-    const categoryName =
-      categories.find((c) => c.id === item.categoryId)?.name ||
-      categoryNameById.get(item.categoryId) ||
-      t("staff_item_list.category_other");
-
-    return (
-      <TouchableOpacity
-        style={homeStyles.deviceCard}
-        onPress={() => {
-          // Mở màn chi tiết thiết bị (TenantItemDetail): truyền item từ API, màn hình sẽ fetch lại theo id và hiển thị giống ItemDescription.
-          const parentNav =
-            navigation.getParent<NavigationProp<RootStackParamList>>();
-          parentNav?.navigate("TenantItemDetail", { item });
-        }}
-      >
-        <View style={homeStyles.deviceLeft}>
-          <View style={homeStyles.deviceInfo}>
-            <Text style={homeStyles.deviceName}>{item.displayName}</Text>
-            <Text style={homeStyles.deviceLocation}>{categoryName}</Text>
-          </View>
-        </View>
-        
-        <View style={[homeStyles.statusBadge, { backgroundColor: statusBg }]}>
-          <Text style={[homeStyles.statusText, { color: statusColor }]}>
-            {statusLabel}
-          </Text>
-        </View>
-      </TouchableOpacity>
-    );
-  };
-
-  // Component hiển thị phần Header thông tin nhà
-  const renderListHeader = () => {
+  const renderHomeScrollContent = () => {
     if (!hasTenantHouse && !loadingHouses) {
       return null;
     }
 
     return (
       <View>
-        {/* Card thông tin nhà – cho phép nhấn để xem chi tiết nhà (sau này có thể điều hướng sang màn TenantHouse riêng). */}
         <TouchableOpacity
           activeOpacity={0.85}
           onPress={() => {
-            // Điều hướng lên stack root. Hiện tại tái sử dụng route BuildingDetail,
-            // khi có màn TenantHouse riêng có thể đổi navigate sang route mới.
             const parentNav =
               navigation.getParent<NavigationProp<RootStackParamList>>();
             if (myHouse && parentNav) {
@@ -592,24 +491,31 @@ const HomeScreen = ({ navigation }: HomeScreenProps) => {
             }
           }}
         >
-            <View style={homeStyles.houseInfoCard}>
-              <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
-                <Text style={[homeStyles.houseTitle, { flex: 1 }]}>
-                  {myHouse?.name || t("home.loading_data")}
-                </Text>
-                {tenantHouses.length > 1 && (
-                  <TouchableOpacity
-                    style={homeStyles.switchHouseButton}
-                    onPress={() => setHouseModalVisible(true)}
-                  >
-                    <Text style={homeStyles.switchHouseText}>
-                      {t("home.switch_house") || "Đổi nhà"}
-                    </Text>
-                  </TouchableOpacity>
-                )}
-              </View>
+          <View style={homeStyles.houseInfoCard}>
+            <View
+              style={{
+                flexDirection: "row",
+                justifyContent: "space-between",
+                alignItems: "center",
+                marginBottom: 8,
+              }}
+            >
+              <Text style={[homeStyles.houseTitle, { flex: 1 }]}>
+                {myHouse?.name || t("home.loading_data")}
+              </Text>
+              {tenantHouses.length > 1 && (
+                <TouchableOpacity
+                  style={homeStyles.switchHouseButton}
+                  onPress={() => setHouseModalVisible(true)}
+                >
+                  <Text style={homeStyles.switchHouseText}>
+                    {t("home.switch_house") || "Đổi nhà"}
+                  </Text>
+                </TouchableOpacity>
+              )}
+            </View>
 
-              <View style={homeStyles.houseDetailRow}>
+            <View style={homeStyles.houseDetailRow}>
               <Text style={homeStyles.houseLabel}>
                 {t("home.house_info.address")}
               </Text>
@@ -621,7 +527,6 @@ const HomeScreen = ({ navigation }: HomeScreenProps) => {
               />
             </View>
 
-            {/* Các thông tin khác nếu có trong API HouseFromApi */}
             {myHouse?.description && (
               <View style={homeStyles.houseDetailRow}>
                 <Text style={homeStyles.houseLabel}>
@@ -655,7 +560,6 @@ const HomeScreen = ({ navigation }: HomeScreenProps) => {
           </View>
         </TouchableOpacity>
 
-        {/* Tổng quan tiêu thụ điện/nước chỉ hiển thị khi đủ điều kiện vào nhà */}
         {!accessBlock ? (
           <View style={homeStyles.usageSummarySection}>
             <View style={homeStyles.usageSummaryHeader}>
@@ -667,7 +571,9 @@ const HomeScreen = ({ navigation }: HomeScreenProps) => {
                   homeStyles.usageSummaryLiveChip,
                   {
                     backgroundColor: iotConnected ? brandTintBg : brandBlueMutedBg,
-                    borderColor: iotConnected ? "rgba(59, 181, 130, 0.45)" : brandBlueMutedBorder,
+                    borderColor: iotConnected
+                      ? "rgba(59, 181, 130, 0.45)"
+                      : brandBlueMutedBorder,
                   },
                 ]}
               >
@@ -743,12 +649,12 @@ const HomeScreen = ({ navigation }: HomeScreenProps) => {
                 ) : (
                   <>
                     <Text style={homeStyles.usageSummaryCardRow}>
-                      {t("consumption.period_day")}:{" "}
-                      {waterUsage.dayVal.toFixed(2)} {waterUsage.unit}
+                      {t("consumption.period_day")}: {waterUsage.dayVal.toFixed(2)}{" "}
+                      {waterUsage.unit}
                     </Text>
                     <Text style={homeStyles.usageSummaryCardRow}>
-                      {t("consumption.period_week")}:{" "}
-                      {waterUsage.weekVal.toFixed(2)} {waterUsage.unit}
+                      {t("consumption.period_week")}: {waterUsage.weekVal.toFixed(2)}{" "}
+                      {waterUsage.unit}
                     </Text>
                     <Text
                       style={[
@@ -756,8 +662,8 @@ const HomeScreen = ({ navigation }: HomeScreenProps) => {
                         homeStyles.usageSummaryCardMonth,
                       ]}
                     >
-                      {t("consumption.period_month")}:{" "}
-                      {waterUsage.monthVal.toFixed(2)} {waterUsage.unit}
+                      {t("consumption.period_month")}: {waterUsage.monthVal.toFixed(2)}{" "}
+                      {waterUsage.unit}
                     </Text>
                   </>
                 )}
@@ -766,7 +672,6 @@ const HomeScreen = ({ navigation }: HomeScreenProps) => {
           </View>
         ) : null}
 
-        {/* Thiết bị: chọn tầng (gọn) → sơ đồ → danh mục → danh sách */}
         <Text style={[homeStyles.sectionTitle, { marginBottom: 4 }]}>
           {t("home.device_list.by_area_title")}
         </Text>
@@ -812,24 +717,48 @@ const HomeScreen = ({ navigation }: HomeScreenProps) => {
           accentColor={brandPrimary}
         />
 
-        <View
-          onLayout={(e) => {
-            deviceCategoryFilterYRef.current = e.nativeEvent.layout.y;
-          }}
-        >
-          <DropdownBox
-            sections={deviceCategoryFilterSections}
-            summary={deviceCategoryFilterSummary}
-            onSelect={onDeviceCategoryFilterSelect}
-            style={{ marginHorizontal: 16, marginBottom: 8 }}
-            keyboardVerticalOffset={insets.top + 52}
-            onSearchInputFocus={scrollDeviceCategoryFilterIntoView}
-          />
-        </View>
+        {categoryFilterSection ? (
+          <View
+            onLayout={(e) => {
+              deviceCategoryFilterYRef.current = e.nativeEvent.layout.y;
+            }}
+          >
+            <DropdownBox
+              sections={
+                deviceFilterSection
+                  ? [categoryFilterSection, deviceFilterSection]
+                  : [categoryFilterSection]
+              }
+              summary={categoryFilterSummary}
+              onSelect={handleHouseDropdownSelect}
+              style={{ marginHorizontal: 16, marginBottom: 8, marginTop: 4 }}
+              keyboardVerticalOffset={insets.top + 52}
+              onSearchInputFocus={scrollDeviceCategoryFilterIntoView}
+              onSearchChange={setDeviceSearchQuery}
+              searchAutoFocus={false}
+              expandSignal={dropdownExpandSignal}
+            />
+          </View>
+        ) : null}
 
-        <Text style={[homeStyles.sectionTitle, { marginTop: 8 }]}>
-          {t("home.device_list.title", { count: displayDevices.length })}
-        </Text>
+        {!loading && hasTenantHouse && devices.length === 0 ? (
+          <View style={[homeStyles.devicesEmpty, { marginHorizontal: 16 }]}>
+            <Text style={homeStyles.devicesEmptyText}>
+              {t("staff_building_detail.no_devices")}
+            </Text>
+          </View>
+        ) : null}
+
+        {!loading &&
+        hasTenantHouse &&
+        devices.length > 0 &&
+        filteredDeviceRows.length === 0 ? (
+          <View style={[homeStyles.devicesEmpty, { marginHorizontal: 16 }]}>
+            <Text style={homeStyles.devicesEmptyText}>
+              {t("staff_home.all_devices_no_items")}
+            </Text>
+          </View>
+        ) : null}
       </View>
     );
   };
@@ -858,9 +787,7 @@ const HomeScreen = ({ navigation }: HomeScreenProps) => {
 
   return (
     <View style={homeStyles.container}>
-      <Header
-        variant="default"
-      />
+      <Header variant="default" />
 
       <KeyboardAvoidingView
         style={{ flex: 1 }}
@@ -875,34 +802,12 @@ const HomeScreen = ({ navigation }: HomeScreenProps) => {
             </Text>
           </View>
         ) : (
-          <FlatList
-            ref={deviceListRef}
-            data={pagedDisplayDevices}
-            renderItem={renderDeviceItem}
-            keyExtractor={(item) => item.id}
-            ListHeaderComponent={renderListHeader}
+          <ScrollView
+            ref={mainScrollRef}
+            style={{ flex: 1 }}
             contentContainerStyle={homeStyles.deviceListContent}
             showsVerticalScrollIndicator={false}
             keyboardShouldPersistTaps="handled"
-            ListFooterComponent={() => (
-              <PaginationBar
-                currentPage={deviceListPage}
-                totalPages={deviceTotalPages}
-                onPageChange={onDeviceListPageChange}
-                style={{ paddingBottom: Math.max(8, insets.bottom) }}
-              />
-            )}
-            ListEmptyComponent={
-              !loading && hasTenantHouse
-                ? () => (
-                    <View style={homeStyles.devicesEmpty}>
-                      <Text style={homeStyles.devicesEmptyText}>
-                        {t("staff_home.all_devices_no_items")}
-                      </Text>
-                    </View>
-                  )
-                : null
-            }
             refreshControl={
               <RefreshControl
                 refreshing={isRefreshing || loading}
@@ -911,17 +816,12 @@ const HomeScreen = ({ navigation }: HomeScreenProps) => {
                 tintColor={brandPrimary}
               />
             }
-          />
+          >
+            {renderHomeScrollContent()}
+          </ScrollView>
         )}
-        <SuggestionDropdown
-          visible={searchQuery.trim().length > 0}
-          suggestions={suggestions}
-          query={searchQuery}
-          onSelect={handleSuggestionSelect}
-        />
       </KeyboardAvoidingView>
 
-      {/* Modal chọn nhà */}
       <Modal
         visible={houseModalVisible}
         transparent={true}
@@ -942,7 +842,9 @@ const HomeScreen = ({ navigation }: HomeScreenProps) => {
           <View style={homeStyles.modalOverlay}>
             <TouchableWithoutFeedback>
               <View style={homeStyles.modalContent}>
-                <Text style={homeStyles.modalTitle}>{t("home.select_main_house") || "Chọn nhà chính"}</Text>
+                <Text style={homeStyles.modalTitle}>
+                  {t("home.select_main_house") || "Chọn nhà chính"}
+                </Text>
                 <FlatList
                   data={tenantHouses}
                   keyExtractor={(item) => item.id}
@@ -950,21 +852,23 @@ const HomeScreen = ({ navigation }: HomeScreenProps) => {
                     <TouchableOpacity
                       style={[
                         homeStyles.houseItem,
-                        item.id === myHouse?.id && homeStyles.houseItemActive
+                        item.id === myHouse?.id && homeStyles.houseItemActive,
                       ]}
                       onPress={() => handleSelectMainHouse(item.id)}
                       disabled={isSubmittingMainHouse}
                     >
-                      <Text style={[
-                        homeStyles.houseItemText,
-                        item.id === myHouse?.id && homeStyles.houseItemTextActive
-                      ]}>
+                      <Text
+                        style={[
+                          homeStyles.houseItemText,
+                          item.id === myHouse?.id && homeStyles.houseItemTextActive,
+                        ]}
+                      >
                         {item.name}
                       </Text>
                       {isSubmittingMainHouse && item.id === pendingMainHouseId ? (
                         <ActivityIndicator size="small" color={brandPrimary} />
                       ) : item.id === myHouse?.id ? (
-                        <Text style={{ color: brandPrimary, fontWeight: 'bold' }}>✓</Text>
+                        <Text style={{ color: brandPrimary, fontWeight: "bold" }}>✓</Text>
                       ) : null}
                     </TouchableOpacity>
                   )}
@@ -991,12 +895,12 @@ const HomeScreen = ({ navigation }: HomeScreenProps) => {
             </Text>
             <Text style={homeStyles.accessGateCardBody}>
               {accessBlock === "handover"
-                ? (accessReasonText ||
-                    t("home.access.handover_body", {
-                      date: myHouse?.handoverDate
-                        ? formatDayMonthNumeric(new Date(myHouse.handoverDate), i18n.language)
-                        : "—",
-                    }))
+                ? accessReasonText ||
+                  t("home.access.handover_body", {
+                    date: myHouse?.handoverDate
+                      ? formatDayMonthNumeric(new Date(myHouse.handoverDate), i18n.language)
+                      : "—",
+                  })
                 : accessBlock === "deposit"
                   ? accessReasonText || t("home.access.deposit_body")
                   : accessReasonText || t("home.access.payment_body")}

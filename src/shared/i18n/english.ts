@@ -17,7 +17,10 @@ export default {
         "save": "Save",
         "warning_different_house": "Warning: This device belongs to {{houseName}}, not the currently selected house.",
         "read_more": "Read more",
-        "show_less": "Show less"
+        "show_less": "Show less",
+        "images_limit_title": "Photo limit",
+        "images_limit_max_message": "You can attach at most {{max}} photos. Remove some to add more.",
+        "images_limit_truncated_message": "Only {{added}} photo(s) were added (maximum {{max}})."
     },
     "device_detail": {
         "title": "Device Details",
@@ -134,7 +137,8 @@ export default {
         "field_staff_phone": "Phone number",
         "not_assigned": "Not assigned yet",
         "field_slot": "Expected processing time",
-        "no_slot": "No slot yet"
+        "no_slot": "No slot yet",
+        "slot_time_tbd": "You will be contacted to confirm the schedule"
     },
     "tenant_question_list": {
         "screen_title": "Q&A replies",
@@ -449,6 +453,8 @@ export default {
         "security": "Security",
         "change_password": "Change Password",
         "change_password_desc": "Update your account password",
+        "change_password_success_title": "Password updated",
+        "change_password_success_message": "Your password has been changed. Please sign in again with your new password.",
         "app_settings": "Application",
         "notifications": "Notifications",
         "notifications_desc": "Message settings",
@@ -684,7 +690,8 @@ export default {
     },
     "dropdown_box": {
         "title": "Filters & selection",
-        "search_placeholder": "Search name, address, floor, category…",
+        "compact_search_label": "Categories & devices",
+        "search_placeholder": "Search category or device name…",
         "no_results": "No matching items.",
         "section_floor": "Floor",
         "section_category": "Device category",
@@ -694,6 +701,6 @@ export default {
         "category_short": "Category",
         "house_short": "House",
         "status_short": "Status",
-        "open_a11y": "Open filters"
+        "open_a11y": "Open list"
     }
 }

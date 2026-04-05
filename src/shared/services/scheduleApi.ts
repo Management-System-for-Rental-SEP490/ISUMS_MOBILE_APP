@@ -18,8 +18,8 @@ export const getWorkSlotsByStaffId = async (
     return { data: [], message: "", statusCode: 400, success: false };
   }
 
-  //const url = `${BACKEND_API_BASE}/schedules/work_slots/staff/${encodeURIComponent(id)}`;
-  const url = `${FALLBACK_BACKEND_URL}/schedules/work_slots/staff/${encodeURIComponent(id)}`;
+  const url = `${BACKEND_API_BASE}/schedules/work_slots/staff/${encodeURIComponent(id)}`;
+  //const url = `${FALLBACK_BACKEND_URL}/schedules/work_slots/staff/${encodeURIComponent(id)}`;
   const response = await axiosClient.get<WorkSlotsApiResponse>(url);
   return response.data;
 };
@@ -36,8 +36,8 @@ export const getWorkSlotById = async (
     return { data: null as any, message: "", statusCode: 400, success: false };
   }
 
-  //const url = `${BACKEND_API_BASE}/schedules/work_slots/${encodeURIComponent(id)}`;
-  const url = `${FALLBACK_BACKEND_URL}/schedules/work_slots/${encodeURIComponent(id)}`;
+  const url = `${BACKEND_API_BASE}/schedules/work_slots/${encodeURIComponent(id)}`;
+  //const url = `${FALLBACK_BACKEND_URL}/schedules/work_slots/${encodeURIComponent(id)}`;
   const response = await axiosClient.get<WorkSlotByIdApiResponse>(url);
   return response.data;
 };

@@ -120,10 +120,10 @@ export type AuthPayload = {
   houseId?: string;
 };
 
-/** Phiên WebView Keycloak toàn cục (logout / đổi MK / account), giống overlay đăng nhập. */
+/** Phiên WebView Keycloak toàn cục (đổi MK / sau này logout-account), giống overlay đăng nhập. */
 export type KeycloakInAppSession = {
   url: string;
-  allowManualClose: boolean;
+  flow: "change_password";
 };
 
 export type AuthState = {

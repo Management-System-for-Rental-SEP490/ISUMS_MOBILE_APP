@@ -1,15 +1,15 @@
 <#import "template.ftl" as layout>
-<@layout.registrationLayout displayInfo=true; section>
+<#import "password-commons.ftl" as passwordCommons>
+<@layout.registrationLayout displayInfo=true displayMessage=false; section>
     <#if section = "header">
-        <header class="header">
+        <header class="header" role="banner">
             <div class="logo">
-                <img src="${url.resourcesPath}/img/logob.png" alt="ISUMS Logo" />
+                <img src="${url.resourcesPath}/img/logob.png" alt="" />
             </div>
-            <h1 class="app-name">${msg("updatePasswordTitle")}</h1>
-            <p class="tagline">${msg("updatePasswordInstruction")}</p>
+            <h1 class="app-name">${msg("appName")}</h1>
         </header>
     <#elseif section = "form">
-        <form id="kc-passwd-update-form" class="reset-form" action="${url.loginAction}" method="post">
+        <form id="kc-passwd-update-form" class="reset-form" action="<@layout.isumsFormActionUrl rawAction=url.loginAction />" method="post" onsubmit="document.body.classList.add('isums-form-submitting');var el=this.querySelector('input[name=login]');if(el)el.disabled=true;return true;">
             <input type="text" id="username" name="username" value="${(username!'')}" autocomplete="username" readonly="readonly" style="display:none;"/>
             <input type="password" id="password" name="password" autocomplete="current-password" style="display:none;"/>
 
@@ -44,8 +44,15 @@
                 </div>
             </div>
 
+            <@passwordCommons.logoutOtherSessions/>
+
             <div class="form-actions">
-                <button type="submit" class="btn-login">${msg("updatePasswordAction")}</button>
+                <#if isAppInitiatedAction??>
+                    <input type="submit" name="login" class="btn-login" value="${msg('updatePasswordAction')}" />
+                    <button type="submit" name="cancel-aia" value="true" class="btn-login" style="margin-top:10px;background:#e5e7eb;color:#374151">${msg('doCancel')}</button>
+                <#else>
+                    <input type="submit" name="login" class="btn-login" value="${msg('updatePasswordAction')}" />
+                </#if>
             </div>
         </form>
         

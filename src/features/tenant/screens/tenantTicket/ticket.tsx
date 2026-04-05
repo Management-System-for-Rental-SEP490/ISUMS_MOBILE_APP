@@ -42,6 +42,8 @@ import { TicketAssetSelect, type TicketAssetSelection } from "./TicketAssetSelec
 type TicketRouteProp = RouteProp<RootStackParamList, "Ticket">;
 type TicketNavigationProp = NativeStackNavigationProp<RootStackParamList, "Ticket">;
 
+const MAX_TICKET_ATTACHMENT_IMAGES = 5;
+
 const TicketScreen = () => {
   const { t } = useTranslation();
   const insets = useSafeAreaInsets();
@@ -129,13 +131,40 @@ const TicketScreen = () => {
       }));
 
     setSelectedImages((prev) => {
-      const merged = [...prev, ...normalized];
-      // Hard cap để tránh upload quá nhiều ảnh gây chậm.
-      return merged.slice(0, 6);
+      const room = MAX_TICKET_ATTACHMENT_IMAGES - prev.length;
+      if (room <= 0) {
+        requestAnimationFrame(() =>
+          Alert.alert(
+            t("common.images_limit_title"),
+            t("common.images_limit_max_message", { max: MAX_TICKET_ATTACHMENT_IMAGES })
+          )
+        );
+        return prev;
+      }
+      const toAdd = normalized.slice(0, room);
+      if (normalized.length > toAdd.length) {
+        requestAnimationFrame(() =>
+          Alert.alert(
+            t("common.images_limit_title"),
+            t("common.images_limit_truncated_message", {
+              added: toAdd.length,
+              max: MAX_TICKET_ATTACHMENT_IMAGES,
+            })
+          )
+        );
+      }
+      return [...prev, ...toAdd];
     });
   };
 
   const handleTakePhoto = async () => {
+    if (selectedImages.length >= MAX_TICKET_ATTACHMENT_IMAGES) {
+      Alert.alert(
+        t("common.images_limit_title"),
+        t("common.images_limit_max_message", { max: MAX_TICKET_ATTACHMENT_IMAGES })
+      );
+      return;
+    }
     setImageCaptureVisible(true);
   };
 
@@ -220,9 +249,13 @@ const TicketScreen = () => {
 
             <View style={ticketStyles.imageButtonsRow}>
               <TouchableOpacity
-                style={ticketStyles.imageButton}
+                style={[
+                  ticketStyles.imageButton,
+                  selectedImages.length >= MAX_TICKET_ATTACHMENT_IMAGES && { opacity: 0.5 },
+                ]}
                 onPress={handleTakePhoto}
                 activeOpacity={0.9}
+                disabled={selectedImages.length >= MAX_TICKET_ATTACHMENT_IMAGES}
               >
                 <Text style={ticketStyles.imageButtonText}>{t("ticket.images_camera")}</Text>
               </TouchableOpacity>

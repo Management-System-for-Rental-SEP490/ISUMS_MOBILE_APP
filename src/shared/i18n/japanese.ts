@@ -17,7 +17,10 @@ export default {
         "save": "保存",
         "warning_different_house": "警告：このデバイスは{{houseName}}に属しており、現在選択されている家ではありません。",
         "read_more": "もっと見る",
-        "show_less": "折りたたむ"
+        "show_less": "折りたたむ",
+        "images_limit_title": "写真の上限",
+        "images_limit_max_message": "添付できる写真は最大{{max}}枚です。追加するには削除してください。",
+        "images_limit_truncated_message": "上限{{max}}枚のため、{{added}}枚のみ追加しました。"
     },
     "device_detail": {
         "title": "デバイス詳細",
@@ -134,7 +137,8 @@ export default {
         "field_staff_phone": "電話番号",
         "not_assigned": "未割当",
         "field_slot": "処理予定時間",
-        "no_slot": "枠なし"
+        "no_slot": "枠なし",
+        "slot_time_tbd": "日程は別途ご連絡のうえ確定します"
     },
     "tenant_question_list": {
         "screen_title": "質問への回答",
@@ -449,6 +453,8 @@ export default {
         "security": "セキュリティ",
         "change_password": "パスワード変更",
         "change_password_desc": "アカウントのパスワードを更新",
+        "change_password_success_title": "パスワードを更新しました",
+        "change_password_success_message": "パスワードが変更されました。新しいパスワードで再度ログインしてください。",
         "app_settings": "アプリ設定",
         "notifications": "通知",
         "notifications_desc": "受信設定",
@@ -684,7 +690,8 @@ export default {
     },
     "dropdown_box": {
         "title": "絞り込み",
-        "search_placeholder": "名前・住所・階・カテゴリで検索…",
+        "compact_search_label": "カテゴリ・機器",
+        "search_placeholder": "カテゴリまたは機器名で検索…",
         "no_results": "該当する項目がありません。",
         "section_floor": "階",
         "section_category": "機器カテゴリ",
@@ -694,6 +701,6 @@ export default {
         "category_short": "カテゴリ",
         "house_short": "物件",
         "status_short": "状態",
-        "open_a11y": "絞り込みを開く"
+        "open_a11y": "一覧を開く"
     }
 }

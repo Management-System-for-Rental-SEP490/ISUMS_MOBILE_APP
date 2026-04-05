@@ -431,10 +431,6 @@ const TenantTicketDetailScreen = () => {
           </View>
           <View style={[styles.panelRow, styles.panelRowLast]}>
             <Text style={styles.fieldLabel}>{t("tenant_ticket_detail.field_slot")}</Text>
-            {/*
-              Ưu tiên hiển thị predictedHandlingTime từ work slot by id.
-              Nếu chưa lấy được, fallback bằng ticket.slotId để không bị trống.
-            */}
             <Text
               style={
                 nilUuid(ticket.slotId) || workSlotLoading || predictedHandlingTime == null
@@ -447,7 +443,7 @@ const TenantTicketDetailScreen = () => {
                 ? t("tenant_ticket_detail.no_slot")
                 : workSlotLoading
                   ? t("common.loading")
-                  : predictedHandlingTime ?? ticket.slotId}
+                  : predictedHandlingTime ?? t("tenant_ticket_detail.slot_time_tbd")}
             </Text>
           </View>
         </View>

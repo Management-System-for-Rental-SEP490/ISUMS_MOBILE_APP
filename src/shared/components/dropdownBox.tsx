@@ -14,30 +14,74 @@ import {
 } from "react-native";
 import { useTranslation } from "react-i18next";
 import Icons from "../theme/icon";
-import { brandPrimary, brandTintBg, neutral } from "../theme/color";
+import { brandBlueMutedBorder, brandPrimary, brandTintBg, neutral } from "../theme/color";
 import { appTypography } from "../utils";
 
-export type DropdownBoxItem = { id: string; label: string };
+export type DropdownBoxItem = {
+  id: string;
+  label: string;
+  /** Dòng phụ (tên danh mục…), dùng khi `itemLayout="list"`. */
+  detail?: string;
+  /** Hiển thị dòng “Số thiết bị: **n**” (list layout). */
+  deviceCount?: number;
+};
 
 export type DropdownBoxSection = {
   id: string;
   title: string;
   items: DropdownBoxItem[];
+  /** Ghi đè layout cho riêng section này. */
+  itemLayout?: "chips" | "list";
+  /** `null` khi đang chọn hàng "Tất cả" (nếu có). */
   selectedId: string | null;
+  /**
+   * `false` = không có hàng "Tất cả" (vd. chỉ chọn tầng cụ thể).
+   * Mặc định `true`.
+   */
   showAllOption?: boolean;
   allLabel?: string;
 };
 
 export type DropdownBoxProps = {
   sections: DropdownBoxSection[];
+  /** Một dòng tóm tắt trên nút mở (parent tự format + i18n). */
   summary: string;
   onSelect: (sectionId: string, itemId: string | null) => void;
   style?: StyleProp<ViewStyle>;
   onAfterSelect?: (sectionId: string, itemId: string | null) => void;
-  /** Bù header/status bar cho KeyboardAvoidingView (iOS). VD: `insets.top + 52`. */
+  /**
+   * Callback khi user nhập text vào ô search trong dropdown.
+   * Dùng để parent filter dữ liệu theo cùng query.
+   */
+  onSearchChange?: (query: string) => void;
+  /**
+   * Bù chiều cao header/status bar cho KeyboardAvoidingView (iOS).
+   * Gợi ý: `insets.top + ~52` khi màn có header stack.
+   */
   keyboardVerticalOffset?: number;
-  /** Cuộn list/scroll cha khi focus ô tìm (tránh bàn phím che). */
+  /**
+   * Gọi khi ô tìm trong panel được focus (sau khi mở panel).
+   * Dùng để `scrollToOffset` / `scrollTo` trên FlatList/ScrollView cha — tránh bàn phím che.
+   */
   onSearchInputFocus?: () => void;
+  /** `list` = danh sách dọc (tìm + hàng), `chips` = chip cuộn ngang (mặc định). */
+  itemLayout?: "chips" | "list";
+  /** Viền/trục nhấn cho trigger + panel (vd. picker căn nhà Staff Home). */
+  triggerAccent?: boolean;
+  /** Tuỳ chỉnh placeholder ô tìm (mặc định `dropdown_box.search_placeholder`). */
+  searchPlaceholder?: string;
+  /**
+   * `false` = mở panel không gọi bàn phím; chỉ khi user chạm ô tìm mới focus (vd. danh sách căn nhà Staff Home).
+   * Mặc định `true`.
+   */
+  searchAutoFocus?: boolean;
+  /** Mở sẵn panel ngay khi component mount. Mặc định `false`. */
+  defaultExpanded?: boolean;
+  /**
+   * Mỗi lần giá trị tăng (1, 2, …), tự mở panel (vd. chọn khu vực trên sơ đồ).
+   * Giữ `0` khi không cần mở từ bên ngoài.
+   */
+  expandSignal?: number;
 };
 
 type SectionBlock = {
@@ -59,7 +103,11 @@ function norm(s: string) {
 function itemMatches(item: DropdownBoxItem, q: string) {
   if (!q) return true;
   const n = norm(q);
-  return norm(item.label).includes(n) || norm(item.id).includes(n);
+  return (
+    norm(item.label).includes(n) ||
+    norm(item.id).includes(n) ||
+    norm(item.detail ?? "").includes(n)
+  );
 }
 
 function itemScore(item: DropdownBoxItem, q: string): number {
@@ -67,12 +115,15 @@ function itemScore(item: DropdownBoxItem, q: string): number {
   if (!query) return 0;
   const label = norm(item.label);
   const id = norm(item.id);
-  if (label === query) return 120;
-  if (label.startsWith(query)) return 100;
-  if (label.includes(query)) return 80;
-  if (id === query) return 70;
-  if (id.startsWith(query)) return 60;
-  if (id.includes(query)) return 40;
+  const detail = norm(item.detail ?? "");
+  if (label === query) return 140;
+  if (label.startsWith(query)) return 120;
+  if (label.includes(query)) return 90;
+  if (id === query) return 80;
+  if (id.startsWith(query)) return 70;
+  if (id.includes(query)) return 50;
+  if (detail.startsWith(query)) return 40;
+  if (detail.includes(query)) return 30;
   return 0;
 }
 
@@ -107,7 +158,7 @@ function buildSectionBlocks(
 }
 
 /**
- * Gom nhiều bộ lọc: mở ngay tại chỗ — thanh tìm kiếm + chip theo thứ tự BE.
+ * Gom nhiều bộ lọc (tầng, danh mục, …): nhấn mở ngay tại chỗ — thanh tìm kiếm + chip theo thứ tự BE.
  */
 export function DropdownBox({
   sections,
@@ -115,28 +166,38 @@ export function DropdownBox({
   onSelect,
   style,
   onAfterSelect,
+  onSearchChange,
   keyboardVerticalOffset = 0,
   onSearchInputFocus,
+  itemLayout = "chips",
+  triggerAccent = false,
+  searchPlaceholder,
+  searchAutoFocus = true,
+  defaultExpanded = false,
+  expandSignal = 0,
 }: DropdownBoxProps) {
   const { t } = useTranslation();
   const { height: windowH } = useWindowDimensions();
-  const [expanded, setExpanded] = useState(false);
+  const [expanded, setExpanded] = useState(defaultExpanded);
   const [search, setSearch] = useState("");
-  /** Tránh gọi callback cuộn cha lặp nhiều lần khi search input focus lại. */
-  const parentScrollForSearchDoneRef = useRef(false);
+  const prevExpandSignalRef = useRef(0);
 
   useEffect(() => {
-    if (expanded) setSearch("");
+    if (expanded) {
+      setSearch("");
+      onSearchChange?.("");
+    }
   }, [expanded]);
 
   useEffect(() => {
-    if (!expanded) parentScrollForSearchDoneRef.current = false;
-  }, [expanded]);
+    if (expandSignal > 0 && expandSignal !== prevExpandSignalRef.current) {
+      prevExpandSignalRef.current = expandSignal;
+      setExpanded(true);
+    }
+  }, [expandSignal]);
 
   const notifyParentScrollForSearch = useCallback(() => {
     if (!onSearchInputFocus) return;
-    if (parentScrollForSearchDoneRef.current) return;
-    parentScrollForSearchDoneRef.current = true;
     requestAnimationFrame(() => {
       requestAnimationFrame(() => onSearchInputFocus());
     });
@@ -170,7 +231,7 @@ export function DropdownBox({
       {!expanded ? (
         <Pressable
           onPress={() => setExpanded(true)}
-          style={styles.trigger}
+          style={[styles.trigger, triggerAccent && styles.triggerAccent]}
           accessibilityRole="button"
           accessibilityLabel={`${t("dropdown_box.open_a11y")}: ${summary}`}
         >
@@ -185,20 +246,24 @@ export function DropdownBox({
           keyboardVerticalOffset={keyboardVerticalOffset}
           style={styles.avoidingWrap}
         >
-          <View style={styles.panel}>
+          <View style={[styles.panel, triggerAccent && styles.panelAccent]}>
             <View style={styles.searchRow}>
               <Icons.search size={20} color={neutral.iconMuted} />
               <TextInput
                 value={search}
-                onChangeText={setSearch}
-                placeholder={t("dropdown_box.search_placeholder")}
+                onChangeText={(text) => {
+                  setSearch(text);
+                  onSearchChange?.(text);
+                }}
+                placeholder={searchPlaceholder ?? t("dropdown_box.search_placeholder")}
                 placeholderTextColor={neutral.textSecondary}
                 style={styles.searchInput}
                 returnKeyType="search"
                 autoCorrect={false}
                 autoCapitalize="none"
-                autoFocus
+                {...(searchAutoFocus ? { autoFocus: true } : {})}
                 clearButtonMode="while-editing"
+                onPressIn={notifyParentScrollForSearch}
                 onFocus={notifyParentScrollForSearch}
               />
               <Pressable
@@ -215,7 +280,7 @@ export function DropdownBox({
 
             <ScrollView
               style={[styles.chipsScroll, { height: resultsViewportHeight }]}
-              contentContainerStyle={sectionBlocks.length === 0 ? styles.chipsScrollContentEmpty : undefined}
+              contentContainerStyle={sectionBlocks.length === 0 ? styles.listScrollContentEmpty : undefined}
               keyboardShouldPersistTaps="handled"
               keyboardDismissMode={Platform.OS === "ios" ? "interactive" : "on-drag"}
               nestedScrollEnabled
@@ -239,54 +304,116 @@ export function DropdownBox({
                         {block.sec.title}
                       </Text>
                     ) : null}
-                    <ScrollView
-                      horizontal
-                      showsHorizontalScrollIndicator
-                      keyboardShouldPersistTaps="handled"
-                      nestedScrollEnabled
-                      contentContainerStyle={styles.chipRowContent}
-                    >
-                      {block.allVisible ? (
-                        <Pressable
-                          style={[
-                            styles.chip,
-                            block.sec.selectedId === null && styles.chipSelected,
-                          ]}
-                          onPress={() => handleSelect(block.sec.id, null)}
-                          accessibilityRole="button"
-                          accessibilityState={{ selected: block.sec.selectedId === null }}
-                        >
-                          <Text
-                            style={[
-                              styles.chipLabel,
-                              block.sec.selectedId === null && styles.chipLabelSelected,
-                            ]}
-                            numberOfLines={1}
-                          >
-                            {block.allLabel}
-                          </Text>
-                        </Pressable>
-                      ) : null}
-                      {block.filteredItems.map((it) => {
-                        const selected = block.sec.selectedId === it.id;
-                        return (
+                    {(block.sec.itemLayout ?? itemLayout) === "list" ? (
+                      <>
+                        {block.allVisible ? (
                           <Pressable
-                            key={it.id}
-                            style={[styles.chip, selected && styles.chipSelected]}
-                            onPress={() => handleSelect(block.sec.id, it.id)}
+                            style={[
+                              styles.listRow,
+                              block.sec.selectedId === null && styles.listRowSelected,
+                            ]}
+                            onPress={() => handleSelect(block.sec.id, null)}
                             accessibilityRole="button"
-                            accessibilityState={{ selected }}
+                            accessibilityState={{ selected: block.sec.selectedId === null }}
+                          >
+                            <View style={styles.listRowTextWrap}>
+                              <Text
+                                style={[
+                                  styles.listRowTitle,
+                                  block.sec.selectedId === null && styles.listRowTitleSelected,
+                                ]}
+                                numberOfLines={2}
+                              >
+                                {block.allLabel}
+                              </Text>
+                            </View>
+                            <Icons.chevronForward size={20} color={neutral.textSecondary} />
+                          </Pressable>
+                        ) : null}
+                        {block.filteredItems.map((it) => {
+                          const selected = block.sec.selectedId === it.id;
+                          return (
+                            <Pressable
+                              key={it.id}
+                              style={[styles.listRow, selected && styles.listRowSelected]}
+                              onPress={() => handleSelect(block.sec.id, it.id)}
+                              accessibilityRole="button"
+                              accessibilityState={{ selected }}
+                            >
+                              <View style={styles.listRowTextWrap}>
+                                <Text
+                                  style={[styles.listRowTitle, selected && styles.listRowTitleSelected]}
+                                  numberOfLines={2}
+                                >
+                                  {it.label}
+                                </Text>
+                                {it.detail ? (
+                                  <Text style={styles.listRowDetail} numberOfLines={2}>
+                                    {it.detail}
+                                  </Text>
+                                ) : null}
+                                {typeof it.deviceCount === "number" ? (
+                                  <Text style={styles.listRowMeta}>
+                                    {t("staff_home.house_picker_device_prefix")}{" "}
+                                    <Text style={styles.listRowMetaBold}>{it.deviceCount}</Text>
+                                  </Text>
+                                ) : null}
+                              </View>
+                              <Icons.chevronForward size={20} color={neutral.textSecondary} />
+                            </Pressable>
+                          );
+                        })}
+                      </>
+                    ) : (
+                      <ScrollView
+                        horizontal
+                        showsHorizontalScrollIndicator
+                        keyboardShouldPersistTaps="handled"
+                        nestedScrollEnabled
+                        contentContainerStyle={styles.chipRowContent}
+                      >
+                        {block.allVisible ? (
+                          <Pressable
+                            style={[
+                              styles.chip,
+                              block.sec.selectedId === null && styles.chipSelected,
+                            ]}
+                            onPress={() => handleSelect(block.sec.id, null)}
+                            accessibilityRole="button"
+                            accessibilityState={{ selected: block.sec.selectedId === null }}
                           >
                             <Text
-                              style={[styles.chipLabel, selected && styles.chipLabelSelected]}
+                              style={[
+                                styles.chipLabel,
+                                block.sec.selectedId === null && styles.chipLabelSelected,
+                              ]}
                               numberOfLines={1}
                             >
-                              {it.label}
+                              {block.allLabel}
                             </Text>
                           </Pressable>
-                        );
-                      })}
-                    </ScrollView>
+                        ) : null}
+                        {block.filteredItems.map((it) => {
+                          const selected = block.sec.selectedId === it.id;
+                          return (
+                            <Pressable
+                              key={it.id}
+                              style={[styles.chip, selected && styles.chipSelected]}
+                              onPress={() => handleSelect(block.sec.id, it.id)}
+                              accessibilityRole="button"
+                              accessibilityState={{ selected }}
+                            >
+                              <Text
+                                style={[styles.chipLabel, selected && styles.chipLabelSelected]}
+                                numberOfLines={1}
+                              >
+                                {it.label}
+                              </Text>
+                            </Pressable>
+                          );
+                        })}
+                      </ScrollView>
+                    )}
                   </View>
                 ))
               )}
@@ -316,8 +443,19 @@ const styles = StyleSheet.create({
     flex: 1,
     color: neutral.text,
   },
+  triggerAccent: {
+    borderWidth: 1,
+    borderColor: brandBlueMutedBorder,
+    borderLeftWidth: 4,
+    borderLeftColor: brandPrimary,
+  },
+  panelAccent: {
+    borderWidth: 1,
+    borderColor: brandBlueMutedBorder,
+  },
   avoidingWrap: {
     alignSelf: "stretch",
+    width: "100%",
   },
   singleSectionBlock: {
     paddingTop: 4,
@@ -351,7 +489,8 @@ const styles = StyleSheet.create({
     minHeight: 22,
   },
   chipsScroll: {},
-  chipsScrollContentEmpty: {
+  /** Căn “Không có kết quả” giữa vùng list cố định chiều cao. */
+  listScrollContentEmpty: {
     flexGrow: 1,
     justifyContent: "center",
   },
@@ -404,5 +543,45 @@ const styles = StyleSheet.create({
     ...appTypography.secondary,
     color: neutral.textSecondary,
     textAlign: "center",
+  },
+  listRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingVertical: 12,
+    paddingHorizontal: 14,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: neutral.border,
+    backgroundColor: neutral.surface,
+    gap: 10,
+  },
+  listRowSelected: {
+    backgroundColor: brandTintBg,
+  },
+  listRowTextWrap: {
+    flex: 1,
+    minWidth: 0,
+  },
+  listRowTitle: {
+    ...appTypography.body,
+    fontWeight: "600",
+    color: neutral.text,
+  },
+  listRowTitleSelected: {
+    color: brandPrimary,
+  },
+  listRowDetail: {
+    ...appTypography.secondary,
+    color: neutral.textSecondary,
+    marginTop: 4,
+  },
+  listRowMeta: {
+    ...appTypography.secondary,
+    color: neutral.textSecondary,
+    marginTop: 6,
+  },
+  listRowMetaBold: {
+    ...appTypography.listTitle,
+    fontWeight: "700",
+    color: brandPrimary,
   },
 });

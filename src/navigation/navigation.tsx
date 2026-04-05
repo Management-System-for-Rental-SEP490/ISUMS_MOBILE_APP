@@ -1,16 +1,11 @@
-import React, { useEffect, useState, useCallback, useRef } from "react";
+import React, { useEffect, useState, useRef } from "react";
 import {
   View,
   ActivityIndicator,
-  Text,
-  TouchableOpacity,
   StyleSheet,
-  BackHandler,
-  Platform,
   AppState,
   type AppStateStatus,
 } from "react-native";
-import WebView from "react-native-webview";
 import { useTranslation } from "react-i18next";
 import { useQueryClient } from "@tanstack/react-query";
 import { NavigationContainer } from "@react-navigation/native";
@@ -19,13 +14,7 @@ import { CustomAlert } from "../shared/components/alert";
 import Login from "../features/screens/authentication/LoginScreen";
 import OnBoarding from "../features/screens/onBoarding/onBoarding";
 import { useAuthStore } from "../store/useAuthStore";
-import {
-  logoutKeycloak,
-  getKeycloakRedirectUri,
-  keycloakInAppNotifyAppRedirect,
-  keycloakInAppUserDismissed,
-} from "../shared/services/keycloakAuth";
-import loginStyles from "../features/screens/authentication/loginStyles";
+import { logoutKeycloak } from "../shared/services/keycloakAuth";
 import { RootStackParamList } from "../shared/types";
 import { TenantTabs } from "../shared/components/footerNavigator";
 import CameraScreen from "../features/modal/camera/CameraScreen";
@@ -41,19 +30,12 @@ import TenantInvoiceListScreen from "../features/tenant/screens/tenantInvoice/Te
 import TenantInvoiceDetailScreen from "../features/tenant/screens/tenantInvoice/TenantInvoiceDetailScreen";
 import { brandPrimary } from "../shared/theme/color";
 import { ensureTenantMainHouseSynced } from "../shared/services/userApi";
+import KeycloakChangePasswordWebViewOverlay from "../shared/components/KeycloakChangePasswordWebViewOverlay";
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
 
 const navStyles = StyleSheet.create({
   root: { flex: 1 },
-  keycloakOverlay: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: "#fff",
-    zIndex: 99999,
-    elevation: 99999,
-    flexDirection: "column",
-  },
-  keycloakWebView: { flex: 1 },
 });
 
 const Navigation = () => {
@@ -62,7 +44,6 @@ const Navigation = () => {
   const user = useAuthStore((state) => state.user);
   const role = useAuthStore((state) => state.role);
   const onboardedUsers = useAuthStore((state) => state.onboardedUsers);
-  const keycloakSession = useAuthStore((state) => state.keycloakInAppSession);
   const queryClient = useQueryClient();
   const wasLoggedInRef = useRef(isLoggedIn);
   const loginEdgeHandledRef = useRef(isLoggedIn);
@@ -70,17 +51,9 @@ const Navigation = () => {
   const [isReady, setIsReady] = useState(false);
   const [isSyncingMainHouseOnLogin, setIsSyncingMainHouseOnLogin] = useState(false);
 
-  const handleKeycloakWebViewRequest = useCallback((request: { url: string }) => {
-    const redirectUri = getKeycloakRedirectUri();
-    if (request.url.startsWith(redirectUri)) {
-      void keycloakInAppNotifyAppRedirect(request.url);
-      return false;
-    }
-    return true;
-  }, []);
-
   // Kiểm tra xem User hiện tại đã xem Onboarding chưa
   const showOnboarding = isLoggedIn && user && !onboardedUsers.includes(user);
+
   // đọc state từ AsyncStorage vào store
   useEffect(() => {
     const rehydrate = async () => {
@@ -161,19 +134,6 @@ const Navigation = () => {
     return () => sub.remove();
   }, [isReady, isLoggedIn, role]);
 
-  // Android: cho phép bấm nút Back để đóng overlay Keycloak khi session cho phép đóng tay.
-  useEffect(() => {
-    if (Platform.OS !== "android") return;
-    if (!keycloakSession?.allowManualClose) return;
-
-    const subscription = BackHandler.addEventListener("hardwareBackPress", () => {
-      keycloakInAppUserDismissed();
-      return true;
-    });
-
-    return () => subscription.remove();
-  }, [keycloakSession]);
-
   if (!isReady) {
       return (
           <View style={{flex: 1, justifyContent: 'center', alignItems: 'center'}}>
@@ -230,42 +190,19 @@ const Navigation = () => {
               </>
             )
           ) : (
-            <Stack.Screen name="AuthLogin" component={Login} />
+            <Stack.Screen
+              name="AuthLogin"
+              component={Login}
+              options={{
+                statusBarTranslucent: true,
+                navigationBarColor: "#00000000",
+                navigationBarTranslucent: true,
+              }}
+            />
           )}
         </Stack.Navigator>
       </NavigationContainer>
-      {keycloakSession ? (
-        <View style={navStyles.keycloakOverlay}>
-          {keycloakSession.allowManualClose ? (
-            <View style={loginStyles.webViewHeader}>
-              <TouchableOpacity
-                onPress={keycloakInAppUserDismissed}
-                activeOpacity={0.7}
-              >
-                <Text style={loginStyles.webViewCloseText}>
-                  {t("common.close")}
-                </Text>
-              </TouchableOpacity>
-            </View>
-          ) : null}
-          <WebView
-            style={navStyles.keycloakWebView}
-            source={{ uri: keycloakSession.url }}
-            onShouldStartLoadWithRequest={handleKeycloakWebViewRequest}
-            startInLoadingState
-            renderLoading={() => (
-              <View style={loginStyles.webViewLoadingOverlay}>
-                <ActivityIndicator size="large" color={brandPrimary} />
-                <Text
-                  style={{ color: "#666", textAlign: "center", marginTop: 10 }}
-                >
-                  {t("common.loading")}
-                </Text>
-              </View>
-            )}
-          />
-        </View>
-      ) : null}
+      <KeycloakChangePasswordWebViewOverlay />
     </View>
   );
 };
