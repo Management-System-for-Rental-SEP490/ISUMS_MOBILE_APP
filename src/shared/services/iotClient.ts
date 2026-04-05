@@ -1,54 +1,109 @@
-/**
- * IoT Client – kết nối WebSocket + REST tới AWS cho dữ liệu điện/nước realtime.
- * Dùng chung cho tenant (và sau này staff nếu cần).
- * Không gán cứng houseId/areaId/thingId; các giá trị đó lấy từ useTenantContext hoặc param.
- */
 import { EventEmitter } from "eventemitter3";
 import { IOT_WS_URL, IOT_REST_BASE } from "../api/config";
-import type { TelemetryMessage, UsageData } from "../types/iot";
+import type { UsageData } from "../types/iot";
 
 class IotClient extends EventEmitter {
   private ws: WebSocket | null = null;
-  private subscriptions = new Set<string>();
+  private telemetrySubscriptions = new Set<string>();
+  private alertSubscriptions = new Set<string>();
   private reconnectTimer: ReturnType<typeof setTimeout> | null = null;
   private shouldConnect = false;
 
   connect(): void {
     this.shouldConnect = true;
+
+    if (
+      this.ws?.readyState === WebSocket.OPEN ||
+      this.ws?.readyState === WebSocket.CONNECTING
+    ) {
+      return;
+    }
+
     this._connect();
   }
 
   disconnect(): void {
     this.shouldConnect = false;
-    if (this.reconnectTimer) clearTimeout(this.reconnectTimer);
-    this.reconnectTimer = null;
+
+    if (this.reconnectTimer) {
+      clearTimeout(this.reconnectTimer);
+      this.reconnectTimer = null;
+    }
+
     this.ws?.close();
     this.ws = null;
   }
 
   subscribe(thing: string): void {
-    this.subscriptions.add(thing);
+    if (!thing) return;
+
+    this.telemetrySubscriptions.add(thing);
     this._send({ action: "subscribe", thing });
   }
 
   unsubscribe(thing: string): void {
-    this.subscriptions.delete(thing);
+    if (!thing) return;
+
+    this.telemetrySubscriptions.delete(thing);
     this._send({ action: "unsubscribe", thing });
   }
 
-  /**
-   * Gọi REST API usage của AWS.
-   * @param pk – partition key, format: `${houseId}#${metric}` (metric = "electricity" | "water").
-   * @param period – "day" | "week" | "month".
-   * @param value – chuỗi ngày/tuần/tháng (vd "2026-03-10", "2026-W10", "2026-03").
-   */
+  subscribeAlertHouse(houseId: string): void {
+    if (!houseId) return;
+
+    const topic = `alert/${houseId}`;
+    this.alertSubscriptions.add(topic);
+    this._send({ action: "subscribe", topic });
+  }
+
+  unsubscribeAlertHouse(houseId: string): void {
+    if (!houseId) return;
+
+    const topic = `alert/${houseId}`;
+    this.alertSubscriptions.delete(topic);
+    this._send({ action: "unsubscribe", topic });
+  }
+
+  subscribeAlertArea(houseId: string, areaId: string): void {
+    if (!houseId || !areaId) return;
+
+    const topic = `alert/${houseId}/${areaId}`;
+    this.alertSubscriptions.add(topic);
+    this._send({ action: "subscribe", topic });
+  }
+
+  unsubscribeAlertArea(houseId: string, areaId: string): void {
+    if (!houseId || !areaId) return;
+
+    const topic = `alert/${houseId}/${areaId}`;
+    this.alertSubscriptions.delete(topic);
+    this._send({ action: "unsubscribe", topic });
+  }
+
+  isConnected(): boolean {
+    return this.ws?.readyState === WebSocket.OPEN;
+  }
+
+  getSubscribedThings(): string[] {
+    return Array.from(this.telemetrySubscriptions);
+  }
+
+  getSubscribedAlertTopics(): string[] {
+    return Array.from(this.alertSubscriptions);
+  }
+
   async getUsage(
     pk: string,
     period: "day" | "week" | "month",
     value: string
   ): Promise<UsageData | null> {
     try {
-      const url = `${IOT_REST_BASE}/usage?pk=${encodeURIComponent(pk)}&period=${period}&value=${encodeURIComponent(value)}`;
+      const url =
+        `${IOT_REST_BASE}/usage` +
+        `?pk=${encodeURIComponent(pk)}` +
+        `&period=${period}` +
+        `&value=${encodeURIComponent(value)}`;
+
       const res = await fetch(url);
       if (!res.ok) return null;
       return await res.json();
@@ -58,34 +113,73 @@ class IotClient extends EventEmitter {
   }
 
   private _connect(): void {
-    if (this.ws?.readyState === WebSocket.OPEN) return;
+    if (
+      this.ws?.readyState === WebSocket.OPEN ||
+      this.ws?.readyState === WebSocket.CONNECTING
+    ) {
+      return;
+    }
+
     this.ws = new WebSocket(IOT_WS_URL);
 
     this.ws.onopen = () => {
       this.emit("connected");
-      this.subscriptions.forEach((thing) =>
-        this._send({ action: "subscribe", thing })
-      );
+
+      this.telemetrySubscriptions.forEach((thing) => {
+        this._send({ action: "subscribe", thing });
+      });
+
+      this.alertSubscriptions.forEach((topic) => {
+        this._send({ action: "subscribe", topic });
+      });
     };
 
     this.ws.onmessage = (event) => {
       try {
-        const msg: TelemetryMessage = JSON.parse(event.data);
+        const msg = JSON.parse(event.data);
+        console.log("[WS parsed]", msg);
+
+        if (msg?.type === "iot_alert") {
+          this.emit("alert", msg);
+
+          if (msg.houseId) {
+            this.emit(`alert:${msg.houseId}`, msg);
+          }
+
+          if (msg.houseId && msg.areaId) {
+            this.emit(`alert:${msg.houseId}:${msg.areaId}`, msg);
+          }
+
+          return;
+        }
+
         this.emit("telemetry", msg);
-        this.emit(`telemetry:${msg.thing}`, msg);
-      } catch {
-        // ignore parse error
+
+        if (msg?.thing) {
+          this.emit(`telemetry:${msg.thing}`, msg);
+        }
+      } catch (e) {
+        console.log("[WS parse error]", e);
       }
     };
 
     this.ws.onclose = () => {
       this.emit("disconnected");
+
       if (this.shouldConnect) {
-        this.reconnectTimer = setTimeout(() => this._connect(), 5000);
+        if (this.reconnectTimer) {
+          clearTimeout(this.reconnectTimer);
+        }
+
+        this.reconnectTimer = setTimeout(() => {
+          this._connect();
+        }, 5000);
       }
     };
 
-    this.ws.onerror = () => {};
+    this.ws.onerror = () => {
+      // onclose sẽ xử lý reconnect
+    };
   }
 
   private _send(payload: object): void {

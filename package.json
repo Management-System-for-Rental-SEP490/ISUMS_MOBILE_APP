@@ -19,6 +19,7 @@
     "axios": "^1.7.0",
     "eventemitter3": "^5.0.4",
     "expo": "~54.0.29",
+    "expo-av": "~16.0.8",
     "expo-camera": "~17.0.10",
     "expo-image-picker": "~17.0.10",
     "expo-linear-gradient": "~15.0.8",

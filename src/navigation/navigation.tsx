@@ -28,6 +28,7 @@ import TenantHouseDescription from "../features/tenant/screens/tenantHouse/tenan
 import TenantRentPaymentScreen from "../features/tenant/screens/tenantPayment/TenantRentPaymentScreen";
 import TenantInvoiceListScreen from "../features/tenant/screens/tenantInvoice/TenantInvoiceListScreen";
 import TenantInvoiceDetailScreen from "../features/tenant/screens/tenantInvoice/TenantInvoiceDetailScreen";
+import ThresholdSettingsScreen from "../features/tenant/screens/tenantConsumption/ThresholdSettingsScreen";
 import { brandPrimary } from "../shared/theme/color";
 import { ensureTenantMainHouseSynced } from "../shared/services/userApi";
 import KeycloakChangePasswordWebViewOverlay from "../shared/components/KeycloakChangePasswordWebViewOverlay";
@@ -182,6 +183,7 @@ const Navigation = () => {
                 <Stack.Screen name="BuildingDetail" component={TenantHouseDescription} />
                 <Stack.Screen name="TenantInvoiceList" component={TenantInvoiceListScreen} />
                 <Stack.Screen name="TenantInvoiceDetail" component={TenantInvoiceDetailScreen} />
+                <Stack.Screen name="ThresholdSettings" component={ThresholdSettingsScreen} />
                 <Stack.Screen
                   name="TenantRentPayment"
                   component={TenantRentPaymentScreen}

@@ -29,6 +29,7 @@ export type MainTabParamList = {
 };
 export type HeaderVariant = "default" | "electric" | "water"; // định nghĩa các loại variant của header
 export type RootStackParamList = AuthStackParamList & {
+    ThresholdSettings: undefined;
   Main: undefined;
   OnBoarding: undefined;
   /** Quét QR/NFC cho tenant: tra cứu thiết bị thuộc nhà đang chọn, mở TenantItemDetail. */

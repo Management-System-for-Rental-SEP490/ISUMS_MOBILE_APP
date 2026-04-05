@@ -147,6 +147,11 @@ const UserProfileScreen = () => {
     parentNav?.navigate("TenantInvoiceList");
   };
 
+  const goThresholdSettings = () => {
+    const parentNav = navigation.getParent() as NavigationProp<RootStackParamList> | undefined;
+    parentNav?.navigate("ThresholdSettings");
+  };
+
   return (
     <View style={userProfileStyles.container}>
       <ScrollView
@@ -261,6 +266,17 @@ const UserProfileScreen = () => {
 
           {!isTenantAccessRestricted ? (
             <>
+              <TouchableOpacity style={userProfileStyles.menuItem} onPress={goThresholdSettings}>
+                <View style={[userProfileStyles.menuIcon, { backgroundColor: brandTintBg }]}>
+                  <Icons.shield size={22} color="#666" />
+                </View>
+                <View style={userProfileStyles.menuContent}>
+                  <Text style={userProfileStyles.menuLabel}>Cài đặt ngưỡng cảnh báo</Text>
+                  <Text style={userProfileStyles.menuDescription}>Điều chỉnh ngưỡng gas, nhiệt độ, điện, nước</Text>
+                </View>
+                <Icons.chevronForward size={20} color={neutral.textOnDarkSoft} />
+              </TouchableOpacity>
+
               <TouchableOpacity
                 style={userProfileStyles.menuItem}
                 onPress={() => navigation.navigate("Notification")}
