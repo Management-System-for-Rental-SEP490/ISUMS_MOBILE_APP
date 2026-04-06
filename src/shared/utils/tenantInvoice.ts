@@ -1,5 +1,53 @@
 import type { TenantInvoiceFromApi } from "../types/api";
 
+/**
+ * Dịch mã loại hóa đơn từ BE (vd. MONTHLY_RENT) qua `tenant_invoice.type_<CODE>`.
+ * Không có key → trả về chuỗi gốc (trim).
+ */
+export function translateTenantInvoiceTypeCode(
+  code: string | null | undefined,
+  t: (key: string) => string
+): string {
+  const raw = String(code ?? "").trim();
+  if (!raw) return "";
+  const norm = raw.toUpperCase().replace(/\s+/g, "_");
+  const key = `tenant_invoice.type_${norm}`;
+  const label = t(key);
+  if (label !== key) return label;
+  return raw;
+}
+
+/**
+ * Tiêu đề hiển thị: ưu tiên `type` + `periodKey`; nếu thiếu `type` thì bóc `title` (có thể dạng "MONTHLY_RENT - kỳ").
+ */
+export function formatTenantInvoiceTitleForDisplay(
+  inv: Pick<TenantInvoiceFromApi, "title" | "type" | "periodKey" | "id">,
+  t: (key: string) => string
+): string {
+  const id = String(inv.id ?? "").trim();
+  const typeRaw = String(inv.type ?? "").trim();
+  const period = String(inv.periodKey ?? "").trim();
+
+  if (typeRaw) {
+    const typeLabel = translateTenantInvoiceTypeCode(typeRaw, t);
+    if (period) return `${typeLabel} - ${period}`;
+    return typeLabel;
+  }
+
+  const titleRaw = String(inv.title ?? "").trim();
+  if (!titleRaw || titleRaw === id) {
+    return t("tenant_invoice.invoice_placeholder_title");
+  }
+  const parts = titleRaw
+    .split(/\s*-\s*/)
+    .map((p) => p.trim())
+    .filter(Boolean);
+  if (parts.length === 0) return t("tenant_invoice.invoice_placeholder_title");
+  const headTr = translateTenantInvoiceTypeCode(parts[0]!, t);
+  if (parts.length === 1) return headTr;
+  return [headTr, ...parts.slice(1)].join(" - ");
+}
+
 export function isTenantInvoicePayable(status: string | undefined): boolean {
   const u = String(status ?? "").trim().toUpperCase();
   if (u === "PAID" || u === "SETTLED" || u === "COMPLETED" || u === "CANCELLED" || u === "VOID") {

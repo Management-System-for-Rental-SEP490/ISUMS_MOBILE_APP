@@ -6,8 +6,12 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import FontAwesome5 from "@expo/vector-icons/FontAwesome5";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import { CustomAlert } from "../../../../shared/components/alert";
-import { RootStackParamList } from "../../../../shared/types";
-import { formatTenantInvoiceAmount, isTenantInvoicePayable } from "../../../../shared/utils/tenantInvoice";
+import { RootStackParamList, TenantInvoiceFromApi } from "../../../../shared/types";
+import {
+  formatTenantInvoiceAmount,
+  formatTenantInvoiceTitleForDisplay,
+  isTenantInvoicePayable,
+} from "../../../../shared/utils/tenantInvoice";
 import { formatTenantIssueDateTime } from "../../../../shared/utils";
 import Icons from "../../../../shared/theme/icon";
 import { createVnpayPaymentLink } from "../../../../shared/services/tenantPaymentApi";
@@ -29,12 +33,15 @@ type Props = NativeStackScreenProps<RootStackParamList, "TenantInvoiceDetail">;
 
 type FeeLine = { key: string; label: string; amount: number };
 
+const EMPTY_TENANT_INVOICES: TenantInvoiceFromApi[] = [];
+
 export default function TenantInvoiceDetailScreen({ navigation, route }: Props) {
   const { t, i18n } = useTranslation();
   const insets = useSafeAreaInsets();
   const { invoice } = route.params;
-  const { houseId: mainHouseIdFromStore } = useAuthStore();
-  const { data: rawInvoiceData = [] } = useTenantInvoices();
+  const { houseId: selectedHouseIdFromStore } = useAuthStore();
+  const { data: invoiceQueryData } = useTenantInvoices();
+  const rawInvoiceData = invoiceQueryData ?? EMPTY_TENANT_INVOICES;
   const [creatingLink, setCreatingLink] = useState(false);
 
   const locale = useMemo(() => {
@@ -51,32 +58,24 @@ export default function TenantInvoiceDetailScreen({ navigation, route }: Props) 
     return formatTenantIssueDateTime(String(iso), locale);
   };
 
-  const getInvoiceSubtitle = (inv: typeof invoice) => {
-    const title = String(inv.title ?? "").trim();
-    const id = String(inv.id ?? "").trim();
-    if (title && title !== id) return title;
-    const type = String(inv.type ?? "").trim();
-    const period = String(inv.periodKey ?? "").trim();
-    const fromParts = [type, period].filter((x) => x.length > 0).join(" - ");
-    return fromParts || id || t("tenant_invoice.invoice_placeholder_title");
-  };
+  const getInvoiceSubtitle = (inv: typeof invoice) => formatTenantInvoiceTitleForDisplay(inv, t);
 
   const payable = isTenantInvoicePayable(invoice.status);
-  const normalizedMainHouseId = useMemo(
-    () => String(mainHouseIdFromStore ?? "").trim(),
-    [mainHouseIdFromStore]
+  const normalizedSelectedHouseId = useMemo(
+    () => String(selectedHouseIdFromStore ?? "").trim(),
+    [selectedHouseIdFromStore]
   );
-  const mandatoryMainInvoiceIds = useMemo(() => {
-    if (!normalizedMainHouseId) return [] as string[];
+  const mandatorySelectedHouseInvoiceIds = useMemo(() => {
+    if (!normalizedSelectedHouseId) return [] as string[];
     return rawInvoiceData
       .filter(
         (inv) =>
           isTenantInvoicePayable(inv.status) &&
-          String(inv.houseId ?? "").trim() === normalizedMainHouseId
+          String(inv.houseId ?? "").trim() === normalizedSelectedHouseId
       )
       .map((inv) => String(inv.id ?? "").trim())
       .filter((id) => id.length > 0);
-  }, [rawInvoiceData, normalizedMainHouseId]);
+  }, [rawInvoiceData, normalizedSelectedHouseId]);
 
   const statusLabel = () => {
     const key = `tenant_invoice.status_${String(invoice.status || "").toUpperCase()}`;
@@ -114,7 +113,11 @@ export default function TenantInvoiceDetailScreen({ navigation, route }: Props) 
   const openPay = useCallback(async () => {
     if (creatingLink) return;
     const selectedIds = Array.from(
-      new Set([invoice.id, ...mandatoryMainInvoiceIds].filter((id) => String(id ?? "").trim().length > 0))
+      new Set(
+        [invoice.id, ...mandatorySelectedHouseInvoiceIds].filter(
+          (id) => String(id ?? "").trim().length > 0
+        )
+      )
     );
     if (selectedIds.length === 0) return;
     setCreatingLink(true);
@@ -122,9 +125,7 @@ export default function TenantInvoiceDetailScreen({ navigation, route }: Props) 
       const checkoutUrl = await createVnpayPaymentLink(selectedIds, {
         appLanguage: i18n.language,
       });
-      navigation.navigate("TenantRentPayment", {
-        invoiceId: selectedIds[0] ?? invoice.id,
-        invoiceIds: selectedIds,
+      navigation.navigate("VnpayCheckout", {
         checkoutUrl,
         afterSuccess: "invoiceList",
       });
@@ -139,7 +140,7 @@ export default function TenantInvoiceDetailScreen({ navigation, route }: Props) 
     } finally {
       setCreatingLink(false);
     }
-  }, [creatingLink, invoice.id, mandatoryMainInvoiceIds, i18n.language, navigation, t]);
+  }, [creatingLink, invoice.id, mandatorySelectedHouseInvoiceIds, i18n.language, navigation, t]);
 
   const statusUpper = String(invoice.status || "").toUpperCase();
   const isPaidVisual = !payable;
@@ -181,26 +182,28 @@ export default function TenantInvoiceDetailScreen({ navigation, route }: Props) 
         ]}
         showsVerticalScrollIndicator={false}
       >
-        <View style={styles.detailSummaryBlock}>
-          <View
-            style={[
-              styles.detailStatusPill,
-              isPaidVisual ? styles.detailStatusPaidBg : styles.detailStatusUnpaidBg,
-            ]}
-          >
-            <Text
+        <View style={styles.detailSummaryCard}>
+          <View style={styles.detailSummaryBlock}>
+            <View
               style={[
-                styles.detailStatusPillText,
-                isPaidVisual ? styles.detailStatusPaidText : styles.detailStatusUnpaidText,
+                styles.detailStatusPill,
+                isPaidVisual ? styles.detailStatusPaidBg : styles.detailStatusUnpaidBg,
               ]}
             >
-              {statusLabel()}
+              <Text
+                style={[
+                  styles.detailStatusPillText,
+                  isPaidVisual ? styles.detailStatusPaidText : styles.detailStatusUnpaidText,
+                ]}
+              >
+                {statusLabel()}
+              </Text>
+            </View>
+            <Text style={styles.detailInvoiceCode}>{getInvoiceSubtitle(invoice)}</Text>
+            <Text style={styles.detailTotalHero}>
+              {formatTenantInvoiceAmount(invoice.amount, invoice.currency, locale)}
             </Text>
           </View>
-          <Text style={styles.detailInvoiceCode}>{getInvoiceSubtitle(invoice)}</Text>
-          <Text style={styles.detailTotalHero}>
-            {formatTenantInvoiceAmount(invoice.amount, invoice.currency, locale)}
-          </Text>
         </View>
 
         <View style={styles.detailTimelineCard}>
@@ -260,7 +263,9 @@ export default function TenantInvoiceDetailScreen({ navigation, route }: Props) 
         ) : null}
 
         {!payable ? (
-          <Text style={[styles.meta, { textAlign: "center", marginTop: 20 }]}>{t("tenant_invoice.paid_no_action")}</Text>
+          <View style={styles.detailNoticeCard}>
+            <Text style={[styles.meta, { textAlign: "center" }]}>{t("tenant_invoice.paid_no_action")}</Text>
+          </View>
         ) : null}
       </ScrollView>
 

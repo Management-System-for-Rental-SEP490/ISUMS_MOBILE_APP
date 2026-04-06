@@ -15,10 +15,12 @@ import { useTranslation } from "react-i18next";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { RootStackParamList, TenantInvoiceFromApi } from "../../../../shared/types";
-import { useTenantHouses, useTenantInvoices } from "../../../../shared/hooks";
+import type { HouseFromApi } from "../../../../shared/types/api";
+import { useTenantHouses, useTenantInvoices, useUserProfile } from "../../../../shared/hooks";
 import {
   filterPayableInvoices,
   formatTenantInvoiceAmount,
+  formatTenantInvoiceTitleForDisplay,
   isTenantInvoicePayable,
   sortTenantInvoicesForDisplay,
 } from "../../../../shared/utils/tenantInvoice";
@@ -47,15 +49,26 @@ type ListRow =
   | { kind: "section"; key: string; title: string }
   | { kind: "invoice"; key: string; item: TenantInvoiceFromApi };
 
+/** Tránh `data ?? []` tạo mảng mới mỗi render — làm `useEffect(..., [mandatorySelectedHouseInvoiceIds])` lặp vô hạn. */
+const EMPTY_TENANT_INVOICES: TenantInvoiceFromApi[] = [];
+const EMPTY_TENANT_HOUSE_ROWS: HouseFromApi[] = [];
+
 export default function TenantInvoiceListScreen() {
   const { t, i18n } = useTranslation();
   const navigation = useNavigation<NavProp>();
   const insets = useSafeAreaInsets();
-  const { houseId: mainHouseIdFromStore } = useAuthStore();
-  const { data: rawInvoiceData = [], isLoading, isRefetching, refetch, isError } =
-    useTenantInvoices();
+  /** Căn đang chọn trong app (đổi nhà = đổi bộ hóa đơn bắt buộc / chặn truy cập theo căn này). */
+  const { houseId: selectedHouseIdFromStore } = useAuthStore();
+  const { data: invoiceQueryData, isLoading, isRefetching, refetch, isError } = useTenantInvoices();
+  const rawInvoiceData = invoiceQueryData ?? EMPTY_TENANT_INVOICES;
   const { data: housesData } = useTenantHouses();
-  const tenantHouseList = housesData?.data ?? [];
+  const { data: userProfile } = useUserProfile();
+  const tenantHouseList = housesData?.data ?? EMPTY_TENANT_HOUSE_ROWS;
+
+  const profileMainHouseId = useMemo(
+    () => String(userProfile?.mainHouseId ?? "").trim(),
+    [userProfile?.mainHouseId]
+  );
 
   const [filterHouseId, setFilterHouseId] = useState<string | null>(null);
   const [invoicePage, setInvoicePage] = useState(1);
@@ -63,24 +76,10 @@ export default function TenantInvoiceListScreen() {
   const [creatingLink, setCreatingLink] = useState(false);
   const [linkError, setLinkError] = useState<string | null>(null);
 
-  const normalizedMainHouseId = useMemo(
-    () => String(mainHouseIdFromStore ?? "").trim(),
-    [mainHouseIdFromStore]
+  const normalizedSelectedHouseId = useMemo(
+    () => String(selectedHouseIdFromStore ?? "").trim(),
+    [selectedHouseIdFromStore]
   );
-
-  const mandatoryMainInvoiceIds = useMemo(() => {
-    if (!normalizedMainHouseId) return [] as string[];
-    return rawInvoiceData
-      .filter(
-        (inv) =>
-          isTenantInvoicePayable(inv.status) &&
-          String(inv.houseId ?? "").trim() === normalizedMainHouseId
-      )
-      .map((inv) => String(inv.id ?? "").trim())
-      .filter((id) => id.length > 0);
-  }, [rawInvoiceData, normalizedMainHouseId]);
-
-  const hasMainHousePriorityLock = mandatoryMainInvoiceIds.length > 0;
 
   const locale = useMemo(() => {
     const lang = String(i18n.language || "").toLowerCase();
@@ -100,6 +99,31 @@ export default function TenantInvoiceListScreen() {
     return m;
   }, [tenantHouseList]);
 
+  /** Hóa đơn chưa trả của đúng căn đang chọn — luôn phải gồm trong lô thanh toán gộp. */
+  const mandatorySelectedHouseInvoiceIds = useMemo(() => {
+    if (!normalizedSelectedHouseId) return [] as string[];
+    return rawInvoiceData
+      .filter(
+        (inv) =>
+          isTenantInvoicePayable(inv.status) &&
+          String(inv.houseId ?? "").trim() === normalizedSelectedHouseId
+      )
+      .map((inv) => String(inv.id ?? "").trim())
+      .filter((id) => id.length > 0);
+  }, [rawInvoiceData, normalizedSelectedHouseId]);
+
+  const hasSelectedHousePaymentLock = mandatorySelectedHouseInvoiceIds.length > 0;
+
+  /** Chú thích kích hoạt đủ chức năng — chỉ hiện trên căn phụ (khác `mainHouseId` hồ sơ). */
+  const showSecondaryHouseActivationNote = useMemo(
+    () =>
+      hasSelectedHousePaymentLock &&
+      normalizedSelectedHouseId.length > 0 &&
+      profileMainHouseId.length > 0 &&
+      normalizedSelectedHouseId !== profileMainHouseId,
+    [hasSelectedHousePaymentLock, normalizedSelectedHouseId, profileMainHouseId]
+  );
+
   const distinctHouseIds = useMemo(() => {
     const ids = new Set<string>();
     for (const inv of rawInvoiceData) {
@@ -108,6 +132,13 @@ export default function TenantInvoiceListScreen() {
     }
     return [...ids].sort((a, b) => a.localeCompare(b));
   }, [rawInvoiceData]);
+
+  /** Nhiều căn + đã có nhà chính trên hồ sơ → nhắc ưu tiên thanh toán nhà chính trước. */
+  const showMainHousePayFirstNote = useMemo(() => {
+    if (profileMainHouseId.length === 0) return false;
+    if (tenantHouseList.length > 1) return true;
+    return distinctHouseIds.length > 1;
+  }, [profileMainHouseId, tenantHouseList.length, distinctHouseIds.length]);
 
   const data = useMemo(() => {
     const base =
@@ -150,9 +181,9 @@ export default function TenantInvoiceListScreen() {
 
   useEffect(() => {
     setInvoicePage(1);
-    setSelected(new Set(mandatoryMainInvoiceIds));
+    setSelected(new Set(mandatorySelectedHouseInvoiceIds));
     setLinkError(null);
-  }, [filterHouseId, mandatoryMainInvoiceIds]);
+  }, [filterHouseId, mandatorySelectedHouseInvoiceIds]);
 
   useEffect(() => {
     setInvoicePage((p) => Math.min(Math.max(1, p), totalPages));
@@ -185,12 +216,8 @@ export default function TenantInvoiceListScreen() {
     return formatTenantIssueDateTime(String(iso), locale);
   };
 
-  const getInvoiceDisplayTitle = (inv: TenantInvoiceFromApi) => {
-    const title = String(inv.title ?? "").trim();
-    const id = String(inv.id ?? "").trim();
-    if (!title || title === id) return t("tenant_invoice.invoice_placeholder_title");
-    return title;
-  };
+  const getInvoiceDisplayTitle = (inv: TenantInvoiceFromApi) =>
+    formatTenantInvoiceTitleForDisplay(inv, t);
 
   const onPressRow = (item: TenantInvoiceFromApi) => {
     navigation.navigate("TenantInvoiceDetail", { invoice: item });
@@ -199,7 +226,7 @@ export default function TenantInvoiceListScreen() {
   const toggle = useCallback((id: string) => {
     setLinkError(null);
     setSelected((prev) => {
-      if (prev.has(id) && mandatoryMainInvoiceIds.includes(id)) {
+      if (prev.has(id) && mandatorySelectedHouseInvoiceIds.includes(id)) {
         setLinkError(t("tenant_payment.primary_house_required_action"));
         return prev;
       }
@@ -208,7 +235,7 @@ export default function TenantInvoiceListScreen() {
       else next.add(id);
       return next;
     });
-  }, [mandatoryMainInvoiceIds, t]);
+  }, [mandatorySelectedHouseInvoiceIds, t]);
 
   const totalSelected = selected.size;
   const allSelected =
@@ -217,10 +244,10 @@ export default function TenantInvoiceListScreen() {
     setLinkError(null);
     setSelected((prev) => {
       if (payableList.length === 0) return prev;
-      if (prev.size === payableList.length) return new Set(mandatoryMainInvoiceIds);
-      return new Set([...payableList.map((x) => x.id), ...mandatoryMainInvoiceIds]);
+      if (prev.size === payableList.length) return new Set(mandatorySelectedHouseInvoiceIds);
+      return new Set([...payableList.map((x) => x.id), ...mandatorySelectedHouseInvoiceIds]);
     });
-  }, [payableList, mandatoryMainInvoiceIds]);
+  }, [payableList, mandatorySelectedHouseInvoiceIds]);
 
   const selectedTotalAmount = useMemo(() => {
     let sum = 0;
@@ -230,19 +257,20 @@ export default function TenantInvoiceListScreen() {
     return sum;
   }, [payableList, selected]);
 
-  const hasMissingMandatoryMainInvoice = useMemo(
-    () => mandatoryMainInvoiceIds.some((id) => !selected.has(id)),
-    [mandatoryMainInvoiceIds, selected]
+  const hasMissingMandatoryForSelectedHouse = useMemo(
+    () => mandatorySelectedHouseInvoiceIds.some((id) => !selected.has(id)),
+    [mandatorySelectedHouseInvoiceIds, selected]
   );
 
-  const paySelectionLocked = totalSelected === 0 || creatingLink || hasMissingMandatoryMainInvoice;
+  const paySelectionLocked =
+    totalSelected === 0 || creatingLink || hasMissingMandatoryForSelectedHouse;
 
   const confirmPay = useCallback(async () => {
     if (totalSelected === 0) {
       Alert.alert(t("tenant_invoice.multi_none_title"), t("tenant_invoice.multi_none_body"));
       return;
     }
-    if (hasMissingMandatoryMainInvoice) {
+    if (hasMissingMandatoryForSelectedHouse) {
       setLinkError(t("tenant_payment.primary_house_required_action"));
       return;
     }
@@ -253,18 +281,16 @@ export default function TenantInvoiceListScreen() {
     );
     const ids = Array.from(selected).filter((id) => payableMapById.has(id));
     ids.sort((a, b) => {
-      const aMain = mandatoryMainInvoiceIds.includes(a) ? 0 : 1;
-      const bMain = mandatoryMainInvoiceIds.includes(b) ? 0 : 1;
-      if (aMain !== bMain) return aMain - bMain;
+      const aSel = mandatorySelectedHouseInvoiceIds.includes(a) ? 0 : 1;
+      const bSel = mandatorySelectedHouseInvoiceIds.includes(b) ? 0 : 1;
+      if (aSel !== bSel) return aSel - bSel;
       return a.localeCompare(b);
     });
     setCreatingLink(true);
     setLinkError(null);
     try {
       const checkoutUrl = await createVnpayPaymentLink(ids, { appLanguage: i18n.language });
-      navigation.navigate("TenantRentPayment", {
-        invoiceId: ids[0] ?? null,
-        invoiceIds: ids,
+      navigation.navigate("VnpayCheckout", {
         checkoutUrl,
         afterSuccess: "invoiceList",
       });
@@ -282,10 +308,10 @@ export default function TenantInvoiceListScreen() {
   }, [
     totalSelected,
     t,
-    hasMissingMandatoryMainInvoice,
+    hasMissingMandatoryForSelectedHouse,
     rawInvoiceData,
     selected,
-    mandatoryMainInvoiceIds,
+    mandatorySelectedHouseInvoiceIds,
     i18n.language,
     navigation,
   ]);
@@ -398,20 +424,129 @@ export default function TenantInvoiceListScreen() {
   };
 
   const renderRow = ({ item, index }: ListRenderItemInfo<ListRow>) => {
+    const rowShell = (child: React.ReactElement) => (
+      <View style={[styles.mergedCardRow, index === 0 && styles.mergedCardRowFirst]}>{child}</View>
+    );
     if (item.kind === "section") {
-      return (
-        <View style={[styles.sectionHeaderRow, index === 0 && styles.sectionHeaderRowFirst]}>
+      return rowShell(
+        <View style={[styles.sectionHeaderInMerged, index === 0 && styles.sectionHeaderInMergedFirst]}>
           <View style={styles.sectionAccent} />
           <Text style={styles.sectionTitle}>{item.title}</Text>
         </View>
       );
     }
-    return renderInvoiceCard(item.item);
+    return rowShell(renderInvoiceCard(item.item));
   };
 
   const showPageHeading = !(isLoading && !isRefetching);
+
+  const listHeader = useMemo(
+    () =>
+      !showPageHeading ? null : (
+        <View style={styles.mergedCardTop}>
+          <Text style={styles.filterCardTitle} numberOfLines={1}>
+            {t("tenant_invoice.list_heading")}
+          </Text>
+          {showMainHousePayFirstNote ? (
+            <Text style={styles.mergedCardMandatoryLine}>
+              {t("tenant_invoice.main_house_pay_first_required_note")}
+            </Text>
+          ) : null}
+          {showSecondaryHouseActivationNote ? (
+            <Text
+              style={[
+                styles.mergedCardMandatoryLine,
+                showMainHousePayFirstNote ? { marginTop: 6 } : null,
+              ]}
+            >
+              {t("tenant_invoice.secondary_house_first_rent_activation_note")}
+            </Text>
+          ) : null}
+          {distinctHouseIds.length > 0 ? (
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              style={[styles.filterChipsScroll, { marginTop: 12 }]}
+              contentContainerStyle={styles.filterChipsContent}
+              keyboardShouldPersistTaps="handled"
+            >
+              <TouchableOpacity
+                style={[styles.filterSortChip, filterHouseId == null && styles.filterSortChipActive]}
+                onPress={() => setFilterHouseId(null)}
+                activeOpacity={0.85}
+                accessibilityRole="button"
+                accessibilityState={{ selected: filterHouseId == null }}
+              >
+                <Text
+                  style={[
+                    styles.filterSortChipText,
+                    filterHouseId == null && styles.filterSortChipTextActive,
+                  ]}
+                  numberOfLines={1}
+                >
+                  {t("tenant_invoice.chip_all")}
+                </Text>
+              </TouchableOpacity>
+              {distinctHouseIds.map((hid) => {
+                const active = filterHouseId === hid;
+                return (
+                  <TouchableOpacity
+                    key={hid}
+                    style={[styles.filterSortChip, active && styles.filterSortChipActive]}
+                    onPress={() => setFilterHouseId(active ? null : hid)}
+                    activeOpacity={0.85}
+                    accessibilityRole="button"
+                    accessibilityState={{ selected: active }}
+                  >
+                    <Text
+                      style={[styles.filterSortChipText, active && styles.filterSortChipTextActive]}
+                      numberOfLines={1}
+                    >
+                      {houseNameById.get(hid) ?? `${hid.slice(0, 8)}…`}
+                    </Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </ScrollView>
+          ) : null}
+          {hasPayable ? (
+            <TouchableOpacity
+              style={[styles.selectAllRow, { marginTop: distinctHouseIds.length > 0 ? 12 : 14 }]}
+              onPress={toggleSelectAll}
+              activeOpacity={0.88}
+            >
+              <View style={[styles.checkboxRound, allSelected && styles.checkboxRoundOn]}>
+                {allSelected ? <Ionicons name="checkmark" size={14} color={neutral.surface} /> : null}
+              </View>
+              <Text style={styles.selectAllText}>{t("tenant_payment.select_all")}</Text>
+              <Text style={styles.selectAllMeta}>
+                {t("tenant_payment.selected_count", { count: totalSelected })}
+              </Text>
+            </TouchableOpacity>
+          ) : null}
+        </View>
+      ),
+    [
+      showPageHeading,
+      t,
+      showMainHousePayFirstNote,
+      showSecondaryHouseActivationNote,
+      distinctHouseIds,
+      filterHouseId,
+      houseNameById,
+      hasPayable,
+      allSelected,
+      toggleSelectAll,
+      totalSelected,
+    ]
+  );
+  /** Đệm dưới footer (đẩy khối tổng lên, tránh sát home indicator / gesture). */
+  const multiFooterExtraBottom = 18;
+  const multiFooterBottomInset = insets.bottom + multiFooterExtraBottom;
   const listBottomPad =
-    hasPayable && !isLoading && !isError ? 130 + insets.bottom : 24 + insets.bottom;
+    hasPayable && !isLoading && !isError
+      ? 130 + insets.bottom + multiFooterExtraBottom
+      : 24 + insets.bottom;
 
   return (
     <View style={styles.container}>
@@ -433,68 +568,6 @@ export default function TenantInvoiceListScreen() {
         </View>
       </StackScreenTitleHeaderStrip>
 
-      {showPageHeading ? (
-        <View style={styles.pageHeading}>
-          <Text style={styles.pageTitle}>{t("tenant_invoice.list_heading")}</Text>
-          <Text style={styles.pageSubtitle}>{t("tenant_invoice.list_subtitle")}</Text>
-          {hasMainHousePriorityLock ? (
-            <Text style={[styles.meta, { marginTop: 6, color: brandPrimary }]}>
-              {t("tenant_payment.primary_house_required_title")}
-            </Text>
-          ) : null}
-          {distinctHouseIds.length > 0 ? (
-            <ScrollView
-              horizontal
-              showsHorizontalScrollIndicator={false}
-              style={styles.houseChipScroll}
-              contentContainerStyle={styles.houseChipScrollContent}
-            >
-              <TouchableOpacity
-                style={[styles.houseChip, filterHouseId == null && styles.houseChipActive]}
-                onPress={() => setFilterHouseId(null)}
-                activeOpacity={0.85}
-              >
-                <Text
-                  style={[
-                    styles.houseChipText,
-                    filterHouseId == null && styles.houseChipTextActive,
-                  ]}
-                >
-                  {t("tenant_invoice.chip_all")}
-                </Text>
-              </TouchableOpacity>
-              {distinctHouseIds.map((hid) => {
-                const active = filterHouseId === hid;
-                return (
-                  <TouchableOpacity
-                    key={hid}
-                    style={[styles.houseChip, active && styles.houseChipActive]}
-                    onPress={() => setFilterHouseId(active ? null : hid)}
-                    activeOpacity={0.85}
-                  >
-                    <Text
-                      style={[styles.houseChipText, active && styles.houseChipTextActive]}
-                      numberOfLines={1}
-                    >
-                      {houseNameById.get(hid) ?? `${hid.slice(0, 8)}…`}
-                    </Text>
-                  </TouchableOpacity>
-                );
-              })}
-            </ScrollView>
-          ) : null}
-          {hasPayable ? (
-            <TouchableOpacity style={styles.selectAllRow} onPress={toggleSelectAll} activeOpacity={0.88}>
-              <View style={[styles.checkboxRound, allSelected && styles.checkboxRoundOn]}>
-                {allSelected ? <Ionicons name="checkmark" size={14} color={neutral.surface} /> : null}
-              </View>
-              <Text style={styles.selectAllText}>{t("tenant_payment.select_all")}</Text>
-              <Text style={styles.selectAllMeta}>{t("tenant_payment.selected_count", { count: totalSelected })}</Text>
-            </TouchableOpacity>
-          ) : null}
-        </View>
-      ) : null}
-
       {isLoading && !isRefetching ? (
         <View style={[styles.listEmptyGrow, { paddingBottom: insets.bottom }]}>
           <ActivityIndicator size="large" color={brandPrimary} />
@@ -511,9 +584,10 @@ export default function TenantInvoiceListScreen() {
           data={listRows}
           keyExtractor={(row) => row.key}
           renderItem={renderRow}
+          ListHeaderComponent={listHeader}
           contentInsetAdjustmentBehavior="automatic"
           contentContainerStyle={[
-            styles.listContent,
+            styles.listContentMerged,
             data.length === 0 ? styles.listEmptyGrow : undefined,
             { paddingBottom: listBottomPad },
           ]}
@@ -521,24 +595,32 @@ export default function TenantInvoiceListScreen() {
             <RefreshControl refreshing={isRefetching} onRefresh={() => refetch()} colors={[brandPrimary]} />
           }
           ListEmptyComponent={
-            <Text style={styles.emptyText}>{t("tenant_invoice.empty_list")}</Text>
+            showPageHeading ? (
+              <View style={styles.mergedCardEmpty}>
+                <Text style={styles.emptyText}>{t("tenant_invoice.empty_list")}</Text>
+              </View>
+            ) : (
+              <Text style={styles.emptyText}>{t("tenant_invoice.empty_list")}</Text>
+            )
           }
           extraData={{ invoicePage, selected, creatingLink }}
           ListFooterComponent={
-            <View style={{ paddingBottom: hasPayable ? 8 : insets.bottom + 8 }}>
-              <PaginationBar
-                currentPage={invoicePage}
-                totalPages={totalPages}
-                onPageChange={setInvoicePage}
-                hideWhenSingle
-              />
-            </View>
+            data.length > 0 ? (
+              <View style={styles.mergedCardFooter}>
+                <PaginationBar
+                  currentPage={invoicePage}
+                  totalPages={totalPages}
+                  onPageChange={setInvoicePage}
+                  hideWhenSingle
+                />
+              </View>
+            ) : null
           }
         />
       )}
 
       {hasPayable && !isLoading && !isError ? (
-        <View style={[styles.multiFooter, { paddingBottom: Math.max(insets.bottom, 12) }]}>
+        <View style={[styles.multiFooter, { paddingBottom: multiFooterBottomInset }]}>
           <View style={styles.multiFooterInner}>
             <View style={styles.multiFooterLeft}>
               <Text style={styles.multiFooterLabel}>{t("tenant_invoice.footer_total_label")}</Text>

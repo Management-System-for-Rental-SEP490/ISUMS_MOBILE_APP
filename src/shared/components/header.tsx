@@ -38,7 +38,7 @@ export type HomeHeaderWelcome = {
   helloLine: string;
 };
 
-/** Dải hóa đơn dưới lời chào (Home) — chuỗi đã i18n ở màn gọi. */
+/** Dải số hóa đơn cần thanh toán dưới lời chào (Home); chuỗi i18n set ở HomeScreen. */
 export type HomeHeaderInvoiceStrip =
   | { kind: "hidden" }
   | { kind: "loading" }
@@ -56,6 +56,8 @@ type HeaderProps = {
   homeInvoiceStrip?: HomeHeaderInvoiceStrip;
   /** Home: mở danh sách hóa đơn (nút cạnh cảnh báo). */
   onHomeInvoicePress?: () => void;
+  /** Header mặc định (logo + ISUMS): nếu có thì bấm logo/brand gọi callback thay vì về Main. */
+  onBrandPress?: () => void;
 };
 
 const Header = ({
@@ -65,6 +67,7 @@ const Header = ({
   onHomeWelcomeNamePress,
   homeInvoiceStrip,
   onHomeInvoicePress,
+  onBrandPress,
 }: HeaderProps) => {
   const { t } = useTranslation();
   const insets = useSafeAreaInsets();
@@ -152,38 +155,39 @@ const Header = ({
                     {homeInvoiceStrip.caption}
                   </Text>
                 ) : homeInvoiceStrip?.kind === "payable" ? (
-                  <View style={headerStyles.homeInvoiceStripRow}>
-                    <View
-                      style={[
-                        headerStyles.homeInvoiceStripBubble,
-                        homeInvoiceStrip.urgent
-                          ? headerStyles.homeInvoiceStripBubbleUrgent
-                          : headerStyles.homeInvoiceStripBubbleMild,
-                      ]}
-                    >
+                  <View style={headerStyles.homeInvoiceStripPayableWrap}>
+                    {onHomeInvoicePress ? (
+                      <Pressable
+                        onPress={onHomeInvoicePress}
+                        accessibilityRole="link"
+                        accessibilityLabel={homeInvoiceStrip.caption}
+                        android_ripple={{ color: headerOnBrand.ripple }}
+                        hitSlop={{ top: 6, bottom: 6, left: 4, right: 8 }}
+                      >
+                        <Text
+                          style={[
+                            homeInvoiceStrip.urgent
+                              ? headerStyles.homeInvoiceStripPayableUrgent
+                              : headerStyles.homeInvoiceStripPayableMild,
+                            headerStyles.homeInvoiceStripPayableUnderline,
+                          ]}
+                          numberOfLines={3}
+                        >
+                          {homeInvoiceStrip.caption}
+                        </Text>
+                      </Pressable>
+                    ) : (
                       <Text
-                        style={[
-                          headerStyles.homeInvoiceStripBubbleText,
+                        style={
                           homeInvoiceStrip.urgent
-                            ? headerStyles.homeInvoiceStripBubbleTextUrgent
-                            : null,
-                        ]}
-                        numberOfLines={2}
+                            ? headerStyles.homeInvoiceStripPayableUrgent
+                            : headerStyles.homeInvoiceStripPayableMild
+                        }
+                        numberOfLines={3}
                       >
                         {homeInvoiceStrip.caption}
                       </Text>
-                    </View>
-                    {onHomeInvoicePress ? (
-                      <Pressable
-                        style={headerStyles.homeInvoiceStripIconBtn}
-                        onPress={onHomeInvoicePress}
-                        accessibilityRole="button"
-                        accessibilityLabel={t("common.a11y_open_invoice_list")}
-                        android_ripple={{ color: headerOnBrand.ripple }}
-                      >
-                        <Icons.invoice color={headerOnBrand.fg} size={20} />
-                      </Pressable>
-                    ) : null}
+                    )}
                   </View>
                 ) : null}
               </View>
@@ -211,7 +215,17 @@ const Header = ({
               isSmallScreen && { gap: 8 },
             ]}
           >
-            <Pressable style={headerStyles.brandRow} onPress={goHome}>
+            <Pressable
+              style={headerStyles.brandRow}
+              onPress={onBrandPress ?? goHome}
+              accessibilityRole="button"
+              accessibilityLabel={
+                onBrandPress
+                  ? t("common.a11y_open_profile")
+                  : t("common.a11y_brand_go_home")
+              }
+              android_ripple={{ color: headerOnBrand.ripple }}
+            >
               <View
                 style={[
                   headerStyles.logoRing,

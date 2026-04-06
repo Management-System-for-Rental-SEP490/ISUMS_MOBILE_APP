@@ -23,7 +23,9 @@ export default {
         "images_limit_truncated_message": "Only {{added}} photo(s) were added (maximum {{max}}).",
         "a11y_open_invoice_list": "Open invoice list",
         "a11y_notifications": "Open notifications",
-        "a11y_app_logo": "ISUMS logo"
+        "a11y_app_logo": "ISUMS logo",
+        "a11y_open_profile": "Open profile",
+        "a11y_brand_go_home": "Go to home"
     },
     "device_detail": {
         "title": "Device Details",
@@ -76,7 +78,7 @@ export default {
         "images_camera": "Take photo",
         "images_library": "Choose from library",
         "images_remove": "Remove image",
-        "images_hint": "Optional. You can add up to 6 photos.",
+        "images_hint": "Optional. You can attach up to {{max}} photos.",
         "images_empty": "No attachments",
         "library_permission_no_permission": "No access to photo library",
         "submit_button": "Submit ticket",
@@ -101,8 +103,8 @@ export default {
         "load_error": "Could not load tickets. Please try again.",
         "status_CREATED": "Submitted",
         "status_NEED_RESCHEDULE": "Need reschedule",
-        "status_SCHEDULED": "Scheduled",
-        "status_IN_PROGRESS": "In progress",
+        "status_SCHEDULED": "Visit scheduled",
+        "status_IN_PROGRESS": "Assessment and repair in progress",
         "status_WAITING_MANAGER_CONFIRM": "Waiting for schedule confirmation",
         "status_WAITING_MANAGER_APPROVAL": "Waiting manager approval",
         "status_WAITING_MANAGER_APPROVAL_QUOTE": "Waiting manager quote approval",
@@ -114,7 +116,28 @@ export default {
         "status_CANCELLED": "Cancelled",
         "type_REPAIR": "Repair",
         "type_QUESTION": "Question",
-        "pay_btn": "Start payment"
+        "type_MAINTENANCE": "Maintenance",
+        "pay_btn": "Start payment",
+        "pay_cta": "Pay now",
+        "pay_cta_a11y": "Open details to pay for this ticket",
+        "payment_card_hint": "Payment is required. Complete it to continue processing.",
+        "filter_all": "All",
+        "filter_in_progress": "In progress",
+        "filter_sent": "Submitted",
+        "filter_payment": "Payment due",
+        "priority_emergency": "URGENT",
+        "priority_standard": "STANDARD",
+        "estimated_cost_prefix": "Cost:",
+        "progress_technician_line_scheduled": "A technician will arrive soon",
+        "progress_technician_line_in_progress": "A technician will arrive soon",
+        "progress_contact_soon_line": "A technician will contact you soon",
+        "quote_approve_inset_line": "Approve the quote to proceed with repairs.",
+        "progress_expected_today": "Expected around {{time}} today",
+        "progress_expected_time": "Scheduled time: {{time}}",
+        "progress_expected_datetime": "Expected: {{date}} · {{time}}",
+        "progress_time_pending": "Estimated time will be updated.",
+        "fab_create_a11y": "Create new ticket",
+        "quote_confirm_card_a11y_hint": "Open quote details"
     },
     "tenant_ticket_detail": {
         "screen_title": "Ticket details",
@@ -122,8 +145,9 @@ export default {
         "section_info": "Information",
         "section_description": "Description",
         "section_quote": "Quote",
+        "quote_awaiting_tenant_intro": "The system has sent the quote details. Please approve them so repairs can proceed.",
         "section_payment": "Payment",
-        "pay_repair_btn": "Pay",
+        "pay_repair_btn": "Pay now",
         "payment_quote_hint": "Your invoice may still be syncing. You can open payment and select the repair charge when it appears.",
         "quote_total_label": "Total",
         "quote_items_label": "Items",
@@ -146,15 +170,17 @@ export default {
     "tenant_question_list": {
         "screen_title": "Q&A replies",
         "list_heading": "Staff replies",
-        "list_subtitle": "Answers to your question-type tickets",
+        "list_subtitle": "By zone — replies to your question-type tickets",
         "details_link": "Details",
         "empty": "No replies yet.",
-        "load_error": "Could not load replies. Please try again."
+        "load_error": "Could not load replies. Please try again.",
+        "zone_unknown": "Zone unknown"
     },
     "tenant_question_detail": {
         "screen_title": "Reply details",
         "sent_at": "Sent",
-        "section_meta": "All fields",
+        "section_meta": "Response content",
+        "field_zone": "Zone",
         "field_id": "Response ID",
         "field_ticket_id": "Ticket ID",
         "field_actor_id": "Staff user ID",
@@ -500,10 +526,12 @@ export default {
         "utility_house": "House",
         "utility_notification": "Notification",
         "staying_at_house_label": "Staying at",
-        "header_invoice_all_paid": "You're all paid up.",
+        "header_invoice_all_paid": "No invoices to pay.",
         "header_invoice_payable_count": "You have {{count}} invoice(s) to pay.",
         "header_invoice_payable_urgent":
             "You have {{count}} invoice(s) to pay — some are due soon or overdue.",
+        "header_pay_now": "Pay now",
+        "banner_pay_now": "Pay now",
         "loading_data": "Loading data...",
         "footer": {
             "aria_label": "About this app and support links",
@@ -551,15 +579,18 @@ export default {
             "deposit_body": "Please complete the deposit payment per your contract before move-in.",
             "payment_title": "Rent payment required",
             "payment_body": "Please pay your first rent installment to continue using the app.",
+            "payment_banner": "Pay first-month rent for the home you're viewing to unlock the full app.",
             "payment_alert_title": "Pay rent",
             "payment_alert_message": "You have an unpaid rent invoice. Tap Pay now to open payment (VNPay).",
             "pay_now": "Pay now"
         },
         "access_reason": {
-            "ACCESS_PENDING_FIRST_RENT": "Your first rent payment is still pending. Please complete it to unlock full access.",
+            "ACCESS_PENDING_FIRST_RENT":
+                "This property still needs its first rent payment. Complete it for full features.",
             "ACCESS_PENDING_DEPOSIT": "Your security deposit has not been completed yet.",
             "ACCESS_PENDING_HANDOVER": "This property is not yet handed over based on the contract date.",
-            "PENDING_FIRST_RENT": "Your first rent payment is still pending. Please complete it to unlock full access.",
+            "PENDING_FIRST_RENT":
+                "This property still needs its first rent payment. Complete it for full features.",
             "PENDING_DEPOSIT": "Your security deposit has not been completed yet.",
             "PENDING_HANDOVER": "This property is not yet handed over based on the contract date."
         },
@@ -606,15 +637,22 @@ export default {
         "return_validate_error": "We could not confirm this payment with the server. Your bank may still have processed it — check your invoice list or contact support.",
         "issue_ticket_context": "Payment for your repair ticket. Select the repair invoice below when it is available.",
         "main_house_badge": "Main house",
-        "primary_house_required_title": "Main house payment is required first",
-        "primary_house_required_body": "Your current main house is {{house}}. Please pay invoices for this house first before paying other houses.",
-        "primary_house_required_action": "Keep main house invoices selected before continuing."
+        "primary_house_required_title": "Pay your current property first",
+        "primary_house_required_body":
+            "You're viewing {{house}}. Pay all unpaid invoices for this property before adding others to the same payment.",
+        "primary_house_required_action":
+            "Keep this property's invoices selected in your payment list before continuing."
     },
     "tenant_invoice": {
         "screen_title": "Invoices",
         "invoice_placeholder_title": "Invoice",
         "list_heading": "Your invoices",
         "list_subtitle": "Tap a row for details and payment.",
+        "list_main_house_rule":
+            "Pay all unpaid invoices for the home you've selected first; then you can add other properties' invoices if you want.",
+        "main_house_pay_first_required_note": "Paying the main property first is required.",
+        "secondary_house_first_rent_activation_note":
+            "Pay first-month rent to unlock the app's full features.",
         "chip_all": "All properties",
         "empty_list": "No invoices yet. They will appear here when the billing API is connected.",
         "load_error": "Could not load invoices. Check your connection and try again.",
@@ -636,6 +674,7 @@ export default {
         "field_id": "Invoice ID",
         "field_contract_id": "Contract ID",
         "field_type": "Invoice type",
+        "type_MONTHLY_RENT": "Monthly rent",
         "field_period": "Billing period",
         "field_total_amount": "Total amount",
         "field_base_amount": "Base amount",
@@ -693,6 +732,9 @@ export default {
     },
     "notification": {
         "empty": "No notifications yet",
+        "empty_hint": "Pull down to refresh or choose another day.",
+        "page_subtitle": "Device alerts by day",
+        "filter_by_date": "Select day",
         "section_iot": "IoT",
         "filter_all": "All",
         "time_seconds": "{{n}} sec ago",

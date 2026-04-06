@@ -23,7 +23,9 @@ export default {
         "images_limit_truncated_message": "上限{{max}}枚のため、{{added}}枚のみ追加しました。",
         "a11y_open_invoice_list": "請求一覧を開く",
         "a11y_notifications": "通知を開く",
-        "a11y_app_logo": "ISUMSのロゴ"
+        "a11y_app_logo": "ISUMSのロゴ",
+        "a11y_open_profile": "プロフィールを開く",
+        "a11y_brand_go_home": "ホームへ"
     },
     "device_detail": {
         "title": "デバイス詳細",
@@ -76,7 +78,7 @@ export default {
         "images_camera": "写真を撮る",
         "images_library": "アルバムから選択",
         "images_remove": "画像を削除",
-        "images_hint": "任意です。最大6枚まで追加できます。",
+        "images_hint": "任意です。最大{{max}}枚まで追加できます。",
         "images_empty": "添付写真はありません",
         "library_permission_no_permission": "写真アルバムへのアクセス権がありません",
         "submit_button": "チケットを送信",
@@ -101,8 +103,8 @@ export default {
         "load_error": "チケット一覧を読み込めませんでした。もう一度お試しください。",
         "status_CREATED": "受付",
         "status_NEED_RESCHEDULE": "再調整が必要",
-        "status_SCHEDULED": "予定済み",
-        "status_IN_PROGRESS": "対応中",
+        "status_SCHEDULED": "訪問がスケジュール済み",
+        "status_IN_PROGRESS": "現地確認・修理を進行中",
         "status_WAITING_MANAGER_CONFIRM": "管理者による予定確認待ち",
         "status_WAITING_MANAGER_APPROVAL": "管理者承認待ち",
         "status_WAITING_MANAGER_APPROVAL_QUOTE": "見積の管理者承認待ち",
@@ -114,7 +116,28 @@ export default {
         "status_CANCELLED": "キャンセル",
         "type_REPAIR": "修理",
         "type_QUESTION": "質問",
-        "pay_btn": "支払いを開始"
+        "type_MAINTENANCE": "メンテナンス",
+        "pay_btn": "支払いを開始",
+        "pay_cta": "今すぐ支払う",
+        "pay_cta_a11y": "詳細を開いてチケットの支払いを行う",
+        "payment_card_hint": "お支払い待ちです。完了すると対応が進みます。",
+        "filter_all": "すべて",
+        "filter_in_progress": "対応中",
+        "filter_sent": "送信済み",
+        "filter_payment": "支払い待ち",
+        "priority_emergency": "緊急",
+        "priority_standard": "通常",
+        "estimated_cost_prefix": "費用:",
+        "progress_technician_line_scheduled": "技術者はまもなく伺います",
+        "progress_technician_line_in_progress": "技術者はまもなく伺います",
+        "progress_contact_soon_line": "技術者よりまもなくご連絡いたします",
+        "quote_approve_inset_line": "承認すると修理に進みます。",
+        "progress_expected_today": "本日 {{time}} 頃の見込み",
+        "progress_expected_time": "予定時間: {{time}}",
+        "progress_expected_datetime": "予定: {{date}} {{time}}",
+        "progress_time_pending": "予定時間は後ほど更新されます。",
+        "fab_create_a11y": "新しいチケットを作成",
+        "quote_confirm_card_a11y_hint": "見積の詳細を開く"
     },
     "tenant_ticket_detail": {
         "screen_title": "チケット詳細",
@@ -122,8 +145,9 @@ export default {
         "section_info": "情報",
         "section_description": "説明",
         "section_quote": "見積",
+        "quote_awaiting_tenant_intro": "システムから見積内容が届いています。承認いただくと修理を進められます。",
         "section_payment": "お支払い",
-        "pay_repair_btn": "支払う",
+        "pay_repair_btn": "今すぐ支払う",
         "payment_quote_hint": "請求書の作成・同期中の場合があります。準備ができ次第、下の一覧から修理関連の請求を選んでください。",
         "quote_total_label": "合計",
         "quote_items_label": "項目",
@@ -146,15 +170,17 @@ export default {
     "tenant_question_list": {
         "screen_title": "質問への回答",
         "list_heading": "スタッフからの返信",
-        "list_subtitle": "質問タイプのチケットへの回答一覧",
+        "list_subtitle": "区画・家ごとの質問タイプチケットへの返信一覧",
         "details_link": "詳細",
         "empty": "返信はまだありません。",
-        "load_error": "返信を読み込めませんでした。もう一度お試しください。"
+        "load_error": "返信を読み込めませんでした。もう一度お試しください。",
+        "zone_unknown": "区画が未設定です"
     },
     "tenant_question_detail": {
         "screen_title": "返信の詳細",
         "sent_at": "送信日時",
-        "section_meta": "全項目",
+        "section_meta": "返信の内容",
+        "field_zone": "区画・建物",
         "field_id": "返信ID",
         "field_ticket_id": "チケットID",
         "field_actor_id": "回答者ユーザーID",
@@ -504,6 +530,8 @@ export default {
         "header_invoice_payable_count": "お支払いが必要な請求が {{count}} 件あります。",
         "header_invoice_payable_urgent":
             "お支払いが必要な請求が {{count}} 件あります（期限間近または延滞があります）。",
+        "header_pay_now": "今すぐ支払う",
+        "banner_pay_now": "今すぐ支払う",
         "loading_data": "データを読み込んでいます...",
         "footer": {
             "aria_label": "アプリの案内とサポートリンク",
@@ -551,15 +579,18 @@ export default {
             "deposit_body": "入居前に契約に従い敷金のお支払いを完了してください。",
             "payment_title": "家賃のお支払いが必要です",
             "payment_body": "初回の家賃をお支払いいただくまでアプリをご利用いただけません。",
+            "payment_banner": "表示中の物件の初月家賃をお支払いいただくと全機能が利用できます。",
             "payment_alert_title": "家賃の支払い",
             "payment_alert_message": "未払いの家賃があります。「今すぐ支払う」で決済ページ（VNPay）を開きます。",
             "pay_now": "今すぐ支払う"
         },
         "access_reason": {
-            "ACCESS_PENDING_FIRST_RENT": "初回家賃のお支払いが未完了です。完了後にすべての機能をご利用いただけます。",
+            "ACCESS_PENDING_FIRST_RENT":
+                "表示中の物件の初回家賃が未払いです。お支払い後に全機能をご利用いただけます。",
             "ACCESS_PENDING_DEPOSIT": "契約に必要な敷金のお支払いが未完了です。",
             "ACCESS_PENDING_HANDOVER": "契約上の引き渡し日がまだ到来していません。",
-            "PENDING_FIRST_RENT": "初回家賃のお支払いが未完了です。完了後にすべての機能をご利用いただけます。",
+            "PENDING_FIRST_RENT":
+                "表示中の物件の初回家賃が未払いです。お支払い後に全機能をご利用いただけます。",
             "PENDING_DEPOSIT": "契約に必要な敷金のお支払いが未完了です。",
             "PENDING_HANDOVER": "契約上の引き渡し日がまだ到来していません。"
         },
@@ -606,15 +637,22 @@ export default {
         "return_validate_error": "サーバーで確認できませんでした。銀行側では処理済みの場合があります。請求書一覧をご確認ください。",
         "issue_ticket_context": "修理チケットに関するお支払いです。修理料の請求書が表示されたら一覧から選択してください。",
         "main_house_badge": "メイン物件",
-        "primary_house_required_title": "まずメイン物件の支払いが必要です",
-        "primary_house_required_body": "現在のメイン物件は {{house}} です。ほかの物件より先に、この物件の請求をお支払いください。",
-        "primary_house_required_action": "続行するには、メイン物件の請求を選択したままにしてください。"
+        "primary_house_required_title": "まず選択中の物件のお支払いが必要です",
+        "primary_house_required_body":
+            "現在選択している物件は {{house}} です。未払いの請求をすべてお支払いのうえ、ほかの物件の請求を同じ決済に含めてください。",
+        "primary_house_required_action":
+            "続行するには、選択中の物件の請求を一覧に残したままにしてください。"
     },
     "tenant_invoice": {
         "screen_title": "請求書",
         "invoice_placeholder_title": "請求書",
         "list_heading": "あなたの請求書",
         "list_subtitle": "行をタップして詳細・支払いへ。",
+        "list_main_house_rule":
+            "選択中の物件の未払い請求をすべて先にお支払いのうえ、必要ならほかの物件の請求をまとめてください。",
+        "main_house_pay_first_required_note": "メイン物件のお支払いを先に完了する必要があります。",
+        "secondary_house_first_rent_activation_note":
+            "初月家賃をお支払いいただくと、アプリの全機能をご利用いただけます。",
         "chip_all": "すべての物件",
         "empty_list": "請求書はまだありません。API連携後に表示されます。",
         "load_error": "読み込みに失敗しました。接続を確認して再試行してください。",
@@ -636,6 +674,7 @@ export default {
         "field_id": "請求書ID",
         "field_contract_id": "契約ID",
         "field_type": "請求タイプ",
+        "type_MONTHLY_RENT": "月次家賃",
         "field_period": "請求期間",
         "field_total_amount": "合計金額",
         "field_base_amount": "基本料金",
@@ -693,6 +732,9 @@ export default {
     },
     "notification": {
         "empty": "通知はありません",
+        "empty_hint": "下に引っ張って更新するか、別の日付を選んでください。",
+        "page_subtitle": "日別のデバイスアラート",
+        "filter_by_date": "日付",
         "section_iot": "IoT",
         "filter_all": "すべて",
         "time_seconds": "{{n}}秒前",

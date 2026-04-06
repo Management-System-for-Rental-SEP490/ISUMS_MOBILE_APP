@@ -37,7 +37,7 @@ export function isHandoverDateReached(handoverDate?: string | null): boolean {
 }
 
 /**
- * Xác định loại chặn cho nhà đang chọn. `null` = được dùng app bình thường.
+ * Loại chặn tính năng đầy đủ theo **căn đang xét** (`house`, thường là căn đang chọn). `null` = không chặn.
  */
 export function getTenantAccessBlock(
   house: HouseFromApi | null | undefined
@@ -45,18 +45,23 @@ export function getTenantAccessBlock(
   if (!house) return null;
   const st = (house.accessStatus ?? "").trim().toUpperCase();
 
-  // Ưu tiên theo accessStatus từ API my-access:
-  // ACCESSIBLE => vào app bình thường
-  // PENDING_HANDOVER => chặn theo bàn giao
-  // PENDING_DEPOSIT => chặn theo tiền cọc
-  // PENDING_FIRST_RENT => chặn theo tiền thuê tháng đầu
-  if (st === "PENDING_HANDOVER") return "handover";
+  // Thứ tự ưu tiên thông báo / luồng “cần làm” (đặc biệt màn thanh toán & Home):
+  // cọc / thanh toán trước, kế đến mới nhắc bàn giao — tránh che hóa đơn bằng màn chặn ngày giao nhà.
+  // Lưu ý: NFC / “chưa bàn giao” vẫn cần kiểm tra riêng `isTenantHandoverStatusPending`.
   if (st === "PENDING_DEPOSIT") return "deposit";
   if (st === "PENDING_FIRST_RENT") return "payment";
-  // Trường hợp API vẫn đánh ACCESSIBLE nhưng còn hóa đơn chưa trả => hiện banner thanh toán.
   if (house.hasUnpaidInvoice) return "payment";
+  if (st === "PENDING_HANDOVER") return "handover";
 
   return null;
+}
+
+/** Chưa bàn giao theo API — dùng cho NFC/quét; không phụ thuộc thứ tự ưu tiên banner thanh toán ở trên. */
+export function isTenantHandoverStatusPending(
+  house: HouseFromApi | null | undefined
+): boolean {
+  if (!house) return false;
+  return (house.accessStatus ?? "").trim().toUpperCase() === "PENDING_HANDOVER";
 }
 
 /**

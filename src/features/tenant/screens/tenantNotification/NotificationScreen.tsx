@@ -1,14 +1,14 @@
-import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import React, { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
   RefreshControl,
   ScrollView,
   Text,
-  TouchableOpacity,
   Pressable,
   View,
   StyleSheet,
 } from "react-native";
+import type { ColorValue } from "react-native";
 import { useTranslation } from "react-i18next";
 import { useNavigation } from "@react-navigation/native";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
@@ -27,11 +27,12 @@ import {
 import { useTenantContext, useTenantHouseIotAlertsInfinite, useTenantHouses } from "../../../../shared/hooks";
 import { notificationStyles } from "./notificationStyles";
 import {
-  BRAND_DANGER,
-  neutral,
-  brandDangerMutedBg,
+  brandFocusBorder,
   brandPrimary,
+  brandSecondary,
+  brandTintBg,
   getNotificationAlertLevelStyle,
+  neutral,
 } from "../../../../shared/theme/color";
 import { PaginationBar } from "../../../../shared/components/PaginationBar";
 import {
@@ -49,6 +50,55 @@ import type { IotAlertItem } from "../../../../shared/types/api";
 const todayStr = () => toLocalYyyyMmDd(new Date());
 
 const normalizeAlertLevel = (level: string) => String(level ?? "").trim().toUpperCase();
+
+type NotificationAlertCardProps = {
+  title: string;
+  detail: string | null;
+  areaLabel: string;
+  timeStr: string;
+  levelLabel: string;
+  levelFg: ColorValue;
+  levelBg: ColorValue;
+};
+
+/** Một thẻ cảnh báo: icon mức độ + badge + nội dung + khu vực + thời gian (hàng gọn, tối ưu re-render). */
+const NotificationAlertCard = memo(function NotificationAlertCard({
+  title,
+  detail,
+  areaLabel,
+  timeStr,
+  levelLabel,
+  levelFg,
+  levelBg,
+}: NotificationAlertCardProps) {
+  return (
+    <View style={notificationStyles.alertCard}>
+      <View style={notificationStyles.alertCardRow}>
+        <View style={[notificationStyles.alertIconCircle, { backgroundColor: levelBg }]}>
+          <Icons.warning size={22} color={levelFg} />
+        </View>
+        <View style={notificationStyles.alertMain}>
+          <View style={[notificationStyles.alertBadge, { backgroundColor: levelBg }]}>
+            <Text style={[notificationStyles.alertBadgeText, { color: levelFg }]}>{levelLabel}</Text>
+          </View>
+          <Text style={notificationStyles.alertTitle} numberOfLines={2}>
+            {title}
+          </Text>
+          {detail ? <Text style={notificationStyles.alertDetail}>{detail}</Text> : null}
+          <View style={notificationStyles.alertFooter}>
+            <View style={notificationStyles.areaBadge}>
+              <Icons.place size={14} color={neutral.slate500} />
+              <Text style={notificationStyles.areaText} numberOfLines={1}>
+                {areaLabel}
+              </Text>
+            </View>
+            <Text style={notificationStyles.alertTime}>{timeStr}</Text>
+          </View>
+        </View>
+      </View>
+    </View>
+  );
+});
 
 const NotificationScreen = () => {
   const { t, i18n } = useTranslation();
@@ -165,16 +215,8 @@ const NotificationScreen = () => {
 
   const openPaymentScreen = useCallback(() => {
     const parentNav = navigation.getParent?.();
-    const allPendingIds = tenantHouses
-      .map((h) => String(h.pendingInvoiceId ?? "").trim())
-      .filter((id) => id.length > 0);
-
-    parentNav?.navigate?.("TenantRentPayment", {
-      invoiceId: house?.pendingInvoiceId ?? undefined,
-      invoiceIds: allPendingIds,
-      afterSuccess: "home",
-    });
-  }, [navigation, tenantHouses, house?.pendingInvoiceId]);
+    parentNav?.navigate?.("TenantInvoiceList");
+  }, [navigation]);
 
   const dateOptions = useMemo(() => {
     const base = Array.from({ length: 7 }, (_, i) => {
@@ -191,31 +233,6 @@ const NotificationScreen = () => {
     });
     return handoverMinYmd ? base.filter((x) => x.str >= handoverMinYmd) : base;
   }, [locale, t, handoverMinYmd]);
-
-  const AlertCard = ({ alert }: { alert: IotAlertItem }) => {
-    const level = normalizeAlertLevel(String(alert.level));
-    const { fg: color, bg } = getNotificationAlertLevelStyle(level);
-    const timeStr = formatTimeAgoI18n(new Date(alert.ts), t, true);
-    return (
-      <View style={[notificationStyles.alertCard, { borderLeftColor: color }]}>
-        <View style={[notificationStyles.alertBadge, { backgroundColor: bg }]}>
-          <Text style={[notificationStyles.alertBadgeText, { color }]}>{getLevelLabel(level)}</Text>
-        </View>
-        <Text style={[notificationStyles.alertTitle, { color }]} numberOfLines={2}>
-          {alert.title}
-        </Text>
-        {!!alert.detail && <Text style={notificationStyles.alertDetail}>{alert.detail}</Text>}
-        <View style={notificationStyles.alertFooter}>
-          <View style={notificationStyles.areaBadge}>
-            <Text style={[notificationStyles.areaText]} numberOfLines={1}>
-              📍 {alert.areaName || t("notification.area_all")}
-            </Text>
-          </View>
-          <Text style={notificationStyles.alertTime}>{timeStr}</Text>
-        </View>
-      </View>
-    );
-  };
 
   const handlePageChange = (pageNum: number) => {
     setCurrentPage(pageNum);
@@ -274,13 +291,12 @@ const NotificationScreen = () => {
           <Text style={gateStyles.gateTitle}>{title}</Text>
           <Text style={gateStyles.gateBody}>{body}</Text>
           {accessBlock === "payment" ? (
-            <TouchableOpacity
-              style={gateStyles.payBtn}
+            <Pressable
+              style={({ pressed }) => [gateStyles.payBtn, pressed && gateStyles.payBtnPressed]}
               onPress={openPaymentScreen}
-              activeOpacity={0.85}
             >
               <Text style={gateStyles.payBtnText}>{t("home.access.pay_now")}</Text>
-            </TouchableOpacity>
+            </Pressable>
           ) : null}
         </View>
       </View>
@@ -313,7 +329,12 @@ const NotificationScreen = () => {
         ref={scrollRef}
         showsVerticalScrollIndicator={false}
         refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={() => refetch()} />
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={() => refetch()}
+            tintColor={brandPrimary}
+            colors={[brandPrimary]}
+          />
         }
         contentContainerStyle={notificationStyles.listContent}
         onScroll={({ nativeEvent }) => {
@@ -334,6 +355,19 @@ const NotificationScreen = () => {
         scrollEventThrottle={400}
       >
         <>
+          <View style={notificationStyles.sectionIntro}>
+            <View style={notificationStyles.sectionIntroText}>
+              <Text style={notificationStyles.sectionTitle}>{t("notification.section_iot")}</Text>
+              <Text style={notificationStyles.sectionSubtitle}>{t("notification.page_subtitle")}</Text>
+            </View>
+            {!initialLoading && filtered2.length > 0 ? (
+              <View style={notificationStyles.countPill}>
+                <Text style={notificationStyles.countPillText}>{filtered2.length}</Text>
+              </View>
+            ) : null}
+          </View>
+
+          <Text style={notificationStyles.dateFilterLabel}>{t("notification.filter_by_date")}</Text>
           <ScrollView
             horizontal
             showsHorizontalScrollIndicator={false}
@@ -342,27 +376,27 @@ const NotificationScreen = () => {
             {dateOptions.map((d) => {
               const active = selectedDate === d.str;
               return (
-                <TouchableOpacity
+                <Pressable
                   key={d.str}
                   onPress={() => setSelectedDate(d.str)}
-                  style={[
+                  style={({ pressed }) => [
                     notificationStyles.dateChip,
                     active && {
-                      backgroundColor: brandDangerMutedBg,
-                      borderColor: BRAND_DANGER,
+                      backgroundColor: brandTintBg,
+                      borderColor: brandFocusBorder,
                     },
+                    pressed && !active && { opacity: 0.88 },
                   ]}
-                  activeOpacity={0.8}
                 >
                   <Text
                     style={[
                       notificationStyles.dateChipText,
-                      active && { color: BRAND_DANGER },
+                      active && { color: brandSecondary },
                     ]}
                   >
                     {d.label}
                   </Text>
-                </TouchableOpacity>
+                </Pressable>
               );
             })}
           </ScrollView>
@@ -373,10 +407,30 @@ const NotificationScreen = () => {
             </View>
           ) : filtered2.length === 0 ? (
             <View style={notificationStyles.emptyStateWrap}>
+              <View style={notificationStyles.emptyIconBubble}>
+                <Icons.notification size={32} color={neutral.slate400} />
+              </View>
               <Text style={notificationStyles.emptyText}>{t("notification.empty")}</Text>
+              <Text style={notificationStyles.emptyHint}>{t("notification.empty_hint")}</Text>
             </View>
           ) : (
-            displayedAlerts.map((alert) => <AlertCard key={alert.alertId} alert={alert} />)
+            displayedAlerts.map((alert) => {
+              const level = normalizeAlertLevel(String(alert.level));
+              const { fg, bg } = getNotificationAlertLevelStyle(level);
+              const detail = alert.detail?.trim() ? alert.detail.trim() : null;
+              return (
+                <NotificationAlertCard
+                  key={alert.alertId}
+                  title={alert.title}
+                  detail={detail}
+                  areaLabel={alert.areaName?.trim() ? alert.areaName.trim() : t("notification.area_all")}
+                  timeStr={formatTimeAgoI18n(new Date(alert.ts), t, true)}
+                  levelLabel={getLevelLabel(level)}
+                  levelFg={fg}
+                  levelBg={bg}
+                />
+              );
+            })
           )}
 
           {isFetchingNextPage && (
@@ -435,8 +489,11 @@ const gateStyles = StyleSheet.create({
     paddingHorizontal: 18,
     alignItems: "center",
   },
+  payBtnPressed: {
+    opacity: 0.9,
+  },
   payBtnText: {
-    color: "#fff",
+    color: neutral.surface,
     fontSize: 16,
     fontWeight: "600",
   },

@@ -37,6 +37,7 @@ export {
   formatTenantMemberRoleForDisplay,
   getTenantAccessBlock,
   isHandoverDateReached,
+  isTenantHandoverStatusPending,
   mapTenantAccessItemToHouse,
   translateTenantAccessReason,
   type TenantAccessBlockKind,

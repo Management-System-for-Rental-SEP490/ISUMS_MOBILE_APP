@@ -1,5 +1,11 @@
 import { StyleSheet } from "react-native";
-import { brandPrimary, brandSecondary, brandTintBg, neutral } from "../../../../shared/theme/color";
+import {
+  BRAND_DANGER,
+  brandPrimary,
+  brandSecondary,
+  brandTintBg,
+  neutral,
+} from "../../../../shared/theme/color";
 
 const ELEV_CARD = {
   shadowColor: neutral.black,
@@ -455,6 +461,46 @@ export const homeStyles = StyleSheet.create({
         alignSelf: "stretch",
     },
 
+    /** Một dòng nhắc nhở phía trên Home khi chưa đủ điều kiện (không phủ toàn màn). */
+    accessReminderBanner: {
+        flexDirection: "row",
+        alignItems: "center",
+        gap: 8,
+        marginHorizontal: 16,
+        marginTop: 10,
+        paddingVertical: 10,
+        paddingHorizontal: 12,
+        backgroundColor: brandTintBg,
+        borderRadius: 12,
+        borderWidth: 1,
+        borderColor: "rgba(15, 23, 42, 0.08)",
+    },
+    accessReminderBannerTappable: {
+        borderColor: "rgba(42, 154, 110, 0.35)",
+    },
+    accessReminderBannerText: {
+        flex: 1,
+        minWidth: 0,
+        fontSize: 13,
+        fontWeight: "600",
+        lineHeight: 18,
+        color: brandPrimaryDark,
+    },
+    accessReminderPayNowBtn: {
+        flexShrink: 0,
+        paddingHorizontal: 10,
+        paddingVertical: 7,
+        borderRadius: 8,
+        backgroundColor: BRAND_DANGER,
+        alignItems: "center",
+        justifyContent: "center",
+    },
+    accessReminderPayNowBtnText: {
+        fontSize: 11,
+        fontWeight: "800",
+        color: neutral.surface,
+        letterSpacing: -0.05,
+    },
     /** Banner chặn khi chưa đủ điều kiện truy cập app/nhà (GET /api/houses/my-access). */
     accessGateOverlay: {
         ...StyleSheet.absoluteFillObject,

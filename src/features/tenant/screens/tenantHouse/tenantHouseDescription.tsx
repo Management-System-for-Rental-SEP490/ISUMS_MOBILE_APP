@@ -430,13 +430,8 @@ const TenantHouseDescription = () => {
     !profilePending && tenantHouses.length > 0 && !isCurrentMainOnServer;
 
   const openPaymentForHouse = useCallback(() => {
-    const id = String(pendingInvoiceId ?? "").trim();
-    navigation.navigate("TenantRentPayment", {
-      invoiceId: id.length ? id : null,
-      invoiceIds: id.length ? [id] : undefined,
-      afterSuccess: "home",
-    });
-  }, [navigation, pendingInvoiceId]);
+    navigation.navigate("TenantInvoiceList");
+  }, [navigation]);
 
   const openContractPdf = useCallback(
     async (title: string, pdfUrl: string) => {

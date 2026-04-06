@@ -1,4 +1,5 @@
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
+import type { ColorValue } from "react-native";
 import type {
   AssetCategoryFromApi,
   AssetItemFromApi,
@@ -35,7 +36,7 @@ export type RootStackParamList = AuthStackParamList & {
   /** Danh sách phản hồi cho ticket hỏi đáp (GET /issues/responses + lọc theo ticket QUESTION). */
   TenantQuestionList: undefined;
   /** Chi tiết một phản hồi (đủ trường từ API). */
-  TenantQuestionDetail: { response: IssueTicketResponseFromApi };
+  TenantQuestionDetail: { response: IssueTicketResponseFromApi; zoneLabel?: string };
   /** Chi tiết nhà (tenant): mô tả căn nhà, khu vực chức năng. */
   BuildingDetail: {
     buildingId: string;
@@ -62,25 +63,16 @@ export type RootStackParamList = AuthStackParamList & {
     accessReason?: string | null;
     memberRole?: TenantHouseMemberRole;
   };
-  /** Danh sách hóa đơn của tenant (chờ API). */
-  TenantInvoiceList: undefined;
+  /**
+   * Danh sách hóa đơn — chọn nhiều hóa đơn & thanh toán VNPay.
+   * `issueTicketId`: gợi ý ngữ cảnh khi vào từ ticket sửa chữa.
+   */
+  TenantInvoiceList: undefined | { issueTicketId?: string | null };
   /** Chi tiết một hóa đơn + thanh toán đơn. */
   TenantInvoiceDetail: { invoice: TenantInvoiceFromApi };
-  /**
-   * Thanh toán tiền thuê (VNPay): một `invoiceId` hoặc nhiều `invoiceIds`.
-   * Template URL có thể dùng {{invoiceId}} — khi nhiều id, tạm dùng phần tử đầu cho placeholder.
-   */
-  TenantRentPayment: {
-    invoiceId?: string | null;
-    invoiceIds?: string[];
-    /** Khi đã tạo xong link ở màn trước thì mở thẳng WebView VNPay. */
-    checkoutUrl?: string;
-    /** Mở từ ticket sửa chữa (WAITING_PAYMENT) — BE có thể map hóa đơn theo ticket sau này. */
-    issueTicketId?: string | null;
-    /**
-     * Sau VNPay thành công: `invoiceList` = về danh sách hóa đơn (mặc định);
-     * `home` = về tab Home (thanh toán mở khóa truy cập nhà từ Home / điện / nước / thông báo / chi tiết nhà).
-     */
+  /** WebView VNPay — `checkoutUrl` tạo từ màn hóa đơn. */
+  VnpayCheckout: {
+    checkoutUrl: string;
     afterSuccess?: "invoiceList" | "home";
   };
   /** Trang tiêu thụ (gộp điện + nước) với switch toggle. */
@@ -93,7 +85,7 @@ export type RootStackParamList = AuthStackParamList & {
 
 export type IconProps = {
   size?: number;
-  color?: string;
+  color?: ColorValue;
 };
 export type LogoProps = {
   width?: number;

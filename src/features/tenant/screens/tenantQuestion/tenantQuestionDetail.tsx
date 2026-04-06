@@ -29,6 +29,7 @@ const TenantQuestionDetailScreen = () => {
   const { params } = useRoute<Route>();
   const insets = useSafeAreaInsets();
   const r = params.response;
+  const zoneLabel = params.zoneLabel?.trim() || null;
 
   const locale = useMemo(() => {
     const lang = String(i18n.language || "").toLowerCase();
@@ -63,7 +64,7 @@ const TenantQuestionDetailScreen = () => {
         style={styles.scroll}
         contentContainerStyle={[
           styles.scrollContent,
-          { paddingBottom: Math.max(insets.bottom, 28) },
+          { paddingBottom: Math.max(insets.bottom, 28) + 16 },
         ]}
         showsVerticalScrollIndicator={false}
       >
@@ -79,6 +80,17 @@ const TenantQuestionDetailScreen = () => {
 
         <Text style={styles.sectionLabel}>{t("tenant_question_detail.section_meta")}</Text>
         <View style={styles.panel}>
+          {zoneLabel ? (
+            <View style={styles.panelRow}>
+              <Text style={styles.fieldLabel}>{t("tenant_question_detail.field_zone")}</Text>
+              <View style={styles.zoneBadge}>
+                <Icons.place size={14} color={neutral.slate500} />
+                <Text style={styles.zoneBadgeText} numberOfLines={2}>
+                  {zoneLabel}
+                </Text>
+              </View>
+            </View>
+          ) : null}
           <View style={[styles.panelRow, styles.panelRowLast]}>
             <Text style={styles.fieldLabel}>{t("tenant_question_detail.field_content")}</Text>
             <Text style={styles.fieldValue} selectable>

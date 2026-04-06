@@ -25,9 +25,9 @@ import TenantTicketDetailScreen from "../features/tenant/screens/tenantTicket/te
 import TenantQuestionListScreen from "../features/tenant/screens/tenantQuestion/tenantQuestionList";
 import TenantQuestionDetailScreen from "../features/tenant/screens/tenantQuestion/tenantQuestionDetail";
 import TenantHouseDescription from "../features/tenant/screens/tenantHouse/tenantHouseDescription";
-import TenantRentPaymentScreen from "../features/tenant/screens/tenantPayment/TenantRentPaymentScreen";
 import TenantInvoiceListScreen from "../features/tenant/screens/tenantInvoice/TenantInvoiceListScreen";
 import TenantInvoiceDetailScreen from "../features/tenant/screens/tenantInvoice/TenantInvoiceDetailScreen";
+import TenantVnpayCheckoutScreen from "../features/tenant/screens/tenantInvoice/TenantVnpayCheckoutScreen";
 import { brandPrimary } from "../shared/theme/color";
 import { ensureTenantMainHouseSynced } from "../shared/services/userApi";
 import KeycloakChangePasswordWebViewOverlay from "../shared/components/KeycloakChangePasswordWebViewOverlay";
@@ -186,8 +186,8 @@ const Navigation = () => {
                 <Stack.Screen name="TenantInvoiceList" component={TenantInvoiceListScreen} />
                 <Stack.Screen name="TenantInvoiceDetail" component={TenantInvoiceDetailScreen} />
                 <Stack.Screen
-                  name="TenantRentPayment"
-                  component={TenantRentPaymentScreen}
+                  name="VnpayCheckout"
+                  component={TenantVnpayCheckoutScreen}
                   options={{ presentation: "modal" }}
                 />
                 <Stack.Screen name="ConsumptionScreen" component={ConsumptionScreen} />

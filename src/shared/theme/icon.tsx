@@ -32,6 +32,34 @@ const Icons = {
   scanLookup: ({ size = 24, color = 'black' }: IconProps = {}) => (
     <MaterialIcons name="qr-code" size={size} color={color} />
   ),
+  /** Quét NFC (thiết bị). */
+  nfc: ({ size = 24, color = 'black' }: IconProps = {}) => (
+    <MaterialIcons name="nfc" size={size} color={color} />
+  ),
+  /** Chụp ảnh (ticket, báo cáo). */
+  photoCamera: ({ size = 24, color = 'black' }: IconProps = {}) => (
+    <MaterialIcons name="photo-camera" size={size} color={color} />
+  ),
+  /** Thư viện ảnh. */
+  photoLibrary: ({ size = 24, color = 'black' }: IconProps = {}) => (
+    <MaterialIcons name="photo-library" size={size} color={color} />
+  ),
+  /** Sửa chữa / báo sự cố (ticket). */
+  build: ({ size = 24, color = 'black' }: IconProps = {}) => (
+    <MaterialIcons name="build" size={size} color={color} />
+  ),
+  /** Hỏi đáp (ticket). */
+  helpOutline: ({ size = 24, color = 'black' }: IconProps = {}) => (
+    <MaterialIcons name="help-outline" size={size} color={color} />
+  ),
+  /** Mô tả nội dung (card chi tiết ticket). */
+  subject: ({ size = 24, color = 'black' }: IconProps = {}) => (
+    <MaterialIcons name="subject" size={size} color={color} />
+  ),
+  /** Thông tin thiết bị / nhân sự (card chi tiết ticket). */
+  infoOutline: ({ size = 24, color = 'black' }: IconProps = {}) => (
+    <MaterialIcons name="info-outline" size={size} color={color} />
+  ),
   contract: ({ size = 24, color = 'black' }: IconProps = {}) => (
     <FontAwesome5 name="file-contract" size={size} color={color} />
   ),
@@ -47,6 +75,10 @@ const Icons = {
   ),
   notification: ({ size = 24, color = 'black' }: IconProps = {}) => (
     <FontAwesome name="bell" size={size} color={color} />
+  ),
+  /** Vị trí / khu vực (thông báo IoT). */
+  place: ({ size = 24, color = 'black' }: IconProps = {}) => (
+    <MaterialIcons name="place" size={size} color={color} />
   ),
   mail: ({ size = 24, color = 'black' }: IconProps = {}) => (
     <MaterialIcons name="mail" size={size} color={color} />
@@ -84,6 +116,10 @@ const Icons = {
   /** Hóa đơn / thanh toán (tenant). */
   invoice: ({ size = 24, color = 'black' }: IconProps = {}) => (
     <FontAwesome5 name="file-invoice-dollar" size={size} color={color} />
+  ),
+  /** Ví — nút thanh toán trên danh sách ticket. */
+  wallet: ({ size = 24, color = 'black' }: IconProps = {}) => (
+    <MaterialIcons name="account-balance-wallet" size={size} color={color} />
   ),
   /** Icon cảnh báo (dấu hiệu sự cố/alert). */
   warning: ({ size = 24, color = 'black' }: IconProps = {}) => (

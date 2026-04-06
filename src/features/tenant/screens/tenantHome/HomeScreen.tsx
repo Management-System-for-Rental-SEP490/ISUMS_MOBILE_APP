@@ -38,7 +38,7 @@ import {
   neutral,
   waterAccent,
 } from "../../../../shared/theme/color";
-import type { HouseFromApi } from "../../../../shared/types/api";
+import type { HouseFromApi, TenantInvoiceFromApi } from "../../../../shared/types/api";
 import {
   formatDayMonthNumeric,
   getTenantAccessBlock,
@@ -51,11 +51,18 @@ import Icons from "../../../../shared/theme/icon";
 import { tenantFooterLinks } from "../../../../shared/constants/tenantFooterLinks";
 
 const EMPTY_TENANT_HOUSES: HouseFromApi[] = [];
+const EMPTY_TENANT_INVOICES: TenantInvoiceFromApi[] = [];
 
 /** Dưới ngưỡng này dùng 3 cột quick actions cho dễ đọc. */
 const UTILITY_GRID_BREAKPOINT = 390;
 /** marginHorizontal 16×2 + paddingHorizontal 16×2 của `utilitySection` */
 const UTILITY_SECTION_H_INSET = 64;
+
+/**
+ * Số khoản từ ticket/sửa chữa cần thanh toán hiển thị trên dải header Home.
+ * Luồng thanh toán ticket sẽ bổ sung sau — khi đó cộng vào tổng dải cùng hóa đơn toàn căn.
+ */
+const TENANT_HOME_HEADER_PAYABLE_TICKET_PLACEHOLDER = 0;
 
 const HomeScreen = ({ navigation }: HomeScreenProps) => {
   const queryClient = useQueryClient();
@@ -158,35 +165,65 @@ const HomeScreen = ({ navigation }: HomeScreenProps) => {
     [myHouse?.accessReason, myHouse?.accessStatus, t]
   );
 
+  /** Một dòng nhắc trên Home (không che nội dung). */
+  const accessReminderLine = useMemo(() => {
+    if (!accessBlock || !myHouse) return "";
+    if (accessBlock === "handover") {
+      return (
+        accessReasonText ||
+        t("home.access.handover_body", {
+          date: myHouse.handoverDate
+            ? formatDayMonthNumeric(new Date(myHouse.handoverDate), i18n.language)
+            : "—",
+        })
+      );
+    }
+    if (accessBlock === "deposit") {
+      return accessReasonText || t("home.access.deposit_body");
+    }
+    if (accessBlock === "payment") {
+      return t("home.access.payment_banner");
+    }
+    return "";
+  }, [accessBlock, myHouse, accessReasonText, t, i18n.language]);
+
+  const showFullHomeFeatures = !accessBlock;
+
   const openPaymentScreen = useCallback(() => {
-    const selectedPendingInvoiceId = String(myHouse?.pendingInvoiceId ?? "").trim();
-    rootNavigation.navigate("TenantRentPayment", {
-      invoiceId: selectedPendingInvoiceId || undefined,
-      invoiceIds: selectedPendingInvoiceId ? [selectedPendingInvoiceId] : undefined,
-      afterSuccess: "home",
-    });
-  }, [rootNavigation, myHouse?.pendingInvoiceId]);
+    rootNavigation.navigate("TenantInvoiceList");
+  }, [rootNavigation]);
 
   const effectiveHouseId = useMemo(
     () => String(houseId ?? myHouse?.id ?? "").trim(),
     [houseId, myHouse?.id]
   );
-  const invoiceQueryEnabled = Boolean(hasTenantHouse && effectiveHouseId.length > 0);
+  const hasAnyTenantHouse = tenantHouses.length > 0;
+  /** Hóa đơn API trả về theo tenant — bật khi đã có danh sách căn (kể cả chưa chọn căn hiển thị). */
+  const invoiceQueryEnabled = hasAnyTenantHouse && !loadingHouses;
   const {
     data: invoiceListRaw,
     isLoading: invoicesLoading,
     refetch: refetchInvoices,
   } = useTenantInvoices(invoiceQueryEnabled);
-  const invoiceList = invoiceListRaw ?? [];
+  const invoiceList = invoiceListRaw ?? EMPTY_TENANT_INVOICES;
 
-  const payableForMainHouse = useMemo(() => {
-    if (!effectiveHouseId) return [];
-    return invoiceList.filter(
-      (inv) =>
-        String(inv.houseId ?? "").trim() === effectiveHouseId &&
-        isTenantInvoicePayable(inv.status)
+  /** Hóa đơn cần thanh toán trên toàn bộ căn tenant đang có (dải header + tổng mở). */
+  const headerPayableInvoices = useMemo(() => {
+    const ids = new Set(
+      tenantHouses.map((h) => String(h.id ?? "").trim()).filter((id) => id.length > 0)
     );
-  }, [invoiceList, effectiveHouseId]);
+    return invoiceList.filter((inv) => {
+      if (!isTenantInvoicePayable(inv.status)) return false;
+      const hid = String(inv.houseId ?? "").trim();
+      if (hid.length === 0) return true;
+      return ids.size === 0 || ids.has(hid);
+    });
+  }, [invoiceList, tenantHouses]);
+
+  const headerPayableCount = useMemo(
+    () => headerPayableInvoices.length + TENANT_HOME_HEADER_PAYABLE_TICKET_PLACEHOLDER,
+    [headerPayableInvoices.length]
+  );
 
   const loading = loadingHouses;
 
@@ -295,31 +332,31 @@ const HomeScreen = ({ navigation }: HomeScreenProps) => {
   }, [myHouse, rootNavigation]);
 
   const homeInvoiceStrip = useMemo((): HomeHeaderInvoiceStrip => {
-    if (!hasTenantHouse || !effectiveHouseId) return { kind: "hidden" };
+    if (!hasAnyTenantHouse) return { kind: "hidden" };
     if (invoiceQueryEnabled && invoicesLoading && invoiceList.length === 0) {
       return { kind: "loading" };
     }
-    const n = payableForMainHouse.length;
+    const n = headerPayableCount;
     if (n === 0) {
       return { kind: "all_paid", caption: t("home.header_invoice_all_paid") };
     }
-    const urgent = payableForMainHouse.some((inv) => isTenantInvoiceDueUrgent(inv));
+    const urgent = headerPayableInvoices.some((inv) => isTenantInvoiceDueUrgent(inv));
     const caption = urgent
       ? t("home.header_invoice_payable_urgent", { count: n })
       : t("home.header_invoice_payable_count", { count: n });
     return { kind: "payable", caption, urgent };
   }, [
-    hasTenantHouse,
-    effectiveHouseId,
+    hasAnyTenantHouse,
+    headerPayableCount,
+    headerPayableInvoices,
     invoiceQueryEnabled,
     invoicesLoading,
     invoiceList.length,
-    payableForMainHouse,
     t,
   ]);
 
   const { utilityGridGap, utilityItemWidth } = useMemo(() => {
-    const cols = windowWidth < UTILITY_GRID_BREAKPOINT ? 3 : 4;
+    const cols = accessBlock ? 3 : windowWidth < UTILITY_GRID_BREAKPOINT ? 3 : 4;
     const gap = cols === 3 ? 12 : 10;
     const inner = Math.max(0, windowWidth - UTILITY_SECTION_H_INSET);
     const raw = Math.floor((inner - gap * (cols - 1)) / cols);
@@ -327,7 +364,7 @@ const HomeScreen = ({ navigation }: HomeScreenProps) => {
       utilityGridGap: gap,
       utilityItemWidth: Math.max(cols === 3 ? 72 : 64, raw),
     };
-  }, [windowWidth]);
+  }, [windowWidth, accessBlock]);
 
   const UTILITY_ICON = 18;
 
@@ -349,186 +386,213 @@ const HomeScreen = ({ navigation }: HomeScreenProps) => {
 
     return (
       <View>
-        {!accessBlock ? (
-          <>
-          {myHouse ? (
+        {accessBlock && accessReminderLine ? (
+          <View
+            style={homeStyles.accessReminderBanner}
+            accessibilityRole="text"
+            accessibilityLabel={accessReminderLine}
+          >
+            <Text
+              style={homeStyles.accessReminderBannerText}
+              numberOfLines={2}
+              ellipsizeMode="tail"
+            >
+              {accessReminderLine}
+            </Text>
+            {accessBlock === "payment" ? (
+              <TouchableOpacity
+                style={homeStyles.accessReminderPayNowBtn}
+                onPress={openPaymentScreen}
+                activeOpacity={0.88}
+                accessibilityRole="button"
+                accessibilityLabel={t("home.banner_pay_now")}
+              >
+                <Text style={homeStyles.accessReminderPayNowBtnText}>
+                  {t("home.banner_pay_now")}
+                </Text>
+              </TouchableOpacity>
+            ) : null}
+          </View>
+        ) : null}
+
+        {myHouse ? (
+          <Pressable
+            style={({ pressed }) => [
+              homeStyles.currentHouseSection,
+              pressed && Platform.OS === "ios" ? { opacity: 0.92 } : null,
+            ]}
+            onPress={navigateToCurrentHouseDetail}
+            android_ripple={{ color: "rgba(0,0,0,0.06)" }}
+            accessibilityRole="button"
+            accessibilityLabel={`${t("home.staying_at_house_label")}, ${myHouse.name}`}
+          >
+            <View style={homeStyles.currentHouseRow}>
+              <View style={homeStyles.currentHouseTextBlock}>
+                <Text style={homeStyles.currentHouseEyebrow}>
+                  {t("home.staying_at_house_label")}
+                </Text>
+                <Text style={homeStyles.currentHouseName} numberOfLines={2}>
+                  {myHouse.name}
+                </Text>
+              </View>
+              {tenantHouses.length > 1 ? (
+                <Pressable
+                  style={homeStyles.switchHousePill}
+                  onPress={() => setHouseModalVisible(true)}
+                  android_ripple={{ color: "rgba(0,0,0,0.08)" }}
+                >
+                  <Text style={homeStyles.switchHousePillText}>{t("home.switch_house")}</Text>
+                  <Icons.chevronForward size={16} color={brandSecondary} />
+                </Pressable>
+              ) : null}
+            </View>
+          </Pressable>
+        ) : null}
+
+        <View style={homeStyles.utilitySection}>
+          <Text style={homeStyles.utilitySectionTitle}>{t("home.utilities_title")}</Text>
+          <View style={[homeStyles.utilityGrid, { gap: utilityGridGap }]}>
             <Pressable
               style={({ pressed }) => [
-                homeStyles.currentHouseSection,
+                homeStyles.utilityItem,
+                { width: utilityItemWidth, backgroundColor: "#DBEAFE" },
                 pressed && Platform.OS === "ios" ? { opacity: 0.92 } : null,
               ]}
-              onPress={navigateToCurrentHouseDetail}
               android_ripple={{ color: "rgba(0,0,0,0.06)" }}
-              accessibilityRole="button"
-              accessibilityLabel={`${t("home.staying_at_house_label")}, ${myHouse.name}`}
+              onPress={navigateToCurrentHouseDetail}
             >
-              <View style={homeStyles.currentHouseRow}>
-                <View style={homeStyles.currentHouseTextBlock}>
-                  <Text style={homeStyles.currentHouseEyebrow}>
-                    {t("home.staying_at_house_label")}
-                  </Text>
-                  <Text style={homeStyles.currentHouseName} numberOfLines={2}>
-                    {myHouse.name}
-                  </Text>
-                </View>
-                {tenantHouses.length > 1 ? (
-                  <Pressable
-                    style={homeStyles.switchHousePill}
-                    onPress={() => setHouseModalVisible(true)}
-                    android_ripple={{ color: "rgba(0,0,0,0.08)" }}
-                  >
-                    <Text style={homeStyles.switchHousePillText}>{t("home.switch_house")}</Text>
-                    <Icons.chevronForward size={16} color={brandSecondary} />
-                  </Pressable>
-                ) : null}
+              <View style={homeStyles.utilityIconSlot}>
+                <Icons.home color={brandPrimary} size={UTILITY_ICON} />
               </View>
+              <Text style={homeStyles.utilityLabel}>{t("home.utility_house")}</Text>
             </Pressable>
-          ) : null}
 
-          <View style={homeStyles.utilitySection}>
-            <Text style={homeStyles.utilitySectionTitle}>
-              {t("home.utilities_title")}
-            </Text>
-            <View style={[homeStyles.utilityGrid, { gap: utilityGridGap }]}>
-              <Pressable
-                style={({ pressed }) => [
-                  homeStyles.utilityItem,
-                  { width: utilityItemWidth, backgroundColor: "#DBEAFE" },
-                  pressed && Platform.OS === "ios" ? { opacity: 0.92 } : null,
-                ]}
-                android_ripple={{ color: "rgba(0,0,0,0.06)" }}
-                onPress={navigateToCurrentHouseDetail}
-              >
-                <View style={homeStyles.utilityIconSlot}>
-                  <Icons.home color={brandPrimary} size={UTILITY_ICON} />
-                </View>
-                <Text style={homeStyles.utilityLabel}>
-                  {t("home.utility_house")}
-                </Text>
-              </Pressable>
+            <Pressable
+              style={({ pressed }) => [
+                homeStyles.utilityItem,
+                { width: utilityItemWidth, backgroundColor: "#F5F0EB" },
+                pressed && Platform.OS === "ios" ? { opacity: 0.92 } : null,
+              ]}
+              android_ripple={{ color: "rgba(0,0,0,0.06)" }}
+              onPress={() => {
+                rootNavigation.navigate("ProfileScreen");
+              }}
+            >
+              <View style={homeStyles.utilityIconSlot}>
+                <Icons.user color="#6D28D9" size={UTILITY_ICON} />
+              </View>
+              <Text style={homeStyles.utilityLabel}>{t("home.utility_profile")}</Text>
+            </Pressable>
 
-              <Pressable
-                style={({ pressed }) => [
-                  homeStyles.utilityItem,
-                  { width: utilityItemWidth, backgroundColor: "#F5F0EB" },
-                  pressed && Platform.OS === "ios" ? { opacity: 0.92 } : null,
-                ]}
-                android_ripple={{ color: "rgba(0,0,0,0.06)" }}
-                onPress={() => {
-                  rootNavigation.navigate("ProfileScreen");
-                }}
-              >
-                <View style={homeStyles.utilityIconSlot}>
-                  <Icons.user color="#6D28D9" size={UTILITY_ICON} />
-                </View>
-                <Text style={homeStyles.utilityLabel}>{t("home.utility_profile")}</Text>
-              </Pressable>
+            <Pressable
+              style={({ pressed }) => [
+                homeStyles.utilityItem,
+                { width: utilityItemWidth, backgroundColor: "#FEF3C7" },
+                pressed && Platform.OS === "ios" ? { opacity: 0.92 } : null,
+              ]}
+              android_ripple={{ color: "rgba(0,0,0,0.06)" }}
+              onPress={() => {
+                rootNavigation.navigate("TenantInvoiceList");
+              }}
+            >
+              <View style={homeStyles.utilityIconSlot}>
+                <Icons.invoice color="#B45309" size={UTILITY_ICON} />
+              </View>
+              <Text style={homeStyles.utilityLabel}>{t("home.utility_invoice")}</Text>
+            </Pressable>
 
-              <Pressable
-                style={({ pressed }) => [
-                  homeStyles.utilityItem,
-                  { width: utilityItemWidth, backgroundColor: "#FEF3C7" },
-                  pressed && Platform.OS === "ios" ? { opacity: 0.92 } : null,
-                ]}
-                android_ripple={{ color: "rgba(0,0,0,0.06)" }}
-                onPress={() => {
-                  rootNavigation.navigate("TenantInvoiceList");
-                }}
-              >
-                <View style={homeStyles.utilityIconSlot}>
-                  <Icons.invoice color="#B45309" size={UTILITY_ICON} />
-                </View>
-                <Text style={homeStyles.utilityLabel}>{t("home.utility_invoice")}</Text>
-              </Pressable>
+            {showFullHomeFeatures ? (
+              <>
+                <Pressable
+                  style={({ pressed }) => [
+                    homeStyles.utilityItem,
+                    { width: utilityItemWidth, backgroundColor: "#D1FAE5" },
+                    pressed && Platform.OS === "ios" ? { opacity: 0.92 } : null,
+                  ]}
+                  android_ripple={{ color: "rgba(0,0,0,0.06)" }}
+                  onPress={() => {
+                    rootNavigation.navigate("TenantTicketList");
+                  }}
+                >
+                  <View style={homeStyles.utilityIconSlot}>
+                    <Icons.ticket color="#047857" size={UTILITY_ICON} />
+                  </View>
+                  <Text style={homeStyles.utilityLabel}>{t("home.utility_ticket")}</Text>
+                </Pressable>
 
-              <Pressable
-                style={({ pressed }) => [
-                  homeStyles.utilityItem,
-                  { width: utilityItemWidth, backgroundColor: "#D1FAE5" },
-                  pressed && Platform.OS === "ios" ? { opacity: 0.92 } : null,
-                ]}
-                android_ripple={{ color: "rgba(0,0,0,0.06)" }}
-                onPress={() => {
-                  rootNavigation.navigate("TenantTicketList");
-                }}
-              >
-                <View style={homeStyles.utilityIconSlot}>
-                  <Icons.ticket color="#047857" size={UTILITY_ICON} />
-                </View>
-                <Text style={homeStyles.utilityLabel}>{t("home.utility_ticket")}</Text>
-              </Pressable>
+                <Pressable
+                  style={({ pressed }) => [
+                    homeStyles.utilityItem,
+                    { width: utilityItemWidth, backgroundColor: "#F3F4F6" },
+                    pressed && Platform.OS === "ios" ? { opacity: 0.92 } : null,
+                  ]}
+                  android_ripple={{ color: "rgba(0,0,0,0.06)" }}
+                  onPress={() => {
+                    rootNavigation.navigate("ConsumptionScreen", { initialTab: "electric" });
+                  }}
+                >
+                  <View style={homeStyles.utilityIconSlot}>
+                    <Icons.electric color="#059669" size={UTILITY_ICON} />
+                  </View>
+                  <Text style={homeStyles.utilityLabel}>{t("home.utility_electric")}</Text>
+                </Pressable>
 
-              <Pressable
-                style={({ pressed }) => [
-                  homeStyles.utilityItem,
-                  { width: utilityItemWidth, backgroundColor: "#F3F4F6" },
-                  pressed && Platform.OS === "ios" ? { opacity: 0.92 } : null,
-                ]}
-                android_ripple={{ color: "rgba(0,0,0,0.06)" }}
-                onPress={() => {
-                  rootNavigation.navigate("ConsumptionScreen", { initialTab: "electric" });
-                }}
-              >
-                <View style={homeStyles.utilityIconSlot}>
-                  <Icons.electric color="#059669" size={UTILITY_ICON} />
-                </View>
-                <Text style={homeStyles.utilityLabel}>{t("home.utility_electric")}</Text>
-              </Pressable>
+                <Pressable
+                  style={({ pressed }) => [
+                    homeStyles.utilityItem,
+                    { width: utilityItemWidth, backgroundColor: "#E0E7FF" },
+                    pressed && Platform.OS === "ios" ? { opacity: 0.92 } : null,
+                  ]}
+                  android_ripple={{ color: "rgba(0,0,0,0.06)" }}
+                  onPress={() => {
+                    rootNavigation.navigate("ConsumptionScreen", { initialTab: "water" });
+                  }}
+                >
+                  <View style={homeStyles.utilityIconSlot}>
+                    <Icons.water color="#2563EB" size={UTILITY_ICON} />
+                  </View>
+                  <Text style={homeStyles.utilityLabel}>{t("home.utility_water")}</Text>
+                </Pressable>
 
-              <Pressable
-                style={({ pressed }) => [
-                  homeStyles.utilityItem,
-                  { width: utilityItemWidth, backgroundColor: "#E0E7FF" },
-                  pressed && Platform.OS === "ios" ? { opacity: 0.92 } : null,
-                ]}
-                android_ripple={{ color: "rgba(0,0,0,0.06)" }}
-                onPress={() => {
-                  rootNavigation.navigate("ConsumptionScreen", { initialTab: "water" });
-                }}
-              >
-                <View style={homeStyles.utilityIconSlot}>
-                  <Icons.water color="#2563EB" size={UTILITY_ICON} />
-                </View>
-                <Text style={homeStyles.utilityLabel}>{t("home.utility_water")}</Text>
-              </Pressable>
+                <Pressable
+                  style={({ pressed }) => [
+                    homeStyles.utilityItem,
+                    { width: utilityItemWidth, backgroundColor: "#EDE9FE" },
+                    pressed && Platform.OS === "ios" ? { opacity: 0.92 } : null,
+                  ]}
+                  android_ripple={{ color: "rgba(0,0,0,0.06)" }}
+                  onPress={() => {
+                    rootNavigation.navigate("TenantQuestionList");
+                  }}
+                >
+                  <View style={homeStyles.utilityIconSlot}>
+                    <Icons.brain color="#4F46E5" size={UTILITY_ICON} />
+                  </View>
+                  <Text style={homeStyles.utilityLabel}>{t("home.utility_qa")}</Text>
+                </Pressable>
 
-              <Pressable
-                style={({ pressed }) => [
-                  homeStyles.utilityItem,
-                  { width: utilityItemWidth, backgroundColor: "#EDE9FE" },
-                  pressed && Platform.OS === "ios" ? { opacity: 0.92 } : null,
-                ]}
-                android_ripple={{ color: "rgba(0,0,0,0.06)" }}
-                onPress={() => {
-                  rootNavigation.navigate("TenantQuestionList");
-                }}
-              >
-                <View style={homeStyles.utilityIconSlot}>
-                  <Icons.brain color="#4F46E5" size={UTILITY_ICON} />
-                </View>
-                <Text style={homeStyles.utilityLabel}>{t("home.utility_qa")}</Text>
-              </Pressable>
-
-              <Pressable
-                style={({ pressed }) => [
-                  homeStyles.utilityItem,
-                  { width: utilityItemWidth, backgroundColor: "#D6D3D1" },
-                  pressed && Platform.OS === "ios" ? { opacity: 0.92 } : null,
-                ]}
-                android_ripple={{ color: "rgba(0,0,0,0.06)" }}
-                onPress={() => {
-                  rootNavigation.navigate("Camera");
-                }}
-              >
-                <View style={homeStyles.utilityIconSlot}>
-                  <Icons.scanLookup color={brandPrimary} size={UTILITY_ICON} />
-                </View>
-                <Text style={homeStyles.utilityLabel}>{t("home.utility_scan")}</Text>
-              </Pressable>
-            </View>
+                <Pressable
+                  style={({ pressed }) => [
+                    homeStyles.utilityItem,
+                    { width: utilityItemWidth, backgroundColor: "#D6D3D1" },
+                    pressed && Platform.OS === "ios" ? { opacity: 0.92 } : null,
+                  ]}
+                  android_ripple={{ color: "rgba(0,0,0,0.06)" }}
+                  onPress={() => {
+                    rootNavigation.navigate("Camera");
+                  }}
+                >
+                  <View style={homeStyles.utilityIconSlot}>
+                    <Icons.scanLookup color={brandPrimary} size={UTILITY_ICON} />
+                  </View>
+                  <Text style={homeStyles.utilityLabel}>{t("home.utility_scan")}</Text>
+                </Pressable>
+              </>
+            ) : null}
           </View>
+        </View>
 
-            {myHouse ? (
+        {showFullHomeFeatures && myHouse ? (
               <View style={homeStyles.usageSummarySection}>
                 <View style={homeStyles.usageSummaryHeader}>
                   <Text style={homeStyles.usageSummaryTitle}>
@@ -657,8 +721,6 @@ const HomeScreen = ({ navigation }: HomeScreenProps) => {
                 </View>
               </View>
             ) : null}
-          </>
-        ) : null}
 
         <View
           style={homeStyles.homeSiteFooter}
@@ -715,7 +777,7 @@ const HomeScreen = ({ navigation }: HomeScreenProps) => {
   if (!loadingHouses && tenantHouses.length === 0) {
     return (
       <View style={homeStyles.container}>
-        <Header variant="default" />
+        <Header variant="default" onBrandPress={navigateToProfileFromHeader} />
         <ScrollView
           style={{ flex: 1 }}
           contentContainerStyle={[
@@ -741,6 +803,7 @@ const HomeScreen = ({ navigation }: HomeScreenProps) => {
     <View style={homeStyles.container}>
       <Header
         variant="default"
+        showNotification={showFullHomeFeatures}
         homeWelcome={homeHeaderWelcome}
         onHomeWelcomeNamePress={navigateToProfileFromHeader}
         homeInvoiceStrip={homeInvoiceStrip}
@@ -835,46 +898,6 @@ const HomeScreen = ({ navigation }: HomeScreenProps) => {
           </View>
         </TouchableWithoutFeedback>
       </Modal>
-
-      {accessBlock ? (
-        <View
-          style={[homeStyles.accessGateOverlay, { paddingTop: insets.top + 74 }]}
-          pointerEvents="auto"
-        >
-          <View style={homeStyles.accessGateBannerCard}>
-            <Text style={homeStyles.accessGateCardTitle}>
-              {accessBlock === "handover"
-                ? t("home.access.handover_title")
-                : accessBlock === "deposit"
-                  ? t("home.access.deposit_title")
-                  : t("home.access.payment_title")}
-            </Text>
-            <Text style={homeStyles.accessGateCardBody}>
-              {accessBlock === "handover"
-                ? accessReasonText ||
-                  t("home.access.handover_body", {
-                    date: myHouse?.handoverDate
-                      ? formatDayMonthNumeric(new Date(myHouse.handoverDate), i18n.language)
-                      : "—",
-                  })
-                : accessBlock === "deposit"
-                  ? accessReasonText || t("home.access.deposit_body")
-                  : accessReasonText || t("home.access.payment_body")}
-            </Text>
-            {accessBlock === "payment" ? (
-              <TouchableOpacity
-                style={homeStyles.accessGatePrimaryBtn}
-                onPress={openPaymentScreen}
-                activeOpacity={0.85}
-              >
-                <Text style={homeStyles.accessGatePrimaryBtnText}>
-                  {t("home.access.pay_now")}
-                </Text>
-              </TouchableOpacity>
-            ) : null}
-          </View>
-        </View>
-      ) : null}
     </View>
   );
 };

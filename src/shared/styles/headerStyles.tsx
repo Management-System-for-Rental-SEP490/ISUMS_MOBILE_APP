@@ -86,10 +86,10 @@ const headerStyles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
-  /** Trang Home: eyebrow + chào, chuông phải */
+  /** Trang Home: eyebrow + chào, chuông phải — canh trên để chuông không lệch khi khối trái cao (hóa đơn + nút). */
   homeHeaderRow: {
     flexDirection: "row",
-    alignItems: "center",
+    alignItems: "flex-start",
     width: "100%",
     gap: 6,
   },
@@ -148,8 +148,39 @@ const headerStyles = StyleSheet.create({
     marginTop: 8,
     flexDirection: "row",
     alignItems: "center",
-    gap: 8,
+    gap: 10,
     width: "100%",
+  },
+  /** Dải hóa đơn cần trả — chữ dạng liên kết (gạch dưới), bấm mở danh sách hóa đơn. */
+  homeInvoiceStripPayableWrap: {
+    marginTop: 8,
+    width: "100%",
+    alignSelf: "flex-start",
+  },
+  homeInvoiceStripPayableUnderline: {
+    textDecorationLine: "underline",
+    textDecorationColor: "rgba(255,255,255,0.85)",
+  },
+  homeInvoiceStripCaptionWrap: {
+    flex: 1,
+    minWidth: 0,
+    justifyContent: "center",
+  },
+  /** Hóa đơn cần trả (chưa gấp) — chữ vàng trên nền gradient. */
+  homeInvoiceStripPayableMild: {
+    fontSize: 13,
+    fontWeight: "700",
+    letterSpacing: -0.15,
+    lineHeight: 18,
+    color: "#FDE047",
+  },
+  /** Sắp đến hạn / quá hạn — chữ đỏ nhạt. */
+  homeInvoiceStripPayableUrgent: {
+    fontSize: 13,
+    fontWeight: "800",
+    letterSpacing: -0.15,
+    lineHeight: 18,
+    color: "#FECACA",
   },
   homeInvoiceStripBubble: {
     flex: 1,

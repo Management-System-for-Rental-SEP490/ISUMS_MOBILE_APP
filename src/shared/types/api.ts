@@ -583,6 +583,11 @@ export interface TenantTicketFromApi {
   assetId: string;
   assignedStaffId: string | null;
   /**
+   * Mức ưu tiên hiển thị (BE có thể trả): EMERGENCY / HIGH / STANDARD, …
+   * Thiếu trường → UI coi là tiêu chuẩn.
+   */
+  priority?: string | null;
+  /**
    * Tên nhân viên phụ trách (BE có thể trả ở endpoint ticket-by-id).
    * Nếu endpoint danh sách không có, có thể null/undefined.
    */

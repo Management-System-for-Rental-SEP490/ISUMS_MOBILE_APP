@@ -16,6 +16,7 @@ import {
   IssueTicketResponseFromApi,
 } from "../../../../shared/types";
 import { getIssueResponses, getTenantTickets } from "../../../../shared/services/issuesApi";
+import { useTenantHouses } from "../../../../shared/hooks";
 import Icons from "../../../../shared/theme/icon";
 import { brandSecondary, neutral } from "../../../../shared/theme/color";
 import { tenantQuestionListStyles as styles } from "./tenantQuestionStyles";
@@ -48,17 +49,23 @@ function sortByCreatedDesc(a: IssueTicketResponseFromApi, b: IssueTicketResponse
   return tb - ta;
 }
 
-/** Chỉ giữ phản hồi gắn ticket loại QUESTION trong danh sách ticket của tenant. */
-function filterResponsesForQuestionTickets(
+type QuestionTicketMeta = { id: string; type: string; houseId: string };
+
+/** Chỉ giữ phản hồi gắn ticket loại QUESTION; trả về map ticketId → houseId (đồng bộ “khu” với ticket). */
+function filterResponsesAndHouseByTicket(
   responses: IssueTicketResponseFromApi[],
-  tickets: { id: string; type: string }[]
-): IssueTicketResponseFromApi[] {
-  const questionIds = new Set(
-    tickets
-      .filter((t) => String(t.type || "").toUpperCase() === "QUESTION")
-      .map((t) => t.id)
-  );
-  return responses.filter((r) => questionIds.has(r.ticketId));
+  tickets: QuestionTicketMeta[]
+): { merged: IssueTicketResponseFromApi[]; houseIdByTicketId: Record<string, string> } {
+  const questionTickets = tickets.filter((t) => String(t.type || "").toUpperCase() === "QUESTION");
+  const questionIds = new Set(questionTickets.map((t) => t.id));
+  const houseIdByTicketId: Record<string, string> = {};
+  for (const t of questionTickets) {
+    houseIdByTicketId[t.id] = String(t.houseId ?? "").trim();
+  }
+  return {
+    merged: responses.filter((r) => questionIds.has(r.ticketId)),
+    houseIdByTicketId,
+  };
 }
 
 const TenantQuestionListScreen = () => {
@@ -73,8 +80,22 @@ const TenantQuestionListScreen = () => {
   }, [i18n.language]);
   const insets = useSafeAreaInsets();
   const listRef = useRef<FlatList<IssueTicketResponseFromApi>>(null);
+  const { data: housesData } = useTenantHouses();
+  const tenantHouseList = housesData?.data ?? [];
+
+  const houseNameById = useMemo(() => {
+    const m = new Map<string, string>();
+    for (const h of tenantHouseList) {
+      const id = String(h.id ?? "").trim();
+      if (!id) continue;
+      const name = String(h.name ?? "").trim();
+      m.set(id, name.length ? name : id);
+    }
+    return m;
+  }, [tenantHouseList]);
 
   const [allItems, setAllItems] = useState<IssueTicketResponseFromApi[]>([]);
+  const [houseIdByTicketId, setHouseIdByTicketId] = useState<Record<string, string>>({});
   const [currentPage, setCurrentPage] = useState(1);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -86,12 +107,14 @@ const TenantQuestionListScreen = () => {
     setError(null);
     try {
       const [tickets, responses] = await Promise.all([getTenantTickets(), getIssueResponses()]);
-      const merged = filterResponsesForQuestionTickets(responses, tickets);
+      const { merged, houseIdByTicketId: houseMap } = filterResponsesAndHouseByTicket(responses, tickets);
       setAllItems([...merged].sort(sortByCreatedDesc));
+      setHouseIdByTicketId(houseMap);
       setCurrentPage(1);
     } catch {
       setError(t("tenant_question_list.load_error"));
       setAllItems([]);
+      setHouseIdByTicketId({});
       setCurrentPage(1);
     } finally {
       setLoading(false);
@@ -120,32 +143,59 @@ const TenantQuestionListScreen = () => {
     listRef.current?.scrollToOffset({ offset: 0, animated: true });
   }, []);
 
-  const onPressDetail = (item: IssueTicketResponseFromApi) => {
-    navigation.navigate("TenantQuestionDetail", { response: item });
-  };
-
-  const renderItem = ({ item }: { item: IssueTicketResponseFromApi }) => (
-    <View style={styles.card}>
-      <Text style={styles.contentPreview} numberOfLines={4}>
-        {item.content || "—"}
-      </Text>
-      <View style={styles.dateRow}>
-        <Icons.clock size={14} color={neutral.textMuted} />
-        <Text style={styles.dateLine}>{formatTenantIssueDateTime(item.createdAt, locale)}</Text>
-      </View>
-      <View style={styles.cardBottomRow}>
-        <TouchableOpacity
-          style={styles.detailsBtn}
-          onPress={() => onPressDetail(item)}
-          activeOpacity={0.65}
-          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-        >
-          <Text style={styles.detailsText}>{t("tenant_question_list.details_link")}</Text>
-          <Icons.chevronForward size={16} color={DETAIL_LINK_COLOR} />
-        </TouchableOpacity>
-      </View>
-    </View>
+  const zoneLabelForTicket = useCallback(
+    (ticketId: string) => {
+      const hid = houseIdByTicketId[ticketId];
+      if (!hid) return t("tenant_question_list.zone_unknown");
+      return houseNameById.get(hid) ?? t("tenant_question_list.zone_unknown");
+    },
+    [houseIdByTicketId, houseNameById, t]
   );
+
+  const onPressDetail = useCallback(
+    (item: IssueTicketResponseFromApi) => {
+      navigation.navigate("TenantQuestionDetail", {
+        response: item,
+        zoneLabel: zoneLabelForTicket(item.ticketId),
+      });
+    },
+    [navigation, zoneLabelForTicket]
+  );
+
+  const renderItem = useCallback(
+    ({ item }: { item: IssueTicketResponseFromApi }) => (
+      <View style={styles.card}>
+        <View style={styles.areaBadge} accessibilityLabel={t("tenant_question_detail.field_zone")}>
+          <Icons.place size={14} color={neutral.slate500} />
+          <Text style={styles.areaText} numberOfLines={1}>
+            {zoneLabelForTicket(item.ticketId)}
+          </Text>
+        </View>
+        <Text style={styles.contentPreview} numberOfLines={4}>
+          {item.content || "—"}
+        </Text>
+        <View style={styles.dateRow}>
+          <Icons.clock size={14} color={neutral.textMuted} />
+          <Text style={styles.dateLine}>{formatTenantIssueDateTime(item.createdAt, locale)}</Text>
+        </View>
+        <View style={styles.cardBottomRow}>
+          <TouchableOpacity
+            style={styles.detailsBtn}
+            onPress={() => onPressDetail(item)}
+            activeOpacity={0.65}
+            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+          >
+            <Text style={styles.detailsText}>{t("tenant_question_list.details_link")}</Text>
+            <Icons.chevronForward size={16} color={DETAIL_LINK_COLOR} />
+          </TouchableOpacity>
+        </View>
+      </View>
+    ),
+    [locale, onPressDetail, t, zoneLabelForTicket]
+  );
+
+  const listBottomPad =
+    Math.max(insets.bottom, 28) + 28 + (totalPages > 1 ? 10 : 0);
 
   const showPageHeading = !(loading && !refreshing);
 
@@ -179,12 +229,12 @@ const TenantQuestionListScreen = () => {
       ) : null}
 
       {loading && !refreshing ? (
-        <View style={styles.centered}>
+        <View style={[styles.centered, { paddingBottom: Math.max(insets.bottom, 20) }]}>
           <ActivityIndicator size="large" color={brandSecondary} />
           <Text style={styles.hint}>{t("common.loading")}</Text>
         </View>
       ) : error ? (
-        <View style={[styles.centered, { flex: 1 }]}>
+        <View style={[styles.centered, { flex: 1, paddingBottom: Math.max(insets.bottom, 20) }]}>
           <Text style={styles.errorText}>{error}</Text>
           <TouchableOpacity style={styles.retryBtn} onPress={() => load(false)} activeOpacity={0.8}>
             <Text style={styles.retryBtnText}>{t("common.try_again")}</Text>
@@ -199,10 +249,7 @@ const TenantQuestionListScreen = () => {
           renderItem={renderItem}
           contentContainerStyle={[
             styles.listContent,
-            {
-              paddingBottom:
-                Math.max(insets.bottom, 24) + (totalPages > 1 ? 8 : 0),
-            },
+            { paddingBottom: listBottomPad },
             allItems.length === 0 && styles.listEmptyGrow,
           ]}
           refreshControl={
@@ -214,7 +261,7 @@ const TenantQuestionListScreen = () => {
               currentPage={currentPage}
               totalPages={totalPages}
               onPageChange={onPageChange}
-              style={{ paddingBottom: Math.max(insets.bottom, 8) }}
+              style={{ paddingBottom: 10 }}
             />
           }
         />

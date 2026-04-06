@@ -16,7 +16,7 @@ import { RootStackParamList } from "../../../../shared/types";
 import Icons from "../../../../shared/theme/icon";
 import { FloorPlanView } from "../../houseStructure";
 import { electricUsageStyles } from "./electricUsageStyles";
-import { useTenantContext, useTenantHouses } from "../../../../shared/hooks";
+import { useTenantContext } from "../../../../shared/hooks";
 import { useTenantIoTConnection, useTenantTelemetry, useTenantUsage } from "../../hooks/useTenantIoT";
 import { brandPrimary, neutral } from "../../../../shared/theme/color";
 import {
@@ -37,9 +37,6 @@ const ElectricUsageScreen = ({ showHeader = true }: ElectricUsageScreenProps) =>
   const { t, i18n } = useTranslation();
   const { width: screenWidth } = useWindowDimensions();
   const { houseId, functionalAreas, thingId, house } = useTenantContext();
-  const { data: tenantHousesData } = useTenantHouses();
-  const tenantHouses = tenantHousesData?.data ?? [];
-
   const accessBlock = useMemo(() => {
     if (!house) return null;
     return getTenantAccessBlock(house);
@@ -47,16 +44,8 @@ const ElectricUsageScreen = ({ showHeader = true }: ElectricUsageScreenProps) =>
 
   const openPaymentScreen = useCallback(() => {
     const parentNav = navigation.getParent<NavigationProp<RootStackParamList>>();
-    const allPendingIds = tenantHouses
-      .map((h) => String(h.pendingInvoiceId ?? "").trim())
-      .filter((id) => id.length > 0);
-
-    parentNav?.navigate?.("TenantRentPayment", {
-      invoiceId: house?.pendingInvoiceId ?? undefined,
-      invoiceIds: allPendingIds,
-      afterSuccess: "home",
-    });
-  }, [navigation, tenantHouses, house?.pendingInvoiceId]);
+    parentNav?.navigate?.("TenantInvoiceList");
+  }, [navigation]);
   const effectiveAreas = Array.isArray(functionalAreas) ? functionalAreas : [];
   const iotConnected = useTenantIoTConnection(thingId);
   const usage = useTenantUsage({ houseId, metric: "electricity" });

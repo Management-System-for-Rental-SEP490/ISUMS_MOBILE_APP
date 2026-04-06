@@ -25,7 +25,7 @@ import {
 } from "../../../../shared/services/issuesApi";
 import { getWorkSlotById } from "../../../../shared/services/scheduleApi";
 import Icons from "../../../../shared/theme/icon";
-import { brandSecondary, neutral } from "../../../../shared/theme/color";
+import { brandPrimary, brandSecondary, neutral } from "../../../../shared/theme/color";
 import { tenantTicketDetailStyles as styles, tenantTicketListStyles as badge } from "./ticketStyles";
 import { formatTenantIssueDateTime } from "../../../../shared/utils";
 import {
@@ -41,6 +41,29 @@ import {
 
 type Route = RouteProp<RootStackParamList, "TenantTicketDetail">;
 type Nav = NativeStackNavigationProp<RootStackParamList>;
+
+/** Cùng logic `tenantTicketList`: chừa chỗ cho tab home + thanh điều hướng hệ thống (Android gesture). */
+const TENANT_TICKET_TAB_BAR_CLEARANCE = 72;
+
+function TicketDetailSection({
+  title,
+  headerIcon,
+  children,
+}: {
+  title: string;
+  headerIcon: React.ReactNode;
+  children: React.ReactNode;
+}) {
+  return (
+    <View style={styles.detailCard}>
+      <View style={styles.detailCardHeaderRow}>
+        {headerIcon}
+        <Text style={styles.detailCardHeaderLabel}>{title}</Text>
+      </View>
+      {children}
+    </View>
+  );
+}
 
 function normalizeIssueStatus(status: string | undefined): string {
   return String(status ?? "")
@@ -328,6 +351,7 @@ const TenantTicketDetailScreen = () => {
   const typeTagBg = (type: string) => {
     const u = String(type || "").toUpperCase();
     if (u === "REPAIR") return badge.typeRepair;
+    if (u === "MAINTENANCE") return badge.typeMaintenance;
     if (u === "QUESTION") return badge.typeQuestion;
     return badge.typeDefault;
   };
@@ -335,6 +359,7 @@ const TenantTicketDetailScreen = () => {
   const typeTagFg = (type: string) => {
     const u = String(type || "").toUpperCase();
     if (u === "REPAIR") return badge.typeRepairText;
+    if (u === "MAINTENANCE") return badge.typeMaintenanceText;
     if (u === "QUESTION") return badge.typeQuestionText;
     return badge.typeDefaultText;
   };
@@ -373,7 +398,10 @@ const TenantTicketDetailScreen = () => {
         style={styles.scroll}
         contentContainerStyle={[
           styles.scrollContent,
-          { paddingBottom: Math.max(insets.bottom, 28) },
+          {
+            paddingBottom:
+              TENANT_TICKET_TAB_BAR_CLEARANCE + Math.max(insets.bottom, 20) + 16,
+          },
         ]}
         showsVerticalScrollIndicator={false}
       >
@@ -396,9 +424,11 @@ const TenantTicketDetailScreen = () => {
           </View>
         </View>
 
-        <Text style={styles.sectionLabel}>{t("tenant_ticket_detail.section_info")}</Text>
-        <View style={styles.panel}>
-          <View style={styles.panelRow}>
+        <TicketDetailSection
+          title={t("tenant_ticket_detail.section_info")}
+          headerIcon={<Icons.infoOutline size={22} color={brandPrimary} />}
+        >
+          <View style={styles.detailFieldRow}>
             <Text style={styles.fieldLabel}>{t("tenant_ticket_detail.field_device")}</Text>
             {assetLoading ? (
               <View style={styles.assetLoadingRow}>
@@ -411,7 +441,7 @@ const TenantTicketDetailScreen = () => {
               <Text style={styles.fieldValueMuted}>{t("tenant_ticket_detail.asset_fallback")}</Text>
             )}
           </View>
-          <View style={styles.panelRow}>
+          <View style={styles.detailFieldRow}>
             <Text style={styles.fieldLabel}>{t("tenant_ticket_detail.field_assigned_staff")}</Text>
             {staffAssigned ? (
               <Text style={styles.fieldValue} selectable numberOfLines={1}>
@@ -423,13 +453,13 @@ const TenantTicketDetailScreen = () => {
               </Text>
             )}
           </View>
-          <View style={styles.panelRow}>
+          <View style={styles.detailFieldRow}>
             <Text style={styles.fieldLabel}>{t("tenant_ticket_detail.field_staff_phone")}</Text>
             <Text style={staffAssigned ? styles.fieldValuePhone : styles.fieldValueMuted} selectable numberOfLines={1}>
               {staffAssigned ? staffPhone || "—" : "—"}
             </Text>
           </View>
-          <View style={[styles.panelRow, styles.panelRowLast]}>
+          <View style={[styles.detailFieldRow, styles.detailFieldRowLast]}>
             <Text style={styles.fieldLabel}>{t("tenant_ticket_detail.field_slot")}</Text>
             <Text
               style={
@@ -446,26 +476,40 @@ const TenantTicketDetailScreen = () => {
                   : predictedHandlingTime ?? t("tenant_ticket_detail.slot_time_tbd")}
             </Text>
           </View>
-        </View>
+        </TicketDetailSection>
 
-        <Text style={styles.sectionLabel}>{t("tenant_ticket_detail.section_description")}</Text>
-        <View style={styles.panel}>
-          <View style={[styles.panelRow, styles.panelRowLast]}>
-            <Text style={styles.descriptionBody} selectable>
-              {ticket.description ?? ""}
-            </Text>
-          </View>
-        </View>
+        <TicketDetailSection
+          title={t("tenant_ticket_detail.section_description")}
+          headerIcon={<Icons.subject size={22} color={brandPrimary} />}
+        >
+          <Text style={styles.descriptionBody} selectable>
+            {ticket.description?.trim() ? ticket.description : "—"}
+          </Text>
+        </TicketDetailSection>
 
-        <Text style={styles.sectionLabel}>{t("ticket.images_label")}</Text>
-        <View style={styles.panel}>
+        <TicketDetailSection
+          title={t("ticket.images_label")}
+          headerIcon={<Icons.photoLibrary size={22} color={brandPrimary} />}
+        >
           {imagesLoading ? (
             <View style={styles.assetLoadingRow}>
               <ActivityIndicator size="small" color={brandSecondary} />
-              <Text style={styles.fieldValueMuted}>{t("ticket.images_label")}</Text>
+              <Text style={styles.fieldValueMuted}>{t("common.loading")}</Text>
             </View>
           ) : ticketImages.length > 0 ? (
-            <>
+            ticketImages.length === 1 ? (
+              <TouchableOpacity
+                style={styles.ticketImageThumbFull}
+                activeOpacity={0.85}
+                onPress={() => setActiveImageUrl(ticketImages[0]!.url)}
+              >
+                <Image
+                  source={{ uri: ticketImages[0]!.url }}
+                  style={styles.ticketImage}
+                  resizeMode="cover"
+                />
+              </TouchableOpacity>
+            ) : (
               <ScrollView
                 horizontal
                 showsHorizontalScrollIndicator={false}
@@ -483,142 +527,133 @@ const TenantTicketDetailScreen = () => {
                   </TouchableOpacity>
                 ))}
               </ScrollView>
-            </>
+            )
           ) : (
             <Text style={styles.fieldValueMuted}>{t("ticket.images_empty")}</Text>
           )}
-        </View>
+        </TicketDetailSection>
 
         {ticketNeedsTenantQuoteConfirm(ticket.status) && (
-          <>
-            <Text style={styles.sectionLabel}>{t("tenant_ticket_detail.section_quote")}</Text>
-            <View style={styles.panel}>
-              {quotesLoading ? (
-                <View style={styles.assetLoadingRow}>
-                  <ActivityIndicator size="small" color={brandSecondary} />
-                  <Text style={styles.fieldValueMuted}>{t("common.loading")}</Text>
-                </View>
-              ) : activeQuote?.id ? (
-                <>
-                  {Array.isArray(activeQuote.items) && activeQuote.items.length > 0 ? (
-                    <>
-                      <View style={styles.quoteTotalRow}>
-                        <Text style={styles.quoteTotalLabel}>{t("tenant_ticket_detail.quote_items_label")}</Text>
-                        <Text style={styles.quoteTotalLabel}>{t("tenant_ticket_detail.quote_price_label")}</Text>
+          <TicketDetailSection
+            title={t("tenant_ticket_detail.section_quote")}
+            headerIcon={<Icons.invoice size={22} color={brandPrimary} />}
+          >
+            {normalizeIssueStatus(ticket.status) === "WAITING_TENANT_APPROVAL_QUOTE" ? (
+              <Text style={styles.quoteAwaitingTenantIntro}>
+                {t("tenant_ticket_detail.quote_awaiting_tenant_intro")}
+              </Text>
+            ) : null}
+            {quotesLoading ? (
+              <View style={styles.assetLoadingRow}>
+                <ActivityIndicator size="small" color={brandSecondary} />
+                <Text style={styles.fieldValueMuted}>{t("common.loading")}</Text>
+              </View>
+            ) : activeQuote?.id ? (
+              <>
+                {Array.isArray(activeQuote.items) && activeQuote.items.length > 0 ? (
+                  <>
+                    {activeQuote.items.map((it) => (
+                      <View key={it.id} style={styles.paymentLineRow}>
+                        <Text style={styles.paymentLineName} numberOfLines={2}>
+                          {it.itemName}
+                        </Text>
+                        <Text style={styles.paymentLinePrice}>{formatMoney(it.price)}</Text>
                       </View>
-
-                      {activeQuote.items.map((it, idx) => (
-                        <View
-                          key={it.id}
-                          style={[
-                            styles.panelRow,
-                            idx === activeQuote.items.length - 1 && styles.panelRowLast,
-                            { flexDirection: "row", alignItems: "flex-start" },
-                          ]}
-                        >
-                          <Text style={styles.quoteItemName} numberOfLines={2}>
-                            {it.itemName}
-                          </Text>
-                          <Text style={styles.quoteItemPrice}>
-                            {t("tenant_ticket_detail.quote_price_label")}: {formatMoney(it.price)}
-                          </Text>
-                        </View>
-                      ))}
-
-                      <View style={styles.quoteTotalRow}>
-                        <Text style={styles.quoteTotalLabel}>{t("tenant_ticket_detail.quote_total_label")}</Text>
-                        <Text style={styles.quoteTotalValue}>{formatMoney(activeQuote.totalPrice)}</Text>
-                      </View>
-                    </>
-                  ) : (
-                    <Text style={styles.fieldValueMuted}>{t("common.no_data")}</Text>
-                  )}
-
-                  {!!confirmQuoteError && (
-                    <Text style={styles.fieldValueMuted}>{confirmQuoteError}</Text>
-                  )}
-
-                  <TouchableOpacity
-                    style={[
-                      styles.confirmQuoteBtn,
-                      (confirmQuoteLoading || !activeQuote?.id) && { opacity: 0.72 },
-                    ]}
-                    onPress={handleConfirmQuote}
-                    disabled={confirmQuoteLoading || !activeQuote?.id}
-                    activeOpacity={0.8}
-                  >
-                    {confirmQuoteLoading ? (
-                      <ActivityIndicator size="small" color={neutral.surface} />
-                    ) : (
-                      <Text style={styles.confirmQuoteBtnText}>
-                        {t("tenant_ticket_detail.confirm_quote_btn")}
+                    ))}
+                    <View style={styles.paymentDivider} />
+                    <View style={styles.paymentTotalRow}>
+                      <Text style={styles.paymentTotalLabel}>
+                        {t("tenant_ticket_detail.quote_total_label")}
                       </Text>
-                    )}
-                  </TouchableOpacity>
-                </>
-              ) : (
-                <Text style={styles.fieldValueMuted}>{t("common.no_data")}</Text>
-              )}
-            </View>
-          </>
+                      <Text style={styles.paymentTotalValue}>{formatMoney(activeQuote.totalPrice)}</Text>
+                    </View>
+                  </>
+                ) : (
+                  <Text style={styles.fieldValueMuted}>{t("common.no_data")}</Text>
+                )}
+
+                {!!confirmQuoteError && (
+                  <Text style={styles.fieldValueMuted}>{confirmQuoteError}</Text>
+                )}
+
+                <TouchableOpacity
+                  style={[
+                    styles.confirmQuoteBtn,
+                    (confirmQuoteLoading || !activeQuote?.id) && { opacity: 0.72 },
+                  ]}
+                  onPress={handleConfirmQuote}
+                  disabled={confirmQuoteLoading || !activeQuote?.id}
+                  activeOpacity={0.8}
+                >
+                  {confirmQuoteLoading ? (
+                    <ActivityIndicator size="small" color={neutral.surface} />
+                  ) : (
+                    <Text style={styles.confirmQuoteBtnText}>
+                      {t("tenant_ticket_detail.confirm_quote_btn")}
+                    </Text>
+                  )}
+                </TouchableOpacity>
+              </>
+            ) : (
+              <Text style={styles.fieldValueMuted}>{t("common.no_data")}</Text>
+            )}
+          </TicketDetailSection>
         )}
 
         {normalizeIssueStatus(ticket.status) === "WAITING_PAYMENT" && (
-          <>
-            <Text style={styles.sectionLabel}>{t("tenant_ticket_detail.section_payment")}</Text>
-            <View style={styles.panel}>
-              {quotesLoading ? (
-                <View style={styles.assetLoadingRow}>
-                  <ActivityIndicator size="small" color={brandSecondary} />
-                  <Text style={styles.fieldValueMuted}>{t("common.loading")}</Text>
+          <TicketDetailSection
+            title={t("tenant_ticket_detail.section_payment")}
+            headerIcon={<Icons.invoice size={22} color={brandPrimary} />}
+          >
+            {quotesLoading ? (
+              <View style={styles.assetLoadingRow}>
+                <ActivityIndicator size="small" color={brandSecondary} />
+                <Text style={styles.fieldValueMuted}>{t("common.loading")}</Text>
+              </View>
+            ) : paymentQuote?.items?.length ? (
+              <>
+                {paymentQuote.items.map((it) => (
+                  <View key={it.id} style={styles.paymentLineRow}>
+                    <Text style={styles.paymentLineName} numberOfLines={2}>
+                      {it.itemName}
+                    </Text>
+                    <Text style={styles.paymentLinePrice}>{formatMoney(it.price)}</Text>
+                  </View>
+                ))}
+                <View style={styles.paymentDivider} />
+                <View style={styles.paymentTotalRow}>
+                  <Text style={styles.paymentTotalLabel}>
+                    {t("tenant_ticket_detail.quote_total_label")}
+                  </Text>
+                  <Text style={styles.paymentTotalValue}>{formatMoney(paymentQuote.totalPrice)}</Text>
                 </View>
-              ) : paymentQuote?.items?.length ? (
-                <>
-                  <View style={styles.quoteTotalRow}>
-                    <Text style={styles.quoteTotalLabel}>{t("tenant_ticket_detail.quote_items_label")}</Text>
-                    <Text style={styles.quoteTotalLabel}>{t("tenant_ticket_detail.quote_price_label")}</Text>
-                  </View>
-                  {paymentQuote.items.map((it, idx) => (
-                    <View
-                      key={it.id}
-                      style={[
-                        styles.panelRow,
-                        idx === paymentQuote.items.length - 1 && styles.panelRowLast,
-                        { flexDirection: "row", alignItems: "flex-start" },
-                      ]}
-                    >
-                      <Text style={styles.quoteItemName} numberOfLines={2}>
-                        {it.itemName}
-                      </Text>
-                      <Text style={styles.quoteItemPrice}>
-                        {t("tenant_ticket_detail.quote_price_label")}: {formatMoney(it.price)}
-                      </Text>
-                    </View>
-                  ))}
-                  <View style={styles.quoteTotalRow}>
-                    <Text style={styles.quoteTotalLabel}>{t("tenant_ticket_detail.quote_total_label")}</Text>
-                    <Text style={styles.quoteTotalValue}>{formatMoney(paymentQuote.totalPrice)}</Text>
-                  </View>
-                </>
-              ) : (
+                <TouchableOpacity
+                  style={styles.payNowBtn}
+                  onPress={() =>
+                    navigation.navigate("TenantInvoiceList", { issueTicketId: ticket.id })
+                  }
+                  activeOpacity={0.8}
+                >
+                  <Icons.wallet size={22} color={neutral.surface} />
+                  <Text style={styles.payNowBtnText}>{t("tenant_ticket_detail.pay_repair_btn")}</Text>
+                </TouchableOpacity>
+              </>
+            ) : (
+              <>
                 <Text style={styles.fieldValueMuted}>{t("tenant_ticket_detail.payment_quote_hint")}</Text>
-              )}
-              <TouchableOpacity
-                style={styles.confirmQuoteBtn}
-                onPress={() =>
-                  navigation.navigate("TenantRentPayment", {
-                    issueTicketId: ticket.id,
-                    afterSuccess: "home",
-                  })
-                }
-                activeOpacity={0.8}
-              >
-                <Text style={styles.confirmQuoteBtnText}>
-                  {t("tenant_ticket_detail.pay_repair_btn")}
-                </Text>
-              </TouchableOpacity>
-            </View>
-          </>
+                <TouchableOpacity
+                  style={styles.payNowBtn}
+                  onPress={() =>
+                    navigation.navigate("TenantInvoiceList", { issueTicketId: ticket.id })
+                  }
+                  activeOpacity={0.8}
+                >
+                  <Icons.wallet size={22} color={neutral.surface} />
+                  <Text style={styles.payNowBtnText}>{t("tenant_ticket_detail.pay_repair_btn")}</Text>
+                </TouchableOpacity>
+              </>
+            )}
+          </TicketDetailSection>
         )}
       </ScrollView>
 

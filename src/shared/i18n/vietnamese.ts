@@ -23,7 +23,9 @@ export default {
         "images_limit_truncated_message": "Chỉ thêm được {{added}} ảnh (tối đa {{max}} ảnh).",
         "a11y_open_invoice_list": "Mở danh sách hóa đơn",
         "a11y_notifications": "Mở thông báo",
-        "a11y_app_logo": "Logo ISUMS"
+        "a11y_app_logo": "Logo ISUMS",
+        "a11y_open_profile": "Mở hồ sơ",
+        "a11y_brand_go_home": "Về trang chủ"
     },
     "device_detail": {
         "title": "Chi tiết thiết bị",
@@ -76,6 +78,7 @@ export default {
         "images_camera": "Chụp ảnh",
         "images_library": "Chọn từ thư viện",
         "images_remove": "Xóa ảnh",
+        "images_hint": "Không bắt buộc. Đính kèm tối đa {{max}} ảnh.",
         "images_empty": "Không có ảnh đính kèm",
         "library_permission_no_permission": "Không có quyền truy cập thư viện ảnh",
         "submit_button": "Gửi ticket",
@@ -100,8 +103,8 @@ export default {
         "load_error": "Không tải được danh sách ticket. Vui lòng thử lại.",
         "status_CREATED": "Đã gửi",
         "status_NEED_RESCHEDULE": "Cần lên lịch lại",
-        "status_SCHEDULED": "Đã lên lịch",
-        "status_IN_PROGRESS": "Đang xử lý",
+        "status_SCHEDULED": "Đã được lên lịch",
+        "status_IN_PROGRESS": "Đang tiến hành đánh giá và sửa chữa",
         "status_WAITING_MANAGER_CONFIRM": "Chờ quản lý xác nhận lịch",
         "status_WAITING_MANAGER_APPROVAL": "Chờ quản lý duyệt",
         "status_WAITING_MANAGER_APPROVAL_QUOTE": "Chờ quản lý duyệt báo giá",
@@ -113,7 +116,28 @@ export default {
         "status_CANCELLED": "Đã hủy",
         "type_REPAIR": "Sửa chữa",
         "type_QUESTION": "Hỏi đáp",
-        "pay_btn": "Bắt đầu thanh toán"
+        "type_MAINTENANCE": "Bảo trì",
+        "pay_btn": "Bắt đầu thanh toán",
+        "pay_cta": "Thanh toán ngay",
+        "pay_cta_a11y": "Mở chi tiết để thanh toán ticket",
+        "payment_card_hint": "Yêu cầu đang chờ thanh toán. Hoàn tất để tiếp tục xử lý.",
+        "filter_all": "Tất cả",
+        "filter_in_progress": "Đang xử lý",
+        "filter_sent": "Đã gửi",
+        "filter_payment": "Cần thanh toán",
+        "priority_emergency": "KHẨN CẤP",
+        "priority_standard": "TIÊU CHUẨN",
+        "estimated_cost_prefix": "Chi phí:",
+        "progress_technician_line_scheduled": "Kỹ thuật viên sẽ sớm đến",
+        "progress_technician_line_in_progress": "Kỹ thuật viên sẽ sớm tới",
+        "progress_contact_soon_line": "Kỹ thuật viên sẽ sớm liên hệ với bạn",
+        "quote_approve_inset_line": "Duyệt để tiến hành sửa chữa.",
+        "progress_expected_today": "Dự kiến đến lúc {{time}} hôm nay",
+        "progress_expected_time": "Khung giờ dự kiến: {{time}}",
+        "progress_expected_datetime": "Thời gian dự kiến: {{date}} — {{time}}",
+        "progress_time_pending": "Thời gian dự kiến sẽ được cập nhật sau.",
+        "fab_create_a11y": "Tạo ticket mới",
+        "quote_confirm_card_a11y_hint": "Mở chi tiết báo giá"
     },
     "tenant_ticket_detail": {
         "screen_title": "Chi tiết ticket",
@@ -121,8 +145,9 @@ export default {
         "section_info": "Thông tin",
         "section_description": "Mô tả",
         "section_quote": "Báo giá",
+        "quote_awaiting_tenant_intro": "Hệ thống đã gửi thông tin báo giá. Bạn cần duyệt để tiến hành sửa chữa.",
         "section_payment": "Thanh toán",
-        "pay_repair_btn": "Thanh toán",
+        "pay_repair_btn": "Thanh toán ngay",
         "payment_quote_hint": "Hệ thống đang tạo hoặc đồng bộ hóa đơn. Bạn có thể mở màn thanh toán để chọn khoản cần trả.",
         "quote_total_label": "Tổng",
         "quote_items_label": "Hạng mục",
@@ -145,15 +170,17 @@ export default {
     "tenant_question_list": {
         "screen_title": "Giải đáp thắc mắc",
         "list_heading": "Phản hồi từ bộ phận hỗ trợ",
-        "list_subtitle": "Các câu trả lời cho ticket hỏi đáp của bạn",
+        "list_subtitle": "Theo từng khu nhà — các câu trả lời cho ticket hỏi đáp của bạn",
         "details_link": "Chi tiết",
         "empty": "Chưa có phản hồi nào.",
-        "load_error": "Không tải được phản hồi. Vui lòng thử lại."
+        "load_error": "Không tải được phản hồi. Vui lòng thử lại.",
+        "zone_unknown": "Chưa xác định khu"
     },
     "tenant_question_detail": {
         "screen_title": "Chi tiết phản hồi",
         "sent_at": "Gửi lúc",
-        "section_meta": "Đầy đủ trường dữ liệu",
+        "section_meta": "Nội dung phản hồi",
+        "field_zone": "Khu",
         "field_id": "Mã phản hồi",
         "field_ticket_id": "Mã ticket",
         "field_actor_id": "Mã người trả lời",
@@ -499,10 +526,12 @@ export default {
         "utility_house": "Nhà",
         "utility_notification": "Thông báo",
         "staying_at_house_label": "Đang ở nhà",
-        "header_invoice_all_paid": "Bạn đã thanh toán đủ các khoản.",
+        "header_invoice_all_paid": "Không có hóa đơn cần thanh toán.",
         "header_invoice_payable_count": "Bạn có {{count}} hóa đơn cần thanh toán.",
         "header_invoice_payable_urgent":
-            "Bạn có {{count}} hóa đơn cần thanh toán — có khoản sắp đến hạn hoặc đã quá hạn.",
+            "Bạn có {{count}} hóa đơn cần thanh toán — có hóa đơn sắp tới hạn hoặc quá hạn.",
+        "header_pay_now": "Thanh toán ngay",
+        "banner_pay_now": "Thanh toán ngay",
         "loading_data": "Đang tải dữ liệu...",
         "footer": {
             "aria_label": "Giới thiệu ứng dụng và liên kết hỗ trợ",
@@ -550,15 +579,19 @@ export default {
             "deposit_body": "Vui lòng hoàn tất thanh toán đặt cọc theo hợp đồng trước khi vào nhà.",
             "payment_title": "Cần thanh toán tiền thuê",
             "payment_body": "Vui lòng thanh toán khoản tiền nhà tháng đầu để tiếp tục sử dụng ứng dụng.",
+            "payment_banner":
+                "Hoàn tất tiền thuê tháng đầu cho căn đang chọn để dùng đầy đủ ứng dụng.",
             "payment_alert_title": "Thanh toán tiền nhà",
             "payment_alert_message": "Bạn còn khoản tiền thuê chưa thanh toán. Nhấn \"Thanh toán ngay\" để chuyển tới trang thanh toán (VNPay).",
             "pay_now": "Thanh toán ngay"
         },
         "access_reason": {
-            "ACCESS_PENDING_FIRST_RENT": "Bạn chưa thanh toán tiền thuê kỳ đầu. Vui lòng hoàn tất để mở quyền truy cập đầy đủ.",
+            "ACCESS_PENDING_FIRST_RENT":
+                "Căn đang xem chưa thanh toán tiền thuê kỳ đầu. Hoàn tất để mở đầy đủ tính năng.",
             "ACCESS_PENDING_DEPOSIT": "Bạn chưa hoàn tất khoản đặt cọc theo hợp đồng.",
             "ACCESS_PENDING_HANDOVER": "Căn nhà chưa đến ngày bàn giao theo hợp đồng.",
-            "PENDING_FIRST_RENT": "Bạn chưa thanh toán tiền thuê kỳ đầu. Vui lòng hoàn tất để mở quyền truy cập đầy đủ.",
+            "PENDING_FIRST_RENT":
+                "Căn đang xem chưa thanh toán tiền thuê kỳ đầu. Hoàn tất để mở đầy đủ tính năng.",
             "PENDING_DEPOSIT": "Bạn chưa hoàn tất khoản đặt cọc theo hợp đồng.",
             "PENDING_HANDOVER": "Căn nhà chưa đến ngày bàn giao theo hợp đồng."
         },
@@ -605,15 +638,22 @@ export default {
         "return_validate_error": "Ứng dụng không xác nhận được với máy chủ. Ngân hàng vẫn có thể đã trừ tiền — kiểm tra lại danh sách hóa đơn hoặc liên hệ hỗ trợ.",
         "issue_ticket_context": "Thanh toán liên quan ticket sửa chữa. Chọn hóa đơn phí sửa chữa (nếu đã được tạo) trong danh sách bên dưới.",
         "main_house_badge": "Nhà chính",
-        "primary_house_required_title": "Bắt buộc thanh toán nhà chính trước",
-        "primary_house_required_body": "Nhà chính hiện tại là {{house}}. Bạn cần thanh toán hóa đơn của nhà chính trước, sau đó mới thanh toán các nhà khác.",
-        "primary_house_required_action": "Vui lòng giữ hóa đơn nhà chính trong danh sách thanh toán trước khi tiếp tục."
+        "primary_house_required_title": "Bắt buộc thanh toán cho căn đang chọn trước",
+        "primary_house_required_body":
+            "Căn đang chọn là {{house}}. Thanh toán hết hóa đơn chưa trả của căn này trước, sau đó mới gộp thêm hóa đơn các căn khác.",
+        "primary_house_required_action":
+            "Giữ các hóa đơn của căn đang chọn trong danh sách thanh toán trước khi tiếp tục."
     },
     "tenant_invoice": {
         "screen_title": "Hóa đơn",
         "invoice_placeholder_title": "Hóa đơn",
         "list_heading": "Hóa đơn của bạn",
         "list_subtitle": "Chạm một dòng để xem chi tiết và thanh toán",
+        "list_main_house_rule":
+            "Thanh toán hết hóa đơn chưa trả của căn đang chọn trước, rồi mới gộp thêm hóa đơn căn khác nếu muốn.",
+        "main_house_pay_first_required_note": "Thanh toán nhà chính trước là bắt buộc.",
+        "secondary_house_first_rent_activation_note":
+            "Cần thanh toán tiền nhà tháng đầu để kích hoạt app đầy đủ chức năng của app.",
         "chip_all": "Tất cả căn",
         "empty_list": "Chưa có hóa đơn. Danh sách sẽ hiện khi API hóa đơn được nối.",
         "load_error": "Không tải được hóa đơn. Kiểm tra kết nối và thử lại.",
@@ -635,6 +675,7 @@ export default {
         "field_id": "Mã hóa đơn",
         "field_contract_id": "Mã hợp đồng",
         "field_type": "Loại hóa đơn",
+        "type_MONTHLY_RENT": "Tiền nhà hàng tháng",
         "field_period": "Kỳ thanh toán",
         "field_total_amount": "Tổng tiền",
         "field_base_amount": "Tiền gốc",
@@ -692,6 +733,9 @@ export default {
     },
     "notification": {
         "empty": "Chưa có thông báo nào",
+        "empty_hint": "Kéo xuống để làm mới hoặc chọn ngày khác.",
+        "page_subtitle": "Cảnh báo thiết bị theo ngày",
+        "filter_by_date": "Chọn ngày",
         "section_iot": "IoT",
         "filter_all": "Tất cả",
         "time_seconds": "{{n}} giây trước",
