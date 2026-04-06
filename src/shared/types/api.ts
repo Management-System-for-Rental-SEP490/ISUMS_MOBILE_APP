@@ -42,6 +42,23 @@ export interface UserProfileResponse {
 }
 
 // =========================================================
+// E-contracts — tenant (GET /api/econtracts/my)
+// =========================================================
+
+/** Một hợp đồng điện tử mà tenant là bên thuê; response không có HTML/snapshotKey. */
+export interface TenantEContractFromApi {
+  id: string;
+  name: string;
+  houseId: string;
+  startAt: string;
+  endAt: string;
+  status: string;
+  /** Có giá trị khi status thuộc PENDING_TENANT_REVIEW | READY | IN_PROGRESS | COMPLETED. */
+  pdfUrl?: string | null;
+  createdAt: string;
+}
+
+// =========================================================
 // Payments — VNPay (POST /api/payments/vnpay)
 // =========================================================
 

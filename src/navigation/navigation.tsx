@@ -33,6 +33,7 @@ import { ensureTenantMainHouseSynced } from "../shared/services/userApi";
 import KeycloakChangePasswordWebViewOverlay from "../shared/components/KeycloakChangePasswordWebViewOverlay";
 import NotificationScreen from "../features/tenant/screens/tenantNotification/NotificationScreen";
 import UserProfileScreen from "../features/screens/user/UserProfileScreen";
+import UserContractDetailScreen from "../features/screens/user/userContractDetail";
 import ConsumptionScreen from "../features/tenant/screens/tenantConsumption/ConsumptionScreen";
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
@@ -193,6 +194,7 @@ const Navigation = () => {
                 <Stack.Screen name="ConsumptionScreen" component={ConsumptionScreen} />
                 <Stack.Screen name="NotificationScreen" component={NotificationScreen} />
                 <Stack.Screen name="ProfileScreen" component={UserProfileScreen} />
+                <Stack.Screen name="UserContractDetail" component={UserContractDetailScreen} />
               </>
             )
           ) : (

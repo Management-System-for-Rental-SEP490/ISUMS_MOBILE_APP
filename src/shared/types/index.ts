@@ -6,6 +6,7 @@ import type {
   FunctionalAreaFromApi,
   IssueTicketResponseFromApi,
   TenantContractDocumentFromApi,
+  TenantEContractFromApi,
   TenantHouseAccessStatus,
   TenantHouseMemberRole,
   TenantInvoiceFromApi,
@@ -81,6 +82,8 @@ export type RootStackParamList = AuthStackParamList & {
   NotificationScreen: undefined;
   /** Hồ sơ cá nhân (chuyển từ tab sang stack screen). */
   ProfileScreen: undefined;
+  /** Chi tiết hợp đồng điện tử (dữ liệu từ GET /api/econtracts/my). */
+  UserContractDetail: { contract: TenantEContractFromApi };
 };
 
 export type IconProps = {
@@ -209,6 +212,7 @@ export type {
   TenantHouseMemberRole,
   TenantInvoiceFromApi,
   TenantInvoicePaymentStatus,
+  TenantEContractFromApi,
   VnpayPaymentCreateRequest,
   VnpayPaymentLinkApiResponse,
   VnpayReturnValidationApiResponse,

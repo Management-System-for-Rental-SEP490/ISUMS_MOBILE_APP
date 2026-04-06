@@ -63,3 +63,23 @@ export function toLocalYyyyMmDd(date: Date): string {
 export function formatDayMonthNumeric(d: Date, locale: string): string {
   return d.toLocaleDateString(locale, { day: "2-digit", month: "2-digit" });
 }
+
+const CONTRACT_DAY_OPTIONS: Intl.DateTimeFormatOptions = {
+  day: "2-digit",
+  month: "2-digit",
+  year: "numeric",
+};
+
+/** Ngày hợp đồng (bắt đầu/kết thúc) theo locale — ISO 8601 từ BE. */
+export function formatTenantContractDay(iso: string, locale: string): string {
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return iso;
+  try {
+    const s = d.toLocaleDateString(locale, CONTRACT_DAY_OPTIONS);
+    if (s) return s;
+  } catch {
+    /* Hermes / Intl edge cases */
+  }
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return `${pad(d.getDate())}/${pad(d.getMonth() + 1)}/${d.getFullYear()}`;
+}

@@ -63,6 +63,14 @@ const Icons = {
   contract: ({ size = 24, color = 'black' }: IconProps = {}) => (
     <FontAwesome5 name="file-contract" size={size} color={color} />
   ),
+  /** Hợp đồng điện tử / tài liệu giao nhiệm vụ (Material — đồng bộ hệ icon). */
+  eContract: ({ size = 24, color = 'black' }: IconProps = {}) => (
+    <MaterialIcons name="assignment" size={size} color={color} />
+  ),
+  /** Nút mở PDF hợp đồng. */
+  pictureAsPdf: ({ size = 24, color = 'black' }: IconProps = {}) => (
+    <MaterialIcons name="picture-as-pdf" size={size} color={color} />
+  ),
   brain: ({ size = 24, color = 'black' }: IconProps = {}) => (
     <FontAwesome5 name="brain" size={size} color={color} />
   ),
@@ -101,6 +109,9 @@ const Icons = {
   ),
   chevronDown: ({ size = 24, color = 'black' }: IconProps = {}) => (
     <Ionicons name="chevron-down" size={size} color={color} />
+  ),
+  chevronUp: ({ size = 24, color = 'black' }: IconProps = {}) => (
+    <Ionicons name="chevron-up" size={size} color={color} />
   ),
   logOut: ({ size = 24, color = 'black' }: IconProps = {}) => (
     <Ionicons name="log-out-outline" size={size} color={color} />

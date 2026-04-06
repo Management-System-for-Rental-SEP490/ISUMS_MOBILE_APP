@@ -1,5 +1,13 @@
-import React, { useEffect, useMemo, useState } from "react";
-import { View, Text, TouchableOpacity, ScrollView, Pressable, ActivityIndicator } from "react-native";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
+import {
+  View,
+  Text,
+  TouchableOpacity,
+  ScrollView,
+  Pressable,
+  ActivityIndicator,
+  RefreshControl,
+} from "react-native";
 import { CustomAlert as Alert } from "../../../shared/components/alert";
 import { useNavigation } from "@react-navigation/native";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
@@ -13,11 +21,12 @@ import Icons from "../../../shared/theme/icon";
 import {
   BRAND_DANGER,
   brandPrimary,
-  brandTintBg,
+  brandSecondary,
   neutral,
 } from "../../../shared/theme/color";
 import { useTranslation } from "react-i18next";
-import { useTenantContext } from "../../../shared/hooks";
+import { useMyEContracts, useTenantContext, useTenantHouses } from "../../../shared/hooks";
+import type { TenantEContractFromApi } from "../../../shared/types/api";
 import { isHandoverDateReached } from "../../../shared/utils";
 import {
   StackScreenTitleBadge,
@@ -30,14 +39,68 @@ import {
   stackScreenTitleSideSlotStyle,
 } from "../../../shared/components/StackScreenTitleBadge";
 
+const EMPTY_ECONTRACTS: TenantEContractFromApi[] = [];
+/** Số hợp đồng hiển thị trước khi bấm “Xem thêm”. */
+const E_CONTRACTS_PREVIEW_MAX = 2;
+
 const UserProfileScreen = () => {
   const { t } = useTranslation();
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const { user, role, idToken, logout } = useAuthStore();
   const [userInfo, setUserInfo] = useState<UserProfileResponse | null>(null);
   const [profileLoaded, setProfileLoaded] = useState(false);
+  const [eContractsListExpanded, setEContractsListExpanded] = useState(false);
 
   const { house, isLoading: tenantAccessLoading } = useTenantContext();
+
+  const {
+    data: contractsRaw,
+    isLoading: contractsLoading,
+    isError: contractsError,
+    refetch: refetchContracts,
+    isRefetching: contractsRefetching,
+  } = useMyEContracts();
+  const { data: tenantHousesRes, refetch: refetchTenantHouses } = useTenantHouses();
+
+  const contracts = contractsRaw ?? EMPTY_ECONTRACTS;
+
+  const visibleContracts = useMemo(() => {
+    if (contracts.length <= E_CONTRACTS_PREVIEW_MAX || eContractsListExpanded) {
+      return contracts;
+    }
+    return contracts.slice(0, E_CONTRACTS_PREVIEW_MAX);
+  }, [contracts, eContractsListExpanded]);
+
+  const eContractsExtraCount =
+    contracts.length > E_CONTRACTS_PREVIEW_MAX
+      ? contracts.length - E_CONTRACTS_PREVIEW_MAX
+      : 0;
+
+  useEffect(() => {
+    if (contracts.length <= E_CONTRACTS_PREVIEW_MAX) {
+      setEContractsListExpanded(false);
+    }
+  }, [contracts.length]);
+
+  const houseNameById = useMemo(() => {
+    const m = new Map<string, string>();
+    const rows =
+      tenantHousesRes?.success && Array.isArray(tenantHousesRes.data)
+        ? tenantHousesRes.data
+        : [];
+    for (const h of rows) {
+      const id = String(h.id ?? "").trim();
+      if (!id) continue;
+      const n = String(h.name ?? "").trim();
+      m.set(id, n || id);
+    }
+    return m;
+  }, [tenantHousesRes]);
+
+  const onRefreshContracts = useCallback(() => {
+    void refetchContracts();
+    void refetchTenantHouses();
+  }, [refetchContracts, refetchTenantHouses]);
   /**
    * Ẩn thông tin nhạy cảm khi chưa bàn giao.
    * Bao gồm cả lúc đang tải context để tránh lóe dữ liệu trong vài frame đầu.
@@ -134,10 +197,15 @@ const UserProfileScreen = () => {
   return (
     <View style={userProfileStyles.container}>
       <ScrollView
-        contentContainerStyle={[
-          userProfileStyles.contentContainer,
-          
-        ]}
+        contentContainerStyle={[userProfileStyles.contentContainer]}
+        refreshControl={
+          <RefreshControl
+            refreshing={contractsRefetching}
+            onRefresh={onRefreshContracts}
+            colors={[brandPrimary]}
+            tintColor={brandPrimary}
+          />
+        }
       >
         <StackScreenTitleHeaderStrip>
           <View style={stackScreenTitleRowStyle}>
@@ -163,7 +231,7 @@ const UserProfileScreen = () => {
         {/* Profile Card — chờ GET /users/me để tránh lóe username/role từ Keycloak */}
         <View style={userProfileStyles.profileCard}>
           {!profileLoaded ? (
-            <View style={{ paddingVertical: 32, alignItems: "center", justifyContent: "center" }}>
+            <View style={userProfileStyles.profileCardLoader}>
               <ActivityIndicator size="large" color={brandPrimary} accessibilityLabel={t("common.loading")} />
             </View>
           ) : (
@@ -182,14 +250,14 @@ const UserProfileScreen = () => {
             <Text style={userProfileStyles.sectionTitle}>{t("profile.contact_info")}</Text>
 
             {!profileLoaded ? (
-              <View style={{ paddingVertical: 24, alignItems: "center" }}>
+              <View style={userProfileStyles.sectionLoader}>
                 <ActivityIndicator color={brandPrimary} accessibilityLabel={t("common.loading")} />
               </View>
             ) : (
               <>
                 <View style={userProfileStyles.infoItem}>
                   <View style={userProfileStyles.infoIcon}>
-                    <Icons.mail size={20} color="#666" />
+                    <Icons.mail size={20} color={neutral.iconMuted} />
                   </View>
                   <View style={userProfileStyles.infoContent}>
                     <Text style={userProfileStyles.infoLabel}>{t("profile.email")}</Text>
@@ -197,9 +265,9 @@ const UserProfileScreen = () => {
                   </View>
                 </View>
 
-                <View style={[userProfileStyles.infoItem, { borderBottomWidth: 0 }]}>
+                <View style={[userProfileStyles.infoItem, userProfileStyles.infoItemLast]}>
                   <View style={userProfileStyles.infoIcon}>
-                    <Icons.call size={20} color="#666" />
+                    <Icons.call size={20} color={neutral.iconMuted} />
                   </View>
                   <View style={userProfileStyles.infoContent}>
                     <Text style={userProfileStyles.infoLabel}>{t("profile.phone")}</Text>
@@ -219,8 +287,8 @@ const UserProfileScreen = () => {
             style={userProfileStyles.menuItem} 
             onPress={openChangePasswordPage}
           >
-            <View style={[userProfileStyles.menuIcon, { backgroundColor: brandTintBg }]}>
-              <Icons.shield size={22} color="#666" />
+            <View style={userProfileStyles.menuIconAccent}>
+              <Icons.shield size={22} color={neutral.iconMuted} />
             </View>
             <View style={userProfileStyles.menuContent}>
               <Text style={userProfileStyles.menuLabel}>{t('profile.change_password')}</Text>
@@ -229,6 +297,82 @@ const UserProfileScreen = () => {
             <Icons.chevronForward size={20} color={neutral.textOnDarkSoft} />
           </TouchableOpacity>
         </View>
+
+        {role === "tenant" ? (
+          <View style={userProfileStyles.sectionContainer}>
+            <Text style={userProfileStyles.sectionTitle}>
+              {t("profile.e_contracts_section")}
+            </Text>
+            {contractsLoading && contracts.length === 0 ? (
+              <View style={userProfileStyles.eContractsLoader}>
+                <ActivityIndicator color={brandPrimary} accessibilityLabel={t("common.loading")} />
+              </View>
+            ) : null}
+            {contractsError ? (
+              <Text style={[userProfileStyles.menuDescription, userProfileStyles.eContractsMessage]}>
+                {t("profile.e_contracts_load_error")}
+              </Text>
+            ) : null}
+            {!contractsLoading && !contractsError && contracts.length === 0 ? (
+              <Text style={[userProfileStyles.menuDescription, userProfileStyles.eContractsMessage]}>
+                {t("profile.e_contracts_empty")}
+              </Text>
+            ) : null}
+            {visibleContracts.map((c) => {
+              const hid = String(c.houseId ?? "").trim();
+              const houseLabel = (hid ? houseNameById.get(hid) : undefined) ?? c.name ?? hid;
+              const title = t("profile.e_contract_for_house", { name: houseLabel });
+              return (
+                <Pressable
+                  key={c.id}
+                  style={userProfileStyles.menuItem}
+                  onPress={() => navigation.navigate("UserContractDetail", { contract: c })}
+                >
+                  <View style={userProfileStyles.menuIconAccent}>
+                    <Icons.eContract size={22} color={brandSecondary} />
+                  </View>
+                  <View style={userProfileStyles.menuContent}>
+                    <Text style={userProfileStyles.menuLabel}>{title}</Text>
+                    {c.name ? (
+                      <Text style={userProfileStyles.menuDescription} numberOfLines={2}>
+                        {c.name}
+                      </Text>
+                    ) : null}
+                  </View>
+                  <Icons.chevronForward size={20} color={neutral.textOnDarkSoft} />
+                </Pressable>
+              );
+            })}
+            {eContractsExtraCount > 0 && !eContractsListExpanded ? (
+              <TouchableOpacity
+                style={userProfileStyles.eContractsToggleRow}
+                onPress={() => setEContractsListExpanded(true)}
+                activeOpacity={0.7}
+                accessibilityRole="button"
+                accessibilityLabel={t("profile.e_contracts_show_more", { count: eContractsExtraCount })}
+              >
+                <Text style={userProfileStyles.eContractsToggleLabel}>
+                  {t("profile.e_contracts_show_more", { count: eContractsExtraCount })}
+                </Text>
+                <Icons.chevronDown size={22} color={brandPrimary} />
+              </TouchableOpacity>
+            ) : null}
+            {eContractsExtraCount > 0 && eContractsListExpanded ? (
+              <TouchableOpacity
+                style={userProfileStyles.eContractsToggleRow}
+                onPress={() => setEContractsListExpanded(false)}
+                activeOpacity={0.7}
+                accessibilityRole="button"
+                accessibilityLabel={t("profile.e_contracts_show_less")}
+              >
+                <Text style={userProfileStyles.eContractsToggleLabel}>
+                  {t("profile.e_contracts_show_less")}
+                </Text>
+                <Icons.chevronUp size={22} color={brandPrimary} />
+              </TouchableOpacity>
+            ) : null}
+          </View>
+        ) : null}
 
         {/* Logout Button */}
         <TouchableOpacity style={userProfileStyles.logoutButton} onPress={handleLogout}>
