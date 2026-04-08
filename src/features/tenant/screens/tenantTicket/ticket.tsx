@@ -1,8 +1,10 @@
-import React, { useMemo, useState } from "react";
+import React, { useMemo, useRef, useState } from "react";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import {
   ActivityIndicator,
+  Animated,
   Image,
+  Pressable,
   ScrollView,
   Text,
   TextInput,
@@ -14,12 +16,10 @@ import { CustomAlert as Alert } from "../../../../shared/components/alert";
 import { RouteProp, useNavigation, useRoute } from "@react-navigation/native";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { RootStackParamList } from "../../../../shared/types";
-import {
-  ticketStyles,
-  ticketTypeSelectStyles as typeStyles,
-} from "./ticketStyles";
+import { ticketStyles } from "./ticketStyles";
 import { useTranslation } from "react-i18next";
 import Icons from "../../../../shared/theme/icon";
+import { brandPrimary, brandSecondary, neutral } from "../../../../shared/theme/color";
 import { ImageCaptureModal } from "../../../modal/imageCapture/ImageCaptureModal";
 import {
   StackScreenTitleBadge,
@@ -42,6 +42,8 @@ import { TicketAssetSelect, type TicketAssetSelection } from "./TicketAssetSelec
 type TicketRouteProp = RouteProp<RootStackParamList, "Ticket">;
 type TicketNavigationProp = NativeStackNavigationProp<RootStackParamList, "Ticket">;
 
+const MAX_TICKET_ATTACHMENT_IMAGES = 5;
+
 const TicketScreen = () => {
   const { t } = useTranslation();
   const insets = useSafeAreaInsets();
@@ -59,6 +61,30 @@ const TicketScreen = () => {
   const [submitting, setSubmitting] = useState(false);
   const [selectedImages, setSelectedImages] = useState<TicketImageToUpload[]>([]);
   const [imageCaptureVisible, setImageCaptureVisible] = useState(false);
+  const [typeSwitchW, setTypeSwitchW] = useState(0);
+  const typeSlideAnim = useRef(
+    new Animated.Value(ticketType === "REPAIR" ? 0 : 1)
+  ).current;
+
+  const typeIndicatorTranslateX = useMemo(
+    () =>
+      typeSlideAnim.interpolate({
+        inputRange: [0, 1],
+        outputRange: [0, Math.max(0, typeSwitchW) / 2],
+      }),
+    [typeSlideAnim, typeSwitchW]
+  );
+
+  const switchTicketType = (type: TenantTicketCreateType) => {
+    if (type === ticketType) return;
+    setTicketType(type);
+    Animated.spring(typeSlideAnim, {
+      toValue: type === "REPAIR" ? 0 : 1,
+      useNativeDriver: true,
+      tension: 68,
+      friction: 12,
+    }).start();
+  };
 
   const resolvedAsset = useMemo<TicketAssetSelection | null>(() => {
     if (presetAsset) return { id: presetAsset.id, displayName: presetAsset.displayName };
@@ -129,14 +155,65 @@ const TicketScreen = () => {
       }));
 
     setSelectedImages((prev) => {
-      const merged = [...prev, ...normalized];
-      // Hard cap để tránh upload quá nhiều ảnh gây chậm.
-      return merged.slice(0, 6);
+      const room = MAX_TICKET_ATTACHMENT_IMAGES - prev.length;
+      if (room <= 0) {
+        requestAnimationFrame(() =>
+          Alert.alert(
+            t("common.images_limit_title"),
+            t("common.images_limit_max_message", { max: MAX_TICKET_ATTACHMENT_IMAGES })
+          )
+        );
+        return prev;
+      }
+      const toAdd = normalized.slice(0, room);
+      if (normalized.length > toAdd.length) {
+        requestAnimationFrame(() =>
+          Alert.alert(
+            t("common.images_limit_title"),
+            t("common.images_limit_truncated_message", {
+              added: toAdd.length,
+              max: MAX_TICKET_ATTACHMENT_IMAGES,
+            })
+          )
+        );
+      }
+      return [...prev, ...toAdd];
     });
   };
 
   const handleTakePhoto = async () => {
+    if (selectedImages.length >= MAX_TICKET_ATTACHMENT_IMAGES) {
+      Alert.alert(
+        t("common.images_limit_title"),
+        t("common.images_limit_max_message", { max: MAX_TICKET_ATTACHMENT_IMAGES })
+      );
+      return;
+    }
     setImageCaptureVisible(true);
+  };
+
+  const handlePickFromGallery = async () => {
+    if (selectedImages.length >= MAX_TICKET_ATTACHMENT_IMAGES) {
+      Alert.alert(
+        t("common.images_limit_title"),
+        t("common.images_limit_max_message", { max: MAX_TICKET_ATTACHMENT_IMAGES })
+      );
+      return;
+    }
+    const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (perm.status !== "granted") {
+      Alert.alert(t("common.error"), t("ticket.library_permission_no_permission"), [
+        { text: t("common.close") },
+      ]);
+      return;
+    }
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ["images"] as ImagePicker.MediaType[],
+      allowsMultipleSelection: true,
+      quality: 0.45,
+    });
+    if (result.canceled || !result.assets?.length) return;
+    addPickedImages(result.assets);
   };
 
   return (
@@ -165,9 +242,14 @@ const TicketScreen = () => {
           { paddingBottom: Math.max(insets.bottom, 20) + ticketStyles.contentContainer.paddingBottom },
         ]}
         keyboardShouldPersistTaps="handled"
+        showsVerticalScrollIndicator={false}
       >
-        <View style={ticketStyles.deviceInfoSection}>
-          <Text style={ticketStyles.sectionTitle}>{t("ticket.device_info_title")}</Text>
+        <View style={ticketStyles.pageIntro}>
+          <Text style={ticketStyles.pageIntroText}>{t("tenant_ticket_menu.subtitle")}</Text>
+        </View>
+
+        <View style={ticketStyles.sectionBlock}>
+          <Text style={ticketStyles.sectionLabel}>{t("ticket.device_info_title")}</Text>
           <View style={ticketStyles.deviceInfoCard}>
             {needAssetPicker ? (
               <>
@@ -186,12 +268,73 @@ const TicketScreen = () => {
         <View style={ticketStyles.formSection}>
           <View style={ticketStyles.inputGroup}>
             <Text style={ticketStyles.label}>
-              {t("ticket.title_label")} <Text style={ticketStyles.required}>*</Text>
+              {t("ticket.type_label")} <Text style={ticketStyles.required}>*</Text>
             </Text>
+            <View
+              style={ticketStyles.typeSwitchTrack}
+              onLayout={(e) => setTypeSwitchW(e.nativeEvent.layout.width)}
+            >
+              <Animated.View
+                style={[
+                  ticketStyles.typeSwitchIndicator,
+                  {
+                    width: "50%",
+                    transform: [{ translateX: typeIndicatorTranslateX }],
+                    backgroundColor:
+                      ticketType === "REPAIR" ? brandPrimary : brandSecondary,
+                  },
+                ]}
+              />
+              <Pressable
+                style={ticketStyles.typeSwitchTab}
+                onPress={() => switchTicketType("REPAIR")}
+              >
+                <Icons.build
+                  size={18}
+                  color={ticketType === "REPAIR" ? "#fff" : neutral.textSecondary}
+                />
+                <Text
+                  style={[
+                    ticketStyles.typeSwitchTabText,
+                    ticketType === "REPAIR" && ticketStyles.typeSwitchTabTextActive,
+                  ]}
+                >
+                  {t("tenant_ticket_list.type_REPAIR")}
+                </Text>
+              </Pressable>
+              <Pressable
+                style={ticketStyles.typeSwitchTab}
+                onPress={() => switchTicketType("QUESTION")}
+              >
+                <Icons.helpOutline
+                  size={18}
+                  color={ticketType === "QUESTION" ? "#fff" : neutral.textSecondary}
+                />
+                <Text
+                  style={[
+                    ticketStyles.typeSwitchTabText,
+                    ticketType === "QUESTION" && ticketStyles.typeSwitchTabTextActive,
+                  ]}
+                >
+                  {t("tenant_ticket_list.type_QUESTION")}
+                </Text>
+              </Pressable>
+            </View>
+          </View>
+
+          <View style={ticketStyles.inputGroup}>
+            <View style={ticketStyles.labelRow}>
+              <Text style={ticketStyles.labelRowLeft}>
+                {t("ticket.title_label")} <Text style={ticketStyles.required}>*</Text>
+              </Text>
+              <Text style={ticketStyles.charCount}>
+                {title.length}/200
+              </Text>
+            </View>
             <TextInput
               style={ticketStyles.input}
               placeholder={t("ticket.title_placeholder")}
-              placeholderTextColor="#9ca3af"
+              placeholderTextColor={neutral.textMuted}
               value={title}
               onChangeText={setTitle}
               maxLength={200}
@@ -199,13 +342,18 @@ const TicketScreen = () => {
           </View>
 
           <View style={ticketStyles.inputGroup}>
-            <Text style={ticketStyles.label}>
-              {t("ticket.description_label")} <Text style={ticketStyles.required}>*</Text>
-            </Text>
+            <View style={ticketStyles.labelRow}>
+              <Text style={ticketStyles.labelRowLeft}>
+                {t("ticket.description_label")} <Text style={ticketStyles.required}>*</Text>
+              </Text>
+              <Text style={ticketStyles.charCount}>
+                {description.length}/2000
+              </Text>
+            </View>
             <TextInput
               style={[ticketStyles.input, ticketStyles.textArea]}
               placeholder={t("ticket.description_placeholder")}
-              placeholderTextColor="#9ca3af"
+              placeholderTextColor={neutral.textMuted}
               value={description}
               onChangeText={setDescription}
               multiline
@@ -215,95 +363,79 @@ const TicketScreen = () => {
             />
           </View>
 
-          <View style={ticketStyles.imagesSection}>
+          <View style={[ticketStyles.imagesSection, ticketStyles.inputGroupLast]}>
             <Text style={ticketStyles.label}>{t("ticket.images_label")}</Text>
-
-            <View style={ticketStyles.imageButtonsRow}>
-              <TouchableOpacity
-                style={ticketStyles.imageButton}
-                onPress={handleTakePhoto}
-                activeOpacity={0.9}
-              >
-                <Text style={ticketStyles.imageButtonText}>{t("ticket.images_camera")}</Text>
-              </TouchableOpacity>
+            <View style={ticketStyles.attachmentDropzone}>
+              <Text style={ticketStyles.imagesHint}>
+                {t("ticket.images_hint", { max: MAX_TICKET_ATTACHMENT_IMAGES })}
+              </Text>
+              <View style={ticketStyles.imageButtonsRow}>
+                <TouchableOpacity
+                  style={[
+                    ticketStyles.imageButton,
+                    selectedImages.length >= MAX_TICKET_ATTACHMENT_IMAGES && { opacity: 0.5 },
+                  ]}
+                  onPress={handleTakePhoto}
+                  activeOpacity={0.9}
+                  disabled={selectedImages.length >= MAX_TICKET_ATTACHMENT_IMAGES}
+                >
+                  <Icons.photoCamera size={20} color={neutral.surface} />
+                  <Text style={ticketStyles.imageButtonText}>{t("ticket.images_camera")}</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[
+                    ticketStyles.imageButton,
+                    ticketStyles.imageButtonSecondary,
+                    selectedImages.length >= MAX_TICKET_ATTACHMENT_IMAGES && { opacity: 0.5 },
+                  ]}
+                  onPress={handlePickFromGallery}
+                  activeOpacity={0.9}
+                  disabled={selectedImages.length >= MAX_TICKET_ATTACHMENT_IMAGES}
+                >
+                  <Icons.photoLibrary size={20} color={brandSecondary} />
+                  <Text style={[ticketStyles.imageButtonText, ticketStyles.imageButtonTextSecondary]}>
+                    {t("ticket.images_library")}
+                  </Text>
+                </TouchableOpacity>
+              </View>
             </View>
 
-            {selectedImages.length > 0 && (
-              <>
-                <ScrollView
-                  horizontal
-                  showsHorizontalScrollIndicator={false}
-                  style={ticketStyles.ticketImagesScroll}
-                  contentContainerStyle={ticketStyles.ticketImagesStrip}
-                >
-                  {selectedImages.map((img, idx) => (
-                    <View
-                      key={`${img.uri}-${idx}`}
-                      style={[ticketStyles.imageThumb, ticketStyles.ticketImageThumbHorizontal]}
-                    >
-                      <View style={ticketStyles.imageThumbInner}>
-                        <Image
-                          source={{ uri: img.uri }}
-                          style={ticketStyles.imageThumbImg}
-                          resizeMode="cover"
-                        />
-                      </View>
-
-                      <TouchableOpacity
-                        style={ticketStyles.removeImageBtn}
-                        onPress={() =>
-                          setSelectedImages((prev) => prev.filter((_, i) => i !== idx))
-                        }
-                        hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-                        activeOpacity={0.8}
-                        accessibilityRole="button"
-                        accessibilityLabel={t("ticket.images_remove")}
-                      >
-                        <Text style={ticketStyles.removeImageBtnText}>×</Text>
-                      </TouchableOpacity>
+            {selectedImages.length > 0 ? (
+              <ScrollView
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                style={ticketStyles.ticketImagesScroll}
+                contentContainerStyle={ticketStyles.ticketImagesStrip}
+              >
+                {selectedImages.map((img, idx) => (
+                  <View
+                    key={`${img.uri}-${idx}`}
+                    style={[ticketStyles.imageThumb, ticketStyles.ticketImageThumbHorizontal]}
+                  >
+                    <View style={ticketStyles.imageThumbInner}>
+                      <Image
+                        source={{ uri: img.uri }}
+                        style={ticketStyles.imageThumbImg}
+                        resizeMode="cover"
+                      />
                     </View>
-                  ))}
-                </ScrollView>
-              </>
-            )}
 
-            
-          </View>
-
-          <View style={ticketStyles.inputGroup}>
-            <Text style={ticketStyles.label}>
-              {t("ticket.type_label")} <Text style={ticketStyles.required}>*</Text>
-            </Text>
-            <View style={typeStyles.row}>
-              <TouchableOpacity
-                style={[typeStyles.chip, ticketType === "REPAIR" && typeStyles.chipActive]}
-                onPress={() => setTicketType("REPAIR")}
-                activeOpacity={0.85}
-              >
-                <Text
-                  style={[
-                    typeStyles.chipText,
-                    ticketType === "REPAIR" && typeStyles.chipTextActive,
-                  ]}
-                >
-                  {t("tenant_ticket_list.type_REPAIR")}
-                </Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={[typeStyles.chip, ticketType === "QUESTION" && typeStyles.chipActive]}
-                onPress={() => setTicketType("QUESTION")}
-                activeOpacity={0.85}
-              >
-                <Text
-                  style={[
-                    typeStyles.chipText,
-                    ticketType === "QUESTION" && typeStyles.chipTextActive,
-                  ]}
-                >
-                  {t("tenant_ticket_list.type_QUESTION")}
-                </Text>
-              </TouchableOpacity>
-            </View>
+                    <TouchableOpacity
+                      style={ticketStyles.removeImageBtn}
+                      onPress={() =>
+                        setSelectedImages((prev) => prev.filter((_, i) => i !== idx))
+                      }
+                      hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                      activeOpacity={0.8}
+                      accessibilityRole="button"
+                      accessibilityLabel={t("ticket.images_remove")}
+                    >
+                      <Icons.close size={16} color={neutral.surface} />
+                    </TouchableOpacity>
+                  </View>
+                ))}
+              </ScrollView>
+            ) : null}
           </View>
 
           <TouchableOpacity
@@ -313,7 +445,7 @@ const TicketScreen = () => {
             activeOpacity={0.9}
           >
             {submitting ? (
-              <ActivityIndicator color="#fff" />
+              <ActivityIndicator color={neutral.surface} />
             ) : (
               <Text style={ticketStyles.submitButtonText}>{t("ticket.submit_button")}</Text>
             )}

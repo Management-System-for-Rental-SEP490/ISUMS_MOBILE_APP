@@ -1,6 +1,6 @@
 import axios from "axios";
 import axiosClient from "../api/axiosClient";
-import { BACKEND_API_BASE } from "../api/config";
+import { BACKEND_API_BASE, FALLBACK_BACKEND_URL } from "../api/config";
 import i18n from "../i18n";
 import { useAuthStore } from "../../store/useAuthStore";
 import type {
@@ -26,6 +26,7 @@ export type CreateTenantTicketPayload = {
  */
 export const getTenantTickets = async (): Promise<TenantTicketFromApi[]> => {
   const url = `${BACKEND_API_BASE}/issues/tickets/tenant`;
+  //const url = `${FALLBACK_BACKEND_URL}/issues/tickets/tenant`;
   const response = await axiosClient.get<ApiResponse<TenantTicketFromApi[]>>(url);
   if (response.data?.success && Array.isArray(response.data.data)) {
     return response.data.data;
@@ -43,6 +44,7 @@ export const getTenantTicketById = async (
   const id = ticketId?.trim();
   if (!id) return null;
 
+  //const url = `${FALLBACK_BACKEND_URL}/issues/tickets/${encodeURIComponent(id)}`;
   const url = `${BACKEND_API_BASE}/issues/tickets/${encodeURIComponent(id)}`;
   const response = await axiosClient.get<ApiResponse<TenantTicketFromApi>>(url);
 
@@ -70,6 +72,7 @@ export const getIssueResponses = async (): Promise<IssueTicketResponseFromApi[]>
  * Dùng cho luồng quote + payment.
  */
 export const getIssueBanners = async (): Promise<IssueBannerFromApi[]> => {
+  //const url = `${FALLBACK_BACKEND_URL}/issues/banners`;
   const url = `${BACKEND_API_BASE}/issues/banners`;
   const response = await axiosClient.get<ApiResponse<IssueBannerFromApi[]>>(url);
   if (response.data?.success && Array.isArray(response.data.data)) {
@@ -84,6 +87,7 @@ export const getIssueBanners = async (): Promise<IssueBannerFromApi[]> => {
 export const createTenantTicket = async (
   payload: CreateTenantTicketPayload
 ): Promise<TenantTicketFromApi> => {
+  //const url = `${FALLBACK_BACKEND_URL}/issues/tickets`;
   const url = `${BACKEND_API_BASE}/issues/tickets`;
   try {
     const response = await axiosClient.post<ApiResponse<TenantTicketFromApi>>(url, payload);
@@ -124,7 +128,9 @@ export const uploadTenantTicketImages = async (
 ): Promise<void> => {
   if (!ticketId || images.length === 0) return;
 
+  //const url = `${FALLBACK_BACKEND_URL}/issues/tickets/${encodeURIComponent(ticketId)}/images`;
   const url = `${BACKEND_API_BASE}/issues/tickets/${encodeURIComponent(ticketId)}/images`;
+  //const url = `${BACKEND_API_BASE}/issues/tickets/${encodeURIComponent(ticketId)}/images`;
   const formData = new FormData();
 
   console.log("[uploadTenantTicketImages] start", {
@@ -220,6 +226,7 @@ export const getTenantTicketImages = async (
 ): Promise<TenantTicketImageFromApi[]> => {
   if (!ticketId) return [];
 
+  //const url = `${FALLBACK_BACKEND_URL}/issues/tickets/${encodeURIComponent(ticketId)}/images`;
   const url = `${BACKEND_API_BASE}/issues/tickets/${encodeURIComponent(ticketId)}/images`;
   const response = await axiosClient.get<ApiResponse<TenantTicketImageFromApi[]>>(url);
 
@@ -231,18 +238,40 @@ export const getTenantTicketImages = async (
 };
 
 /**
- * Lấy danh sách báo giá theo ticket (GET /api/issues/quotes/ticket/:ticketId)
- * (hình 1 Postman bạn gửi)
+ * Lấy danh sách báo giá theo ticket.
+ * - Ưu tiên GET /api/issues/quotes/ticket/:ticketId (Swagger).
+ * - Nếu 404, thử GET /api/issues/tickets/:ticketId/quotes (một số bản BE đặt route này).
  */
 export const getIssueQuotesByTicket = async (
   ticketId: string
 ): Promise<IssueQuoteFromApi[]> => {
   if (!ticketId?.trim()) return [];
-  const url = `${BACKEND_API_BASE}/issues/quotes/ticket/${encodeURIComponent(ticketId)}`;
-  const response = await axiosClient.get<ApiResponse<IssueQuoteFromApi[]>>(url);
-  if (response.data?.success && Array.isArray(response.data.data)) {
-    return response.data.data;
+  const id = encodeURIComponent(ticketId);
+
+  const parseQuotes = (body: ApiResponse<IssueQuoteFromApi[]> | undefined): IssueQuoteFromApi[] | null => {
+    if (body?.success && Array.isArray(body.data)) return body.data;
+    return null;
+  };
+
+  const primary = `${BACKEND_API_BASE}/issues/quotes/ticket/${id}`;
+  try {
+    const response = await axiosClient.get<ApiResponse<IssueQuoteFromApi[]>>(primary);
+    const rows = parseQuotes(response.data);
+    if (rows != null) return rows;
+  } catch (e: unknown) {
+    const status = (e as { response?: { status?: number } })?.response?.status;
+    if (status !== 404) throw e;
   }
+
+  const alt = `${BACKEND_API_BASE}/issues/tickets/${id}/quotes`;
+  try {
+    const response = await axiosClient.get<ApiResponse<IssueQuoteFromApi[]>>(alt);
+    const rows = parseQuotes(response.data);
+    if (rows != null) return rows;
+  } catch {
+    /* im lặng — coi như không có báo giá */
+  }
+
   return [];
 };
 
@@ -254,7 +283,7 @@ export const getIssueQuotesByTicket = async (
 export const confirmIssueQuoteStatus = async (quoteId: string): Promise<void> => {
   if (!quoteId?.trim()) return;
   const url = `${BACKEND_API_BASE}/issues/quotes/${encodeURIComponent(quoteId)}/status`;
-
+ // const url = `${FALLBACK_BACKEND_URL}/issues/quotes/${encodeURIComponent(quoteId)}/status`;
   // BE yêu cầu PUT để xác nhận.
   // Theo Postman bạn cung cấp: body phải gửi { status: "APPROVED" }.
   const response = await axiosClient.put<ApiResponse<unknown>>(url, { status: "APPROVED" });

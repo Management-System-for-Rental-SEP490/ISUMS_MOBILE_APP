@@ -28,15 +28,28 @@ export { mergeFunctionalAreasForHouse } from "./functionalAreas";
 export { mapLabelForFunctionalArea } from "./functionalAreaMapLabel";
 export {
   formatDayMonthNumeric,
+  formatTenantContractDay,
   formatTenantIssueDateTime,
   formatTimeAgoI18n,
+  formatVnpPayDateFromGateway,
   toLocalYyyyMmDd,
 } from "./dateTimeFormat";
+export {
+  buildTenantHouseFilterOptions,
+  enrichTenantHouseOptionsWithByIdApi,
+  houseLabelByIdFromFilterOptions,
+  isHouseIdOutsideTenantAccess,
+  pickHouseDisplayLabelFromInvoices,
+  shortHouseIdForDisplay,
+  tenantAccessibleHouseIdSet,
+  type TenantHouseFilterOption,
+} from "./tenantHouseFallback";
 export {
   formatTenantAccessStatusForDisplay,
   formatTenantMemberRoleForDisplay,
   getTenantAccessBlock,
   isHandoverDateReached,
+  isTenantHandoverStatusPending,
   mapTenantAccessItemToHouse,
   translateTenantAccessReason,
   type TenantAccessBlockKind,

@@ -1,6 +1,7 @@
 import { Linking, Platform } from "react-native";
 import axios from "axios";
 import * as WebBrowser from "expo-web-browser";
+import InAppBrowser from "react-native-inappbrowser-reborn";
 import { AuthPayload, UserRole } from "../types";
 import { useAuthStore } from "../../store/useAuthStore";
 import { CustomAlert } from "../components/alert";
@@ -37,70 +38,96 @@ const KEYCLOAK_CONFIG = {
   },
 };
 
-// Helper export để các screen khác (ví dụ LoginScreen dùng WebView)
-// có thể lấy đúng redirectUri khi cần so khớp URL trong WebView.
+// Helper export để so khớp redirect URI với callback (deep link / InAppBrowser.openAuth).
 export const getKeycloakRedirectUri = (): string => {
   return KEYCLOAK_CONFIG.redirectUri;
 };
 
-type PendingKeycloakInApp = {
-  resolve: () => void;
-  onAppRedirect?: (url: string) => Promise<void>;
-  allowManualClose: boolean;
+/**
+ * Inject vào WebView Keycloak trên Android sau khi bàn phím ẩn.
+ * Đồng bộ inset + ép reflow; thêm nudge scroll 1px để Chrome WebView tính lại hitbox (ghost touch).
+ */
+export const KEYCLOAK_WEBVIEW_ANDROID_KEYBOARD_SYNC_JS =
+  "(function(){try{var r=document.documentElement;var inset=0;if(window.visualViewport){var vv=window.visualViewport;inset=Math.max(0,Math.round(window.innerHeight-vv.height-vv.offsetTop));}r.style.setProperty('--isums-keyboard-inset',inset+'px');if(typeof window.__isumsSyncKeyboardInset==='function')window.__isumsSyncKeyboardInset();window.dispatchEvent(new Event('resize'));void document.body.offsetHeight;window.scrollTo(window.scrollX,window.scrollY+1);window.scrollTo(window.scrollX,window.scrollY-1);}catch(e){}})();true;";
+
+/** Script chỉ nudge scroll (dùng khi cần tách bước inject). */
+export const KEYCLOAK_WEBVIEW_HITBOX_REPAINT_JS =
+  "(function(){try{window.scrollTo(window.scrollX,window.scrollY+1);window.scrollTo(window.scrollX,window.scrollY-1);}catch(e){}})();true;";
+
+/** Ép engine tính lại chiều cao viewport sau IME (kèm reset 100% sau 50ms). */
+export const KEYCLOAK_WEBVIEW_VIEWPORT_HEIGHT_RESET_JS =
+  "(function(){try{document.documentElement.style.height='100.1%';setTimeout(function(){document.documentElement.style.height='100%';},50);}catch(e){}})();true;";
+
+export type KeycloakInAppBrowserMode = "oauth" | "browse";
+
+/** Chrome Custom Tabs / SFSafariViewController: ẩn title bar & URL bar tối đa có thể. */
+export const KEYCLOAK_IN_APP_BROWSER_OPTIONS = {
+  showTitle: false,
+  enableUrlBarHiding: true,
+  enableDefaultShare: false,
+  showInRecents: false,
+  dismissButtonStyle: "close" as const,
+  ephemeralWebSession: false,
+  enableBarCollapsing: true,
+  forceCloseOnRedirection: true,
 };
 
-let pendingKeycloakInApp: PendingKeycloakInApp | null = null;
-
-/** WebView toàn cục (Navigation): mở URL Keycloak trong app, redirect về scheme app khi xong. */
-export function beginKeycloakInAppSession(
-  initialUrl: string,
-  options?: { allowManualClose?: boolean; onAppRedirect?: (url: string) => Promise<void> }
-): Promise<void> {
-  return new Promise((resolve) => {
-    if (pendingKeycloakInApp) {
-      const old = pendingKeycloakInApp;
-      pendingKeycloakInApp = null;
-      useAuthStore.getState().setKeycloakInAppSession(null);
-      old.resolve();
-    }
-    pendingKeycloakInApp = {
-      resolve,
-      onAppRedirect: options?.onAppRedirect,
-      allowManualClose: options?.allowManualClose ?? false,
-    };
-    useAuthStore.getState().setKeycloakInAppSession({
-      url: initialUrl,
-      allowManualClose: options?.allowManualClose ?? false,
-    });
-  });
-}
-
-/** Gọi từ Navigation khi WebView chuyển tới redirectUri (callback app). */
-export async function keycloakInAppNotifyAppRedirect(url: string): Promise<void> {
-  const redirectUri = getKeycloakRedirectUri();
-  if (!url.startsWith(redirectUri)) return;
-  const p = pendingKeycloakInApp;
-  if (!p) return;
-
-  pendingKeycloakInApp = null;
-  useAuthStore.getState().setKeycloakInAppSession(null);
-
+function dismissInAppBrowser(): void {
   try {
-    if (p.onAppRedirect) {
-      await p.onAppRedirect(url);
-    }
-  } finally {
-    p.resolve();
+    InAppBrowser.close();
+    InAppBrowser.closeAuth();
+  } catch {
+    /* noop */
   }
 }
 
-/** Đóng phiên Keycloak khi user bấm Đóng (account console). */
+/**
+ * Phiên Keycloak trong trình duyệt in-app (Custom Tabs / SFSafariViewController), không còn overlay WebView.
+ * - oauth: openAuth + redirect về app scheme, gọi onAppRedirect khi có callback hợp lệ.
+ * - browse: mở trang (account console) tới khi user đóng tab.
+ */
+export async function beginKeycloakInAppSession(
+  initialUrl: string,
+  options?: {
+    allowManualClose?: boolean;
+    onAppRedirect?: (url: string) => Promise<void>;
+    browserMode?: KeycloakInAppBrowserMode;
+  }
+): Promise<void> {
+  if (Platform.OS === "web") {
+    if (typeof window !== "undefined") {
+      window.open(initialUrl, "_blank", "noopener,noreferrer");
+    }
+    return;
+  }
+
+  dismissInAppBrowser();
+
+  const available = await InAppBrowser.isAvailable();
+  if (!available) {
+    const can = await Linking.canOpenURL(initialUrl);
+    if (can) await Linking.openURL(initialUrl);
+    return;
+  }
+
+  const browserMode = options?.browserMode ?? "oauth";
+
+  if (browserMode === "browse") {
+    await InAppBrowser.open(initialUrl, { ...KEYCLOAK_IN_APP_BROWSER_OPTIONS });
+    return;
+  }
+
+  const redirectUri = getKeycloakRedirectUri();
+  const result = await InAppBrowser.openAuth(initialUrl, redirectUri, KEYCLOAK_IN_APP_BROWSER_OPTIONS);
+
+  if (result.type === "success" && result.url.startsWith(redirectUri) && options?.onAppRedirect) {
+    await options.onAppRedirect(result.url);
+  }
+}
+
+/** Đóng Custom Tabs / phiên auth đang mở (nút Đóng hoặc hủy). */
 export function keycloakInAppUserDismissed(): void {
-  const p = pendingKeycloakInApp;
-  if (!p) return;
-  pendingKeycloakInApp = null;
-  useAuthStore.getState().setKeycloakInAppSession(null);
-  p.resolve();
+  dismissInAppBrowser();
 }
 
 function buildLogoutUrl(idToken?: string | null): string {
@@ -115,6 +142,24 @@ function buildLogoutUrl(idToken?: string | null): string {
   return `${base}?${params.toString()}`;
 }
 
+/** Keycloak chỉ khớp theme khi dùng mã ngắn vi | en | ja (vd. vi-VN → vi). */
+export function normalizeKeycloakLocale(locale?: string | null): "vi" | "en" | "ja" {
+  const raw = locale != null ? String(locale).trim().toLowerCase() : "";
+  if (!raw) return "vi";
+  if (raw.startsWith("vi")) return "vi";
+  if (raw.startsWith("ja")) return "ja";
+  if (raw.startsWith("en")) return "en";
+  return "vi";
+}
+
+/** WebView Android thường gửi Accept-Language = en — Keycloak hay fallback EN; ép theo app. */
+export function getKeycloakAcceptLanguageHeader(locale?: string | null): string {
+  const k = normalizeKeycloakLocale(locale);
+  if (k === "vi") return "vi,vi-VN;q=0.95,en;q=0.35";
+  if (k === "ja") return "ja,ja-JP;q=0.95,en;q=0.35";
+  return "en,vi;q=0.4";
+}
+
 // Tạo URL authorization để chuyển hướng đến Keycloak login - tạo link và mở trình duyệt
 export const getKeycloakAuthUrl = (locale?: string): string => {
   const params = new URLSearchParams({
@@ -124,13 +169,52 @@ export const getKeycloakAuthUrl = (locale?: string): string => {
     scope: "openid email profile",
   });
 
-  if (locale) {
-    params.append('kc_locale', locale); // Tham số riêng của Keycloak để ép ngôn ngữ
-    params.append('ui_locales', locale); // Tham số chuẩn OIDC (dự phòng)
-  }
+  const resolvedLocale = normalizeKeycloakLocale(locale);
+  params.append("kc_locale", resolvedLocale);
+  params.append("ui_locales", resolvedLocale);
 
   return `${KEYCLOAK_CONFIG.baseUrl}/realms/${KEYCLOAK_CONFIG.realm}/protocol/openid-connect/auth?${params.toString()}`;
 };
+
+/** AsyncStorage: app tenant — ghi nhớ checkbox Keycloak + gợi ý username (login_hint). */
+export const KEYCLOAK_STORAGE_REMEMBER_ME = "isums_keycloak_remember_me";
+export const KEYCLOAK_STORAGE_LAST_USERNAME = "isums_keycloak_last_username";
+
+export function appendKeycloakAuthLoginHint(authUrl: string, loginHint?: string | null): string {
+  const hint = loginHint?.trim();
+  if (!hint) return authUrl;
+  try {
+    const u = new URL(authUrl);
+    if (!u.searchParams.has("login_hint")) {
+      u.searchParams.set("login_hint", hint);
+    }
+    return u.toString();
+  } catch {
+    return authUrl;
+  }
+}
+
+/** Luồng đăng nhập: mở Keycloak trong Custom Tabs / SFSafariViewController (ẩn URL bar tối đa có thể). */
+export async function openKeycloakAuthorizationInAppBrowser(locale?: string) {
+  const authUrl = getKeycloakAuthUrl(locale);
+  const redirectUri = getKeycloakRedirectUri();
+  if (Platform.OS === "web") {
+    if (typeof window !== "undefined") {
+      window.open(authUrl, "_blank", "noopener,noreferrer");
+    }
+    return { type: "dismiss" as const };
+  }
+
+  dismissInAppBrowser();
+  const available = await InAppBrowser.isAvailable();
+  if (!available) {
+    const can = await Linking.canOpenURL(authUrl);
+    if (can) await Linking.openURL(authUrl);
+    return { type: "dismiss" as const };
+  }
+
+  return InAppBrowser.openAuth(authUrl, redirectUri, KEYCLOAK_IN_APP_BROWSER_OPTIONS);
+}
 
 // Trao đổi authorization code lấy access token
 export const exchangeCodeForToken = async (code: string): Promise<AuthPayload> => {
@@ -383,40 +467,86 @@ export const handleKeycloakCallback = (url: string): string | null => {
     return null;
   }
 };
-// Mở trang đổi mật khẩu trực tiếp (Sử dụng luồng UPDATE_PASSWORD của Keycloak)
+/**
+ * Xử lý redirect OAuth sau khi user hoàn tất đổi mật khẩu trong WebView (cùng logic trước đây với InAppBrowser).
+ */
+export async function finalizeChangePasswordOAuthRedirect(callbackUrl: string): Promise<void> {
+  const code = handleKeycloakCallback(callbackUrl);
+  if (!code) {
+    try {
+      const u = new URL(callbackUrl);
+      const error = u.searchParams.get("error");
+      const errorDescription = u.searchParams.get("error_description");
+      if (error) {
+        CustomAlert.alert(
+          i18n.t("common.error"),
+          errorDescription || error,
+          [{ text: i18n.t("common.close") }]
+        );
+      }
+    } catch {
+      /* ignore */
+    }
+    return;
+  }
+
+  try {
+    const authPayload = await exchangeCodeForToken(code);
+    if (authPayload.role === "technical") {
+      await logoutKeycloak(authPayload.idToken);
+      useAuthStore.getState().logout();
+      CustomAlert.alert(
+        i18n.t("technical_blocked_title"),
+        i18n.t("technical_blocked_message"),
+        [{ text: i18n.t("common.close") }]
+      );
+      return;
+    }
+    useAuthStore.getState().logout();
+    CustomAlert.alert(
+      i18n.t("profile.change_password_success_title"),
+      i18n.t("profile.change_password_success_message"),
+      [{ text: i18n.t("common.close") }]
+    );
+  } catch (e) {
+    CustomAlert.alert(
+      i18n.t("common.error"),
+      e instanceof Error ? e.message : String(e),
+      [{ text: i18n.t("common.close") }]
+    );
+  }
+}
+
+/**
+ * Keycloak đôi khi trả trang info (success) mà không redirect về redirect_uri — theme gửi postMessage vào WebView.
+ * Cùng hậu quả UX với nhánh OAuth thành công: đăng xuất cục bộ + báo đổi MK xong.
+ */
+export function finalizeChangePasswordFromInfoPageSuccess(): void {
+  useAuthStore.getState().logout();
+  CustomAlert.alert(
+    i18n.t("profile.change_password_success_title"),
+    i18n.t("profile.change_password_success_message"),
+    [{ text: i18n.t("common.close") }]
+  );
+}
+
+// Mở trang đổi mật khẩu (UPDATE_PASSWORD) — native dùng WebView overlay toàn cục, giống màn Login.
 export const openChangePasswordPage = async () => {
   try {
-    const authUrl = `${getKeycloakAuthUrl()}&kc_action=UPDATE_PASSWORD`;
+    const authUrl = `${getKeycloakAuthUrl(i18n.language)}&kc_action=UPDATE_PASSWORD`;
 
     if (Platform.OS === "web") {
-      window.open(authUrl, "_blank");
+      if (typeof window !== "undefined") {
+        window.open(authUrl, "_blank", "noopener,noreferrer");
+      }
       return;
     }
 
-    await beginKeycloakInAppSession(authUrl, {
-      // Cho phép đóng tay khi user không muốn tiếp tục reset password.
-      allowManualClose: true,
-      onAppRedirect: async (url) => {
-        const code = handleKeycloakCallback(url);
-        if (!code) return;
-        const authPayload = await exchangeCodeForToken(code);
-        if (authPayload.role === "technical") {
-          await beginKeycloakInAppSession(buildLogoutUrl(authPayload.idToken), { allowManualClose: true });
-          useAuthStore.getState().logout();
-          CustomAlert.alert(
-            i18n.t("technical_blocked_title"),
-            i18n.t("technical_blocked_message"),
-            [{ text: i18n.t("common.close") }]
-          );
-          return;
-        }
-        useAuthStore.getState().login(authPayload);
-      },
+    useAuthStore.getState().setKeycloakInAppSession({
+      flow: "change_password",
+      url: authUrl,
     });
   } catch (error: any) {
-    if (error.message && error.message.includes("User canceled")) {
-      return;
-    }
     throw new Error(`Không thể mở trang đổi mật khẩu: ${error.message || error}`);
   }
 };
@@ -436,7 +566,7 @@ export const openAccountManagement = async () => {
       return;
     }
 
-    await beginKeycloakInAppSession(accountUrl, { allowManualClose: true });
+    await beginKeycloakInAppSession(accountUrl, { allowManualClose: true, browserMode: "browse" });
   } catch (error: any) {
     throw new Error(`Không thể mở trang quản lý tài khoản: ${error.message || error}`);
   }

@@ -9,6 +9,7 @@ import { mapTenantAccessItemToHouse } from "../utils/tenantAccess";
 import type {
   ApiResponse,
   FunctionalAreaFromApi,
+  HouseFromApi,
   HouseIotAlertsApiResponse,
   HousesApiResponse,
   TenantHouseAccessApiResponse,
@@ -43,6 +44,24 @@ export const getTenantHouses = async (): Promise<HousesApiResponse> => {
     success: body.success,
     data: rows.map(mapTenantAccessItemToHouse),
   };
+};
+
+/**
+ * Chi tiết một căn theo id (GET /api/houses/{id}) — dùng khi có `houseId` trên hóa đơn/hợp đồng
+ * nhưng căn không còn trong my-access (lấy `name` hiển thị).
+ * Lỗi mạng/403/404: trả `null`, không ném exception.
+ */
+export const getHouseById = async (houseId: string): Promise<ApiResponse<HouseFromApi> | null> => {
+  const id = String(houseId ?? "").trim();
+  if (!id) return null;
+  try {
+    const response = await axiosClient.get<ApiResponse<HouseFromApi>>(
+      `${BACKEND_API_BASE}/houses/${encodeURIComponent(id)}`
+    );
+    return response.data;
+  } catch {
+    return null;
+  }
 };
 
 /**

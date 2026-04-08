@@ -42,15 +42,41 @@ export interface UserProfileResponse {
 }
 
 // =========================================================
+// E-contracts — tenant (GET /api/econtracts/my)
+// =========================================================
+
+/** Một hợp đồng điện tử mà tenant là bên thuê; response không có HTML/snapshotKey. */
+export interface TenantEContractFromApi {
+  id: string;
+  name: string;
+  houseId: string;
+  startAt: string;
+  endAt: string;
+  status: string;
+  /** Có giá trị khi status thuộc PENDING_TENANT_REVIEW | READY | IN_PROGRESS | COMPLETED. */
+  pdfUrl?: string | null;
+  createdAt: string;
+}
+
+// =========================================================
 // Payments — VNPay (POST /api/payments/vnpay)
 // =========================================================
 
-/** Body tạo link thanh toán VNPay (tenant đã đăng nhập). */
-export interface VnpayPaymentCreateRequest {
-  invoiceIds: string[];
-  /** Ngôn ngữ cổng thanh toán (VD: `vn`, `en`). Mặc định app gửi `vn`. */
-  language: string;
-}
+/**
+ * Body tạo link thanh toán VNPay (tenant đã đăng nhập).
+ * Chỉ một luồng: hoặc `invoiceIds` (tiền nhà/cọc), hoặc `quoteId` (báo giá sửa chữa — ticket `WAITING_PAYMENT`), không gửi cả hai.
+ */
+export type VnpayPaymentCreateRequest =
+  | {
+      invoiceIds: string[];
+      bankCode?: string;
+      locale: string;
+    }
+  | {
+      quoteId: string;
+      bankCode?: string;
+      locale: string;
+    };
 
 /** BE trả URL đầy đủ tới cổng VNPay trong `data` (chuỗi). */
 export type VnpayPaymentLinkApiResponse = ApiResponse<string>;
@@ -163,6 +189,17 @@ export type TenantInvoicePaymentStatus =
   | "WAITING_PAYMENT"
   | string;
 
+/** Một lượt/phiên thanh toán gắn hóa đơn (GET /api/payments/invoices/:id → `data.payments`). */
+export interface InvoicePaymentAttemptFromApi {
+  id: string;
+  amount: number;
+  method: string;
+  status: string;
+  gatewayTxnId?: string | null;
+  paidAt?: string | null;
+  createdAt?: string | null;
+}
+
 /** Một hóa đơn của tenant (danh sách + chi tiết — BE có thể gộp hoặc tách GET by id). */
 export interface TenantInvoiceFromApi {
   id: string;
@@ -185,6 +222,11 @@ export interface TenantInvoiceFromApi {
   baseAmount?: number | null;
   penaltyAmount?: number | null;
   createdAt?: string | null;
+  /**
+   * ID ticket sửa chữa khi hóa đơn phát sinh từ báo giá/issue (BE có thể trả `issueTicketId` | `issueId` | `ticketId`).
+   * Dùng để gom nhóm trong danh sách và mở chi tiết ticket.
+   */
+  issueTicketId?: string | null;
 }
 
 /** Dữ liệu căn nhà trả về từ API GET /api/houses (dùng cho Staff). */
@@ -554,15 +596,16 @@ export type IssueStatus =
   | "NEED_RESCHEDULE"
   | "SCHEDULED"
   | "IN_PROGRESS"
-  | "WAITING_MANAGER_APPROVAL"
-  | "WAITING_TENANT_APPROVAL"
+  | "WAITING_MANAGER_CONFIRM"
+  | "WAITING_MANAGER_APPROVAL_QUOTE"
+  | "WAITING_TENANT_APPROVAL_QUOTE"
   | "WAITING_PAYMENT"
   | "DONE"
   | "CLOSED"
   | "CANCELLED"
   | string;
 
-/** Trạng thái báo giá từ BE (QuoteStatus) để chuẩn bị luồng quote + payment. */
+/** Trạng thái báo giá từ BE (QuoteStatus). */
 export type QuoteStatus =
   | "DRAFT"
   | "WAITING_MANAGER_APPROVAL"
@@ -581,6 +624,11 @@ export interface TenantTicketFromApi {
   houseId: string;
   assetId: string;
   assignedStaffId: string | null;
+  /**
+   * Mức ưu tiên hiển thị (BE có thể trả): EMERGENCY / HIGH / STANDARD, …
+   * Thiếu trường → UI coi là tiêu chuẩn.
+   */
+  priority?: string | null;
   /**
    * Tên nhân viên phụ trách (BE có thể trả ở endpoint ticket-by-id).
    * Nếu endpoint danh sách không có, có thể null/undefined.
@@ -660,6 +708,10 @@ export interface IssueQuoteItemFromApi {
   itemName: string;
   description?: string | null;
   price: number;
+  /** Hạng mục chọn từ banner — BE có thể trả để tách với hạng mục ngoài banner. */
+  bannerId?: string | null;
+  /** Giá vốn (hạng mục ngoài banner) — tùy BE. */
+  cost?: number | null;
 }
 
 /** Một quote cho một ticket (GET /api/issues/quotes/ticket/:ticketId) */

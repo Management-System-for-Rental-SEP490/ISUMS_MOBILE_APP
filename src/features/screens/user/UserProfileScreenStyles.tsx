@@ -10,6 +10,9 @@ import {
 } from "../../../shared/theme/color";
 import { appTypography } from "../../../shared/utils/typography";
 
+const CARD_RADIUS = 16;
+const MENU_RADIUS = 12;
+
 const userProfileStyles = StyleSheet.create({
   container: {
     flex: 1,
@@ -34,15 +37,22 @@ const userProfileStyles = StyleSheet.create({
   profileCard: {
     backgroundColor: neutral.surface,
     marginHorizontal: 20,
-    marginTop: -50,
-    borderRadius: 20,
-    padding: 20,
+    marginTop: 14,
+    borderRadius: CARD_RADIUS,
+    borderCurve: "continuous",
+    padding: 18,
     alignItems: "center",
     shadowColor: neutral.slate900,
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.1,
     shadowRadius: 10,
     elevation: 5,
+  },
+  /** Loading trong thẻ hồ sơ (GET /users/me). */
+  profileCardLoader: {
+    paddingVertical: 32,
+    alignItems: "center",
+    justifyContent: "center",
   },
   avatarContainer: {
     width: 100,
@@ -79,6 +89,7 @@ const userProfileStyles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 4,
     borderRadius: 15,
+    borderCurve: "continuous",
   },
   userRole: {
     ...appTypography.body,
@@ -97,12 +108,18 @@ const userProfileStyles = StyleSheet.create({
     marginLeft: 10,
     textTransform: "uppercase",
   },
+  /** Loading trong section thông tin liên hệ. */
+  sectionLoader: {
+    paddingVertical: 24,
+    alignItems: "center",
+  },
   menuItem: {
     backgroundColor: neutral.surface,
     flexDirection: "row",
     alignItems: "center",
     padding: 16,
-    borderRadius: 12,
+    borderRadius: MENU_RADIUS,
+    borderCurve: "continuous",
     marginBottom: 10,
     shadowColor: neutral.slate900,
     shadowOffset: { width: 0, height: 1 },
@@ -114,7 +131,19 @@ const userProfileStyles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 20,
+    borderCurve: "continuous",
     backgroundColor: neutral.tileMuted,
+    justifyContent: "center",
+    alignItems: "center",
+    marginRight: 15,
+  },
+  /** Icon vòng nền mint (đổi MK, hợp đồng, …). */
+  menuIconAccent: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    borderCurve: "continuous",
+    backgroundColor: brandTintBg,
     justifyContent: "center",
     alignItems: "center",
     marginRight: 15,
@@ -137,7 +166,8 @@ const userProfileStyles = StyleSheet.create({
     marginHorizontal: 20,
     backgroundColor: brandDangerBg,
     paddingVertical: 15,
-    borderRadius: 12,
+    borderRadius: MENU_RADIUS,
+    borderCurve: "continuous",
     alignItems: "center",
     borderWidth: 1,
     borderColor: brandDangerBorder,
@@ -152,10 +182,15 @@ const userProfileStyles = StyleSheet.create({
     alignItems: "center",
     marginBottom: 15,
   },
+  infoItemLast: {
+    marginBottom: 0,
+    borderBottomWidth: 0,
+  },
   infoIcon: {
     width: 40,
     height: 40,
     borderRadius: 20,
+    borderCurve: "continuous",
     backgroundColor: neutral.tileMuted,
     justifyContent: "center",
     alignItems: "center",
@@ -172,6 +207,287 @@ const userProfileStyles = StyleSheet.create({
   infoValue: {
     ...appTypography.body,
     color: neutral.textSecondary,
+  },
+  /** Loading block danh sách hợp đồng. */
+  eContractsLoader: {
+    paddingVertical: 20,
+    alignItems: "center",
+  },
+  /** Thông báo lỗi / rỗng trong section hợp đồng. */
+  eContractsMessage: {
+    marginLeft: 10,
+    marginBottom: 8,
+  },
+  /** Nút “Xem thêm / Thu gọn” danh sách hợp đồng. */
+  eContractsToggleRow: {
+    backgroundColor: neutral.surface,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+    paddingVertical: 14,
+    paddingHorizontal: 16,
+    borderRadius: MENU_RADIUS,
+    borderCurve: "continuous",
+    marginBottom: 10,
+    borderWidth: 1,
+    borderColor: neutral.border,
+    shadowColor: neutral.slate900,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.06,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  eContractsToggleLabel: {
+    ...appTypography.modalListItem,
+    fontWeight: "700",
+    color: brandPrimary,
+  },
+});
+
+/** Bóng dùng chung cho thẻ hero/chi tiết màn hợp đồng điện tử. */
+const CONTRACT_DETAIL_CARD_SHADOW = {
+  shadowColor: neutral.slate900,
+  shadowOffset: { width: 0, height: 2 },
+  shadowOpacity: 0.08,
+  shadowRadius: 14,
+  elevation: 4,
+} as const;
+
+/** Style màn `UserContractDetailScreen` (cùng feature user/profile). */
+export const userContractDetailStyles = StyleSheet.create({
+  screen: {
+    flex: 1,
+    backgroundColor: neutral.canvasMuted,
+  },
+  scroll: {
+    flex: 1,
+  },
+  scrollContent: {
+    paddingHorizontal: 20,
+    paddingTop: 12,
+    gap: 16,
+  },
+  heroCard: {
+    backgroundColor: neutral.surface,
+    borderRadius: 20,
+    borderCurve: "continuous",
+    padding: 20,
+    ...CONTRACT_DETAIL_CARD_SHADOW,
+  },
+  heroIconWrap: {
+    width: 52,
+    height: 52,
+    borderRadius: 16,
+    borderCurve: "continuous",
+    backgroundColor: brandTintBg,
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: 14,
+  },
+  heroTitle: {
+    fontSize: 19,
+    fontWeight: "700",
+    color: neutral.text,
+    lineHeight: 27,
+    marginBottom: 12,
+  },
+  badgeRow: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 8,
+    marginBottom: 16,
+  },
+  statusPillRow: {
+    alignSelf: "flex-start",
+    marginTop: 2,
+  },
+  statusPill: {
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 999,
+    borderCurve: "continuous",
+    borderWidth: 1.5,
+    shadowColor: neutral.slate900,
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.08,
+    shadowRadius: 3,
+    elevation: 2,
+  },
+  statusPillText: {
+    fontSize: 13,
+    fontWeight: "800",
+    letterSpacing: 0.3,
+  },
+  heroMetaBlock: {
+    gap: 14,
+    paddingTop: 4,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: neutral.borderMuted,
+  },
+  heroMetaRow: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    gap: 10,
+  },
+  heroMetaTextCol: {
+    flex: 1,
+  },
+  heroMetaCaption: {
+    fontSize: 11,
+    fontWeight: "700",
+    letterSpacing: 0.5,
+    color: neutral.textMuted,
+    textTransform: "uppercase",
+    marginBottom: 4,
+  },
+  heroMetaValue: {
+    fontSize: 15,
+    fontWeight: "600",
+    color: neutral.textBody,
+    lineHeight: 22,
+  },
+  heroMetaDisclaimer: {
+    fontSize: 12,
+    fontWeight: "600",
+    color: neutral.textMuted,
+    lineHeight: 17,
+    marginTop: 6,
+  },
+  detailCard: {
+    backgroundColor: neutral.surface,
+    borderRadius: 20,
+    borderCurve: "continuous",
+    padding: 18,
+    ...CONTRACT_DETAIL_CARD_SHADOW,
+  },
+  detailCardHeaderRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+    marginBottom: 8,
+  },
+  detailCardHeaderLabel: {
+    fontSize: 11,
+    fontWeight: "700",
+    letterSpacing: 0.9,
+    color: neutral.textMuted,
+    textTransform: "uppercase",
+    flex: 1,
+  },
+  detailFieldRow: {
+    paddingVertical: 12,
+    borderBottomWidth: StyleSheet.hairlineWidth * 2,
+    borderBottomColor: neutral.borderMuted,
+  },
+  detailFieldRowLast: {
+    borderBottomWidth: 0,
+    paddingBottom: 4,
+  },
+  fieldLabel: {
+    fontSize: 12,
+    fontWeight: "600",
+    color: neutral.textMuted,
+    marginBottom: 4,
+  },
+  fieldValue: {
+    fontSize: 15,
+    fontWeight: "500",
+    color: neutral.text,
+    lineHeight: 22,
+  },
+  pdfBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 10,
+    backgroundColor: brandPrimary,
+    borderRadius: 16,
+    borderCurve: "continuous",
+    paddingVertical: 16,
+    paddingHorizontal: 16,
+    shadowColor: brandPrimary,
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.28,
+    shadowRadius: 8,
+    elevation: 6,
+  },
+  pdfBtnPressed: {
+    opacity: 0.92,
+  },
+  pdfBtnDisabled: {
+    opacity: 0.55,
+  },
+  pdfModalFill: {
+    flex: 1,
+    backgroundColor: neutral.surface,
+  },
+  pdfModalRoot: {
+    flex: 1,
+    backgroundColor: neutral.surface,
+  },
+  pdfModalWebWrap: {
+    flex: 1,
+    minHeight: 0,
+    backgroundColor: neutral.canvasMuted,
+  },
+  pdfModalHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: 8,
+    paddingVertical: 8,
+    minHeight: 48,
+    borderBottomWidth: StyleSheet.hairlineWidth * 2,
+    borderBottomColor: neutral.borderMuted,
+    backgroundColor: neutral.surface,
+  },
+  pdfModalHeaderSide: {
+    width: 44,
+    height: 44,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  pdfModalTitle: {
+    flex: 1,
+    fontSize: 16,
+    fontWeight: "700",
+    color: neutral.text,
+    textAlign: "center",
+  },
+  pdfModalWeb: {
+    flex: 1,
+    backgroundColor: neutral.canvasMuted,
+  },
+  pdfModalLoading: {
+    ...StyleSheet.absoluteFillObject,
+    justifyContent: "center",
+    alignItems: "center",
+    backgroundColor: neutral.canvasMuted,
+  },
+  pdfBtnText: {
+    color: neutral.surface,
+    fontSize: 15,
+    lineHeight: 20,
+    fontWeight: "800",
+  },
+  pdfUnavailableCard: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+    backgroundColor: neutral.surface,
+    borderRadius: 16,
+    borderCurve: "continuous",
+    padding: 16,
+    ...CONTRACT_DETAIL_CARD_SHADOW,
+    shadowOpacity: 0.06,
+    elevation: 2,
+  },
+  pdfHint: {
+    flex: 1,
+    fontSize: 14,
+    fontWeight: "500",
+    color: neutral.textSecondary,
+    lineHeight: 20,
   },
 });
 

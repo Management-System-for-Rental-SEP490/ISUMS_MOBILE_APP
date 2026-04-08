@@ -115,11 +115,18 @@ axiosClient.interceptors.response.use(
       }
     }
 
-    // Primary (api-dev) lỗi mạng / không phản hồi → thử lại với fallback (ngrok)
+    // Primary lỗi mạng / 5xx / timeout → thử fallback. Không retry 4xx (404/403…) để không che giấu URL sai.
     const url = originalRequest?.url ?? "";
+    const status = error.response?.status as number | undefined;
+    const retryable =
+      !error.response ||
+      status === undefined ||
+      status >= 500 ||
+      status === 408;
     if (
       !originalRequest._retriedWithFallback &&
-      url.startsWith(BACKEND_URL_PRIMARY)
+      url.startsWith(BACKEND_URL_PRIMARY) &&
+      retryable
     ) {
       originalRequest._retriedWithFallback = true;
       originalRequest.url = url.replace(BACKEND_URL_PRIMARY, BACKEND_URL_FALLBACK);

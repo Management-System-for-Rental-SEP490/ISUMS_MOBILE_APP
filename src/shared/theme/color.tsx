@@ -145,3 +145,19 @@ export const tenantInvoicePaidBadgeFg = "#15803D";
 
 /** Chữ badge IoT offline (đỏ đậm trên nền nhạt) */
 export const iotOfflineLabelColor = "#991B1B";
+
+/**
+ * Header gradient (Home / default): chữ, glass, ripple — gom token theo 010 (không rải hex trong StyleSheet).
+ * `fg` = chữ/icon trên gradient (trùng `neutral.surface`).
+ */
+export const headerOnBrand = {
+  eyebrow: "rgba(255,255,255,0.76)",
+  fg: neutral.surface,
+  subtle: "rgba(255,255,255,0.88)",
+  bubbleFg: "rgba(255,255,255,0.96)",
+  activityIndicator: "rgba(255,255,255,0.85)",
+  bubbleMildBg: "rgba(255,255,255,0.14)",
+  bubbleMildBorder: "rgba(255,255,255,0.28)",
+  btnGlass: "rgba(255, 255, 255, 0.22)",
+  ripple: "rgba(255,255,255,0.2)",
+} as const;

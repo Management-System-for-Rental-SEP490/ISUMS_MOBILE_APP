@@ -1,7 +1,7 @@
 import type { HouseFromApi, TenantHouseAccessFromApi, TenantHouseAccessStatus } from "../types/api";
 
-/** Chặn dùng app: chưa tới ngày bàn giao, thiếu cọc, hoặc chưa thanh toán tháng đầu. */
-export type TenantAccessBlockKind = "handover" | "deposit" | "payment";
+/** Chặn dùng app theo GET /api/houses/my-access: chỉ khi chưa tới ngày bàn giao hoặc chưa cọc. */
+export type TenantAccessBlockKind = "handover" | "deposit";
 
 /**
  * Map một phần tử my-access sang HouseFromApi (id = houseId, name = houseName).
@@ -37,7 +37,8 @@ export function isHandoverDateReached(handoverDate?: string | null): boolean {
 }
 
 /**
- * Xác định loại chặn cho nhà đang chọn. `null` = được dùng app bình thường.
+ * Loại chặn tính năng đầy đủ theo `accessStatus` từ my-access. `null` = không chặn (kể cả PENDING_FIRST_RENT: vào được, nhắc ở banner).
+ * Không dùng `hasUnpaidInvoice` / danh sách hóa đơn — nợ ISSUE hay tiền tháng chưa trả chỉ hiển thị nhắc thanh toán, không khóa app.
  */
 export function getTenantAccessBlock(
   house: HouseFromApi | null | undefined
@@ -45,17 +46,18 @@ export function getTenantAccessBlock(
   if (!house) return null;
   const st = (house.accessStatus ?? "").trim().toUpperCase();
 
-  // Ưu tiên hiển thị “chưa thanh toán” trước (yêu cầu của app):
-  // - Nếu còn hóa đơn chưa thanh toán => block payment
-  // - Chỉ khi đã thanh toán xong mà vẫn chưa tới ngày bàn giao => block handover
   if (st === "PENDING_DEPOSIT") return "deposit";
-
-  if (st === "PENDING_FIRST_RENT" || house.hasUnpaidInvoice) return "payment";
-
   if (st === "PENDING_HANDOVER") return "handover";
-  if (!isHandoverDateReached(house.handoverDate)) return "handover";
 
   return null;
+}
+
+/** Chưa bàn giao theo API — dùng cho NFC/quét; không phụ thuộc thứ tự ưu tiên banner thanh toán ở trên. */
+export function isTenantHandoverStatusPending(
+  house: HouseFromApi | null | undefined
+): boolean {
+  if (!house) return false;
+  return (house.accessStatus ?? "").trim().toUpperCase() === "PENDING_HANDOVER";
 }
 
 /**

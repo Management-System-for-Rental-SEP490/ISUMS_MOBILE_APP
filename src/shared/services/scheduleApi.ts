@@ -2,7 +2,7 @@
  * API lịch làm việc (schedule) dùng cho tenant hiển thị thời gian dự kiến xử lý.
  */
 import axiosClient from "../api/axiosClient";
-import { BACKEND_API_BASE } from "../api/config";
+import { BACKEND_API_BASE, FALLBACK_BACKEND_URL } from "../api/config";
 import type { WorkSlotByIdApiResponse, WorkSlotsApiResponse } from "../types/api";
 
 /**
@@ -19,6 +19,7 @@ export const getWorkSlotsByStaffId = async (
   }
 
   const url = `${BACKEND_API_BASE}/schedules/work_slots/staff/${encodeURIComponent(id)}`;
+  //const url = `${FALLBACK_BACKEND_URL}/schedules/work_slots/staff/${encodeURIComponent(id)}`;
   const response = await axiosClient.get<WorkSlotsApiResponse>(url);
   return response.data;
 };
@@ -36,6 +37,7 @@ export const getWorkSlotById = async (
   }
 
   const url = `${BACKEND_API_BASE}/schedules/work_slots/${encodeURIComponent(id)}`;
+  //const url = `${FALLBACK_BACKEND_URL}/schedules/work_slots/${encodeURIComponent(id)}`;
   const response = await axiosClient.get<WorkSlotByIdApiResponse>(url);
   return response.data;
 };

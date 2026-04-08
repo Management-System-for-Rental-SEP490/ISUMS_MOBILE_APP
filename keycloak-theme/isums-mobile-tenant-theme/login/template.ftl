@@ -1,9 +1,15 @@
+<#-- Giữ locale khi chuyển trang: LocaleBean dùng currentLanguageTag, không có .language. -->
+<#macro isumsLinkUrl rawUrl><#assign _sep = rawUrl?contains("?")?then("&", "?")/><#assign _lc = (locale.currentLanguageTag)!'vi'/>${rawUrl}${_sep}kc_locale=${_lc?url('UTF-8')}&ui_locales=${_lc?url('UTF-8')}</#macro>
+
+<#-- Giữ locale khi POST (quên MK / đặt lại MK) — không có thì Keycloak dùng locale mặc định realm. -->
+<#macro isumsFormActionUrl rawAction><#assign _sep = rawAction?contains("?")?then("&", "?")/><#assign _lc = (locale.currentLanguageTag)!'vi'/>${rawAction}${_sep}kc_locale=${_lc?url('UTF-8')}&ui_locales=${_lc?url('UTF-8')}</#macro>
+
 <#macro registrationLayout bodyClass="" displayInfo=false displayMessage=true>
 <!DOCTYPE html>
 <html lang="${locale.currentLanguageTag!'en'}">
 <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, maximum-scale=1, interactive-widget=resizes-content" />
     <title>${msg("loginPageTitle")}</title>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />

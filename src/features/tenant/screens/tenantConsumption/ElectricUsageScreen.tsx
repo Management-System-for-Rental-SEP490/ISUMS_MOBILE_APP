@@ -10,13 +10,11 @@ import {
   StyleSheet,
 } from "react-native";
 import { useTranslation } from "react-i18next";
-import { NavigationProp, useNavigation } from "@react-navigation/native";
 import Header from "../../../../shared/components/header";
-import { RootStackParamList } from "../../../../shared/types";
 import Icons from "../../../../shared/theme/icon";
 import { FloorPlanView } from "../../houseStructure";
 import { electricUsageStyles } from "./electricUsageStyles";
-import { useTenantContext, useTenantHouses } from "../../../../shared/hooks";
+import { useTenantContext } from "../../../../shared/hooks";
 import { useTenantIoTConnection, useTenantTelemetry, useTenantUsage } from "../../hooks/useTenantIoT";
 import { brandPrimary, neutral } from "../../../../shared/theme/color";
 import {
@@ -28,33 +26,15 @@ import {
 /** ID khu vực: "all" = tổng cả nhà (dữ liệu thật từ AWS), còn lại = id từ functionalAreas (chưa có dữ liệu). */
 export type AreaId = string;
 
+export type ElectricUsageScreenProps = { showHeader?: boolean };
+
 const MAX_BAR_HEIGHT = 180;
 
-const ElectricUsageScreen = () => {
-  const navigation = useNavigation<NavigationProp<RootStackParamList>>();
+const ElectricUsageScreen = ({ showHeader = true }: ElectricUsageScreenProps) => {
   const { t, i18n } = useTranslation();
   const { width: screenWidth } = useWindowDimensions();
   const { houseId, functionalAreas, thingId, house } = useTenantContext();
-  const { data: tenantHousesData } = useTenantHouses();
-  const tenantHouses = tenantHousesData?.data ?? [];
-
-  const accessBlock = useMemo(() => {
-    if (!house) return null;
-    return getTenantAccessBlock(house);
-  }, [house]);
-
-  const openPaymentScreen = useCallback(() => {
-    const parentNav = navigation.getParent<NavigationProp<RootStackParamList>>();
-    const allPendingIds = tenantHouses
-      .map((h) => String(h.pendingInvoiceId ?? "").trim())
-      .filter((id) => id.length > 0);
-
-    parentNav?.navigate?.("TenantRentPayment", {
-      invoiceId: house?.pendingInvoiceId ?? undefined,
-      invoiceIds: allPendingIds,
-      afterSuccess: "home",
-    });
-  }, [navigation, tenantHouses, house?.pendingInvoiceId]);
+  const accessBlock = useMemo(() => (house ? getTenantAccessBlock(house) : null), [house]);
   const effectiveAreas = Array.isArray(functionalAreas) ? functionalAreas : [];
   const iotConnected = useTenantIoTConnection(thingId);
   const usage = useTenantUsage({ houseId, metric: "electricity" });
@@ -112,9 +92,7 @@ const ElectricUsageScreen = () => {
     const title =
       accessBlock === "handover"
         ? t("home.access.handover_title")
-        : accessBlock === "deposit"
-          ? t("home.access.deposit_title")
-          : t("home.access.payment_title");
+        : t("home.access.deposit_title");
 
     const accessReasonText = translateTenantAccessReason(house?.accessReason, house?.accessStatus, t);
     const body =
@@ -125,26 +103,15 @@ const ElectricUsageScreen = () => {
               ? formatDayMonthNumeric(new Date(house.handoverDate), i18n.language)
               : "—",
           })
-        : accessBlock === "deposit"
-          ? accessReasonText || t("home.access.deposit_body")
-          : accessReasonText || t("home.access.payment_body");
+        : accessReasonText || t("home.access.deposit_body");
 
     return (
       <View style={electricUsageStyles.container}>
-        <Header variant="electric" />
+        {showHeader ? <Header variant="electric" /> : null}
         <View style={gateStyles.gateWrap}>
           <View style={gateStyles.gateBox}>
             <Text style={gateStyles.gateTitle}>{title}</Text>
             <Text style={gateStyles.gateBody}>{body}</Text>
-            {accessBlock === "payment" ? (
-              <TouchableOpacity
-                style={gateStyles.payBtn}
-                onPress={openPaymentScreen}
-                activeOpacity={0.85}
-              >
-                <Text style={gateStyles.payBtnText}>{t("home.access.pay_now")}</Text>
-              </TouchableOpacity>
-            ) : null}
           </View>
         </View>
       </View>
@@ -198,7 +165,7 @@ const ElectricUsageScreen = () => {
 
   return (
     <View style={electricUsageStyles.container}>
-      <Header variant="electric" />
+      {showHeader ? <Header variant="electric" /> : null}
       <ScrollView
         style={electricUsageStyles.content}
         contentContainerStyle={electricUsageStyles.contentContainer}

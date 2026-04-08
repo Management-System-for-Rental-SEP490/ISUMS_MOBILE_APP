@@ -1,4 +1,4 @@
-import React, { useCallback, useMemo, useState } from "react";
+import React, { useCallback, useLayoutEffect, useMemo, useState } from "react";
 import { ActivityIndicator, ScrollView, Text, TouchableOpacity, View } from "react-native";
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { useTranslation } from "react-i18next";
@@ -6,12 +6,26 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import FontAwesome5 from "@expo/vector-icons/FontAwesome5";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import { CustomAlert } from "../../../../shared/components/alert";
-import { RootStackParamList } from "../../../../shared/types";
-import { formatTenantInvoiceAmount, isTenantInvoicePayable } from "../../../../shared/utils/tenantInvoice";
+import { RootStackParamList, TenantInvoiceFromApi } from "../../../../shared/types";
+import {
+  formatTenantInvoiceAmount,
+  formatTenantInvoiceCardTitle,
+  isTenantInvoiceIssueType,
+  isTenantInvoicePayable,
+  isTenantRepairInvoiceFlow,
+} from "../../../../shared/utils/tenantInvoice";
 import { formatTenantIssueDateTime } from "../../../../shared/utils";
+import { formatApiErrorForTenantAlert } from "../../../../shared/utils/apiErrorMessage";
 import Icons from "../../../../shared/theme/icon";
 import { createVnpayPaymentLink } from "../../../../shared/services/tenantPaymentApi";
-import { iotOfflineLabelColor, neutral } from "../../../../shared/theme/color";
+import { brandPrimary, neutral, tenantInvoicePaidBadgeFg } from "../../../../shared/theme/color";
+import { useAuthStore } from "../../../../store/useAuthStore";
+import { useHouseById, useTenantHouses, useTenantInvoices } from "../../../../shared/hooks";
+import {
+  isHouseIdOutsideTenantAccess,
+  shortHouseIdForDisplay,
+  tenantAccessibleHouseIdSet,
+} from "../../../../shared/utils";
 import {
   StackScreenTitleBadge,
   StackScreenTitleHeaderStrip,
@@ -22,16 +36,70 @@ import {
   stackScreenTitleSideSlotStyle,
 } from "../../../../shared/components/StackScreenTitleBadge";
 import { tenantInvoiceStyles as styles } from "./tenantInvoiceStyles";
+import { InvoicePaymentFlowSection } from "./InvoicePaymentFlowSection";
 
 type Props = NativeStackScreenProps<RootStackParamList, "TenantInvoiceDetail">;
 
 type FeeLine = { key: string; label: string; amount: number };
 
+const EMPTY_TENANT_INVOICES: TenantInvoiceFromApi[] = [];
+
 export default function TenantInvoiceDetailScreen({ navigation, route }: Props) {
   const { t, i18n } = useTranslation();
   const insets = useSafeAreaInsets();
   const { invoice } = route.params;
+
+  useLayoutEffect(() => {
+    if (isTenantRepairInvoiceFlow(invoice) && !isTenantInvoiceIssueType(invoice)) {
+      navigation.replace("TenantIssueInvoice", { invoice });
+    }
+  }, [invoice, navigation]);
+  const { houseId: selectedHouseIdFromStore } = useAuthStore();
+  const { data: invoiceQueryData } = useTenantInvoices();
+  const { data: housesData } = useTenantHouses();
+  const rawInvoiceData = invoiceQueryData ?? EMPTY_TENANT_INVOICES;
   const [creatingLink, setCreatingLink] = useState(false);
+
+  const tenantHouseRows = useMemo(() => {
+    const raw = housesData?.data;
+    return Array.isArray(raw) ? raw : raw && typeof raw === "object" ? [raw] : [];
+  }, [housesData?.data]);
+
+  const accessHouseIds = useMemo(() => tenantAccessibleHouseIdSet(tenantHouseRows), [tenantHouseRows]);
+
+  const invoiceHouseId = useMemo(() => String(invoice.houseId ?? "").trim(), [invoice.houseId]);
+
+  const invoiceHouseOutsideAccess = useMemo(
+    () => Boolean(invoiceHouseId && isHouseIdOutsideTenantAccess(invoiceHouseId, accessHouseIds)),
+    [invoiceHouseId, accessHouseIds]
+  );
+
+  const lacksInvoiceHouseName = !String(invoice.houseName ?? "").trim();
+  const hasNameFromMyAccess = useMemo(() => {
+    if (!invoiceHouseId) return false;
+    const found = tenantHouseRows.find((h) => String(h.id ?? "").trim() === invoiceHouseId);
+    return Boolean(found?.name?.trim());
+  }, [invoiceHouseId, tenantHouseRows]);
+
+  const { data: invoiceHouseByIdRes } = useHouseById(
+    invoiceHouseId,
+    Boolean(invoiceHouseId && lacksInvoiceHouseName && !hasNameFromMyAccess)
+  );
+
+  const invoiceHouseLabel = useMemo(() => {
+    if (!invoiceHouseId) return "";
+    const fromInv = String(invoice.houseName ?? "").trim();
+    if (fromInv) return fromInv;
+    const found = tenantHouseRows.find((h) => String(h.id ?? "").trim() === invoiceHouseId);
+    const n = found?.name?.trim();
+    if (n) return n;
+    const fromHouseById =
+      invoiceHouseByIdRes?.success && invoiceHouseByIdRes.data
+        ? String(invoiceHouseByIdRes.data.name ?? "").trim()
+        : "";
+    if (fromHouseById) return fromHouseById;
+    return shortHouseIdForDisplay(invoiceHouseId);
+  }, [invoice.houseName, invoiceHouseId, tenantHouseRows, invoiceHouseByIdRes]);
 
   const locale = useMemo(() => {
     const lang = String(i18n.language || "").toLowerCase();
@@ -47,17 +115,25 @@ export default function TenantInvoiceDetailScreen({ navigation, route }: Props) 
     return formatTenantIssueDateTime(String(iso), locale);
   };
 
-  const getInvoiceSubtitle = (inv: typeof invoice) => {
-    const title = String(inv.title ?? "").trim();
-    const id = String(inv.id ?? "").trim();
-    if (title && title !== id) return title;
-    const type = String(inv.type ?? "").trim();
-    const period = String(inv.periodKey ?? "").trim();
-    const fromParts = [type, period].filter((x) => x.length > 0).join(" - ");
-    return fromParts || id || t("tenant_invoice.invoice_placeholder_title");
-  };
+  const detailHeroTitle = useMemo(() => formatTenantInvoiceCardTitle(invoice, t), [invoice, t]);
 
   const payable = isTenantInvoicePayable(invoice.status);
+  const normalizedSelectedHouseId = useMemo(
+    () => String(selectedHouseIdFromStore ?? "").trim(),
+    [selectedHouseIdFromStore]
+  );
+  const mandatorySelectedHouseInvoiceIds = useMemo(() => {
+    if (!normalizedSelectedHouseId) return [] as string[];
+    return rawInvoiceData
+      .filter(
+        (inv) =>
+          isTenantInvoicePayable(inv.status) &&
+          !isTenantRepairInvoiceFlow(inv) &&
+          String(inv.houseId ?? "").trim() === normalizedSelectedHouseId
+      )
+      .map((inv) => String(inv.id ?? "").trim())
+      .filter((id) => id.length > 0);
+  }, [rawInvoiceData, normalizedSelectedHouseId]);
 
   const statusLabel = () => {
     const key = `tenant_invoice.status_${String(invoice.status || "").toUpperCase()}`;
@@ -67,12 +143,19 @@ export default function TenantInvoiceDetailScreen({ navigation, route }: Props) 
   };
 
   const feeLines = useMemo((): FeeLine[] => {
+    const isIssueTicketInvoice = isTenantInvoiceIssueType(invoice);
     const total = Number(invoice.amount ?? 0);
     const base = Number(invoice.baseAmount ?? 0);
     const penalty = Number(invoice.penaltyAmount ?? 0);
     const lines: FeeLine[] = [];
     if (base > 0.01) {
-      lines.push({ key: "base", label: t("tenant_invoice.line_apartment_rent"), amount: base });
+      lines.push({
+        key: "base",
+        label: isIssueTicketInvoice
+          ? t("tenant_invoice.line_issue_repair_main")
+          : t("tenant_invoice.line_apartment_rent"),
+        amount: base,
+      });
     }
     if (penalty > 0.01) {
       lines.push({ key: "penalty", label: t("tenant_invoice.field_penalty_amount"), amount: penalty });
@@ -82,44 +165,66 @@ export default function TenantInvoiceDetailScreen({ navigation, route }: Props) 
       const hasSplit = base > 0.01 || penalty > 0.01;
       lines.push({
         key: "service",
-        label: hasSplit ? t("tenant_invoice.line_management_fee") : t("tenant_invoice.field_total_amount"),
+        label: hasSplit
+          ? isIssueTicketInvoice
+            ? t("tenant_invoice.line_issue_repair_other")
+            : t("tenant_invoice.line_management_fee")
+          : t("tenant_invoice.field_total_amount"),
         amount: other,
       });
     }
     if (lines.length === 0 && total > 0) {
-      lines.push({ key: "total_only", label: t("tenant_invoice.field_total_amount"), amount: total });
+      lines.push({
+        key: "total_only",
+        label: isIssueTicketInvoice
+          ? t("tenant_invoice.type_ISSUE")
+          : t("tenant_invoice.field_total_amount"),
+        amount: total,
+      });
     }
     return lines;
-  }, [invoice.amount, invoice.baseAmount, invoice.penaltyAmount, t]);
+  }, [invoice, t]);
 
   const openPay = useCallback(async () => {
     if (creatingLink) return;
+    const invId = String(invoice.id ?? "").trim();
+    if (!invId) return;
+    /** Hóa đơn sửa chữa: chỉ một id; tiền nhà/cọc cùng căn có thể gộp với các hóa đơn bắt buộc khác. */
+    const selectedIds = isTenantRepairInvoiceFlow(invoice)
+      ? [invId]
+      : Array.from(new Set([invId, ...mandatorySelectedHouseInvoiceIds].filter(Boolean)));
+    if (selectedIds.length === 0) return;
     setCreatingLink(true);
     try {
-      const checkoutUrl = await createVnpayPaymentLink([invoice.id], {
-        appLanguage: i18n.language,
-      });
-      navigation.navigate("TenantRentPayment", {
-        invoiceId: invoice.id,
-        invoiceIds: [invoice.id],
+      const checkoutUrl = await createVnpayPaymentLink(
+        { invoiceIds: selectedIds },
+        { appLanguage: i18n.language }
+      );
+      navigation.navigate("VnpayCheckout", {
         checkoutUrl,
         afterSuccess: "invoiceList",
+        ...(isTenantRepairInvoiceFlow(invoice)
+          ? { vnpayUiContext: "repair_fee_invoice" as const }
+          : { vnpayUiContext: "house_invoice" as const }),
       });
     } catch (e: unknown) {
-      const ax = e as { response?: { data?: { message?: string } }; message?: string };
-      const apiMsg = ax?.response?.data?.message;
-      const msg =
-        (typeof apiMsg === "string" && apiMsg.trim()) ||
-        (typeof ax?.message === "string" ? ax.message : null) ||
-        t("tenant_payment.link_error");
+      const msg = formatApiErrorForTenantAlert(e, t, "payment_link");
       CustomAlert.alert(t("tenant_payment.title"), msg, [{ text: t("common.close") }], { type: "error" });
     } finally {
       setCreatingLink(false);
     }
-  }, [creatingLink, invoice.id, i18n.language, navigation, t]);
+  }, [creatingLink, invoice, mandatorySelectedHouseInvoiceIds, i18n.language, navigation, t]);
 
-  const statusUpper = String(invoice.status || "").toUpperCase();
   const isPaidVisual = !payable;
+  const hasPaidSuccessAt = Boolean(invoice.paidAt && String(invoice.paidAt).trim());
+
+  if (isTenantRepairInvoiceFlow(invoice) && !isTenantInvoiceIssueType(invoice)) {
+    return (
+      <View style={[styles.container, { justifyContent: "center", flex: 1 }]}>
+        <ActivityIndicator size="large" color={brandPrimary} />
+      </View>
+    );
+  }
 
   return (
     <View style={styles.container}>
@@ -158,53 +263,99 @@ export default function TenantInvoiceDetailScreen({ navigation, route }: Props) 
         ]}
         showsVerticalScrollIndicator={false}
       >
-        <View style={styles.detailSummaryBlock}>
-          <View
-            style={[
-              styles.detailStatusPill,
-              isPaidVisual ? styles.detailStatusPaidBg : styles.detailStatusUnpaidBg,
-            ]}
-          >
-            <Text
+        <View style={styles.detailSummaryCard}>
+          <View style={styles.detailSummaryBlock}>
+            <View
               style={[
-                styles.detailStatusPillText,
-                isPaidVisual ? styles.detailStatusPaidText : styles.detailStatusUnpaidText,
+                styles.detailStatusPill,
+                isPaidVisual ? styles.detailStatusPaidBg : styles.detailStatusUnpaidBg,
               ]}
             >
-              {statusLabel()}
+              <Text
+                style={[
+                  styles.detailStatusPillText,
+                  isPaidVisual ? styles.detailStatusPaidText : styles.detailStatusUnpaidText,
+                ]}
+              >
+                {statusLabel()}
+              </Text>
+            </View>
+            <Text style={styles.detailInvoiceCode}>{detailHeroTitle}</Text>
+            <Text style={styles.detailTotalHero}>
+              {formatTenantInvoiceAmount(invoice.amount, invoice.currency, locale)}
             </Text>
           </View>
-          <Text style={styles.detailInvoiceCode}>{getInvoiceSubtitle(invoice)}</Text>
-          <Text style={styles.detailTotalHero}>
-            {formatTenantInvoiceAmount(invoice.amount, invoice.currency, locale)}
-          </Text>
         </View>
 
+        {invoiceHouseId ? (
+          <View style={styles.detailNoticeCard}>
+            <Text style={styles.detailTimelineLabel}>{t("tenant_invoice.field_house")}</Text>
+            <Text style={styles.detailTimelineValue}>{invoiceHouseLabel}</Text>
+            {invoiceHouseOutsideAccess ? (
+              <Text style={[styles.accessMismatchNotice, { marginTop: 8 }]}>
+                {t("tenant_access.house_not_owned_disclaimer")}
+              </Text>
+            ) : null}
+          </View>
+        ) : null}
+
         <View style={styles.detailTimelineCard}>
+          <Text style={styles.detailTimelineProcessTitle}>
+            {t("tenant_invoice.detail_timeline_process_title")}
+          </Text>
           <View style={styles.detailTimelineRow}>
             <View style={styles.detailTimelineRail}>
               <View style={styles.detailTimelineIconBoxIssue}>
                 <Icons.calendar size={22} color={neutral.slate700} />
               </View>
               <View style={styles.detailTimelineVLine} />
-              <View style={styles.detailTimelineIconBoxDue}>
-                <MaterialIcons name="event-busy" size={22} color={iotOfflineLabelColor} />
+              <View
+                style={
+                  hasPaidSuccessAt
+                    ? styles.detailTimelineIconBoxPaidSuccess
+                    : styles.detailTimelineIconBoxPaidPending
+                }
+              >
+                <MaterialIcons
+                  name={hasPaidSuccessAt ? "check-circle" : "schedule"}
+                  size={24}
+                  color={hasPaidSuccessAt ? tenantInvoicePaidBadgeFg : neutral.textMuted}
+                />
               </View>
             </View>
             <View style={styles.detailTimelineBody}>
               <View style={styles.detailTimelineBlock}>
-                <Text style={styles.detailTimelineLabel}>{t("tenant_invoice.detail_issued_label")}</Text>
+                <Text style={styles.detailTimelineLabel}>{t("tenant_invoice.detail_created_at_label")}</Text>
                 <Text style={styles.detailTimelineValue}>
-                  {invoice.issuedAt ? formatInvoiceDate(invoice.issuedAt) : "—"}
+                  {invoice.createdAt
+                    ? formatInvoiceDate(invoice.createdAt)
+                    : invoice.issuedAt
+                      ? formatInvoiceDate(invoice.issuedAt)
+                      : "—"}
                 </Text>
               </View>
               <View style={styles.detailTimelineBlock}>
-                <Text style={styles.detailTimelineLabel}>{t("tenant_invoice.field_due")}</Text>
-                <Text style={styles.detailTimelineValue}>
-                  {invoice.dueDate ? formatInvoiceDate(invoice.dueDate) : "—"}
+                <Text style={styles.detailTimelineLabel}>
+                  {t("tenant_invoice.detail_payment_success_at_label")}
+                </Text>
+                <Text
+                  style={[
+                    styles.detailTimelineValue,
+                    !hasPaidSuccessAt && { fontWeight: "600", color: neutral.textMuted },
+                  ]}
+                >
+                  {hasPaidSuccessAt
+                    ? formatInvoiceDate(invoice.paidAt)
+                    : t("tenant_invoice.detail_payment_success_pending")}
                 </Text>
               </View>
             </View>
+          </View>
+          <View style={styles.detailTimelineDueSection}>
+            <Text style={styles.detailTimelineLabel}>{t("tenant_invoice.field_due")}</Text>
+            <Text style={styles.detailTimelineValue}>
+              {invoice.dueDate ? formatInvoiceDate(invoice.dueDate) : "—"}
+            </Text>
           </View>
         </View>
 
@@ -229,15 +380,12 @@ export default function TenantInvoiceDetailScreen({ navigation, route }: Props) 
           </View>
         ) : null}
 
-        {String(statusUpper) === "PAID" && invoice.paidAt ? (
-          <View style={[styles.detailTimelineCard, { marginTop: 4 }]}>
-            <Text style={styles.detailTimelineLabel}>{t("tenant_invoice.field_paid")}</Text>
-            <Text style={styles.detailTimelineValue}>{formatInvoiceDate(invoice.paidAt)}</Text>
-          </View>
-        ) : null}
+        <InvoicePaymentFlowSection invoiceId={invoice.id} />
 
         {!payable ? (
-          <Text style={[styles.meta, { textAlign: "center", marginTop: 20 }]}>{t("tenant_invoice.paid_no_action")}</Text>
+          <View style={styles.detailNoticeCard}>
+            <Text style={[styles.meta, { textAlign: "center" }]}>{t("tenant_invoice.paid_no_action")}</Text>
+          </View>
         ) : null}
       </ScrollView>
 

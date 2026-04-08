@@ -57,7 +57,9 @@ const useAuthStore = create<AuthState>()(
           token: data.token,
           idToken: data.idToken ?? null,
           refreshToken: data.refreshToken ?? null,
-          houseId: data.houseId ?? null,
+          // Sau login, tenant luôn đồng bộ nhà mặc định từ API /users/me (mainHouseId)
+          // qua ensureTenantMainHouseSynced() ở navigation.
+          houseId: data.role === "tenant" ? null : data.houseId ?? null,
           isLoggedIn: true,
           // Giữ nguyên onboardedUsers
           onboardedUsers: state.onboardedUsers, 

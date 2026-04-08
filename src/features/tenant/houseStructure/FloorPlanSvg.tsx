@@ -4,7 +4,7 @@
  */
 import React, { useMemo } from "react";
 import { View, useWindowDimensions, Pressable, StyleSheet, Image } from "react-native";
-import Svg, { G, Rect, Text as SvgText } from "react-native-svg";
+import Svg, { G, Text as SvgText } from "react-native-svg";
 import type { FunctionalAreaFromApi } from "../../../shared/types/api";
 import { brandPrimary } from "../../../shared/theme/color";
 import { mapLabelForFunctionalArea } from "../../../shared/utils";
@@ -19,6 +19,8 @@ interface FloorPlanSvgProps {
   onSelectArea: (areaId: string) => void;
   /** Màu accent khi highlight. */
   accentColor?: string;
+  /** Thu nhỏ trong thẻ dashboard. */
+  compact?: boolean;
 }
 
 type AreaLayout = { area: FunctionalAreaFromApi; rect: { x: number; y: number; w: number; h: number } };
@@ -39,9 +41,12 @@ const FloorPlanSvg: React.FC<FloorPlanSvgProps> = ({
   selectedAreaId,
   onSelectArea,
   accentColor = brandPrimary,
+  compact = false,
 }) => {
   const { width: screenWidth } = useWindowDimensions();
-  const planWidth = Math.min(screenWidth - 24, 440);
+  const hPad = compact ? 56 : 24;
+  const maxW = compact ? 280 : 440;
+  const planWidth = Math.min(screenWidth - hPad, maxW);
   const planHeight = planWidth / FLOOR_PLAN_IMAGE_ASPECT;
   const layout = useMemo(() => getAreaLayouts(areas), [areas]);
 
@@ -63,22 +68,8 @@ const FloorPlanSvg: React.FC<FloorPlanSvgProps> = ({
             const areaLabel = mapLabelForFunctionalArea(area.name);
             const centerX = rect.x + rect.w / 2;
             const centerY = rect.y + rect.h / 2;
-            const frameWidth = Math.max(20, Math.min(Math.max(rect.w * 0.9, areaLabel.length * 2.2), 42));
-            const frameHeight = isSelected ? 33 : 33; // chỉnh độ cao của frame theo selected
             return (
               <G key={area.id}>
-                <Rect
-                  x={centerX - frameWidth / 2}
-                  y={centerY - frameHeight / 2}
-                  width={frameWidth}
-                  height={frameHeight}
-                  rx={1.2}
-                  ry={1.2}
-                  fill={isSelected ? "#ffffff" : "#f8fafc"}
-                  fillOpacity={isSelected ? 0.98 : 0.9}
-                  stroke={isSelected ? accentColor : "#0f172a"}
-                  strokeWidth={isSelected ? 0.9 : 0.7}
-                />
                 <SvgText
                   x={centerX}
                   y={centerY}
@@ -124,11 +115,13 @@ const FloorPlanSvg: React.FC<FloorPlanSvgProps> = ({
 };
 
 const styles = StyleSheet.create({
-  container: { alignItems: "center", paddingVertical: 6 },
+  container: { alignItems: "center", paddingVertical: 4 },
   planWrapper: {
     position: "relative",
-    borderRadius: 12,
+    borderRadius: 16,
     overflow: "hidden",
+    borderWidth: 1,
+    borderColor: "rgba(0,0,0,0.06)",
   },
   backgroundImage: {
     ...StyleSheet.absoluteFillObject,

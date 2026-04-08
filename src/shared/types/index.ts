@@ -1,10 +1,12 @@
-import { BottomTabScreenProps } from "@react-navigation/bottom-tabs";
+import type { NativeStackScreenProps } from "@react-navigation/native-stack";
+import type { ColorValue } from "react-native";
 import type {
   AssetCategoryFromApi,
   AssetItemFromApi,
   FunctionalAreaFromApi,
   IssueTicketResponseFromApi,
   TenantContractDocumentFromApi,
+  TenantEContractFromApi,
   TenantHouseAccessStatus,
   TenantHouseMemberRole,
   TenantInvoiceFromApi,
@@ -15,18 +17,6 @@ export type AuthStackParamList = {
   AuthLogin: undefined;
 };
 
-export type MainTabParamList = {
-  Dashboard: undefined;
-  ElectricUsage: undefined;
-  WaterUsage: undefined;
-  Billing: undefined;
-  tenants: undefined;
-  Profile: undefined;
-  Calendar: undefined;
-  Notification: undefined;
-  /** Tab danh sách ticket dành cho Staff (thay vì Billing) */
-  Ticket: undefined;
-};
 export type HeaderVariant = "default" | "electric" | "water"; // định nghĩa các loại variant của header
 export type RootStackParamList = AuthStackParamList & {
   Main: undefined;
@@ -47,7 +37,7 @@ export type RootStackParamList = AuthStackParamList & {
   /** Danh sách phản hồi cho ticket hỏi đáp (GET /issues/responses + lọc theo ticket QUESTION). */
   TenantQuestionList: undefined;
   /** Chi tiết một phản hồi (đủ trường từ API). */
-  TenantQuestionDetail: { response: IssueTicketResponseFromApi };
+  TenantQuestionDetail: { response: IssueTicketResponseFromApi; zoneLabel?: string };
   /** Chi tiết nhà (tenant): mô tả căn nhà, khu vực chức năng. */
   BuildingDetail: {
     buildingId: string;
@@ -74,30 +64,43 @@ export type RootStackParamList = AuthStackParamList & {
     accessReason?: string | null;
     memberRole?: TenantHouseMemberRole;
   };
-  /** Danh sách hóa đơn của tenant (chờ API). */
-  TenantInvoiceList: undefined;
+  /**
+   * Danh sách hóa đơn — chọn nhiều hóa đơn & thanh toán VNPay.
+   * `issueTicketId`: gợi ý ngữ cảnh khi vào từ ticket sửa chữa.
+   */
+  TenantInvoiceList: undefined | { issueTicketId?: string | null };
   /** Chi tiết một hóa đơn + thanh toán đơn. */
   TenantInvoiceDetail: { invoice: TenantInvoiceFromApi };
+  /** Hóa đơn sửa chữa / ticket: tổng quan + lịch sử lượt thanh toán. */
+  TenantIssueInvoice: { invoice: TenantInvoiceFromApi };
   /**
-   * Thanh toán tiền thuê (VNPay): một `invoiceId` hoặc nhiều `invoiceIds`.
-   * Template URL có thể dùng {{invoiceId}} — khi nhiều id, tạm dùng phần tử đầu cho placeholder.
+   * WebView VNPay — `checkoutUrl` từ POST tạo link (tiền nhà: `invoiceIds`, sửa chữa: `quoteId`).
+   * Sau redirect, app hiển thị màn kết quả trong app rồi `afterSuccess` thoát (không tải HTML `vnp_ReturnUrl`).
    */
-  TenantRentPayment: {
-    invoiceId?: string | null;
-    invoiceIds?: string[];
-    /** Khi đã tạo xong link ở màn trước thì mở thẳng WebView VNPay. */
-    checkoutUrl?: string;
+  VnpayCheckout: {
+    checkoutUrl: string;
+    afterSuccess?: "invoiceList" | "home" | "ticketDetail";
+    /** Khi `afterSuccess` = `ticketDetail` — dùng để reset stack về đúng ticket. */
+    ticketForAfterSuccess?: TenantTicketFromApi;
     /**
-     * Sau VNPay thành công: `invoiceList` = về danh sách hóa đơn (mặc định);
-     * `home` = về tab Home (thanh toán mở khóa truy cập nhà từ Home / điện / nước / thông báo / chi tiết nhà).
+     * Tuỳ chọn — chỉnh copy màn xác nhận/kết quả (tiền nhà dùng `house_invoice`).
+     * `repair_quote`: thanh toán báo giá ticket; `repair_fee_invoice`: hóa đơn phí sửa chữa.
      */
-    afterSuccess?: "invoiceList" | "home";
+    vnpayUiContext?: "house_invoice" | "repair_quote" | "repair_fee_invoice";
   };
+  /** Trang tiêu thụ (gộp điện + nước) với switch toggle. */
+  ConsumptionScreen: { initialTab?: "electric" | "water" } | undefined;
+  /** Thông báo (chuyển từ tab sang stack screen). */
+  NotificationScreen: undefined;
+  /** Hồ sơ cá nhân (chuyển từ tab sang stack screen). */
+  ProfileScreen: undefined;
+  /** Chi tiết hợp đồng điện tử (dữ liệu từ GET /api/econtracts/my). */
+  UserContractDetail: { contract: TenantEContractFromApi };
 };
 
 export type IconProps = {
   size?: number;
-  color?: string;
+  color?: ColorValue;
 };
 export type LogoProps = {
   width?: number;
@@ -118,10 +121,10 @@ export type AuthPayload = {
   houseId?: string;
 };
 
-/** Phiên WebView Keycloak toàn cục (logout / đổi MK / account), giống overlay đăng nhập. */
+/** Phiên WebView Keycloak toàn cục (đổi MK / sau này logout-account), giống overlay đăng nhập. */
 export type KeycloakInAppSession = {
   url: string;
-  allowManualClose: boolean;
+  flow: "change_password";
 };
 
 export type AuthState = {
@@ -221,6 +224,8 @@ export type {
   TenantHouseMemberRole,
   TenantInvoiceFromApi,
   TenantInvoicePaymentStatus,
+  InvoicePaymentAttemptFromApi,
+  TenantEContractFromApi,
   VnpayPaymentCreateRequest,
   VnpayPaymentLinkApiResponse,
   VnpayReturnValidationApiResponse,
@@ -229,7 +234,7 @@ export type {
 export type { TelemetryMessage, UsageData } from "./iot";
 
 export type ScanMode = "qr" | "nfc";
-export type HomeScreenProps = BottomTabScreenProps<MainTabParamList, "Dashboard">; // HomeScreenProps là một type alias cho BottomTabScreenProps<MainTabParamList, "Dashboard">.
+export type HomeScreenProps = NativeStackScreenProps<RootStackParamList, "Main">;
 
 // Alert Types
 export type AlertType = 'success' | 'error' | 'warning' | 'info';

@@ -2,6 +2,7 @@
 // Ví dụ: import { useUserProfile, useHouses } from "../../shared/hooks";
 
 export * from "./useUserProfile";
+export * from "./useMyEContracts";
 export * from "./useHouses";
 export * from "./useTenantContext";
 export * from "./useAssetCategories";
