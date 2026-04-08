@@ -38,12 +38,12 @@ export type HomeHeaderWelcome = {
   helloLine: string;
 };
 
-/** Dải số hóa đơn cần thanh toán dưới lời chào (Home); chuỗi i18n set ở HomeScreen. */
+/** Dải nhắc hóa đơn dưới lời chào (Home): một dòng, số nằm trong câu (đậm hơn). */
 export type HomeHeaderInvoiceStrip =
   | { kind: "hidden" }
   | { kind: "loading" }
-  | { kind: "all_paid"; caption: string }
-  | { kind: "payable"; caption: string; urgent: boolean };
+  | { kind: "all_paid" }
+  | { kind: "payable"; count: number; urgent: boolean };
 
 type HeaderProps = {
   variant?: HeaderVariant;
@@ -151,43 +151,46 @@ const Header = ({
                     <ActivityIndicator color={headerOnBrand.activityIndicator} size="small" />
                   </View>
                 ) : homeInvoiceStrip?.kind === "all_paid" ? (
-                  <Text style={headerStyles.homeInvoiceStripAllPaid} numberOfLines={2}>
-                    {homeInvoiceStrip.caption}
+                  <Text style={headerStyles.homeInvoiceStripAllPaidLine} numberOfLines={2}>
+                    {t("home.header_invoice_all_paid")}
                   </Text>
                 ) : homeInvoiceStrip?.kind === "payable" ? (
                   <View style={headerStyles.homeInvoiceStripPayableWrap}>
-                    {onHomeInvoicePress ? (
-                      <Pressable
-                        onPress={onHomeInvoicePress}
-                        accessibilityRole="link"
-                        accessibilityLabel={homeInvoiceStrip.caption}
-                        android_ripple={{ color: headerOnBrand.ripple }}
-                        hitSlop={{ top: 6, bottom: 6, left: 4, right: 8 }}
-                      >
-                        <Text
-                          style={[
-                            homeInvoiceStrip.urgent
-                              ? headerStyles.homeInvoiceStripPayableUrgent
-                              : headerStyles.homeInvoiceStripPayableMild,
-                            headerStyles.homeInvoiceStripPayableUnderline,
-                          ]}
-                          numberOfLines={3}
-                        >
-                          {homeInvoiceStrip.caption}
+                    {(() => {
+                      const prefix = t("home.header_invoice_payable_line_prefix");
+                      const suffix = t("home.header_invoice_payable_line_suffix");
+                      const n = homeInvoiceStrip.count;
+                      const a11y = `${prefix}${n}${suffix}`;
+                      const lineStyle = [
+                        headerStyles.homeInvoiceStripPayableLine,
+                        homeInvoiceStrip.urgent && headerStyles.homeInvoiceStripPayableLineUrgent,
+                        onHomeInvoicePress && headerStyles.homeInvoiceStripPayableUnderline,
+                      ];
+                      const countStyle = [
+                        headerStyles.homeInvoiceStripPayableLineCount,
+                        homeInvoiceStrip.urgent && headerStyles.homeInvoiceStripPayableLineCountUrgent,
+                      ];
+                      const line = (
+                        <Text style={lineStyle} numberOfLines={3}>
+                          {prefix}
+                          <Text style={countStyle}>{n}</Text>
+                          {suffix}
                         </Text>
-                      </Pressable>
-                    ) : (
-                      <Text
-                        style={
-                          homeInvoiceStrip.urgent
-                            ? headerStyles.homeInvoiceStripPayableUrgent
-                            : headerStyles.homeInvoiceStripPayableMild
-                        }
-                        numberOfLines={3}
-                      >
-                        {homeInvoiceStrip.caption}
-                      </Text>
-                    )}
+                      );
+                      return onHomeInvoicePress ? (
+                        <Pressable
+                          onPress={onHomeInvoicePress}
+                          accessibilityRole="link"
+                          accessibilityLabel={a11y}
+                          android_ripple={{ color: headerOnBrand.ripple }}
+                          hitSlop={{ top: 6, bottom: 6, left: 4, right: 8 }}
+                        >
+                          {line}
+                        </Pressable>
+                      ) : (
+                        line
+                      );
+                    })()}
                   </View>
                 ) : null}
               </View>

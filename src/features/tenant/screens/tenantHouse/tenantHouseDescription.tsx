@@ -44,6 +44,7 @@ import { DEFAULT_BE_SHORT_TEXT_MAX_CHARS, formatHouseStatusForDisplay } from "..
 import {
   TENANT_INVOICES_QUERY_KEY,
   useTenantHouses,
+  useTenantInvoices,
   useUpdateMainHouseMutation,
   useUserProfile,
   useAssetItems,
@@ -65,6 +66,7 @@ import {
   mergeFunctionalAreasForHouse,
   parentScrollOffsetForDropdownField,
 } from "../../../../shared/utils";
+import { tenantHouseHasUnpaidRentExcludingIssue } from "../../../../shared/utils/tenantInvoice";
 
 type TenantHouseRouteProp = RouteProp<RootStackParamList, "BuildingDetail">;
 type TenantHouseNavProp = NativeStackNavigationProp<RootStackParamList, "BuildingDetail">;
@@ -113,12 +115,30 @@ const TenantHouseDescription = () => {
     status,
     functionalAreas: routeFunctionalAreas,
     contractDocuments,
-    hasUnpaidInvoice,
     pendingInvoiceId,
+    accessStatus: routeAccessStatus,
   } = route.params;
 
   const { data: housesData, refetch: refetchHouses } = useTenantHouses();
   const tenantHouses: HouseFromApi[] = housesData?.data ?? [];
+  const { data: invoiceListRaw, isLoading: invoicesLoading, isFetched } = useTenantInvoices(true);
+  const invoiceListForBanner = invoiceListRaw ?? [];
+  const buildingIdStr = String(buildingId ?? "").trim();
+  const showPaymentBanner = useMemo(() => {
+    if (!buildingIdStr) return false;
+    const st = String(routeAccessStatus ?? "").trim().toUpperCase();
+    if (st === "PENDING_FIRST_RENT") return true;
+    if (isFetched && !invoicesLoading) {
+      return tenantHouseHasUnpaidRentExcludingIssue(invoiceListForBanner, buildingIdStr);
+    }
+    return false;
+  }, [
+    buildingIdStr,
+    routeAccessStatus,
+    isFetched,
+    invoicesLoading,
+    invoiceListForBanner,
+  ]);
   const { data: userProfile, isPending: profilePending } = useUserProfile();
   const profileMainHouseId = String(userProfile?.mainHouseId ?? "").trim();
   const hasPersistedMainHouse = useMemo(
@@ -747,7 +767,7 @@ const TenantHouseDescription = () => {
           </View>
         </View>
 
-        {hasUnpaidInvoice ? (
+        {showPaymentBanner ? (
           <View style={tenantHouseStyles.paymentBanner}>
             <Text style={tenantHouseStyles.paymentBannerText}>
               {t("home.house_detail.unpaid_invoice_banner")}

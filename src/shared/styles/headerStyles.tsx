@@ -136,13 +136,35 @@ const headerStyles = StyleSheet.create({
     marginTop: 8,
     alignSelf: "flex-start",
   },
-  homeInvoiceStripAllPaid: {
+  /** Một dòng: không còn hóa đơn cần trả. */
+  homeInvoiceStripAllPaidLine: {
     marginTop: 8,
+    alignSelf: "flex-start",
+    maxWidth: "100%",
     fontSize: 13,
     fontWeight: "600",
     color: headerOnBrand.subtle,
     lineHeight: 18,
     letterSpacing: -0.1,
+  },
+  /** Một dòng cảnh báo có số (đậm) trong câu. */
+  homeInvoiceStripPayableLine: {
+    fontSize: 13,
+    fontWeight: "600",
+    letterSpacing: -0.1,
+    lineHeight: 20,
+    color: "#FDE047",
+  },
+  homeInvoiceStripPayableLineUrgent: {
+    color: "#FECACA",
+  },
+  homeInvoiceStripPayableLineCount: {
+    fontSize: 15,
+    fontWeight: "800",
+    letterSpacing: -0.2,
+  },
+  homeInvoiceStripPayableLineCountUrgent: {
+    fontWeight: "900",
   },
   homeInvoiceStripRow: {
     marginTop: 8,

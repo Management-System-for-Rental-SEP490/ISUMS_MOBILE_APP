@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
+import { useFocusEffect } from "@react-navigation/native";
 import {
   ActivityIndicator,
   Image,
@@ -8,8 +9,7 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
-import { RouteProp, useNavigation, useRoute } from "@react-navigation/native";
-import { NativeStackNavigationProp } from "@react-navigation/native-stack";
+import { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useTranslation } from "react-i18next";
 import { RootStackParamList } from "../../../../shared/types";
@@ -23,11 +23,16 @@ import {
   getTenantTicketImages,
   type TenantTicketImageFromApi,
 } from "../../../../shared/services/issuesApi";
+import { useTenantInvoices } from "../../../../shared/hooks";
+import { isTenantInvoicePayable, isTenantTicketIssueInvoice } from "../../../../shared/utils/tenantInvoice";
+import { InvoicePaymentFlowSection } from "../tenantInvoice/InvoicePaymentFlowSection";
+import { createVnpayPaymentLink } from "../../../../shared/services/tenantPaymentApi";
 import { getWorkSlotById } from "../../../../shared/services/scheduleApi";
 import Icons from "../../../../shared/theme/icon";
 import { brandPrimary, brandSecondary, neutral } from "../../../../shared/theme/color";
 import { tenantTicketDetailStyles as styles, tenantTicketListStyles as badge } from "./ticketStyles";
 import { formatTenantIssueDateTime } from "../../../../shared/utils";
+import { formatApiErrorForTenantAlert } from "../../../../shared/utils/apiErrorMessage";
 import {
   StackScreenTitleBadge,
   StackScreenTitleBarBalance,
@@ -39,8 +44,7 @@ import {
   stackScreenTitleSideSlotStyle,
 } from "../../../../shared/components/StackScreenTitleBadge";
 
-type Route = RouteProp<RootStackParamList, "TenantTicketDetail">;
-type Nav = NativeStackNavigationProp<RootStackParamList>;
+type Props = NativeStackScreenProps<RootStackParamList, "TenantTicketDetail">;
 
 /** Cùng logic `tenantTicketList`: chừa chỗ cho tab home + thanh điều hướng hệ thống (Android gesture). */
 const TENANT_TICKET_TAB_BAR_CLEARANCE = 72;
@@ -87,12 +91,10 @@ function quoteAwaitingTenantConfirm(q: { status?: string | null }): boolean {
   return st === "WAITING_TENANT_APPROVAL" || st === "WAITING_TENANT_APPROVAL_QUOTE";
 }
 
-const TenantTicketDetailScreen = () => {
+const TenantTicketDetailScreen = ({ navigation, route }: Props) => {
   const { t, i18n } = useTranslation();
-  const navigation = useNavigation<Nav>();
-  const { params } = useRoute<Route>();
   const insets = useSafeAreaInsets();
-  const initialTicket = params.ticket;
+  const initialTicket = route.params.ticket;
   const [ticket, setTicket] = useState(initialTicket);
   const [predictedHandlingTime, setPredictedHandlingTime] = useState<string | null>(null);
   const [workSlotLoading, setWorkSlotLoading] = useState(false);
@@ -114,6 +116,28 @@ const TenantTicketDetailScreen = () => {
   const [quotes, setQuotes] = useState<IssueQuoteFromApi[]>([]);
   const [confirmQuoteLoading, setConfirmQuoteLoading] = useState(false);
   const [confirmQuoteError, setConfirmQuoteError] = useState<string | null>(null);
+  const [payRepairLoading, setPayRepairLoading] = useState(false);
+
+  const { data: invoiceQueryData, refetch: refetchTenantInvoices } = useTenantInvoices();
+  const linkedRepairInvoice = useMemo(() => {
+    const rows = invoiceQueryData ?? [];
+    const tid = String(ticket?.id ?? "").trim();
+    if (!tid) return null;
+    return rows.find((inv) => isTenantTicketIssueInvoice(inv) && String(inv.issueTicketId ?? "").trim() === tid) ?? null;
+  }, [invoiceQueryData, ticket?.id]);
+
+  /** Hóa đơn sửa chữa đã thanh toán → hiển thị nút mở màn TenantIssueInvoice. */
+  const repairInvoicePaid = useMemo(
+    () =>
+      linkedRepairInvoice != null && !isTenantInvoicePayable(linkedRepairInvoice.status),
+    [linkedRepairInvoice]
+  );
+
+  useFocusEffect(
+    useCallback(() => {
+      void refetchTenantInvoices();
+    }, [refetchTenantInvoices])
+  );
 
   const loadAsset = useCallback(async () => {
     if (!ticket.assetId) {
@@ -296,6 +320,46 @@ const TenantTicketDetailScreen = () => {
     }
   }, [activeQuote?.id, confirmQuoteLoading, loadQuotes, navigation, refreshTicket, t]);
 
+  /** Ưu tiên `quoteId` (báo giá đã duyệt); không có thì hóa đơn sửa chữa / danh sách. */
+  const handlePayRepair = useCallback(async () => {
+    if (payRepairLoading) return;
+    const qid = String(paymentQuote?.id ?? "").trim();
+    if (qid) {
+      setPayRepairLoading(true);
+      try {
+        const checkoutUrl = await createVnpayPaymentLink(
+          { quoteId: qid },
+          { appLanguage: i18n.language }
+        );
+        navigation.navigate("VnpayCheckout", {
+          checkoutUrl,
+          afterSuccess: "ticketDetail",
+          ticketForAfterSuccess: ticket,
+          vnpayUiContext: "repair_quote",
+        });
+      } catch (e: unknown) {
+        const msg = formatApiErrorForTenantAlert(e, t, "payment_link");
+        Alert.alert(t("tenant_payment.title"), msg, [{ text: t("common.close") }], { type: "error" });
+      } finally {
+        setPayRepairLoading(false);
+      }
+      return;
+    }
+    if (linkedRepairInvoice) {
+      navigation.navigate("TenantIssueInvoice", { invoice: linkedRepairInvoice });
+      return;
+    }
+    navigation.navigate("TenantInvoiceList", { issueTicketId: ticket.id });
+  }, [
+    payRepairLoading,
+    paymentQuote?.id,
+    i18n.language,
+    navigation,
+    ticket,
+    linkedRepairInvoice,
+    t,
+  ]);
+
   const statusLabel = (status: string) => {
     const normalized = normalizeIssueStatus(status);
     const key = `tenant_ticket_list.status_${normalized}`;
@@ -422,6 +486,18 @@ const TenantTicketDetailScreen = () => {
               {t("tenant_ticket_detail.sent_at")}: {formatTenantIssueDateTime(ticket.createdAt, locale)}
             </Text>
           </View>
+          {repairInvoicePaid && linkedRepairInvoice ? (
+            <TouchableOpacity
+              style={[styles.payNowBtn, { marginTop: 14 }]}
+              onPress={() => navigation.navigate("TenantIssueInvoice", { invoice: linkedRepairInvoice })}
+              activeOpacity={0.85}
+              accessibilityRole="button"
+              accessibilityLabel={t("tenant_ticket_detail.view_invoice_btn")}
+            >
+              <Icons.invoice size={22} color={neutral.surface} />
+              <Text style={styles.payNowBtnText}>{t("tenant_ticket_detail.view_invoice_btn")}</Text>
+            </TouchableOpacity>
+          ) : null}
         </View>
 
         <TicketDetailSection
@@ -628,13 +704,16 @@ const TenantTicketDetailScreen = () => {
                   <Text style={styles.paymentTotalValue}>{formatMoney(paymentQuote.totalPrice)}</Text>
                 </View>
                 <TouchableOpacity
-                  style={styles.payNowBtn}
-                  onPress={() =>
-                    navigation.navigate("TenantInvoiceList", { issueTicketId: ticket.id })
-                  }
+                  style={[styles.payNowBtn, payRepairLoading && { opacity: 0.72 }]}
+                  onPress={() => void handlePayRepair()}
                   activeOpacity={0.8}
+                  disabled={payRepairLoading}
                 >
-                  <Icons.wallet size={22} color={neutral.surface} />
+                  {payRepairLoading ? (
+                    <ActivityIndicator size="small" color={neutral.surface} />
+                  ) : (
+                    <Icons.wallet size={22} color={neutral.surface} />
+                  )}
                   <Text style={styles.payNowBtnText}>{t("tenant_ticket_detail.pay_repair_btn")}</Text>
                 </TouchableOpacity>
               </>
@@ -642,19 +721,44 @@ const TenantTicketDetailScreen = () => {
               <>
                 <Text style={styles.fieldValueMuted}>{t("tenant_ticket_detail.payment_quote_hint")}</Text>
                 <TouchableOpacity
-                  style={styles.payNowBtn}
-                  onPress={() =>
-                    navigation.navigate("TenantInvoiceList", { issueTicketId: ticket.id })
-                  }
+                  style={[styles.payNowBtn, payRepairLoading && { opacity: 0.72 }]}
+                  onPress={() => void handlePayRepair()}
                   activeOpacity={0.8}
+                  disabled={payRepairLoading}
                 >
-                  <Icons.wallet size={22} color={neutral.surface} />
+                  {payRepairLoading ? (
+                    <ActivityIndicator size="small" color={neutral.surface} />
+                  ) : (
+                    <Icons.wallet size={22} color={neutral.surface} />
+                  )}
                   <Text style={styles.payNowBtnText}>{t("tenant_ticket_detail.pay_repair_btn")}</Text>
                 </TouchableOpacity>
               </>
             )}
           </TicketDetailSection>
         )}
+
+        {linkedRepairInvoice ? (
+          <TicketDetailSection
+            title={t("tenant_ticket_detail.section_repair_invoice")}
+            headerIcon={<Icons.invoice size={22} color={brandPrimary} />}
+          >
+            <InvoicePaymentFlowSection
+              invoiceId={linkedRepairInvoice.id}
+              hideTitle
+              unstyled
+              detailCtaLabel={
+                repairInvoicePaid ? undefined : t("tenant_ticket_detail.open_repair_invoice_detail")
+              }
+              onPressOpenDetail={
+                repairInvoicePaid
+                  ? undefined
+                  : () =>
+                      navigation.navigate("TenantIssueInvoice", { invoice: linkedRepairInvoice })
+              }
+            />
+          </TicketDetailSection>
+        ) : null}
       </ScrollView>
 
       <Modal

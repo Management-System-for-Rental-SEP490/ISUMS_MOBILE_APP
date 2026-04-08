@@ -27,6 +27,7 @@ import TenantQuestionDetailScreen from "../features/tenant/screens/tenantQuestio
 import TenantHouseDescription from "../features/tenant/screens/tenantHouse/tenantHouseDescription";
 import TenantInvoiceListScreen from "../features/tenant/screens/tenantInvoice/TenantInvoiceListScreen";
 import TenantInvoiceDetailScreen from "../features/tenant/screens/tenantInvoice/TenantInvoiceDetailScreen";
+import TenantIssueInvoiceScreen from "../features/tenant/screens/tenantTicket/tenantIssueInvoice";
 import TenantVnpayCheckoutScreen from "../features/tenant/screens/tenantInvoice/TenantVnpayCheckoutScreen";
 import { brandPrimary } from "../shared/theme/color";
 import { ensureTenantMainHouseSynced } from "../shared/services/userApi";
@@ -186,6 +187,7 @@ const Navigation = () => {
                 <Stack.Screen name="BuildingDetail" component={TenantHouseDescription} />
                 <Stack.Screen name="TenantInvoiceList" component={TenantInvoiceListScreen} />
                 <Stack.Screen name="TenantInvoiceDetail" component={TenantInvoiceDetailScreen} />
+                <Stack.Screen name="TenantIssueInvoice" component={TenantIssueInvoiceScreen} />
                 <Stack.Screen
                   name="VnpayCheckout"
                   component={TenantVnpayCheckoutScreen}

@@ -62,12 +62,21 @@ export interface TenantEContractFromApi {
 // Payments — VNPay (POST /api/payments/vnpay)
 // =========================================================
 
-/** Body tạo link thanh toán VNPay (tenant đã đăng nhập). */
-export interface VnpayPaymentCreateRequest {
-  invoiceIds: string[];
-  /** Ngôn ngữ cổng thanh toán (VD: `vn`, `en`). Mặc định app gửi `vn`. */
-  language: string;
-}
+/**
+ * Body tạo link thanh toán VNPay (tenant đã đăng nhập).
+ * Chỉ một luồng: hoặc `invoiceIds` (tiền nhà/cọc), hoặc `quoteId` (báo giá sửa chữa — ticket `WAITING_PAYMENT`), không gửi cả hai.
+ */
+export type VnpayPaymentCreateRequest =
+  | {
+      invoiceIds: string[];
+      bankCode?: string;
+      locale: string;
+    }
+  | {
+      quoteId: string;
+      bankCode?: string;
+      locale: string;
+    };
 
 /** BE trả URL đầy đủ tới cổng VNPay trong `data` (chuỗi). */
 export type VnpayPaymentLinkApiResponse = ApiResponse<string>;
@@ -180,6 +189,17 @@ export type TenantInvoicePaymentStatus =
   | "WAITING_PAYMENT"
   | string;
 
+/** Một lượt/phiên thanh toán gắn hóa đơn (GET /api/payments/invoices/:id → `data.payments`). */
+export interface InvoicePaymentAttemptFromApi {
+  id: string;
+  amount: number;
+  method: string;
+  status: string;
+  gatewayTxnId?: string | null;
+  paidAt?: string | null;
+  createdAt?: string | null;
+}
+
 /** Một hóa đơn của tenant (danh sách + chi tiết — BE có thể gộp hoặc tách GET by id). */
 export interface TenantInvoiceFromApi {
   id: string;
@@ -202,6 +222,11 @@ export interface TenantInvoiceFromApi {
   baseAmount?: number | null;
   penaltyAmount?: number | null;
   createdAt?: string | null;
+  /**
+   * ID ticket sửa chữa khi hóa đơn phát sinh từ báo giá/issue (BE có thể trả `issueTicketId` | `issueId` | `ticketId`).
+   * Dùng để gom nhóm trong danh sách và mở chi tiết ticket.
+   */
+  issueTicketId?: string | null;
 }
 
 /** Dữ liệu căn nhà trả về từ API GET /api/houses (dùng cho Staff). */

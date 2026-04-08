@@ -20,13 +20,16 @@ import { useTenantHouses, useTenantInvoices, useUserProfile } from "../../../../
 import {
   filterPayableInvoices,
   formatTenantInvoiceAmount,
-  formatTenantInvoiceTitleForDisplay,
+  formatTenantInvoiceCardTitle,
   isTenantInvoicePayable,
+  isTenantRepairInvoiceFlow,
   sortTenantInvoicesForDisplay,
+  sortTenantIssueInvoicesByTicketActivityDesc,
 } from "../../../../shared/utils/tenantInvoice";
 import Icons from "../../../../shared/theme/icon";
 import { BRAND_DANGER, brandPrimary, brandSecondary, neutral } from "../../../../shared/theme/color";
 import { formatTenantIssueDateTime, getTotalPages, slicePage } from "../../../../shared/utils";
+import { formatApiErrorForTenantAlert } from "../../../../shared/utils/apiErrorMessage";
 import { tenantInvoiceStyles as styles } from "./tenantInvoiceStyles";
 import { PaginationBar } from "../../../../shared/components/PaginationBar";
 import { CustomAlert as Alert } from "../../../../shared/components/alert";
@@ -47,9 +50,9 @@ type NavProp = NativeStackNavigationProp<RootStackParamList, "TenantInvoiceList"
 
 type ListRow =
   | { kind: "section"; key: string; title: string }
-  | { kind: "invoice"; key: string; item: TenantInvoiceFromApi };
+  | { kind: "invoice"; key: string; item: TenantInvoiceFromApi; navigateToTicketDetail: boolean };
 
-/** Tránh `data ?? []` tạo mảng mới mỗi render — làm `useEffect(..., [mandatorySelectedHouseInvoiceIds])` lặp vô hạn. */
+/** Tránh `data ?? []` tạo mảng mới mỗi render. */
 const EMPTY_TENANT_INVOICES: TenantInvoiceFromApi[] = [];
 const EMPTY_TENANT_HOUSE_ROWS: HouseFromApi[] = [];
 
@@ -99,13 +102,17 @@ export default function TenantInvoiceListScreen() {
     return m;
   }, [tenantHouseList]);
 
-  /** Hóa đơn chưa trả của đúng căn đang chọn — luôn phải gồm trong lô thanh toán gộp. */
+  /**
+   * Hóa đơn tiền nhà/cọc chưa trả của căn đang chọn trong app — chỉ dùng gợi ý UI (kích hoạt căn phụ).
+   * Người dùng tự chọn lô thanh toán; hóa đơn ticket không vào lô đa chọn này.
+   */
   const mandatorySelectedHouseInvoiceIds = useMemo(() => {
     if (!normalizedSelectedHouseId) return [] as string[];
     return rawInvoiceData
       .filter(
         (inv) =>
           isTenantInvoicePayable(inv.status) &&
+          !isTenantRepairInvoiceFlow(inv) &&
           String(inv.houseId ?? "").trim() === normalizedSelectedHouseId
       )
       .map((inv) => String(inv.id ?? "").trim())
@@ -148,25 +155,73 @@ export default function TenantInvoiceListScreen() {
     return sortTenantInvoicesForDisplay(base);
   }, [rawInvoiceData, filterHouseId]);
 
+  const issueInvoices = useMemo(() => {
+    const rows = data.filter((i) => isTenantRepairInvoiceFlow(i));
+    return sortTenantIssueInvoicesByTicketActivityDesc(rows);
+  }, [data]);
+  const regularInvoices = useMemo(
+    () => data.filter((i) => !isTenantRepairInvoiceFlow(i)),
+    [data]
+  );
+
   const showHouseOnCard = distinctHouseIds.length > 1 && filterHouseId == null;
 
-  const payableList = useMemo(() => filterPayableInvoices(data), [data]);
+  const payableList = useMemo(
+    () => filterPayableInvoices(data).filter((i) => !isTenantRepairInvoiceFlow(i)),
+    [data]
+  );
   const hasPayable = payableList.length > 0;
 
-  const totalPages = useMemo(() => getTotalPages(data.length), [data.length]);
-  const pagedData = useMemo(() => slicePage(data, invoicePage), [data, invoicePage]);
+  const totalPages = useMemo(() => getTotalPages(regularInvoices.length), [regularInvoices.length]);
+  const pagedRegular = useMemo(
+    () => slicePage(regularInvoices, invoicePage),
+    [regularInvoices, invoicePage]
+  );
 
   const listRows = useMemo((): ListRow[] => {
-    const unpaid = pagedData.filter((i) => isTenantInvoicePayable(i.status));
-    const paid = pagedData.filter((i) => !isTenantInvoicePayable(i.status));
     const out: ListRow[] = [];
+
+    if (invoicePage === 1 && issueInvoices.length > 0) {
+      out.push({
+        kind: "section",
+        key: "section-issue-root",
+        title: t("tenant_invoice.section_ticket_issue"),
+      });
+      const unpaidIss = issueInvoices.filter((i) => isTenantInvoicePayable(i.status));
+      const paidIss = issueInvoices.filter((i) => !isTenantInvoicePayable(i.status));
+      if (unpaidIss.length) {
+        out.push({
+          kind: "section",
+          key: "section-issue-unpaid",
+          title: t("tenant_invoice.section_unpaid"),
+        });
+        unpaidIss.forEach((item) =>
+          out.push({ kind: "invoice", key: `iss-${item.id}`, item, navigateToTicketDetail: true })
+        );
+      }
+      if (paidIss.length) {
+        out.push({
+          kind: "section",
+          key: "section-issue-paid",
+          title: t("tenant_invoice.section_paid"),
+        });
+        paidIss.forEach((item) =>
+          out.push({ kind: "invoice", key: `iss-${item.id}`, item, navigateToTicketDetail: true })
+        );
+      }
+    }
+
+    const unpaid = pagedRegular.filter((i) => isTenantInvoicePayable(i.status));
+    const paid = pagedRegular.filter((i) => !isTenantInvoicePayable(i.status));
     if (unpaid.length) {
       out.push({
         kind: "section",
         key: `section-unpaid-${invoicePage}`,
         title: t("tenant_invoice.section_unpaid"),
       });
-      unpaid.forEach((item) => out.push({ kind: "invoice", key: item.id, item }));
+      unpaid.forEach((item) =>
+        out.push({ kind: "invoice", key: item.id, item, navigateToTicketDetail: false })
+      );
     }
     if (paid.length) {
       out.push({
@@ -174,16 +229,18 @@ export default function TenantInvoiceListScreen() {
         key: `section-paid-${invoicePage}`,
         title: t("tenant_invoice.section_paid"),
       });
-      paid.forEach((item) => out.push({ kind: "invoice", key: item.id, item }));
+      paid.forEach((item) =>
+        out.push({ kind: "invoice", key: item.id, item, navigateToTicketDetail: false })
+      );
     }
     return out;
-  }, [pagedData, invoicePage, t]);
+  }, [issueInvoices, invoicePage, pagedRegular, t]);
 
   useEffect(() => {
     setInvoicePage(1);
-    setSelected(new Set(mandatorySelectedHouseInvoiceIds));
+    setSelected(new Set());
     setLinkError(null);
-  }, [filterHouseId, mandatorySelectedHouseInvoiceIds]);
+  }, [filterHouseId]);
 
   useEffect(() => {
     setInvoicePage((p) => Math.min(Math.max(1, p), totalPages));
@@ -216,26 +273,28 @@ export default function TenantInvoiceListScreen() {
     return formatTenantIssueDateTime(String(iso), locale);
   };
 
-  const getInvoiceDisplayTitle = (inv: TenantInvoiceFromApi) =>
-    formatTenantInvoiceTitleForDisplay(inv, t);
+  const getInvoiceDisplayTitle = (inv: TenantInvoiceFromApi) => formatTenantInvoiceCardTitle(inv, t);
 
-  const onPressRow = (item: TenantInvoiceFromApi) => {
-    navigation.navigate("TenantInvoiceDetail", { invoice: item });
-  };
+  const onPressRow = useCallback(
+    (item: TenantInvoiceFromApi, navigateToRepairInvoice: boolean) => {
+      if (navigateToRepairInvoice || isTenantRepairInvoiceFlow(item)) {
+        navigation.navigate("TenantIssueInvoice", { invoice: item });
+        return;
+      }
+      navigation.navigate("TenantInvoiceDetail", { invoice: item });
+    },
+    [navigation]
+  );
 
   const toggle = useCallback((id: string) => {
     setLinkError(null);
     setSelected((prev) => {
-      if (prev.has(id) && mandatorySelectedHouseInvoiceIds.includes(id)) {
-        setLinkError(t("tenant_payment.primary_house_required_action"));
-        return prev;
-      }
       const next = new Set(prev);
       if (next.has(id)) next.delete(id);
       else next.add(id);
       return next;
     });
-  }, [mandatorySelectedHouseInvoiceIds, t]);
+  }, []);
 
   const totalSelected = selected.size;
   const allSelected =
@@ -244,10 +303,11 @@ export default function TenantInvoiceListScreen() {
     setLinkError(null);
     setSelected((prev) => {
       if (payableList.length === 0) return prev;
-      if (prev.size === payableList.length) return new Set(mandatorySelectedHouseInvoiceIds);
-      return new Set([...payableList.map((x) => x.id), ...mandatorySelectedHouseInvoiceIds]);
+      const allOn = payableList.every((inv) => prev.has(inv.id));
+      if (allOn) return new Set();
+      return new Set(payableList.map((x) => x.id));
     });
-  }, [payableList, mandatorySelectedHouseInvoiceIds]);
+  }, [payableList]);
 
   const selectedTotalAmount = useMemo(() => {
     let sum = 0;
@@ -257,21 +317,11 @@ export default function TenantInvoiceListScreen() {
     return sum;
   }, [payableList, selected]);
 
-  const hasMissingMandatoryForSelectedHouse = useMemo(
-    () => mandatorySelectedHouseInvoiceIds.some((id) => !selected.has(id)),
-    [mandatorySelectedHouseInvoiceIds, selected]
-  );
-
-  const paySelectionLocked =
-    totalSelected === 0 || creatingLink || hasMissingMandatoryForSelectedHouse;
+  const paySelectionLocked = totalSelected === 0 || creatingLink;
 
   const confirmPay = useCallback(async () => {
     if (totalSelected === 0) {
       Alert.alert(t("tenant_invoice.multi_none_title"), t("tenant_invoice.multi_none_body"));
-      return;
-    }
-    if (hasMissingMandatoryForSelectedHouse) {
-      setLinkError(t("tenant_payment.primary_house_required_action"));
       return;
     }
     const payableMapById = new Map(
@@ -280,45 +330,33 @@ export default function TenantInvoiceListScreen() {
         .map((x) => [String(x.id ?? "").trim(), x] as const)
     );
     const ids = Array.from(selected).filter((id) => payableMapById.has(id));
-    ids.sort((a, b) => {
-      const aSel = mandatorySelectedHouseInvoiceIds.includes(a) ? 0 : 1;
-      const bSel = mandatorySelectedHouseInvoiceIds.includes(b) ? 0 : 1;
-      if (aSel !== bSel) return aSel - bSel;
-      return a.localeCompare(b);
-    });
+    ids.sort((a, b) => a.localeCompare(b));
     setCreatingLink(true);
     setLinkError(null);
     try {
-      const checkoutUrl = await createVnpayPaymentLink(ids, { appLanguage: i18n.language });
+      const checkoutUrl = await createVnpayPaymentLink(
+        { invoiceIds: ids },
+        { appLanguage: i18n.language }
+      );
       navigation.navigate("VnpayCheckout", {
         checkoutUrl,
         afterSuccess: "invoiceList",
+        vnpayUiContext: "house_invoice",
       });
     } catch (e: unknown) {
-      const ax = e as { response?: { data?: { message?: string } }; message?: string };
-      const apiMsg = ax?.response?.data?.message;
-      const msg =
-        (typeof apiMsg === "string" && apiMsg.trim()) ||
-        (typeof ax?.message === "string" ? ax.message : null) ||
-        t("tenant_payment.link_error");
-      setLinkError(msg);
+      setLinkError(formatApiErrorForTenantAlert(e, t, "payment_link"));
     } finally {
       setCreatingLink(false);
     }
-  }, [
-    totalSelected,
-    t,
-    hasMissingMandatoryForSelectedHouse,
-    rawInvoiceData,
-    selected,
-    mandatorySelectedHouseInvoiceIds,
-    i18n.language,
-    navigation,
-  ]);
+  }, [totalSelected, t, rawInvoiceData, selected, i18n.language, navigation]);
 
-  const renderDetailLink = () => (
+  const renderDetailLink = (toRepairInvoice: boolean) => (
     <View style={{ flexDirection: "row", alignItems: "center" }}>
-      <Text style={styles.detailsLinkText}>{t("tenant_invoice.view_detail")}</Text>
+      <Text style={styles.detailsLinkText}>
+        {toRepairInvoice
+          ? t("tenant_invoice.view_repair_invoice_detail")
+          : t("tenant_invoice.view_detail")}
+      </Text>
       <Ionicons name="chevron-forward" size={16} color={brandSecondary} />
     </View>
   );
@@ -329,13 +367,15 @@ export default function TenantInvoiceListScreen() {
     return houseNameById.get(hid) ?? `${hid.slice(0, 8)}…`;
   };
 
-  const renderInvoiceCard = (item: TenantInvoiceFromApi) => {
+  const renderInvoiceCard = (item: TenantInvoiceFromApi, navigateToTicketDetail: boolean) => {
     const sv = statusStyle(item.status);
     const payable = isTenantInvoicePayable(item.status);
+    const open = () => void onPressRow(item, navigateToTicketDetail);
 
-    if (!payable) {
+    /** Tiền nhà/cọc vào lô chọn nhiều; phí sửa chữa mở chi tiết `TenantIssueInvoice`. */
+    if (!payable || navigateToTicketDetail) {
       return (
-        <TouchableOpacity style={styles.card} activeOpacity={0.85} onPress={() => onPressRow(item)}>
+        <TouchableOpacity style={styles.card} activeOpacity={0.85} onPress={open}>
           <View style={styles.cardTopRow}>
             <View style={[styles.statusPill, sv.pill]}>
               <Text style={[styles.statusPillText, sv.text]} numberOfLines={1}>
@@ -345,15 +385,20 @@ export default function TenantInvoiceListScreen() {
             <View style={styles.cardTopRowSpacer} />
             <TouchableOpacity
               style={styles.detailsLink}
-              onPress={() => onPressRow(item)}
+              onPress={open}
               hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
             >
-              {renderDetailLink()}
+              {renderDetailLink(navigateToTicketDetail)}
             </TouchableOpacity>
           </View>
           <Text style={styles.rowTitle} numberOfLines={2}>
             {getInvoiceDisplayTitle(item)}
           </Text>
+          {navigateToTicketDetail ? (
+            <Text style={styles.cardHouseLine} numberOfLines={2}>
+              {t("tenant_invoice.open_repair_invoice_hint")}
+            </Text>
+          ) : null}
           {showHouseOnCard && item.houseId ? (
             <Text style={styles.cardHouseLine} numberOfLines={1}>
               {t("tenant_invoice.field_house")}: {houseLineLabel(item)}
@@ -396,29 +441,36 @@ export default function TenantInvoiceListScreen() {
           <View style={styles.cardTopRowSpacer} />
           <TouchableOpacity
             style={styles.detailsLink}
-            onPress={() => onPressRow(item)}
+            onPress={open}
             hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
           >
-            {renderDetailLink()}
+            {renderDetailLink(navigateToTicketDetail)}
           </TouchableOpacity>
         </View>
-        <Text style={styles.rowTitle} numberOfLines={2}>
-          {getInvoiceDisplayTitle(item)}
-        </Text>
-        {showHouseOnCard && item.houseId ? (
-          <Text style={styles.cardHouseLine} numberOfLines={1}>
-            {t("tenant_invoice.field_house")}: {houseLineLabel(item)}
+        <TouchableOpacity activeOpacity={0.92} onPress={open}>
+          <Text style={styles.rowTitle} numberOfLines={2}>
+            {getInvoiceDisplayTitle(item)}
           </Text>
-        ) : null}
-        <View style={styles.dueRow}>
-          <Ionicons name="time-outline" size={14} color={neutral.textMuted} />
-          <Text style={styles.meta} numberOfLines={1}>
-            {t("tenant_invoice.due")}: {item.dueDate ? formatInvoiceDate(item.dueDate) || "—" : "—"}
+          {navigateToTicketDetail ? (
+            <Text style={[styles.cardHouseLine, { marginBottom: 4 }]} numberOfLines={2}>
+              {t("tenant_invoice.open_repair_invoice_hint")}
+            </Text>
+          ) : null}
+          {showHouseOnCard && item.houseId ? (
+            <Text style={styles.cardHouseLine} numberOfLines={1}>
+              {t("tenant_invoice.field_house")}: {houseLineLabel(item)}
+            </Text>
+          ) : null}
+          <View style={styles.dueRow}>
+            <Ionicons name="time-outline" size={14} color={neutral.textMuted} />
+            <Text style={styles.meta} numberOfLines={1}>
+              {t("tenant_invoice.due")}: {item.dueDate ? formatInvoiceDate(item.dueDate) || "—" : "—"}
+            </Text>
+          </View>
+          <Text style={styles.amount}>
+            {formatTenantInvoiceAmount(item.amount, item.currency, locale)}
           </Text>
-        </View>
-        <Text style={styles.amount}>
-          {formatTenantInvoiceAmount(item.amount, item.currency, locale)}
-        </Text>
+        </TouchableOpacity>
       </View>
     );
   };
@@ -435,7 +487,7 @@ export default function TenantInvoiceListScreen() {
         </View>
       );
     }
-    return rowShell(renderInvoiceCard(item.item));
+    return rowShell(renderInvoiceCard(item.item, item.navigateToTicketDetail));
   };
 
   const showPageHeading = !(isLoading && !isRefetching);

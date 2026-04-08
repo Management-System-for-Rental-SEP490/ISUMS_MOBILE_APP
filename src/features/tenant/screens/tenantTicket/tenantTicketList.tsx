@@ -21,6 +21,7 @@ import {
   getTenantTickets,
   getTenantTicketImages,
 } from "../../../../shared/services/issuesApi";
+import { createVnpayPaymentLink } from "../../../../shared/services/tenantPaymentApi";
 import { getWorkSlotById } from "../../../../shared/services/scheduleApi";
 import Icons from "../../../../shared/theme/icon";
 import { BRAND_DANGER, brandPrimary, brandSecondary, neutral } from "../../../../shared/theme/color";
@@ -32,6 +33,7 @@ import {
   getTotalPages,
   slicePage,
 } from "../../../../shared/utils";
+import { formatApiErrorForTenantAlert } from "../../../../shared/utils/apiErrorMessage";
 import {
   StackScreenTitleBadge,
   StackScreenTitleHeaderStrip,
@@ -44,7 +46,7 @@ import {
 
 type NavProp = NativeStackNavigationProp<RootStackParamList, "TenantTicketList">;
 
-type TicketListFilter = "all" | "in_progress" | "sent" | "payment";
+type TicketListFilter = "all" | "in_progress" | "sent" | "payment" | "completed";
 
 type ListTicketExtras = {
   thumbUrl?: string;
@@ -105,6 +107,7 @@ function ticketMatchesFilter(item: TenantTicketFromApi, f: TicketListFilter): bo
   const s = normalizeIssueStatus(item.status);
   if (f === "all") return true;
   if (f === "payment") return s === "WAITING_PAYMENT";
+  if (f === "completed") return s === "DONE" || s === "CLOSED";
   if (f === "in_progress") return s === "IN_PROGRESS" || s === "SCHEDULED";
   if (f === "sent") {
     return (
@@ -185,6 +188,8 @@ const TenantTicketListScreen = () => {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  /** Đang tạo link VNPay từ danh sách — khóa trùng tap. */
+  const [payingTicketId, setPayingTicketId] = useState<string | null>(null);
 
   const load = useCallback(async (isRefresh = false) => {
     if (isRefresh) setRefreshing(true);
@@ -301,6 +306,42 @@ const TenantTicketListScreen = () => {
     navigation.navigate("TenantTicketDetail", { ticket: item });
   };
 
+  const handlePayFromList = useCallback(
+    async (item: TenantTicketFromApi) => {
+      const tid = String(item.id ?? "").trim();
+      if (!tid || payingTicketId != null) return;
+      setPayingTicketId(tid);
+      try {
+        const quotes = await getIssueQuotesByTicket(tid);
+        const approved =
+          quotes.find((q) => normalizeIssueStatus(q.status) === "APPROVED") ?? quotes[0];
+        const quoteId = String(approved?.id ?? "").trim();
+        if (!quoteId) {
+          Alert.alert(t("tenant_payment.title"), t("tenant_ticket_list.pay_no_quote_body"), [
+            { text: t("common.close") },
+          ], { type: "error" });
+          return;
+        }
+        const checkoutUrl = await createVnpayPaymentLink(
+          { quoteId },
+          { appLanguage: i18n.language }
+        );
+        navigation.navigate("VnpayCheckout", {
+          checkoutUrl,
+          afterSuccess: "ticketDetail",
+          ticketForAfterSuccess: item,
+          vnpayUiContext: "repair_quote",
+        });
+      } catch (e: unknown) {
+        const msg = formatApiErrorForTenantAlert(e, t, "payment_link");
+        Alert.alert(t("tenant_payment.title"), msg, [{ text: t("common.close") }], { type: "error" });
+      } finally {
+        setPayingTicketId(null);
+      }
+    },
+    [payingTicketId, i18n.language, navigation, t]
+  );
+
   const openCreateTicket = () => {
     const hid = String(houseId ?? "").trim();
     if (!hid) {
@@ -317,6 +358,7 @@ const TenantTicketListScreen = () => {
         { key: "in_progress" as const, label: t("tenant_ticket_list.filter_in_progress") },
         { key: "sent" as const, label: t("tenant_ticket_list.filter_sent") },
         { key: "payment" as const, label: t("tenant_ticket_list.filter_payment") },
+        { key: "completed" as const, label: t("tenant_ticket_list.filter_completed") },
       ] as const,
     [t]
   );
@@ -376,21 +418,25 @@ const TenantTicketListScreen = () => {
     const progress = showProgressInset(item);
     const contactSoon = showContactSoonInset(item);
 
+    const payingThis = payingTicketId != null && payingTicketId === item.id;
+
     return (
-      <TouchableOpacity
+      <View
         style={[
           styles.card,
           waitingPay && styles.cardAwaitingPayment,
           awaitingQuoteConfirm && styles.cardAwaitingTenantQuote,
         ]}
-        activeOpacity={0.92}
-        onPress={() => onPressDetail(item)}
-        accessibilityRole="button"
-        accessibilityHint={
-          awaitingQuoteConfirm ? t("tenant_ticket_list.quote_confirm_card_a11y_hint") : undefined
-        }
       >
-        <View style={styles.metaHeaderRow}>
+        <TouchableOpacity
+          activeOpacity={0.92}
+          onPress={() => onPressDetail(item)}
+          accessibilityRole="button"
+          accessibilityHint={
+            awaitingQuoteConfirm ? t("tenant_ticket_list.quote_confirm_card_a11y_hint") : undefined
+          }
+        >
+          <View style={styles.metaHeaderRow}>
           <View style={[styles.typeTagOnCard, styles.typeTagInMeta, typeTagBg(item.type)]}>
             <Text style={[styles.typeTagOnCardText, typeTagFg(item.type)]}>{typeLabel(item.type)}</Text>
           </View>
@@ -443,10 +489,6 @@ const TenantTicketListScreen = () => {
                 </Text>
               </Text>
             </View>
-            <View style={styles.payBtnFull} pointerEvents="none">
-              <Icons.wallet size={20} color={neutral.surface} />
-              <Text style={styles.payBtnFullText}>{t("tenant_ticket_list.pay_btn")}</Text>
-            </View>
           </>
         ) : null}
 
@@ -498,7 +540,26 @@ const TenantTicketListScreen = () => {
             </View>
           </View>
         ) : null}
-      </TouchableOpacity>
+        </TouchableOpacity>
+
+        {waitingPay ? (
+          <TouchableOpacity
+            style={[styles.payBtnFull, (payingThis || payingTicketId != null) && { opacity: 0.72 }]}
+            onPress={() => void handlePayFromList(item)}
+            disabled={payingTicketId != null}
+            activeOpacity={0.88}
+            accessibilityRole="button"
+            accessibilityLabel={t("tenant_ticket_list.pay_btn")}
+          >
+            {payingThis ? (
+              <ActivityIndicator size="small" color={neutral.surface} />
+            ) : (
+              <Icons.wallet size={20} color={neutral.surface} />
+            )}
+            <Text style={styles.payBtnFullText}>{t("tenant_ticket_list.pay_btn")}</Text>
+          </TouchableOpacity>
+        ) : null}
+      </View>
     );
   };
 
@@ -548,6 +609,7 @@ const TenantTicketListScreen = () => {
               data={pagedItems}
               keyExtractor={(it) => it.id}
               renderItem={renderItem}
+              extraData={{ extrasById, payingTicketId, listFilter, currentPage }}
               contentContainerStyle={[
                 styles.listContent,
                 { paddingBottom: listBottomPad },

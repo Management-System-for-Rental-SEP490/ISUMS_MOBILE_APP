@@ -238,19 +238,40 @@ export const getTenantTicketImages = async (
 };
 
 /**
- * Lấy danh sách báo giá theo ticket (GET /api/issues/quotes/ticket/:ticketId)
- * (hình 1 Postman bạn gửi)
+ * Lấy danh sách báo giá theo ticket.
+ * - Ưu tiên GET /api/issues/quotes/ticket/:ticketId (Swagger).
+ * - Nếu 404, thử GET /api/issues/tickets/:ticketId/quotes (một số bản BE đặt route này).
  */
 export const getIssueQuotesByTicket = async (
   ticketId: string
 ): Promise<IssueQuoteFromApi[]> => {
   if (!ticketId?.trim()) return [];
-  //const url = `${FALLBACK_BACKEND_URL}/issues/quotes/ticket/${encodeURIComponent(ticketId)}`;
-  const url = `${BACKEND_API_BASE}/issues/quotes/ticket/${encodeURIComponent(ticketId)}`;
-  const response = await axiosClient.get<ApiResponse<IssueQuoteFromApi[]>>(url);
-  if (response.data?.success && Array.isArray(response.data.data)) {
-    return response.data.data;
+  const id = encodeURIComponent(ticketId);
+
+  const parseQuotes = (body: ApiResponse<IssueQuoteFromApi[]> | undefined): IssueQuoteFromApi[] | null => {
+    if (body?.success && Array.isArray(body.data)) return body.data;
+    return null;
+  };
+
+  const primary = `${BACKEND_API_BASE}/issues/quotes/ticket/${id}`;
+  try {
+    const response = await axiosClient.get<ApiResponse<IssueQuoteFromApi[]>>(primary);
+    const rows = parseQuotes(response.data);
+    if (rows != null) return rows;
+  } catch (e: unknown) {
+    const status = (e as { response?: { status?: number } })?.response?.status;
+    if (status !== 404) throw e;
   }
+
+  const alt = `${BACKEND_API_BASE}/issues/tickets/${id}/quotes`;
+  try {
+    const response = await axiosClient.get<ApiResponse<IssueQuoteFromApi[]>>(alt);
+    const rows = parseQuotes(response.data);
+    if (rows != null) return rows;
+  } catch {
+    /* im lặng — coi như không có báo giá */
+  }
+
   return [];
 };
 

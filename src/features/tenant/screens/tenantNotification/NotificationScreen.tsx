@@ -1,4 +1,4 @@
-import React, { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import React, { memo, useEffect, useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
   RefreshControl,
@@ -24,7 +24,10 @@ import {
   stackScreenTitleRowStyle,
   stackScreenTitleSideSlotStyle,
 } from "../../../../shared/components/StackScreenTitleBadge";
-import { useTenantContext, useTenantHouseIotAlertsInfinite, useTenantHouses } from "../../../../shared/hooks";
+import {
+  useTenantContext,
+  useTenantHouseIotAlertsInfinite,
+} from "../../../../shared/hooks";
 import { notificationStyles } from "./notificationStyles";
 import {
   brandFocusBorder,
@@ -117,8 +120,6 @@ const NotificationScreen = () => {
     }
   };
   const { houseId, house } = useTenantContext();
-  const { data: tenantHousesData } = useTenantHouses();
-  const tenantHouses = tenantHousesData?.data ?? [];
 
   const PAGE_SIZE = CLIENT_LIST_PAGE_SIZE;
 
@@ -208,15 +209,7 @@ const NotificationScreen = () => {
     [filtered2, currentPage, PAGE_SIZE]
   );
 
-  const accessBlock = useMemo(() => {
-    if (!house) return null;
-    return getTenantAccessBlock(house);
-  }, [house]);
-
-  const openPaymentScreen = useCallback(() => {
-    const parentNav = navigation.getParent?.();
-    parentNav?.navigate?.("TenantInvoiceList");
-  }, [navigation]);
+  const accessBlock = useMemo(() => (house ? getTenantAccessBlock(house) : null), [house]);
 
   const dateOptions = useMemo(() => {
     const base = Array.from({ length: 7 }, (_, i) => {
@@ -248,9 +241,7 @@ const NotificationScreen = () => {
     const title =
       accessBlock === "handover"
         ? t("home.access.handover_title")
-        : accessBlock === "deposit"
-          ? t("home.access.deposit_title")
-          : t("home.access.payment_title");
+        : t("home.access.deposit_title");
 
     const accessReasonText = translateTenantAccessReason(house?.accessReason, house?.accessStatus, t);
     const body =
@@ -261,9 +252,7 @@ const NotificationScreen = () => {
               ? formatDayMonthNumeric(new Date(house.handoverDate), i18n.language)
               : "—",
           })
-        : accessBlock === "deposit"
-          ? accessReasonText || t("home.access.deposit_body")
-          : accessReasonText || t("home.access.payment_body");
+        : accessReasonText || t("home.access.deposit_body");
 
     return (
       <View style={gateStyles.container}>
@@ -290,14 +279,6 @@ const NotificationScreen = () => {
         <View style={gateStyles.gateBox}>
           <Text style={gateStyles.gateTitle}>{title}</Text>
           <Text style={gateStyles.gateBody}>{body}</Text>
-          {accessBlock === "payment" ? (
-            <Pressable
-              style={({ pressed }) => [gateStyles.payBtn, pressed && gateStyles.payBtnPressed]}
-              onPress={openPaymentScreen}
-            >
-              <Text style={gateStyles.payBtnText}>{t("home.access.pay_now")}</Text>
-            </Pressable>
-          ) : null}
         </View>
       </View>
     );

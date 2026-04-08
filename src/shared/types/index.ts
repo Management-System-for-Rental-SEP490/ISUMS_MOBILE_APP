@@ -71,10 +71,22 @@ export type RootStackParamList = AuthStackParamList & {
   TenantInvoiceList: undefined | { issueTicketId?: string | null };
   /** Chi tiết một hóa đơn + thanh toán đơn. */
   TenantInvoiceDetail: { invoice: TenantInvoiceFromApi };
-  /** WebView VNPay — `checkoutUrl` tạo từ màn hóa đơn. */
+  /** Hóa đơn sửa chữa / ticket: tổng quan + lịch sử lượt thanh toán. */
+  TenantIssueInvoice: { invoice: TenantInvoiceFromApi };
+  /**
+   * WebView VNPay — `checkoutUrl` từ POST tạo link (tiền nhà: `invoiceIds`, sửa chữa: `quoteId`).
+   * Sau redirect, app hiển thị màn kết quả trong app rồi `afterSuccess` thoát (không tải HTML `vnp_ReturnUrl`).
+   */
   VnpayCheckout: {
     checkoutUrl: string;
-    afterSuccess?: "invoiceList" | "home";
+    afterSuccess?: "invoiceList" | "home" | "ticketDetail";
+    /** Khi `afterSuccess` = `ticketDetail` — dùng để reset stack về đúng ticket. */
+    ticketForAfterSuccess?: TenantTicketFromApi;
+    /**
+     * Tuỳ chọn — chỉnh copy màn xác nhận/kết quả (tiền nhà dùng `house_invoice`).
+     * `repair_quote`: thanh toán báo giá ticket; `repair_fee_invoice`: hóa đơn phí sửa chữa.
+     */
+    vnpayUiContext?: "house_invoice" | "repair_quote" | "repair_fee_invoice";
   };
   /** Trang tiêu thụ (gộp điện + nước) với switch toggle. */
   ConsumptionScreen: { initialTab?: "electric" | "water" } | undefined;
@@ -212,6 +224,7 @@ export type {
   TenantHouseMemberRole,
   TenantInvoiceFromApi,
   TenantInvoicePaymentStatus,
+  InvoicePaymentAttemptFromApi,
   TenantEContractFromApi,
   VnpayPaymentCreateRequest,
   VnpayPaymentLinkApiResponse,

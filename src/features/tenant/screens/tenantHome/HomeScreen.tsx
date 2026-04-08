@@ -45,7 +45,11 @@ import {
   translateTenantAccessReason,
 } from "../../../../shared/utils";
 import { getHomeGreetingI18nKey } from "../../../../shared/utils/homeTimeGreeting";
-import { isTenantInvoicePayable, isTenantInvoiceDueUrgent } from "../../../../shared/utils/tenantInvoice";
+import {
+  isTenantInvoiceDueUrgent,
+  isTenantInvoicePayable,
+  tenantHouseHasUnpaidRentExcludingIssue,
+} from "../../../../shared/utils/tenantInvoice";
 import { CustomAlert } from "../../../../shared/components/alert";
 import Icons from "../../../../shared/theme/icon";
 import { tenantFooterLinks } from "../../../../shared/constants/tenantFooterLinks";
@@ -155,39 +159,10 @@ const HomeScreen = ({ navigation }: HomeScreenProps) => {
     metric: "water",
   });
 
-  const accessBlock = useMemo(() => {
-    if (loadingHouses || !myHouse) return null;
-    return getTenantAccessBlock(myHouse);
-  }, [loadingHouses, myHouse]);
-
   const accessReasonText = useMemo(
     () => translateTenantAccessReason(myHouse?.accessReason, myHouse?.accessStatus, t),
     [myHouse?.accessReason, myHouse?.accessStatus, t]
   );
-
-  /** Một dòng nhắc trên Home (không che nội dung). */
-  const accessReminderLine = useMemo(() => {
-    if (!accessBlock || !myHouse) return "";
-    if (accessBlock === "handover") {
-      return (
-        accessReasonText ||
-        t("home.access.handover_body", {
-          date: myHouse.handoverDate
-            ? formatDayMonthNumeric(new Date(myHouse.handoverDate), i18n.language)
-            : "—",
-        })
-      );
-    }
-    if (accessBlock === "deposit") {
-      return accessReasonText || t("home.access.deposit_body");
-    }
-    if (accessBlock === "payment") {
-      return t("home.access.payment_banner");
-    }
-    return "";
-  }, [accessBlock, myHouse, accessReasonText, t, i18n.language]);
-
-  const showFullHomeFeatures = !accessBlock;
 
   const openPaymentScreen = useCallback(() => {
     rootNavigation.navigate("TenantInvoiceList");
@@ -206,6 +181,65 @@ const HomeScreen = ({ navigation }: HomeScreenProps) => {
     refetch: refetchInvoices,
   } = useTenantInvoices(invoiceQueryEnabled);
   const invoiceList = invoiceListRaw ?? EMPTY_TENANT_INVOICES;
+
+  const accessBlock = useMemo(() => {
+    if (loadingHouses || !myHouse) return null;
+    return getTenantAccessBlock(myHouse);
+  }, [loadingHouses, myHouse]);
+
+  const accessStatusUpper = useMemo(
+    () => (myHouse?.accessStatus ?? "").trim().toUpperCase(),
+    [myHouse?.accessStatus]
+  );
+  const pendingFirstRentByStatus = accessStatusUpper === "PENDING_FIRST_RENT";
+
+  const hasUnpaidRentForBanner = useMemo(() => {
+    if (!myHouse || !invoiceQueryEnabled || invoicesLoading) return false;
+    return tenantHouseHasUnpaidRentExcludingIssue(
+      invoiceList,
+      String(myHouse.id ?? "").trim()
+    );
+  }, [myHouse, invoiceQueryEnabled, invoicesLoading, invoiceList]);
+
+  const showRentPaymentBanner = Boolean(
+    myHouse && (pendingFirstRentByStatus || hasUnpaidRentForBanner)
+  );
+
+  /** Một dòng nhắc trên Home (không che nội dung). */
+  const accessReminderLine = useMemo(() => {
+    if (!accessBlock || !myHouse) return "";
+    if (accessBlock === "handover") {
+      return (
+        accessReasonText ||
+        t("home.access.handover_body", {
+          date: myHouse.handoverDate
+            ? formatDayMonthNumeric(new Date(myHouse.handoverDate), i18n.language)
+            : "—",
+        })
+      );
+    }
+    if (accessBlock === "deposit") {
+      return accessReasonText || t("home.access.deposit_body");
+    }
+    return "";
+  }, [accessBlock, myHouse, accessReasonText, t, i18n.language]);
+
+  /** Banner thanh toán tiền nhà (PENDING_FIRST_RENT hoặc còn hóa đơn thuê/cọc chưa trả, không tính ISSUE). */
+  const rentPaymentBannerLine = useMemo(() => {
+    if (!myHouse || !showRentPaymentBanner) return "";
+    if (pendingFirstRentByStatus) {
+      return accessReasonText || t("home.access.payment_banner");
+    }
+    return t("home.access.payment_banner");
+  }, [
+    myHouse,
+    showRentPaymentBanner,
+    pendingFirstRentByStatus,
+    accessReasonText,
+    t,
+  ]);
+
+  const showFullHomeFeatures = !accessBlock;
 
   /** Hóa đơn cần thanh toán trên toàn bộ căn tenant đang có (dải header + tổng mở). */
   const headerPayableInvoices = useMemo(() => {
@@ -338,13 +372,10 @@ const HomeScreen = ({ navigation }: HomeScreenProps) => {
     }
     const n = headerPayableCount;
     if (n === 0) {
-      return { kind: "all_paid", caption: t("home.header_invoice_all_paid") };
+      return { kind: "all_paid" };
     }
     const urgent = headerPayableInvoices.some((inv) => isTenantInvoiceDueUrgent(inv));
-    const caption = urgent
-      ? t("home.header_invoice_payable_urgent", { count: n })
-      : t("home.header_invoice_payable_count", { count: n });
-    return { kind: "payable", caption, urgent };
+    return { kind: "payable", count: n, urgent };
   }, [
     hasAnyTenantHouse,
     headerPayableCount,
@@ -352,7 +383,6 @@ const HomeScreen = ({ navigation }: HomeScreenProps) => {
     invoiceQueryEnabled,
     invoicesLoading,
     invoiceList.length,
-    t,
   ]);
 
   const { utilityGridGap, utilityItemWidth } = useMemo(() => {
@@ -399,19 +429,33 @@ const HomeScreen = ({ navigation }: HomeScreenProps) => {
             >
               {accessReminderLine}
             </Text>
-            {accessBlock === "payment" ? (
-              <TouchableOpacity
-                style={homeStyles.accessReminderPayNowBtn}
-                onPress={openPaymentScreen}
-                activeOpacity={0.88}
-                accessibilityRole="button"
-                accessibilityLabel={t("home.banner_pay_now")}
-              >
-                <Text style={homeStyles.accessReminderPayNowBtnText}>
-                  {t("home.banner_pay_now")}
-                </Text>
-              </TouchableOpacity>
-            ) : null}
+          </View>
+        ) : null}
+
+        {!accessBlock && showRentPaymentBanner && rentPaymentBannerLine ? (
+          <View
+            style={homeStyles.accessReminderBanner}
+            accessibilityRole="text"
+            accessibilityLabel={rentPaymentBannerLine}
+          >
+            <Text
+              style={homeStyles.accessReminderBannerText}
+              numberOfLines={3}
+              ellipsizeMode="tail"
+            >
+              {rentPaymentBannerLine}
+            </Text>
+            <TouchableOpacity
+              style={homeStyles.accessReminderPayNowBtn}
+              onPress={openPaymentScreen}
+              activeOpacity={0.88}
+              accessibilityRole="button"
+              accessibilityLabel={t("home.banner_pay_now")}
+            >
+              <Text style={homeStyles.accessReminderPayNowBtnText}>
+                {t("home.banner_pay_now")}
+              </Text>
+            </TouchableOpacity>
           </View>
         ) : null}
 

@@ -1,7 +1,7 @@
 import type { HouseFromApi, TenantHouseAccessFromApi, TenantHouseAccessStatus } from "../types/api";
 
-/** Chặn dùng app: chưa tới ngày bàn giao, thiếu cọc, hoặc chưa thanh toán tháng đầu. */
-export type TenantAccessBlockKind = "handover" | "deposit" | "payment";
+/** Chặn dùng app theo GET /api/houses/my-access: chỉ khi chưa tới ngày bàn giao hoặc chưa cọc. */
+export type TenantAccessBlockKind = "handover" | "deposit";
 
 /**
  * Map một phần tử my-access sang HouseFromApi (id = houseId, name = houseName).
@@ -37,7 +37,8 @@ export function isHandoverDateReached(handoverDate?: string | null): boolean {
 }
 
 /**
- * Loại chặn tính năng đầy đủ theo **căn đang xét** (`house`, thường là căn đang chọn). `null` = không chặn.
+ * Loại chặn tính năng đầy đủ theo `accessStatus` từ my-access. `null` = không chặn (kể cả PENDING_FIRST_RENT: vào được, nhắc ở banner).
+ * Không dùng `hasUnpaidInvoice` / danh sách hóa đơn — nợ ISSUE hay tiền tháng chưa trả chỉ hiển thị nhắc thanh toán, không khóa app.
  */
 export function getTenantAccessBlock(
   house: HouseFromApi | null | undefined
@@ -45,12 +46,7 @@ export function getTenantAccessBlock(
   if (!house) return null;
   const st = (house.accessStatus ?? "").trim().toUpperCase();
 
-  // Thứ tự ưu tiên thông báo / luồng “cần làm” (đặc biệt màn thanh toán & Home):
-  // cọc / thanh toán trước, kế đến mới nhắc bàn giao — tránh che hóa đơn bằng màn chặn ngày giao nhà.
-  // Lưu ý: NFC / “chưa bàn giao” vẫn cần kiểm tra riêng `isTenantHandoverStatusPending`.
   if (st === "PENDING_DEPOSIT") return "deposit";
-  if (st === "PENDING_FIRST_RENT") return "payment";
-  if (house.hasUnpaidInvoice) return "payment";
   if (st === "PENDING_HANDOVER") return "handover";
 
   return null;
