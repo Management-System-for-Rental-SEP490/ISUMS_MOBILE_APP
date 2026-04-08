@@ -17,8 +17,13 @@ import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context"
 import { useTranslation } from "react-i18next";
 import { CustomAlert as Alert } from "../../../shared/components/alert";
 import { RootStackParamList } from "../../../shared/types";
-import { useTenantHouses } from "../../../shared/hooks";
-import { formatTenantContractDay } from "../../../shared/utils";
+import { useHouseById, useTenantHouses } from "../../../shared/hooks";
+import {
+  formatTenantContractDay,
+  isHouseIdOutsideTenantAccess,
+  shortHouseIdForDisplay,
+  tenantAccessibleHouseIdSet,
+} from "../../../shared/utils";
 import { getEContractPresignedPdfUrl } from "../../../shared/services/econtractApi";
 import Icons from "../../../shared/theme/icon";
 import {
@@ -122,14 +127,31 @@ export default function UserContractDetailScreen({ navigation, route }: Props) {
     return "vi-VN";
   }, [i18n.language]);
 
+  const tenantHouseRows = useMemo(
+    () => (housesRes?.success && Array.isArray(housesRes.data) ? housesRes.data : []),
+    [housesRes]
+  );
+
+  const accessHouseIds = useMemo(() => tenantAccessibleHouseIdSet(tenantHouseRows), [tenantHouseRows]);
+
+  const houseOutsideAccess = useMemo(
+    () => isHouseIdOutsideTenantAccess(contract.houseId, accessHouseIds),
+    [contract.houseId, accessHouseIds]
+  );
+
+  const { data: houseByIdRes } = useHouseById(contract.houseId, houseOutsideAccess);
+
   const houseDisplayName = useMemo(() => {
     const hid = String(contract.houseId ?? "").trim();
-    const rows = housesRes?.success && Array.isArray(housesRes.data) ? housesRes.data : [];
-    const found = rows.find((h) => String(h.id ?? "").trim() === hid);
+    if (!hid) return "—";
+    const found = tenantHouseRows.find((h) => String(h.id ?? "").trim() === hid);
     const name = found?.name?.trim();
     if (name) return name;
-    return hid || "—";
-  }, [contract.houseId, housesRes]);
+    const fromDetail =
+      houseByIdRes?.success && houseByIdRes.data ? String(houseByIdRes.data.name ?? "").trim() : "";
+    if (fromDetail) return fromDetail;
+    return shortHouseIdForDisplay(hid);
+  }, [contract.houseId, tenantHouseRows, houseByIdRes]);
 
   const contractId = String(contract.id ?? "").trim();
   const [pdfLoading, setPdfLoading] = useState(false);
@@ -287,6 +309,9 @@ export default function UserContractDetailScreen({ navigation, route }: Props) {
               <View style={styles.heroMetaTextCol}>
                 <Text style={styles.heroMetaCaption}>{t("profile.e_contract_house_caption")}</Text>
                 <Text style={styles.heroMetaValue}>{houseDisplayName}</Text>
+                {houseOutsideAccess ? (
+                  <Text style={styles.heroMetaDisclaimer}>{t("tenant_access.house_not_owned_disclaimer")}</Text>
+                ) : null}
               </View>
             </View>
             <View style={styles.heroMetaRow}>
@@ -314,6 +339,11 @@ export default function UserContractDetailScreen({ navigation, route }: Props) {
           <View style={styles.detailFieldRow}>
             <Text style={styles.fieldLabel}>{t("profile.e_contract_field_house")}</Text>
             <Text style={styles.fieldValue}>{houseDisplayName}</Text>
+            {houseOutsideAccess ? (
+              <Text style={[styles.heroMetaDisclaimer, { marginTop: 8 }]}>
+                {t("tenant_access.house_not_owned_disclaimer")}
+              </Text>
+            ) : null}
           </View>
           <View style={styles.detailFieldRow}>
             <Text style={styles.fieldLabel}>{t("profile.e_contract_field_start")}</Text>

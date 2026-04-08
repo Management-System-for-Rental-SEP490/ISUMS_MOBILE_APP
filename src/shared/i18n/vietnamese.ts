@@ -169,6 +169,13 @@ export default {
         "no_slot": "Chưa có lịch",
         "slot_time_tbd": "Sẽ được liên hệ để xác định thời gian",
         "section_repair_invoice": "Hóa đơn & lịch sử thanh toán",
+        "payment_content_label": "Nội dung thanh toán",
+        "payment_content_repair_quote_heading": "Phí sửa chữa (theo báo giá đã duyệt)",
+        "payment_content_quote_total_label": "Tổng báo giá",
+        "payment_content_repair_items_none": "(Chưa có chi tiết hạng mục từ báo giá)",
+        "payment_content_repair_fallback": "Phí sửa chữa ticket: {{title}}",
+        "payment_paid_at_label": "Thời gian thanh toán",
+        "payment_record_index": "Giao dịch {{n}}",
         "view_invoice_btn": "Xem hóa đơn",
         "open_repair_invoice_detail": "Xem chi tiết hóa đơn sửa chữa"
     },
@@ -675,6 +682,15 @@ export default {
         "return_success_body_default_house":
             "Thanh toán tiền nhà (hoặc các khoản trên hóa đơn đã chọn) đã được ghi nhận. Nhấn Hoàn tất để về danh sách hóa đơn và kiểm tra.",
         "return_result_done": "Hoàn tất",
+        "return_detail_heading": "Thông tin giao dịch (VNPay)",
+        "return_detail_amount": "Số tiền",
+        "return_detail_pay_time": "Thời gian thanh toán",
+        "return_detail_order_info": "Nội dung thanh toán",
+        "return_detail_transaction_no": "Mã giao dịch VNPay",
+        "return_detail_bank": "Ngân hàng",
+        "return_detail_card_type": "Loại thẻ",
+        "return_detail_status": "Trạng thái",
+        "return_detail_response_success": "Thành công",
         "return_ui_success_subtitle": "Cảm ơn bạn. Nhấn Hoàn tất để tiếp tục.",
         "return_ui_success_subtitle_house": "Đã ghi nhận. Nhấn Hoàn tất để xem lại hóa đơn.",
         "return_ui_verify_skipped_subtitle":
@@ -706,6 +722,11 @@ export default {
         "primary_house_required_action":
             "Giữ các hóa đơn của căn đang chọn trong danh sách thanh toán trước khi tiếp tục."
     },
+    "tenant_access": {
+        "house_not_owned_disclaimer": "Nhà không còn thuộc quyền sở hữu.",
+        "invoice_house_mismatch_banner":
+            "Một số khoản gắn mã căn từ hóa đơn hoặc hợp đồng nhưng căn đó không có trong danh sách nhà bạn được truy cập (my-access). Thông tin hiển thị theo dữ liệu hóa đơn/hợp đồng; nhà không còn thuộc quyền sở hữu theo tài khoản của bạn."
+    },
     "tenant_invoice": {
         "screen_title": "Hóa đơn",
         "invoice_placeholder_title": "Hóa đơn",
@@ -717,9 +738,11 @@ export default {
         "secondary_house_first_rent_activation_note":
             "Cần thanh toán tiền nhà tháng đầu để kích hoạt app đầy đủ chức năng của app.",
         "chip_all": "Tất cả căn",
+        "filter_by_house": "Theo căn nhà",
         "empty_list": "Chưa có hóa đơn. Danh sách sẽ hiện khi API hóa đơn được nối.",
         "load_error": "Không tải được hóa đơn. Kiểm tra kết nối và thử lại.",
         "view_detail": "Chi tiết",
+        "list_paid_at_label": "Lúc",
         "due": "Hạn",
         "detail_title": "Chi tiết hóa đơn",
         "detail_issued_label": "Ngày phát hành",
@@ -730,6 +753,8 @@ export default {
         "detail_menu_a11y": "Tuỳ chọn thêm",
         "fee_breakdown_title": "Chi tiết khoản phí",
         "line_apartment_rent": "Tiền thuê căn hộ",
+        "line_issue_repair_main": "Khoản phí sửa chữa",
+        "line_issue_repair_other": "Các khoản phí khác",
         "line_management_fee": "Dịch vụ quản lý",
         "total_combined": "Tổng cộng",
         "field_status": "Trạng thái",
@@ -743,7 +768,7 @@ export default {
         "field_type": "Loại hóa đơn",
         "type_MONTHLY_RENT": "Tiền nhà hàng tháng",
         "type_DEPOSIT": "Tiền cọc",
-        "type_ISSUE": "Phí sửa chữa (ticket)",
+        "type_ISSUE": "Phí sửa chữa",
         "field_period": "Kỳ thanh toán",
         "field_total_amount": "Tổng tiền",
         "field_base_amount": "Tiền gốc",
@@ -757,6 +782,9 @@ export default {
         "multi_empty": "Hiện không có hóa đơn chưa thanh toán.",
         "multi_none_title": "Chọn hóa đơn",
         "multi_none_body": "Vui lòng chọn ít nhất một hóa đơn.",
+        "multi_mixed_types_title": "Không thể gộp thanh toán",
+        "multi_mixed_types_body":
+            "Một lượt chỉ thanh toán gộp cùng loại: tiền nhà/cọc hoặc phí sửa chữa. Bỏ chọn một trong hai nhóm rồi thử lại.",
         "multi_summary": "Đã chọn {{count}} · {{amount}}",
         "multi_footer_selected_label": "Đã chọn",
         "footer_total_label": "TỔNG THANH TOÁN",
@@ -791,8 +819,7 @@ export default {
         "payment_attempt_status_PENDING": "Đang xử lý",
         "payment_attempt_status_SUCCESS": "Thành công",
         "payment_attempt_status_FAILED": "Thất bại",
-        "payment_attempt_time": "Thời điểm",
-        "ticket_open_error": "Không mở được chi tiết ticket. Vui lòng thử lại."
+        "payment_attempt_time": "Thời điểm"
     },
     "tenant_issue_invoice": {
         "screen_title": "Hóa đơn sửa chữa"

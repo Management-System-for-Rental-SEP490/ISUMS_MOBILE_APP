@@ -199,6 +199,42 @@ const TenantTicketDetailScreen = ({ navigation, route }: Props) => {
     [locale]
   );
 
+  /**
+   * Báo giá dùng cho khối «đã thanh toán» — ưu tiên APPROVED; không có thì quote mới nhất theo `createdAt`.
+   */
+  const quoteForPaidRepairDisplay = useMemo(() => {
+    if (!quotes?.length) return null;
+    const approved = quotes.find((q) => normalizeIssueStatus(q.status) === "APPROVED");
+    if (approved) return approved;
+    return (
+      [...quotes].sort((a, b) => {
+        const ta = new Date(a.createdAt ?? 0).getTime();
+        const tb = new Date(b.createdAt ?? 0).getTime();
+        if (tb !== ta) return tb - ta;
+        return String(a.id).localeCompare(String(b.id));
+      })[0] ?? null
+    );
+  }, [quotes]);
+
+  /** Nội dung thanh toán: theo API báo giá ticket (không dùng tiêu đề hóa đơn — tránh nhầm tiền thuê). */
+  const repairPaymentContentLabel = useMemo(() => {
+    const q = quoteForPaidRepairDisplay;
+    if (!q) return null;
+    const names = (q.items ?? [])
+      .map((it) => String(it.itemName ?? "").trim())
+      .filter(Boolean);
+    const itemsLine = names.length
+      ? names.join(" · ")
+      : t("tenant_ticket_detail.payment_content_repair_items_none");
+    const heading = t("tenant_ticket_detail.payment_content_repair_quote_heading");
+    const quoteTotal = Number(q.totalPrice);
+    const totalSuffix =
+      Number.isFinite(quoteTotal) && quoteTotal > 0
+        ? `\n${t("tenant_ticket_detail.payment_content_quote_total_label")}: ${formatMoney(quoteTotal)}`
+        : "";
+    return `${heading}\n${itemsLine}${totalSuffix}`;
+  }, [quoteForPaidRepairDisplay, t, formatMoney]);
+
   const refreshTicket = useCallback(async () => {
     try {
       if (!ticket?.id) return;
@@ -272,8 +308,18 @@ const TenantTicketDetailScreen = ({ navigation, route }: Props) => {
       return;
     }
 
+    const tid = String(ticket.id).trim();
     const st = normalizeIssueStatus(ticket.status);
-    if (!ticketNeedsTenantQuoteConfirm(ticket.status) && st !== "WAITING_PAYMENT") {
+    const hasLinkedRepairForTicket =
+      linkedRepairInvoice != null &&
+      String(linkedRepairInvoice.issueTicketId ?? "").trim() === tid;
+
+    const shouldFetch =
+      ticketNeedsTenantQuoteConfirm(ticket.status) ||
+      st === "WAITING_PAYMENT" ||
+      hasLinkedRepairForTicket;
+
+    if (!shouldFetch) {
       setQuotes([]);
       return;
     }
@@ -289,7 +335,7 @@ const TenantTicketDetailScreen = ({ navigation, route }: Props) => {
     } finally {
       setQuotesLoading(false);
     }
-  }, [ticket?.id, ticket.status]);
+  }, [ticket?.id, ticket.status, linkedRepairInvoice]);
 
   useEffect(() => {
     loadQuotes();
@@ -747,6 +793,15 @@ const TenantTicketDetailScreen = ({ navigation, route }: Props) => {
               invoiceId={linkedRepairInvoice.id}
               hideTitle
               unstyled
+              showPaidLineItems={repairInvoicePaid}
+              invoiceDisplayTitle={
+                repairInvoicePaid
+                  ? (repairPaymentContentLabel ??
+                    t("tenant_ticket_detail.payment_content_repair_fallback", {
+                      title: ticket.title?.trim() ? ticket.title : "—",
+                    }))
+                  : undefined
+              }
               detailCtaLabel={
                 repairInvoicePaid ? undefined : t("tenant_ticket_detail.open_repair_invoice_detail")
               }

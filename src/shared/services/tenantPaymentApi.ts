@@ -40,6 +40,78 @@ export function isVnpayReturnGatewaySuccess(url: string): boolean {
   return getVnpayResponseCodeFromReturnUrl(url) === "00";
 }
 
+function vnpReturnGetParam(searchParams: URLSearchParams, ...keys: string[]): string | null {
+  for (const key of keys) {
+    const v = searchParams.get(key);
+    if (v != null && String(v).trim() !== "") return String(v).trim();
+  }
+  const lower = keys.map((k) => k.toLowerCase());
+  for (const [k, v] of searchParams.entries()) {
+    if (lower.includes(k.toLowerCase()) && String(v).trim() !== "") return String(v).trim();
+  }
+  return null;
+}
+
+/** Các trường đọc từ query redirect VNPay để hiển thị (không thay thế xác thực chữ ký trên server). */
+export type VnpayReturnUrlDisplayFields = {
+  amountVnd: number | null;
+  payDateRaw: string | null;
+  orderInfo: string | null;
+  transactionNo: string | null;
+  bankCode: string | null;
+  cardType: string | null;
+  responseCode: string | null;
+};
+
+const EMPTY_VNP_DISPLAY: VnpayReturnUrlDisplayFields = {
+  amountVnd: null,
+  payDateRaw: null,
+  orderInfo: null,
+  transactionNo: null,
+  bankCode: null,
+  cardType: null,
+  responseCode: null,
+};
+
+/**
+ * Đọc tham số hiển thị từ URL return (vnp_Amount ×100, vnp_PayDate, …).
+ */
+export function parseVnpayReturnUrlForDisplay(redirectUrl: string): VnpayReturnUrlDisplayFields {
+  let searchParams: URLSearchParams;
+  try {
+    searchParams = new URL(String(redirectUrl ?? "").trim()).searchParams;
+  } catch {
+    try {
+      searchParams = new URL(String(redirectUrl ?? "").trim(), "https://vnpay.invalid").searchParams;
+    } catch {
+      return { ...EMPTY_VNP_DISPLAY };
+    }
+  }
+  const amountRaw = vnpReturnGetParam(searchParams, "vnp_Amount");
+  let amountVnd: number | null = null;
+  if (amountRaw) {
+    const n = parseInt(amountRaw, 10);
+    if (Number.isFinite(n) && n >= 0) amountVnd = n / 100;
+  }
+  let orderInfo = vnpReturnGetParam(searchParams, "vnp_OrderInfo");
+  if (orderInfo) {
+    try {
+      orderInfo = decodeURIComponent(orderInfo.replace(/\+/g, " "));
+    } catch {
+      /* giữ nguyên */
+    }
+  }
+  return {
+    amountVnd,
+    payDateRaw: vnpReturnGetParam(searchParams, "vnp_PayDate"),
+    orderInfo,
+    transactionNo: vnpReturnGetParam(searchParams, "vnp_TransactionNo"),
+    bankCode: vnpReturnGetParam(searchParams, "vnp_BankCode"),
+    cardType: vnpReturnGetParam(searchParams, "vnp_CardType"),
+    responseCode: vnpReturnGetParam(searchParams, "vnp_ResponseCode"),
+  };
+}
+
 function isApiResponseShape(body: unknown): body is ApiResponse<string> {
   return Boolean(body && typeof body === "object" && "success" in body);
 }

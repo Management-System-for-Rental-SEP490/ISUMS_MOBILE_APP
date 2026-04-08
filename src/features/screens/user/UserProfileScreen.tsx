@@ -25,9 +25,14 @@ import {
   neutral,
 } from "../../../shared/theme/color";
 import { useTranslation } from "react-i18next";
-import { useMyEContracts, useTenantContext, useTenantHouses } from "../../../shared/hooks";
+import {
+  useHouseNamesByIds,
+  useMyEContracts,
+  useTenantContext,
+  useTenantHouses,
+} from "../../../shared/hooks";
 import type { TenantEContractFromApi } from "../../../shared/types/api";
-import { isHandoverDateReached } from "../../../shared/utils";
+import { isHandoverDateReached, shortHouseIdForDisplay, tenantAccessibleHouseIdSet } from "../../../shared/utils";
 import {
   StackScreenTitleBadge,
   StackScreenTitleBarBalance,
@@ -82,6 +87,22 @@ const UserProfileScreen = () => {
     }
   }, [contracts.length]);
 
+  const orphanContractHouseIds = useMemo(() => {
+    const rows =
+      tenantHousesRes?.success && Array.isArray(tenantHousesRes.data)
+        ? tenantHousesRes.data
+        : [];
+    const accessSet = tenantAccessibleHouseIdSet(rows);
+    const s = new Set<string>();
+    for (const c of contracts) {
+      const hid = String(c.houseId ?? "").trim();
+      if (hid && !accessSet.has(hid)) s.add(hid);
+    }
+    return [...s].sort((a, b) => a.localeCompare(b));
+  }, [tenantHousesRes, contracts]);
+
+  const { namesById: orphanContractHouseNames } = useHouseNamesByIds(orphanContractHouseIds);
+
   const houseNameById = useMemo(() => {
     const m = new Map<string, string>();
     const rows =
@@ -94,8 +115,14 @@ const UserProfileScreen = () => {
       const n = String(h.name ?? "").trim();
       m.set(id, n || id);
     }
+    for (const c of contracts) {
+      const hid = String(c.houseId ?? "").trim();
+      if (!hid || m.has(hid)) continue;
+      const api = orphanContractHouseNames.get(hid)?.trim();
+      m.set(hid, api || shortHouseIdForDisplay(hid));
+    }
     return m;
-  }, [tenantHousesRes]);
+  }, [tenantHousesRes, contracts, orphanContractHouseNames]);
 
   const onRefreshContracts = useCallback(() => {
     void refetchContracts();

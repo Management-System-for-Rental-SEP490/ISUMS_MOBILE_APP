@@ -169,6 +169,13 @@ export default {
         "no_slot": "No slot yet",
         "slot_time_tbd": "You will be contacted to confirm the schedule",
         "section_repair_invoice": "Invoice & payment history",
+        "payment_content_label": "Payment description",
+        "payment_content_repair_quote_heading": "Repair fee (approved quote)",
+        "payment_content_quote_total_label": "Quote total",
+        "payment_content_repair_items_none": "(No line items on the quote)",
+        "payment_content_repair_fallback": "Repair fee for ticket: {{title}}",
+        "payment_paid_at_label": "Paid at",
+        "payment_record_index": "Payment {{n}}",
         "view_invoice_btn": "View invoice",
         "open_repair_invoice_detail": "Open repair invoice details"
     },
@@ -674,6 +681,15 @@ export default {
         "return_success_body_default_house":
             "Your rent payment (or the charges on the invoices you selected) was recorded. Tap Done to return to your invoice list and verify.",
         "return_result_done": "Done",
+        "return_detail_heading": "Transaction details (VNPay)",
+        "return_detail_amount": "Amount",
+        "return_detail_pay_time": "Payment time",
+        "return_detail_order_info": "Order description",
+        "return_detail_transaction_no": "VNPay transaction no.",
+        "return_detail_bank": "Bank",
+        "return_detail_card_type": "Card type",
+        "return_detail_status": "Status",
+        "return_detail_response_success": "Success",
         "return_ui_success_subtitle": "Thank you. Tap Done to continue.",
         "return_ui_success_subtitle_house": "Recorded. Tap Done to review your invoices.",
         "return_ui_verify_skipped_subtitle":
@@ -705,6 +721,11 @@ export default {
         "primary_house_required_action":
             "Keep this property's invoices selected in your payment list before continuing."
     },
+    "tenant_access": {
+        "house_not_owned_disclaimer": "This property is no longer on your access list.",
+        "invoice_house_mismatch_banner":
+            "Some items are tied to a property ID from invoices or contracts, but that property is not in your current access list (my-access). Details come from billing/contract records; the home is no longer associated with your account."
+    },
     "tenant_invoice": {
         "screen_title": "Invoices",
         "invoice_placeholder_title": "Invoice",
@@ -716,9 +737,11 @@ export default {
         "secondary_house_first_rent_activation_note":
             "Pay first-month rent to unlock the app's full features.",
         "chip_all": "All properties",
+        "filter_by_house": "By property",
         "empty_list": "No invoices yet. They will appear here when the billing API is connected.",
         "load_error": "Could not load invoices. Check your connection and try again.",
         "view_detail": "Details",
+        "list_paid_at_label": "Paid on",
         "due": "Due",
         "detail_title": "Invoice details",
         "detail_issued_label": "Issue date",
@@ -729,6 +752,8 @@ export default {
         "detail_menu_a11y": "More options",
         "fee_breakdown_title": "Fee breakdown",
         "line_apartment_rent": "Apartment rent",
+        "line_issue_repair_main": "Repair charges",
+        "line_issue_repair_other": "Other charges",
         "line_management_fee": "Management service",
         "total_combined": "Total",
         "field_status": "Status",
@@ -742,7 +767,7 @@ export default {
         "field_type": "Invoice type",
         "type_MONTHLY_RENT": "Monthly rent",
         "type_DEPOSIT": "Security deposit",
-        "type_ISSUE": "Repair / ticket fee",
+        "type_ISSUE": "Repair fee",
         "field_period": "Billing period",
         "field_total_amount": "Total amount",
         "field_base_amount": "Base amount",
@@ -756,6 +781,9 @@ export default {
         "multi_empty": "No unpaid invoices right now.",
         "multi_none_title": "Select invoices",
         "multi_none_body": "Choose at least one invoice to continue.",
+        "multi_mixed_types_title": "Can't pay these together",
+        "multi_mixed_types_body":
+            "One checkout can only include one kind of invoice: rent/deposit or repair fees. Deselect one group and try again.",
         "multi_summary": "{{count}} selected · {{amount}}",
         "multi_footer_selected_label": "Selected",
         "footer_total_label": "TOTAL PAYMENT",
@@ -790,8 +818,7 @@ export default {
         "payment_attempt_status_PENDING": "Pending",
         "payment_attempt_status_SUCCESS": "Success",
         "payment_attempt_status_FAILED": "Failed",
-        "payment_attempt_time": "Time",
-        "ticket_open_error": "Could not open ticket details. Please try again."
+        "payment_attempt_time": "Time"
     },
     "tenant_issue_invoice": {
         "screen_title": "Repair invoice"

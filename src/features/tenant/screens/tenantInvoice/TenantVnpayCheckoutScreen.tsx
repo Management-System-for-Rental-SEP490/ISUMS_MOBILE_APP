@@ -1,5 +1,12 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { ActivityIndicator, StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import {
+  ActivityIndicator,
+  StatusBar,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+} from "react-native";
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { SafeAreaView } from "react-native-safe-area-context";
 import WebView from "react-native-webview";
@@ -7,7 +14,6 @@ import { useTranslation } from "react-i18next";
 import { useQueryClient } from "@tanstack/react-query";
 import type { RootStackParamList } from "../../../../shared/types";
 import {
-  StackScreenTitleBadge,
   StackScreenTitleBarBalance,
   StackScreenTitleHeaderStrip,
   stackScreenTitleBackBtnOnBrand,
@@ -20,22 +26,68 @@ import Icons from "../../../../shared/theme/icon";
 import {
   isLikelyVnpayReturnNavigation,
   isVnpayReturnGatewaySuccess,
+  parseVnpayReturnUrlForDisplay,
+  type VnpayReturnUrlDisplayFields,
   validateVnpayReturnUrl,
 } from "../../../../shared/services/tenantPaymentApi";
+import { formatVnpPayDateFromGateway } from "../../../../shared/utils/dateTimeFormat";
 import { formatApiErrorForTenantAlert } from "../../../../shared/utils/apiErrorMessage";
 import { brandPrimary, neutral } from "../../../../shared/theme/color";
+import { appTypography } from "../../../../shared/utils/typography";
 import { HOUSES_KEYS, TENANT_INVOICES_QUERY_KEY } from "../../../../shared/hooks";
 import { dispatchAfterVnpaySuccess } from "../../../../shared/utils/tenantVnpayNavigation";
-import { VnpayReturnResultView } from "./VnpayReturnResultView";
+import { VnpayReturnResultView, type VnpayReturnDetailRow } from "./VnpayReturnResultView";
 
 type Props = NativeStackScreenProps<RootStackParamList, "VnpayCheckout">;
 
 type VnpayReturnUiState =
   | null
   | { kind: "confirming" }
-  | { kind: "success" }
-  | { kind: "verify_skipped" }
-  | { kind: "failed" };
+  | { kind: "success"; fields: VnpayReturnUrlDisplayFields }
+  | { kind: "verify_skipped"; fields: VnpayReturnUrlDisplayFields }
+  | { kind: "failed"; fields: VnpayReturnUrlDisplayFields };
+
+function buildVnpayReturnDetailRows(
+  fields: VnpayReturnUrlDisplayFields,
+  t: (key: string) => string,
+  locale: string
+): VnpayReturnDetailRow[] {
+  const rows: VnpayReturnDetailRow[] = [];
+  if (fields.amountVnd != null && Number.isFinite(fields.amountVnd)) {
+    try {
+      const formatted = new Intl.NumberFormat(locale, {
+        style: "currency",
+        currency: "VND",
+        maximumFractionDigits: 0,
+      }).format(fields.amountVnd);
+      rows.push({ label: t("tenant_payment.return_detail_amount"), value: formatted });
+    } catch {
+      rows.push({
+        label: t("tenant_payment.return_detail_amount"),
+        value: `${Math.round(fields.amountVnd).toLocaleString(locale)} ₫`,
+      });
+    }
+  }
+  const payFmt = fields.payDateRaw ? formatVnpPayDateFromGateway(fields.payDateRaw, locale) : null;
+  if (payFmt) {
+    rows.push({ label: t("tenant_payment.return_detail_pay_time"), value: payFmt });
+  }
+  const pushStr = (labelKey: string, val: string | null | undefined) => {
+    const v = typeof val === "string" ? val.trim() : "";
+    if (v) rows.push({ label: t(labelKey), value: v });
+  };
+  pushStr("tenant_payment.return_detail_order_info", fields.orderInfo);
+  pushStr("tenant_payment.return_detail_transaction_no", fields.transactionNo);
+  pushStr("tenant_payment.return_detail_bank", fields.bankCode);
+  pushStr("tenant_payment.return_detail_card_type", fields.cardType);
+  const code = fields.responseCode?.trim() ?? "";
+  if (code) {
+    const value =
+      code === "00" ? t("tenant_payment.return_detail_response_success") : code;
+    rows.push({ label: t("tenant_payment.return_detail_status"), value });
+  }
+  return rows;
+}
 
 function extractPaymentReturnLogDetail(message: unknown, data: unknown): string | undefined {
   const parts: string[] = [];
@@ -53,7 +105,7 @@ function extractPaymentReturnLogDetail(message: unknown, data: unknown): string 
  * WebView VNPay + màn kết quả in-app sau redirect (tiền nhà `invoiceIds`, báo giá sửa chữa `quoteId`).
  */
 export default function TenantVnpayCheckoutScreen({ navigation, route }: Props) {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const queryClient = useQueryClient();
   const checkoutUrl = String(route.params?.checkoutUrl ?? "").trim();
   const afterSuccess = route.params?.afterSuccess;
@@ -92,6 +144,7 @@ export default function TenantVnpayCheckoutScreen({ navigation, route }: Props) 
       if (!isLikelyVnpayReturnNavigation(url)) return;
       if (handledVnpayReturnUrlsRef.current.has(url)) return;
       handledVnpayReturnUrlsRef.current.add(url);
+      const fields = parseVnpayReturnUrlForDisplay(url);
       setReturnUi({ kind: "confirming" });
       try {
         const payload = await validateVnpayReturnUrl(url);
@@ -108,10 +161,10 @@ export default function TenantVnpayCheckoutScreen({ navigation, route }: Props) 
           if (detail) {
             console.warn("[ISUMS][vnpay-return] Xác thực OK — nội dung máy chủ (chỉ log):", detail);
           }
-          setReturnUi({ kind: "success" });
+          setReturnUi({ kind: "success", fields });
         } else {
           console.warn("[ISUMS][vnpay-return] success=false từ API:", { payload, detail });
-          setReturnUi({ kind: "failed" });
+          setReturnUi({ kind: "failed", fields });
         }
       } catch (e: unknown) {
         if (isVnpayReturnGatewaySuccess(url)) {
@@ -125,7 +178,7 @@ export default function TenantVnpayCheckoutScreen({ navigation, route }: Props) 
             formatApiErrorForTenantAlert(e, t, "vnpay_return"),
             e
           );
-          setReturnUi({ kind: "verify_skipped" });
+          setReturnUi({ kind: "verify_skipped", fields });
           return;
         }
 
@@ -136,10 +189,10 @@ export default function TenantVnpayCheckoutScreen({ navigation, route }: Props) 
           formatApiErrorForTenantAlert(e, t, "vnpay_return"),
           e
         );
-        setReturnUi({ kind: "failed" });
+        setReturnUi({ kind: "failed", fields });
       }
     },
-    [queryClient, t, vnpayCopyKeys]
+    [queryClient, t]
   );
 
   const onReturnResultPrimary = useCallback(() => {
@@ -170,7 +223,9 @@ export default function TenantVnpayCheckoutScreen({ navigation, route }: Props) 
           </TouchableOpacity>
         </View>
         <View style={stackScreenTitleCenterSlotStyle}>
-          <StackScreenTitleBadge numberOfLines={1}>{t("tenant_payment.title")}</StackScreenTitleBadge>
+          <Text style={styles.headerTitle} numberOfLines={1}>
+            {t("tenant_payment.title")}
+          </Text>
         </View>
         <View style={stackScreenTitleSideSlotStyle}>
           <StackScreenTitleBarBalance />
@@ -222,6 +277,10 @@ export default function TenantVnpayCheckoutScreen({ navigation, route }: Props) 
       returnUi.kind === "failed"
         ? t("common.close")
         : t("tenant_payment.return_result_done");
+    const detailRows =
+      returnUi.kind === "confirming"
+        ? undefined
+        : buildVnpayReturnDetailRows(returnUi.fields, t, i18n.language);
     return (
       <View style={styles.screenRoot}>
         {headerStrip}
@@ -229,6 +288,8 @@ export default function TenantVnpayCheckoutScreen({ navigation, route }: Props) 
           phase={phase}
           title={title}
           message={message}
+          detailSectionTitle={t("tenant_payment.return_detail_heading")}
+          detailRows={detailRows}
           onPrimaryPress={onReturnResultPrimary}
           primaryLabel={primaryLabel}
           omitTopInset
@@ -239,8 +300,8 @@ export default function TenantVnpayCheckoutScreen({ navigation, route }: Props) 
 
   return (
     <View style={styles.screenRoot}>
-      {headerStrip}
-      <SafeAreaView style={styles.flex} edges={["bottom"]}>
+      <StatusBar barStyle="dark-content" backgroundColor={neutral.surface} />
+      <SafeAreaView style={styles.flex} edges={["top", "bottom"]}>
         <WebView
           source={{ uri: checkoutUrl }}
           style={styles.flex}
@@ -286,6 +347,12 @@ export default function TenantVnpayCheckoutScreen({ navigation, route }: Props) 
 }
 
 const styles = StyleSheet.create({
+  headerTitle: {
+    ...appTypography.listTitle,
+    fontWeight: "600",
+    color: neutral.surface,
+    textAlign: "center",
+  },
   screenRoot: { flex: 1, backgroundColor: neutral.background },
   flex: { flex: 1, backgroundColor: neutral.background },
   loadingBody: {

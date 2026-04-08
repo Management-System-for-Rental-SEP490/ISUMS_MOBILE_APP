@@ -1,6 +1,7 @@
 import React from "react";
 import {
   ActivityIndicator,
+  Platform,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -22,10 +23,16 @@ import { tenantInvoiceStyles as invStyles } from "./tenantInvoiceStyles";
 
 export type VnpayReturnUiPhase = "confirming" | "success" | "verify_skipped" | "failed";
 
+export type VnpayReturnDetailRow = { label: string; value: string };
+
 type Props = {
   phase: VnpayReturnUiPhase;
   title: string;
   message?: string;
+  /** Tiêu đề nhóm (vd. i18n); chỉ hiện khi có `detailRows`. */
+  detailSectionTitle?: string;
+  /** Hàng thông tin đọc từ query VNPay (số tiền, giờ, mã GD…). */
+  detailRows?: VnpayReturnDetailRow[];
   onPrimaryPress: () => void;
   primaryLabel: string;
   /**
@@ -40,6 +47,8 @@ export function VnpayReturnResultView({
   phase,
   title,
   message,
+  detailSectionTitle,
+  detailRows,
   onPrimaryPress,
   primaryLabel,
   omitTopInset = false,
@@ -51,6 +60,8 @@ export function VnpayReturnResultView({
   const iconName = isFailed ? "close-circle" : "checkmark-circle";
 
   const bodyText = message?.trim() ?? "";
+  const detailHeading = detailSectionTitle?.trim() ?? "";
+  const rows = detailRows?.filter((r) => r.label?.trim() && r.value?.trim()) ?? [];
   const topPad = omitTopInset ? 12 : insets.top + 12;
 
   return (
@@ -88,6 +99,34 @@ export function VnpayReturnResultView({
           <Text style={styles.title}>{title}</Text>
           {bodyText.length > 0 ? <Text style={styles.body}>{bodyText}</Text> : null}
         </View>
+        {!isConfirming && rows.length > 0 ? (
+          <View style={[invStyles.paymentFlowCard, styles.detailsCardBelow]}>
+            {detailHeading.length > 0 ? (
+              <View style={invStyles.paymentFlowTitleRow}>
+                <View style={invStyles.sectionAccent} />
+                <Text style={[invStyles.paymentFlowTitle, styles.paymentFlowTitleAligned]}>
+                  {detailHeading}
+                </Text>
+              </View>
+            ) : null}
+            {rows.map((row, i) => (
+              <View
+                key={`${row.label}-${i}`}
+                style={[
+                  invStyles.paymentAttemptRow,
+                  i === 0 && detailHeading.length === 0 ? invStyles.paymentAttemptRowFirst : null,
+                ]}
+              >
+                <Text
+                  style={[invStyles.detailLabel, i === 0 ? styles.detailLabelFirstInBlock : null]}
+                >
+                  {row.label}
+                </Text>
+                <Text style={invStyles.detailValue}>{row.value}</Text>
+              </View>
+            ))}
+          </View>
+        ) : null}
       </ScrollView>
 
       {!isConfirming ? (
@@ -134,6 +173,21 @@ const styles = StyleSheet.create({
   },
   scroll: { flex: 1 },
   scrollContent: { paddingBottom: 8, flexGrow: 1 },
+  /** Tách khối tóm tắt và khối chi tiết (đồng bộ `paymentFlowCard` trong tenant invoice). */
+  detailsCardBelow: {
+    marginTop: 12,
+  },
+  /** `paymentFlowTitle` mặc định có marginBottom — bỏ trong hàng có `sectionAccent` để căn giữa theo trục dọc. */
+  paymentFlowTitleAligned: {
+    marginBottom: 0,
+    paddingBottom: 0,
+    ...Platform.select({
+      android: { includeFontPadding: false },
+    }),
+  },
+  detailLabelFirstInBlock: {
+    marginTop: 0,
+  },
   title: {
     ...appTypography.dialogTitle,
     fontSize: 22,

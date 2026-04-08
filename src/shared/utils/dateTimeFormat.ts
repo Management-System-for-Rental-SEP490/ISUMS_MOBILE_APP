@@ -70,6 +70,39 @@ const CONTRACT_DAY_OPTIONS: Intl.DateTimeFormatOptions = {
   year: "numeric",
 };
 
+/** Giống `formatTenantIssueDateTime` — dùng cho chuỗi thời gian parse được thành `Date` local. */
+const COMPACT_DATETIME_OPTIONS: Intl.DateTimeFormatOptions = {
+  hour: "2-digit",
+  minute: "2-digit",
+  day: "2-digit",
+  month: "2-digit",
+  year: "numeric",
+  hour12: false,
+};
+
+/**
+ * `vnp_PayDate` từ VNPay: 14 ký tự `yyyyMMddHHmmss` — hiển thị theo locale (thành phần số là giờ địa phương).
+ */
+export function formatVnpPayDateFromGateway(raw: string, locale: string): string | null {
+  const s = String(raw ?? "").trim();
+  if (!/^\d{14}$/.test(s)) return null;
+  const y = Number(s.slice(0, 4));
+  const mo = Number(s.slice(4, 6)) - 1;
+  const d = Number(s.slice(6, 8));
+  const h = Number(s.slice(8, 10));
+  const mi = Number(s.slice(10, 12));
+  const sec = Number(s.slice(12, 14));
+  const date = new Date(y, mo, d, h, mi, sec);
+  if (Number.isNaN(date.getTime())) return null;
+  try {
+    const out = date.toLocaleString(locale, COMPACT_DATETIME_OPTIONS);
+    return out?.trim() ? out : null;
+  } catch {
+    const pad = (n: number) => String(n).padStart(2, "0");
+    return `${pad(h)}:${pad(mi)}, ${pad(d)}/${pad(mo + 1)}/${y}`;
+  }
+}
+
 /** Ngày hợp đồng (bắt đầu/kết thúc) theo locale — ISO 8601 từ BE. */
 export function formatTenantContractDay(iso: string, locale: string): string {
   const d = new Date(iso);

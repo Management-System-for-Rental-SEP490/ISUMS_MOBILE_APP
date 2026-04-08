@@ -708,6 +708,10 @@ export interface IssueQuoteItemFromApi {
   itemName: string;
   description?: string | null;
   price: number;
+  /** Hạng mục chọn từ banner — BE có thể trả để tách với hạng mục ngoài banner. */
+  bannerId?: string | null;
+  /** Giá vốn (hạng mục ngoài banner) — tùy BE. */
+  cost?: number | null;
 }
 
 /** Một quote cho một ticket (GET /api/issues/quotes/ticket/:ticketId) */

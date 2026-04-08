@@ -1,6 +1,8 @@
-import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
+import { useInfiniteQuery, useQueries, useQuery } from "@tanstack/react-query";
+import { useMemo } from "react";
 import {
   getFunctionalAreasByHouseId,
+  getHouseById,
   getHouseIotAlerts,
   getHouses,
   getTenantHouses,
@@ -17,6 +19,8 @@ export const HOUSES_KEYS = {
   all: ["houses"] as const,
   /** Key cho danh sách nhà của tenant hiện tại. */
   tenant: ["houses", "tenant"] as const,
+  /** Chi tiết một nhà (GET /houses/{id}). */
+  byId: (houseId: string) => ["houses", "byId", houseId] as const,
   functionalAreas: (houseId: string) =>
     ["houses", "functionalAreas", houseId] as const,
 };
@@ -44,6 +48,63 @@ export const useTenantHouses = () => {
     queryKey: HOUSES_KEYS.tenant,
     queryFn: getTenantHouses,
   });
+};
+
+/**
+ * GET /houses/{id} — bật khi cần (vd. căn không còn trong my-access).
+ */
+export const useHouseById = (houseId: string | null | undefined, enabled: boolean) => {
+  const id = String(houseId ?? "").trim();
+  return useQuery({
+    queryKey: HOUSES_KEYS.byId(id),
+    queryFn: () => getHouseById(id),
+    enabled: Boolean(id && enabled),
+    staleTime: 10 * 60 * 1000,
+  });
+};
+
+/**
+ * Nhiều GET /houses/{id} song song — map id → tên (chỉ khi success).
+ */
+export const useHouseNamesByIds = (houseIds: string[]) => {
+  const idsKey = houseIds.join("\u0001");
+  const sortedIds = useMemo(
+    () =>
+      [...new Set(houseIds.map((x) => String(x ?? "").trim()).filter((x) => x.length > 0))].sort((a, b) =>
+        a.localeCompare(b)
+      ),
+    [idsKey]
+  );
+
+  const queries = useQueries({
+    queries: sortedIds.map((id) => ({
+      queryKey: HOUSES_KEYS.byId(id),
+      queryFn: () => getHouseById(id),
+      enabled: Boolean(id),
+      staleTime: 10 * 60 * 1000,
+    })),
+  });
+
+  const nameKey = queries
+    .map((q) => {
+      const d = q.data;
+      if (!d?.success || !d.data) return "";
+      return String(d.data.name ?? "").trim();
+    })
+    .join("\u0001");
+
+  const namesById = useMemo(() => {
+    const m = new Map<string, string>();
+    sortedIds.forEach((id, i) => {
+      const d = queries[i]?.data;
+      if (!d?.success || !d.data) return;
+      const n = String(d.data.name ?? "").trim();
+      if (n) m.set(id, n);
+    });
+    return m;
+  }, [sortedIds, nameKey]);
+
+  return { namesById };
 };
 
 /**

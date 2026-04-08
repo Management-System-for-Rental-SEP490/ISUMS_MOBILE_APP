@@ -10,6 +10,7 @@ import { RootStackParamList, TenantInvoiceFromApi } from "../../../../shared/typ
 import {
   formatTenantInvoiceAmount,
   formatTenantInvoiceCardTitle,
+  isTenantInvoiceIssueType,
   isTenantInvoicePayable,
   isTenantRepairInvoiceFlow,
 } from "../../../../shared/utils/tenantInvoice";
@@ -19,7 +20,12 @@ import Icons from "../../../../shared/theme/icon";
 import { createVnpayPaymentLink } from "../../../../shared/services/tenantPaymentApi";
 import { brandPrimary, neutral, tenantInvoicePaidBadgeFg } from "../../../../shared/theme/color";
 import { useAuthStore } from "../../../../store/useAuthStore";
-import { useTenantInvoices } from "../../../../shared/hooks";
+import { useHouseById, useTenantHouses, useTenantInvoices } from "../../../../shared/hooks";
+import {
+  isHouseIdOutsideTenantAccess,
+  shortHouseIdForDisplay,
+  tenantAccessibleHouseIdSet,
+} from "../../../../shared/utils";
 import {
   StackScreenTitleBadge,
   StackScreenTitleHeaderStrip,
@@ -44,14 +50,56 @@ export default function TenantInvoiceDetailScreen({ navigation, route }: Props) 
   const { invoice } = route.params;
 
   useLayoutEffect(() => {
-    if (isTenantRepairInvoiceFlow(invoice)) {
+    if (isTenantRepairInvoiceFlow(invoice) && !isTenantInvoiceIssueType(invoice)) {
       navigation.replace("TenantIssueInvoice", { invoice });
     }
   }, [invoice, navigation]);
   const { houseId: selectedHouseIdFromStore } = useAuthStore();
   const { data: invoiceQueryData } = useTenantInvoices();
+  const { data: housesData } = useTenantHouses();
   const rawInvoiceData = invoiceQueryData ?? EMPTY_TENANT_INVOICES;
   const [creatingLink, setCreatingLink] = useState(false);
+
+  const tenantHouseRows = useMemo(() => {
+    const raw = housesData?.data;
+    return Array.isArray(raw) ? raw : raw && typeof raw === "object" ? [raw] : [];
+  }, [housesData?.data]);
+
+  const accessHouseIds = useMemo(() => tenantAccessibleHouseIdSet(tenantHouseRows), [tenantHouseRows]);
+
+  const invoiceHouseId = useMemo(() => String(invoice.houseId ?? "").trim(), [invoice.houseId]);
+
+  const invoiceHouseOutsideAccess = useMemo(
+    () => Boolean(invoiceHouseId && isHouseIdOutsideTenantAccess(invoiceHouseId, accessHouseIds)),
+    [invoiceHouseId, accessHouseIds]
+  );
+
+  const lacksInvoiceHouseName = !String(invoice.houseName ?? "").trim();
+  const hasNameFromMyAccess = useMemo(() => {
+    if (!invoiceHouseId) return false;
+    const found = tenantHouseRows.find((h) => String(h.id ?? "").trim() === invoiceHouseId);
+    return Boolean(found?.name?.trim());
+  }, [invoiceHouseId, tenantHouseRows]);
+
+  const { data: invoiceHouseByIdRes } = useHouseById(
+    invoiceHouseId,
+    Boolean(invoiceHouseId && lacksInvoiceHouseName && !hasNameFromMyAccess)
+  );
+
+  const invoiceHouseLabel = useMemo(() => {
+    if (!invoiceHouseId) return "";
+    const fromInv = String(invoice.houseName ?? "").trim();
+    if (fromInv) return fromInv;
+    const found = tenantHouseRows.find((h) => String(h.id ?? "").trim() === invoiceHouseId);
+    const n = found?.name?.trim();
+    if (n) return n;
+    const fromHouseById =
+      invoiceHouseByIdRes?.success && invoiceHouseByIdRes.data
+        ? String(invoiceHouseByIdRes.data.name ?? "").trim()
+        : "";
+    if (fromHouseById) return fromHouseById;
+    return shortHouseIdForDisplay(invoiceHouseId);
+  }, [invoice.houseName, invoiceHouseId, tenantHouseRows, invoiceHouseByIdRes]);
 
   const locale = useMemo(() => {
     const lang = String(i18n.language || "").toLowerCase();
@@ -95,12 +143,19 @@ export default function TenantInvoiceDetailScreen({ navigation, route }: Props) 
   };
 
   const feeLines = useMemo((): FeeLine[] => {
+    const isIssueTicketInvoice = isTenantInvoiceIssueType(invoice);
     const total = Number(invoice.amount ?? 0);
     const base = Number(invoice.baseAmount ?? 0);
     const penalty = Number(invoice.penaltyAmount ?? 0);
     const lines: FeeLine[] = [];
     if (base > 0.01) {
-      lines.push({ key: "base", label: t("tenant_invoice.line_apartment_rent"), amount: base });
+      lines.push({
+        key: "base",
+        label: isIssueTicketInvoice
+          ? t("tenant_invoice.line_issue_repair_main")
+          : t("tenant_invoice.line_apartment_rent"),
+        amount: base,
+      });
     }
     if (penalty > 0.01) {
       lines.push({ key: "penalty", label: t("tenant_invoice.field_penalty_amount"), amount: penalty });
@@ -110,15 +165,25 @@ export default function TenantInvoiceDetailScreen({ navigation, route }: Props) 
       const hasSplit = base > 0.01 || penalty > 0.01;
       lines.push({
         key: "service",
-        label: hasSplit ? t("tenant_invoice.line_management_fee") : t("tenant_invoice.field_total_amount"),
+        label: hasSplit
+          ? isIssueTicketInvoice
+            ? t("tenant_invoice.line_issue_repair_other")
+            : t("tenant_invoice.line_management_fee")
+          : t("tenant_invoice.field_total_amount"),
         amount: other,
       });
     }
     if (lines.length === 0 && total > 0) {
-      lines.push({ key: "total_only", label: t("tenant_invoice.field_total_amount"), amount: total });
+      lines.push({
+        key: "total_only",
+        label: isIssueTicketInvoice
+          ? t("tenant_invoice.type_ISSUE")
+          : t("tenant_invoice.field_total_amount"),
+        amount: total,
+      });
     }
     return lines;
-  }, [invoice.amount, invoice.baseAmount, invoice.penaltyAmount, t]);
+  }, [invoice, t]);
 
   const openPay = useCallback(async () => {
     if (creatingLink) return;
@@ -153,7 +218,7 @@ export default function TenantInvoiceDetailScreen({ navigation, route }: Props) 
   const isPaidVisual = !payable;
   const hasPaidSuccessAt = Boolean(invoice.paidAt && String(invoice.paidAt).trim());
 
-  if (isTenantRepairInvoiceFlow(invoice)) {
+  if (isTenantRepairInvoiceFlow(invoice) && !isTenantInvoiceIssueType(invoice)) {
     return (
       <View style={[styles.container, { justifyContent: "center", flex: 1 }]}>
         <ActivityIndicator size="large" color={brandPrimary} />
@@ -221,6 +286,18 @@ export default function TenantInvoiceDetailScreen({ navigation, route }: Props) 
             </Text>
           </View>
         </View>
+
+        {invoiceHouseId ? (
+          <View style={styles.detailNoticeCard}>
+            <Text style={styles.detailTimelineLabel}>{t("tenant_invoice.field_house")}</Text>
+            <Text style={styles.detailTimelineValue}>{invoiceHouseLabel}</Text>
+            {invoiceHouseOutsideAccess ? (
+              <Text style={[styles.accessMismatchNotice, { marginTop: 8 }]}>
+                {t("tenant_access.house_not_owned_disclaimer")}
+              </Text>
+            ) : null}
+          </View>
+        ) : null}
 
         <View style={styles.detailTimelineCard}>
           <Text style={styles.detailTimelineProcessTitle}>

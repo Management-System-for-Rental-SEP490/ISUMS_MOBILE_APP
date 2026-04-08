@@ -138,6 +138,32 @@ export const tenantInvoiceStyles = StyleSheet.create({
     fontWeight: "600",
     marginTop: 8,
   },
+  /** Chú thích căn chỉ còn trên hóa đơn/hợp đồng, không có trong my-access. */
+  accessMismatchNotice: {
+    fontSize: 12,
+    lineHeight: 16,
+    color: neutral.textMuted,
+    fontWeight: "600",
+    marginTop: 4,
+  },
+  /** Khối lọc theo căn (chỉ khi my-access có từ 2 nhà). */
+  filterByHouseWrap: {
+    marginTop: 12,
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+    borderRadius: 12,
+    backgroundColor: neutral.backgroundElevated,
+    borderWidth: 1,
+    borderColor: neutral.border,
+  },
+  filterByHouseLabel: {
+    ...appTypography.caption,
+    fontSize: 12,
+    fontWeight: "700",
+    color: neutral.textSecondary,
+    marginBottom: 8,
+    letterSpacing: 0.2,
+  },
   filterChipsScroll: {
     marginHorizontal: -2,
   },
@@ -301,12 +327,21 @@ export const tenantInvoiceStyles = StyleSheet.create({
     fontWeight: "700",
     color: neutral.heading,
     textAlign: "right",
+    flexShrink: 0,
+  },
+  /** Hạn / thời gian thanh toán và giá cùng một hàng, căn giữa theo trục dọc. */
+  cardBottomRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
     marginTop: 4,
   },
   dueRow: {
     flexDirection: "row",
     alignItems: "center",
     gap: 6,
+    flex: 1,
+    minWidth: 0,
   },
   meta: {
     ...appTypography.caption,
@@ -349,6 +384,10 @@ export const tenantInvoiceStyles = StyleSheet.create({
     ...appTypography.modalListItem,
     color: neutral.text,
     marginTop: 4,
+  },
+  /** Dùng trong `InvoicePaymentFlowSection` (ticket đã trả) — bỏ marginTop mặc định của `detailLabel`. */
+  detailLabelFirstInPaymentBreakdown: {
+    marginTop: 0,
   },
   payButton: {
     marginTop: 24,
@@ -625,6 +664,12 @@ export const tenantInvoiceStyles = StyleSheet.create({
     fontSize: 15,
     fontWeight: "800",
     color: neutral.text,
+  },
+  quoteInlineMuted: {
+    marginTop: 6,
+    fontSize: 13,
+    lineHeight: 19,
+    color: neutral.textMuted,
   },
   detailFooter: {
     paddingHorizontal: 20,

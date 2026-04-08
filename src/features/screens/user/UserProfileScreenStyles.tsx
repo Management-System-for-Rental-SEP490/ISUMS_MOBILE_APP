@@ -347,6 +347,13 @@ export const userContractDetailStyles = StyleSheet.create({
     color: neutral.textBody,
     lineHeight: 22,
   },
+  heroMetaDisclaimer: {
+    fontSize: 12,
+    fontWeight: "600",
+    color: neutral.textMuted,
+    lineHeight: 17,
+    marginTop: 6,
+  },
   detailCard: {
     backgroundColor: neutral.surface,
     borderRadius: 20,

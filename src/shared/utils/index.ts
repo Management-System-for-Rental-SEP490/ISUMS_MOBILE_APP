@@ -31,8 +31,19 @@ export {
   formatTenantContractDay,
   formatTenantIssueDateTime,
   formatTimeAgoI18n,
+  formatVnpPayDateFromGateway,
   toLocalYyyyMmDd,
 } from "./dateTimeFormat";
+export {
+  buildTenantHouseFilterOptions,
+  enrichTenantHouseOptionsWithByIdApi,
+  houseLabelByIdFromFilterOptions,
+  isHouseIdOutsideTenantAccess,
+  pickHouseDisplayLabelFromInvoices,
+  shortHouseIdForDisplay,
+  tenantAccessibleHouseIdSet,
+  type TenantHouseFilterOption,
+} from "./tenantHouseFallback";
 export {
   formatTenantAccessStatusForDisplay,
   formatTenantMemberRoleForDisplay,

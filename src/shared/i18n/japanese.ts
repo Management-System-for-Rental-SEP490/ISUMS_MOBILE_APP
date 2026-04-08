@@ -169,6 +169,13 @@ export default {
         "no_slot": "枠なし",
         "slot_time_tbd": "日程は別途ご連絡のうえ確定します",
         "section_repair_invoice": "請求書・支払い履歴",
+        "payment_content_label": "支払い内容",
+        "payment_content_repair_quote_heading": "修繕費（承認済み見積に基づく）",
+        "payment_content_quote_total_label": "見積合計",
+        "payment_content_repair_items_none": "（見積の内訳がまだありません）",
+        "payment_content_repair_fallback": "チケット「{{title}}」の修繕費",
+        "payment_paid_at_label": "支払い日時",
+        "payment_record_index": "お支払い {{n}}",
         "view_invoice_btn": "請求書を見る",
         "open_repair_invoice_detail": "修繕請求の詳細を見る"
     },
@@ -674,6 +681,15 @@ export default {
         "return_success_body_default_house":
             "家賃等のお支払いが記録されました。「完了」で請求書一覧に戻り、状態をご確認ください。",
         "return_result_done": "完了",
+        "return_detail_heading": "取引情報（VNPay）",
+        "return_detail_amount": "金額",
+        "return_detail_pay_time": "決済日時",
+        "return_detail_order_info": "注文内容",
+        "return_detail_transaction_no": "VNPay 取引番号",
+        "return_detail_bank": "銀行",
+        "return_detail_card_type": "カード種別",
+        "return_detail_status": "ステータス",
+        "return_detail_response_success": "成功",
         "return_ui_success_subtitle": "ありがとうございます。「完了」で続行できます。",
         "return_ui_success_subtitle_house": "記録されました。「完了」で請求書をご確認ください。",
         "return_ui_verify_skipped_subtitle":
@@ -705,6 +721,11 @@ export default {
         "primary_house_required_action":
             "続行するには、選択中の物件の請求を一覧に残したままにしてください。"
     },
+    "tenant_access": {
+        "house_not_owned_disclaimer": "この物件はアクセス一覧に含まれていません。",
+        "invoice_house_mismatch_banner":
+            "請求書・契約に紐づく物件IDはありますが、現在のmy-accessの一覧にはありません。表示は請求・契約データに基づきます。アカウントの利用権限の対象外となっています。"
+    },
     "tenant_invoice": {
         "screen_title": "請求書",
         "invoice_placeholder_title": "請求書",
@@ -716,9 +737,11 @@ export default {
         "secondary_house_first_rent_activation_note":
             "初月家賃をお支払いいただくと、アプリの全機能をご利用いただけます。",
         "chip_all": "すべての物件",
+        "filter_by_house": "物件で絞り込む",
         "empty_list": "請求書はまだありません。API連携後に表示されます。",
         "load_error": "読み込みに失敗しました。接続を確認して再試行してください。",
         "view_detail": "詳細",
+        "list_paid_at_label": "お支払い日時",
         "due": "支払期限",
         "detail_title": "請求書の詳細",
         "detail_issued_label": "発行日時",
@@ -729,6 +752,8 @@ export default {
         "detail_menu_a11y": "その他",
         "fee_breakdown_title": "料金内訳",
         "line_apartment_rent": "アパート賃料",
+        "line_issue_repair_main": "修繕費用",
+        "line_issue_repair_other": "その他の費用",
         "line_management_fee": "管理費",
         "total_combined": "合計",
         "field_status": "状態",
@@ -742,7 +767,7 @@ export default {
         "field_type": "請求タイプ",
         "type_MONTHLY_RENT": "月次家賃",
         "type_DEPOSIT": "敷金・保証金",
-        "type_ISSUE": "修繕・チケット料金",
+        "type_ISSUE": "修繕費",
         "field_period": "請求期間",
         "field_total_amount": "合計金額",
         "field_base_amount": "基本料金",
@@ -756,6 +781,9 @@ export default {
         "multi_empty": "未払いの請求はありません。",
         "multi_none_title": "請求を選択",
         "multi_none_body": "1件以上選んでください。",
+        "multi_mixed_types_title": "まとめて支払えません",
+        "multi_mixed_types_body":
+            "1回の決済では、家賃・敷金か修繕料のどちらか一方のみ選べます。どちらかのグループの選択を外してから再度お試しください。",
         "multi_summary": "{{count}} 件選択 ・ {{amount}}",
         "multi_footer_selected_label": "選択",
         "footer_total_label": "お支払い合計",
@@ -790,8 +818,7 @@ export default {
         "payment_attempt_status_PENDING": "処理中",
         "payment_attempt_status_SUCCESS": "成功",
         "payment_attempt_status_FAILED": "失敗",
-        "payment_attempt_time": "日時",
-        "ticket_open_error": "チケット詳細を開けませんでした。もう一度お試しください。"
+        "payment_attempt_time": "日時"
     },
     "tenant_issue_invoice": {
         "screen_title": "修繕請求書"
