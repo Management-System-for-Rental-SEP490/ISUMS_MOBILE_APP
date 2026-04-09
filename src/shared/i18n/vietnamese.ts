@@ -560,6 +560,7 @@ export default {
         "utility_profile": "Hồ sơ",
         "utility_electric": "Điện",
         "utility_water": "Nước",
+        "utility_consumption": "Tiêu thụ",
         "utility_invoice": "Hóa đơn",
         "utility_ticket": "Sự cố",
         "utility_qa": "Giải đáp",

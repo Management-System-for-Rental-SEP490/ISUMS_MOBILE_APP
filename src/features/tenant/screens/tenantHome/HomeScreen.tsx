@@ -567,7 +567,7 @@ const HomeScreen = ({ navigation }: HomeScreenProps) => {
                 <Pressable
                   style={({ pressed }) => [
                     homeStyles.utilityItem,
-                    { width: utilityItemWidth, backgroundColor: "#F3F4F6" },
+                    { width: utilityItemWidth, backgroundColor: "#CCFBF1" },
                     pressed && Platform.OS === "ios" ? { opacity: 0.92 } : null,
                   ]}
                   android_ripple={{ color: "rgba(0,0,0,0.06)" }}
@@ -576,26 +576,9 @@ const HomeScreen = ({ navigation }: HomeScreenProps) => {
                   }}
                 >
                   <View style={homeStyles.utilityIconSlot}>
-                    <Icons.electric color="#059669" size={UTILITY_ICON} />
+                    <Icons.consumption color="#0D9488" size={UTILITY_ICON} />
                   </View>
-                  <Text style={homeStyles.utilityLabel}>{t("home.utility_electric")}</Text>
-                </Pressable>
-
-                <Pressable
-                  style={({ pressed }) => [
-                    homeStyles.utilityItem,
-                    { width: utilityItemWidth, backgroundColor: "#E0E7FF" },
-                    pressed && Platform.OS === "ios" ? { opacity: 0.92 } : null,
-                  ]}
-                  android_ripple={{ color: "rgba(0,0,0,0.06)" }}
-                  onPress={() => {
-                    rootNavigation.navigate("ConsumptionScreen", { initialTab: "water" });
-                  }}
-                >
-                  <View style={homeStyles.utilityIconSlot}>
-                    <Icons.water color="#2563EB" size={UTILITY_ICON} />
-                  </View>
-                  <Text style={homeStyles.utilityLabel}>{t("home.utility_water")}</Text>
+                  <Text style={homeStyles.utilityLabel}>{t("home.utility_consumption")}</Text>
                 </Pressable>
 
                 <Pressable

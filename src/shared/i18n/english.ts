@@ -560,6 +560,7 @@ export default {
         "utility_profile": "Profile",
         "utility_electric": "Electric",
         "utility_water": "Water",
+        "utility_consumption": "Consumption",
         "utility_invoice": "Invoices",
         "utility_ticket": "Tickets",
         "utility_qa": "Q&A",

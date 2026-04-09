@@ -31,7 +31,6 @@ import {
   validateVnpayReturnUrl,
 } from "../../../../shared/services/tenantPaymentApi";
 import { formatVnpPayDateFromGateway } from "../../../../shared/utils/dateTimeFormat";
-import { formatApiErrorForTenantAlert } from "../../../../shared/utils/apiErrorMessage";
 import { brandPrimary, neutral } from "../../../../shared/theme/color";
 import { appTypography } from "../../../../shared/utils/typography";
 import { HOUSES_KEYS, TENANT_INVOICES_QUERY_KEY } from "../../../../shared/hooks";
@@ -89,18 +88,6 @@ function buildVnpayReturnDetailRows(
   return rows;
 }
 
-function extractPaymentReturnLogDetail(message: unknown, data: unknown): string | undefined {
-  const parts: string[] = [];
-  for (const x of [message, data]) {
-    if (typeof x !== "string") continue;
-    const s = x.trim();
-    if (!s) continue;
-    parts.push(s);
-  }
-  const joined = parts.join("\n").trim();
-  return joined.length ? joined : undefined;
-}
-
 /**
  * WebView VNPay + màn kết quả in-app sau redirect (tiền nhà `invoiceIds`, báo giá sửa chữa `quoteId`).
  */
@@ -148,7 +135,6 @@ export default function TenantVnpayCheckoutScreen({ navigation, route }: Props) 
       setReturnUi({ kind: "confirming" });
       try {
         const payload = await validateVnpayReturnUrl(url);
-        const detail = extractPaymentReturnLogDetail(payload.message, payload.data);
         const ok = Boolean(payload.success);
         if (ok) {
           await Promise.all([
@@ -158,41 +144,27 @@ export default function TenantVnpayCheckoutScreen({ navigation, route }: Props) 
         }
         await new Promise((resolve) => setTimeout(resolve, 280));
         if (ok) {
-          if (detail) {
-            console.warn("[ISUMS][vnpay-return] Xác thực OK — nội dung máy chủ (chỉ log):", detail);
-          }
           setReturnUi({ kind: "success", fields });
         } else {
-          console.warn("[ISUMS][vnpay-return] success=false từ API:", { payload, detail });
           setReturnUi({ kind: "failed", fields });
         }
-      } catch (e: unknown) {
+      } catch {
         if (isVnpayReturnGatewaySuccess(url)) {
           await Promise.all([
             queryClient.invalidateQueries({ queryKey: TENANT_INVOICES_QUERY_KEY }),
             queryClient.invalidateQueries({ queryKey: HOUSES_KEYS.tenant }),
           ]);
           await new Promise((resolve) => setTimeout(resolve, 280));
-          console.warn(
-            "[ISUMS][vnpay-return] Cổng 00 nhưng xác thực lỗi — hiển thị thành công gọn; chi tiết:",
-            formatApiErrorForTenantAlert(e, t, "vnpay_return"),
-            e
-          );
           setReturnUi({ kind: "verify_skipped", fields });
           return;
         }
 
         handledVnpayReturnUrlsRef.current.delete(url);
         await new Promise((resolve) => setTimeout(resolve, 220));
-        console.warn(
-          "[ISUMS][vnpay-return] Lỗi xác thực (chỉ log):",
-          formatApiErrorForTenantAlert(e, t, "vnpay_return"),
-          e
-        );
         setReturnUi({ kind: "failed", fields });
       }
     },
-    [queryClient, t]
+    [queryClient]
   );
 
   const onReturnResultPrimary = useCallback(() => {

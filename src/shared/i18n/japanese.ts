@@ -560,6 +560,7 @@ export default {
         "utility_profile": "プロフィール",
         "utility_electric": "電気",
         "utility_water": "水",
+        "utility_consumption": "使用量",
         "utility_invoice": "請求書",
         "utility_ticket": "チケット",
         "utility_qa": "質問",
