@@ -1,9 +1,12 @@
-import React, { useMemo, useRef, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import {
   ActivityIndicator,
   Animated,
+  Dimensions,
   Image,
+  KeyboardAvoidingView,
+  Platform,
   Pressable,
   ScrollView,
   Text,
@@ -38,11 +41,19 @@ import {
   type TicketImageToUpload,
 } from "../../../../shared/services/issuesApi";
 import { TicketAssetSelect, type TicketAssetSelection } from "./TicketAssetSelect";
+import { useKeyboardBottomInset } from "../../../../shared/hooks/useKeyboardBottomInset";
 
 type TicketRouteProp = RouteProp<RootStackParamList, "Ticket">;
 type TicketNavigationProp = NativeStackNavigationProp<RootStackParamList, "Ticket">;
 
 const MAX_TICKET_ATTACHMENT_IMAGES = 5;
+
+/** Khoảng hở phía trên bàn phím (px), Android. */
+const ANDROID_KEYBOARD_GAP = 16;
+/** Nâng thêm ô "Tiêu đề" so với ô khác (px). */
+const ANDROID_TITLE_EXTRA_LIFT = 56;
+
+type AndroidScrollOpts = { extraLift?: number };
 
 const TicketScreen = () => {
   const { t } = useTranslation();
@@ -65,6 +76,71 @@ const TicketScreen = () => {
   const typeSlideAnim = useRef(
     new Animated.Value(ticketType === "REPAIR" ? 0 : 1)
   ).current;
+  const scrollRef = useRef<ScrollView>(null);
+  const scrollYRef = useRef(0);
+  const titleInputRef = useRef<TextInput>(null);
+  const descInputRef = useRef<TextInput>(null);
+  const lastFocusedInputRef = useRef<React.RefObject<TextInput | null> | null>(null);
+  const lastAndroidScrollOptsRef = useRef<AndroidScrollOpts>({});
+  const keyboardInsetRef = useRef(0);
+  const keyboardInset = useKeyboardBottomInset();
+  const androidScrollDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    keyboardInsetRef.current = keyboardInset;
+  }, [keyboardInset]);
+
+  const scrollAndroidFieldIntoView = (
+    inputRef: React.RefObject<TextInput | null>,
+    opts?: AndroidScrollOpts
+  ) => {
+    if (Platform.OS !== "android") return;
+    const inset = keyboardInsetRef.current;
+    if (inset <= 0) return;
+    const winH = Dimensions.get("window").height;
+    const extraLift = opts?.extraLift ?? 0;
+    const visibleBottom = winH - inset - ANDROID_KEYBOARD_GAP;
+    inputRef.current?.measureInWindow((x, y, w, h) => {
+      const inputBottom = y + h;
+      if (inputBottom > visibleBottom - extraLift) {
+        const dy = inputBottom - visibleBottom + extraLift + 8;
+        scrollRef.current?.scrollTo({ y: scrollYRef.current + dy, animated: true });
+      }
+    });
+  };
+
+  const scheduleAndroidScrollOnFocus = (
+    inputRef: React.RefObject<TextInput | null>,
+    opts?: AndroidScrollOpts
+  ) => {
+    if (Platform.OS !== "android") return;
+    lastFocusedInputRef.current = inputRef;
+    lastAndroidScrollOptsRef.current = opts ?? {};
+    if (keyboardInsetRef.current > 0) {
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() =>
+          scrollAndroidFieldIntoView(inputRef, lastAndroidScrollOptsRef.current)
+        );
+      });
+    }
+  };
+
+  useEffect(() => {
+    if (Platform.OS !== "android" || keyboardInset <= 0) return;
+    if (androidScrollDebounceRef.current) clearTimeout(androidScrollDebounceRef.current);
+    androidScrollDebounceRef.current = setTimeout(() => {
+      androidScrollDebounceRef.current = null;
+      const r = lastFocusedInputRef.current;
+      if (r) {
+        requestAnimationFrame(() => {
+          scrollAndroidFieldIntoView(r, lastAndroidScrollOptsRef.current);
+        });
+      }
+    }, 100);
+    return () => {
+      if (androidScrollDebounceRef.current) clearTimeout(androidScrollDebounceRef.current);
+    };
+  }, [keyboardInset]);
 
   const typeIndicatorTranslateX = useMemo(
     () =>
@@ -235,14 +311,31 @@ const TicketScreen = () => {
           <StackScreenTitleBarBalance />
         </View>
       </StackScreenTitleHeaderStrip>
+      <KeyboardAvoidingView
+        style={{ flex: 1 }}
+        behavior={Platform.OS === "ios" ? "padding" : undefined}
+        enabled={Platform.OS === "ios"}
+        keyboardVerticalOffset={insets.top + 56}
+      >
       <ScrollView
+        ref={scrollRef}
         style={ticketStyles.content}
         contentContainerStyle={[
           ticketStyles.contentContainer,
-          { paddingBottom: Math.max(insets.bottom, 20) + ticketStyles.contentContainer.paddingBottom },
+          {
+            paddingBottom:
+              Math.max(insets.bottom, 20) +
+              ticketStyles.contentContainer.paddingBottom +
+              (Platform.OS === "android" ? keyboardInset : 0),
+          },
         ]}
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}
+        automaticallyAdjustKeyboardInsets={Platform.OS === "ios"}
+        onScroll={(e) => {
+          scrollYRef.current = e.nativeEvent.contentOffset.y;
+        }}
+        scrollEventThrottle={16}
       >
         <View style={ticketStyles.pageIntro}>
           <Text style={ticketStyles.pageIntroText}>{t("tenant_ticket_menu.subtitle")}</Text>
@@ -332,12 +425,18 @@ const TicketScreen = () => {
               </Text>
             </View>
             <TextInput
+              ref={titleInputRef}
               style={ticketStyles.input}
               placeholder={t("ticket.title_placeholder")}
               placeholderTextColor={neutral.textMuted}
               value={title}
               onChangeText={setTitle}
               maxLength={200}
+              onFocus={() =>
+                scheduleAndroidScrollOnFocus(titleInputRef, {
+                  extraLift: ANDROID_TITLE_EXTRA_LIFT,
+                })
+              }
             />
           </View>
 
@@ -351,6 +450,7 @@ const TicketScreen = () => {
               </Text>
             </View>
             <TextInput
+              ref={descInputRef}
               style={[ticketStyles.input, ticketStyles.textArea]}
               placeholder={t("ticket.description_placeholder")}
               placeholderTextColor={neutral.textMuted}
@@ -360,6 +460,7 @@ const TicketScreen = () => {
               numberOfLines={6}
               textAlignVertical="top"
               maxLength={2000}
+              onFocus={() => scheduleAndroidScrollOnFocus(descInputRef)}
             />
           </View>
 
@@ -452,6 +553,7 @@ const TicketScreen = () => {
           </TouchableOpacity>
         </View>
       </ScrollView>
+      </KeyboardAvoidingView>
 
       <ImageCaptureModal
         visible={imageCaptureVisible}

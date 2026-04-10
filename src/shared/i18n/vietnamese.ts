@@ -25,7 +25,9 @@ export default {
         "a11y_notifications": "Mở thông báo",
         "a11y_app_logo": "Logo ISUMS",
         "a11y_open_profile": "Mở hồ sơ",
-        "a11y_brand_go_home": "Về trang chủ"
+        "a11y_brand_go_home": "Về trang chủ",
+        "currency_vnd_unit": "VNĐ",
+        "currency_not_available": "—"
     },
     "device_detail": {
         "title": "Chi tiết thiết bị",
@@ -564,6 +566,8 @@ export default {
         "utility_invoice": "Hóa đơn",
         "utility_ticket": "Sự cố",
         "utility_qa": "Giải đáp",
+        "question_feedback_card_title": "Phản hồi",
+        "question_ticker_a11y": "Chạm để xem chi tiết phản hồi",
         "utility_scan": "Tra cứu",
         "utility_house": "Nhà",
         "utility_notification": "Thông báo",

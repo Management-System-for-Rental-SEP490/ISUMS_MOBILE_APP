@@ -25,7 +25,9 @@ export default {
         "a11y_notifications": "通知を開く",
         "a11y_app_logo": "ISUMSのロゴ",
         "a11y_open_profile": "プロフィールを開く",
-        "a11y_brand_go_home": "ホームへ"
+        "a11y_brand_go_home": "ホームへ",
+        "currency_vnd_unit": "VND",
+        "currency_not_available": "—"
     },
     "device_detail": {
         "title": "デバイス詳細",
@@ -564,6 +566,8 @@ export default {
         "utility_invoice": "請求書",
         "utility_ticket": "チケット",
         "utility_qa": "質問",
+        "question_feedback_card_title": "フィードバック",
+        "question_ticker_a11y": "タップして詳細を表示",
         "utility_scan": "検索",
         "utility_house": "家",
         "utility_notification": "通知",

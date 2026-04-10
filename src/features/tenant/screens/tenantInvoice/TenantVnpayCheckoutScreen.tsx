@@ -30,6 +30,7 @@ import {
   type VnpayReturnUrlDisplayFields,
   validateVnpayReturnUrl,
 } from "../../../../shared/services/tenantPaymentApi";
+import { formatVndDisplay } from "../../../../shared/utils/currencyFormat";
 import { formatVnpPayDateFromGateway } from "../../../../shared/utils/dateTimeFormat";
 import { brandPrimary, neutral } from "../../../../shared/theme/color";
 import { appTypography } from "../../../../shared/utils/typography";
@@ -48,24 +49,15 @@ type VnpayReturnUiState =
 
 function buildVnpayReturnDetailRows(
   fields: VnpayReturnUrlDisplayFields,
-  t: (key: string) => string,
+  t: (key: string, options?: Record<string, unknown>) => string,
   locale: string
 ): VnpayReturnDetailRow[] {
   const rows: VnpayReturnDetailRow[] = [];
   if (fields.amountVnd != null && Number.isFinite(fields.amountVnd)) {
-    try {
-      const formatted = new Intl.NumberFormat(locale, {
-        style: "currency",
-        currency: "VND",
-        maximumFractionDigits: 0,
-      }).format(fields.amountVnd);
-      rows.push({ label: t("tenant_payment.return_detail_amount"), value: formatted });
-    } catch {
-      rows.push({
-        label: t("tenant_payment.return_detail_amount"),
-        value: `${Math.round(fields.amountVnd).toLocaleString(locale)} ₫`,
-      });
-    }
+    rows.push({
+      label: t("tenant_payment.return_detail_amount"),
+      value: formatVndDisplay(fields.amountVnd, locale, t),
+    });
   }
   const payFmt = fields.payDateRaw ? formatVnpPayDateFromGateway(fields.payDateRaw, locale) : null;
   if (payFmt) {

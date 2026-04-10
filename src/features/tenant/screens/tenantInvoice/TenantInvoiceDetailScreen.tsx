@@ -282,7 +282,7 @@ export default function TenantInvoiceDetailScreen({ navigation, route }: Props) 
             </View>
             <Text style={styles.detailInvoiceCode}>{detailHeroTitle}</Text>
             <Text style={styles.detailTotalHero}>
-              {formatTenantInvoiceAmount(invoice.amount, invoice.currency, locale)}
+              {formatTenantInvoiceAmount(invoice.amount, invoice.currency, locale, t)}
             </Text>
           </View>
         </View>
@@ -366,7 +366,7 @@ export default function TenantInvoiceDetailScreen({ navigation, route }: Props) 
               <View key={line.key} style={styles.detailFeeRow}>
                 <Text style={styles.detailFeeRowLabel}>{line.label}</Text>
                 <Text style={styles.detailFeeRowValue}>
-                  {formatTenantInvoiceAmount(line.amount, invoice.currency, locale)}
+                  {formatTenantInvoiceAmount(line.amount, invoice.currency, locale, t)}
                 </Text>
               </View>
             ))}
@@ -374,7 +374,7 @@ export default function TenantInvoiceDetailScreen({ navigation, route }: Props) 
             <View style={styles.detailFeeTotalRow}>
               <Text style={styles.detailFeeTotalLabel}>{t("tenant_invoice.total_combined")}</Text>
               <Text style={styles.detailFeeTotalValue}>
-                {formatTenantInvoiceAmount(invoice.amount, invoice.currency, locale)}
+                {formatTenantInvoiceAmount(invoice.amount, invoice.currency, locale, t)}
               </Text>
             </View>
           </View>

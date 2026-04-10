@@ -27,6 +27,7 @@ import {
 import {
   useTenantContext,
   useTenantHouseIotAlertsInfinite,
+  useRefreshControlGate,
 } from "../../../../shared/hooks";
 import { notificationStyles } from "./notificationStyles";
 import {
@@ -236,6 +237,8 @@ const NotificationScreen = () => {
 
   const initialLoading = isPending && historyAlerts.length === 0;
   const refreshing = isRefetching && !isFetchingNextPage;
+  const { scrollAtTop, onScrollForRefreshGate } = useRefreshControlGate();
+  const showPullRefresh = scrollAtTop || refreshing;
 
   if (accessBlock) {
     const title =
@@ -310,15 +313,19 @@ const NotificationScreen = () => {
         ref={scrollRef}
         showsVerticalScrollIndicator={false}
         refreshControl={
-          <RefreshControl
-            refreshing={refreshing}
-            onRefresh={() => refetch()}
-            tintColor={brandPrimary}
-            colors={[brandPrimary]}
-          />
+          showPullRefresh ? (
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={() => refetch()}
+              tintColor={brandPrimary}
+              colors={[brandPrimary]}
+            />
+          ) : undefined
         }
         contentContainerStyle={notificationStyles.listContent}
-        onScroll={({ nativeEvent }) => {
+        onScroll={(e) => {
+          onScrollForRefreshGate(e);
+          const { nativeEvent } = e;
           const { layoutMeasurement, contentOffset, contentSize } = nativeEvent;
           const isBottom =
             layoutMeasurement.height + contentOffset.y >= contentSize.height - 60;
@@ -333,7 +340,7 @@ const NotificationScreen = () => {
             fetchNextPage();
           }
         }}
-        scrollEventThrottle={400}
+        scrollEventThrottle={16}
       >
         <>
           <View style={notificationStyles.sectionIntro}>

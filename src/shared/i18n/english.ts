@@ -25,7 +25,9 @@ export default {
         "a11y_notifications": "Open notifications",
         "a11y_app_logo": "ISUMS logo",
         "a11y_open_profile": "Open profile",
-        "a11y_brand_go_home": "Go to home"
+        "a11y_brand_go_home": "Go to home",
+        "currency_vnd_unit": "VND",
+        "currency_not_available": "—"
     },
     "device_detail": {
         "title": "Device Details",
@@ -564,6 +566,8 @@ export default {
         "utility_invoice": "Invoices",
         "utility_ticket": "Tickets",
         "utility_qa": "Q&A",
+        "question_feedback_card_title": "Feedback",
+        "question_ticker_a11y": "Tap to view reply details",
         "utility_scan": "Lookup",
         "utility_house": "House",
         "utility_notification": "Notification",

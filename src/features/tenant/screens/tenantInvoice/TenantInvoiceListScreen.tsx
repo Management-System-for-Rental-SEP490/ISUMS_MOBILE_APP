@@ -21,6 +21,7 @@ import {
   useTenantHouses,
   useTenantInvoices,
   useUserProfile,
+  useRefreshControlGate,
 } from "../../../../shared/hooks";
 import {
   filterPayableInvoices,
@@ -92,6 +93,9 @@ export default function TenantInvoiceListScreen() {
   const [selected, setSelected] = useState<Set<string>>(() => new Set());
   const [creatingLink, setCreatingLink] = useState(false);
   const [linkError, setLinkError] = useState<string | null>(null);
+
+  const { scrollAtTop, onScrollForRefreshGate } = useRefreshControlGate();
+  const showPullRefresh = scrollAtTop || isRefetching;
 
   const normalizedSelectedHouseId = useMemo(
     () => String(selectedHouseIdFromStore ?? "").trim(),
@@ -499,7 +503,7 @@ export default function TenantInvoiceListScreen() {
           <View style={styles.cardBottomRow}>
             {renderInvoiceDueOrPaidMetaRow(item)}
             <Text style={styles.amount} numberOfLines={1}>
-              {formatTenantInvoiceAmount(item.amount, item.currency, locale)}
+              {formatTenantInvoiceAmount(item.amount, item.currency, locale, t)}
             </Text>
           </View>
         </TouchableOpacity>
@@ -549,7 +553,7 @@ export default function TenantInvoiceListScreen() {
           <View style={styles.cardBottomRow}>
             {renderInvoiceDueOrPaidMetaRow(item)}
             <Text style={styles.amount} numberOfLines={1}>
-              {formatTenantInvoiceAmount(item.amount, item.currency, locale)}
+              {formatTenantInvoiceAmount(item.amount, item.currency, locale, t)}
             </Text>
           </View>
         </TouchableOpacity>
@@ -728,8 +732,12 @@ export default function TenantInvoiceListScreen() {
             data.length === 0 ? styles.listEmptyGrow : undefined,
             { paddingBottom: listBottomPad },
           ]}
+          onScroll={onScrollForRefreshGate}
+          scrollEventThrottle={16}
           refreshControl={
-            <RefreshControl refreshing={isRefetching} onRefresh={() => refetch()} colors={[brandPrimary]} />
+            showPullRefresh ? (
+              <RefreshControl refreshing={isRefetching} onRefresh={() => refetch()} colors={[brandPrimary]} />
+            ) : undefined
           }
           ListEmptyComponent={
             showPageHeading ? (
@@ -766,7 +774,7 @@ export default function TenantInvoiceListScreen() {
                 <Text style={styles.multiSummaryValue}>{totalSelected}</Text>
                 <Text style={styles.multiSummaryMuted}> · </Text>
                 <Text style={styles.multiSummaryValue}>
-                  {formatTenantInvoiceAmount(selectedTotalAmount, "VND", locale)}
+                  {formatTenantInvoiceAmount(selectedTotalAmount, "VND", locale, t)}
                 </Text>
               </Text>
             </View>

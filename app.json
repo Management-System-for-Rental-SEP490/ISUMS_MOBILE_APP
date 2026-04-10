@@ -62,7 +62,7 @@
       [
         "expo-navigation-bar",
         {
-          "position": "absolute",
+          "position": "relative",
           "backgroundColor": "#00000000",
           "barStyle": "light"
         }

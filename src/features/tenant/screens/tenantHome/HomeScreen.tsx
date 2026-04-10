@@ -13,15 +13,20 @@ import {
   Pressable,
   useWindowDimensions,
   Linking,
+  Animated,
 } from "react-native";
 import { useAuthStore } from "../../../../store/useAuthStore";
 import Header, { type HomeHeaderInvoiceStrip } from "../../../../shared/components/header";
-import { HomeScreenProps, RootStackParamList } from "../../../../shared/types";
+import {
+  HomeScreenProps,
+  IssueTicketResponseFromApi,
+  RootStackParamList,
+} from "../../../../shared/types";
 import { useTranslation } from "react-i18next";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { NavigationProp } from "@react-navigation/native";
+import { NavigationProp, useFocusEffect } from "@react-navigation/native";
 import { useQueryClient } from "@tanstack/react-query";
-import homeStyles from "./homeStyles";
+import homeStyles, { HOME_CARD_STACK_GAP } from "./homeStyles";
 import {
   TENANT_INVOICES_QUERY_KEY,
   useTenantHouses,
@@ -29,6 +34,7 @@ import {
   useUpdateMainHouseMutation,
   useTenantContext,
   useTenantInvoices,
+  useRefreshControlGate,
 } from "../../../../shared/hooks";
 import { useTenantIoTConnection, useTenantUsage } from "../../hooks/useTenantIoT";
 
@@ -41,9 +47,11 @@ import {
 import type { HouseFromApi, TenantInvoiceFromApi } from "../../../../shared/types/api";
 import {
   formatDayMonthNumeric,
+  formatTenantIssueDateTime,
   getTenantAccessBlock,
   translateTenantAccessReason,
 } from "../../../../shared/utils";
+import { getIssueResponses, getTenantTickets } from "../../../../shared/services/issuesApi";
 import { getHomeGreetingI18nKey } from "../../../../shared/utils/homeTimeGreeting";
 import {
   isTenantInvoiceDueUrgent,
@@ -67,6 +75,126 @@ const UTILITY_SECTION_H_INSET = 64;
  * Luồng thanh toán ticket sẽ bổ sung sau — khi đó cộng vào tổng dải cùng hóa đơn toàn căn.
  */
 const TENANT_HOME_HEADER_PAYABLE_TICKET_PLACEHOLDER = 0;
+
+const QUESTION_TICKER_ROTATE_MS = 4500;
+
+type QuestionTicketMeta = { id: string; type: string; houseId: string };
+
+function filterQuestionResponsesForHome(
+  responses: IssueTicketResponseFromApi[],
+  tickets: QuestionTicketMeta[]
+): { merged: IssueTicketResponseFromApi[]; houseIdByTicketId: Record<string, string> } {
+  const questionTickets = tickets.filter((t) => String(t.type || "").toUpperCase() === "QUESTION");
+  const questionIds = new Set(questionTickets.map((t) => t.id));
+  const houseIdByTicketId: Record<string, string> = {};
+  for (const t of questionTickets) {
+    houseIdByTicketId[t.id] = String(t.houseId ?? "").trim();
+  }
+  return {
+    merged: responses.filter((r) => questionIds.has(r.ticketId)),
+    houseIdByTicketId,
+  };
+}
+
+function sortIssueResponseCreatedDesc(a: IssueTicketResponseFromApi, b: IssueTicketResponseFromApi) {
+  const ta = new Date(a.createdAt).getTime();
+  const tb = new Date(b.createdAt).getTime();
+  return tb - ta;
+}
+
+type HomeQuestionTickerCardProps = {
+  items: IssueTicketResponseFromApi[];
+  getZoneLabel: (ticketId: string) => string;
+  onOpen: (item: IssueTicketResponseFromApi) => void;
+};
+
+function HomeQuestionTickerCard({ items, getZoneLabel, onOpen }: HomeQuestionTickerCardProps) {
+  const { t, i18n } = useTranslation();
+  const [idx, setIdx] = useState(0);
+  const opacity = useRef(new Animated.Value(1)).current;
+
+  const locale = useMemo(() => {
+    const lang = String(i18n.language || "").toLowerCase();
+    if (lang.startsWith("en")) return "en-US";
+    if (lang.startsWith("ja")) return "ja-JP";
+    return "vi-VN";
+  }, [i18n.language]);
+
+  useEffect(() => {
+    setIdx(0);
+  }, [items]);
+
+  useEffect(() => {
+    if (items.length <= 1) return;
+    const id = setInterval(() => {
+      setIdx((i) => (i + 1) % items.length);
+    }, QUESTION_TICKER_ROTATE_MS);
+    return () => clearInterval(id);
+  }, [items.length]);
+
+  const safeIdx = items.length === 0 ? 0 : idx % items.length;
+  const item = items[safeIdx];
+
+  useEffect(() => {
+    if (!item) return;
+    opacity.setValue(0.72);
+    Animated.timing(opacity, {
+      toValue: 1,
+      duration: 320,
+      useNativeDriver: true,
+    }).start();
+  }, [item?.id, opacity]);
+
+  if (!item) return null;
+
+  const zone = getZoneLabel(item.ticketId);
+  const dateLine = formatTenantIssueDateTime(item.createdAt, locale);
+
+  return (
+    <View style={homeStyles.questionTickerWrap}>
+      <Pressable
+        onPress={() => onOpen(item)}
+        android_ripple={{ color: "rgba(0,0,0,0.06)" }}
+        style={({ pressed }) => [
+          homeStyles.questionTickerPress,
+          pressed && Platform.OS === "ios" ? { opacity: 0.92 } : null,
+        ]}
+        accessibilityRole="button"
+        accessibilityLabel={`${t("home.question_feedback_card_title")}. ${item.content ?? ""}. ${zone}. ${t("home.question_ticker_a11y")}`}
+      >
+        <View style={homeStyles.questionTickerIconCircle}>
+          <Icons.brain color="#4F46E5" size={20} />
+        </View>
+        <View style={homeStyles.questionTickerBody}>
+          <Animated.View style={{ opacity }}>
+            <Text style={homeStyles.questionTickerText} numberOfLines={2} ellipsizeMode="tail">
+              {item.content || "—"}
+            </Text>
+            <Text style={homeStyles.questionTickerMeta} numberOfLines={1}>
+              {zone} · {dateLine}
+            </Text>
+          </Animated.View>
+        </View>
+        <View style={homeStyles.questionTickerChevron}>
+          <Icons.chevronForward size={18} color="#4F46E5" />
+        </View>
+      </Pressable>
+      {items.length > 1 ? (
+        <View style={homeStyles.questionTickerDots}>
+          {items.map((dotItem, i) => (
+            <View
+              key={dotItem.id}
+              style={[
+                homeStyles.questionTickerDot,
+                i === safeIdx ? homeStyles.questionTickerDotActive : null,
+              ]}
+            />
+          ))}
+        </View>
+      ) : null}
+    </View>
+  );
+}
 
 const HomeScreen = ({ navigation }: HomeScreenProps) => {
   const queryClient = useQueryClient();
@@ -241,6 +369,60 @@ const HomeScreen = ({ navigation }: HomeScreenProps) => {
 
   const showFullHomeFeatures = !accessBlock;
 
+  const [questionTickerItems, setQuestionTickerItems] = useState<IssueTicketResponseFromApi[]>([]);
+  const [questionHouseByTicketId, setQuestionHouseByTicketId] = useState<Record<string, string>>(
+    {}
+  );
+
+  const houseNameByIdForQuestions = useMemo(() => {
+    const m = new Map<string, string>();
+    for (const h of tenantHouses) {
+      const id = String(h.id ?? "").trim();
+      if (!id) continue;
+      const name = String(h.name ?? "").trim();
+      m.set(id, name.length ? name : id);
+    }
+    return m;
+  }, [tenantHouses]);
+
+  const loadQuestionTicker = useCallback(async () => {
+    if (!hasAnyTenantHouse) return;
+    try {
+      const [tickets, responses] = await Promise.all([getTenantTickets(), getIssueResponses()]);
+      const { merged, houseIdByTicketId } = filterQuestionResponsesForHome(responses, tickets);
+      setQuestionTickerItems([...merged].sort(sortIssueResponseCreatedDesc));
+      setQuestionHouseByTicketId(houseIdByTicketId);
+    } catch {
+      setQuestionTickerItems([]);
+      setQuestionHouseByTicketId({});
+    }
+  }, [hasAnyTenantHouse]);
+
+  useFocusEffect(
+    useCallback(() => {
+      void loadQuestionTicker();
+    }, [loadQuestionTicker])
+  );
+
+  const zoneLabelForQuestionTicket = useCallback(
+    (ticketId: string) => {
+      const hid = questionHouseByTicketId[ticketId];
+      if (!hid) return t("tenant_question_list.zone_unknown");
+      return houseNameByIdForQuestions.get(hid) ?? t("tenant_question_list.zone_unknown");
+    },
+    [questionHouseByTicketId, houseNameByIdForQuestions, t]
+  );
+
+  const openQuestionDetailFromTicker = useCallback(
+    (r: IssueTicketResponseFromApi) => {
+      rootNavigation.navigate("TenantQuestionDetail", {
+        response: r,
+        zoneLabel: zoneLabelForQuestionTicket(r.ticketId),
+      });
+    },
+    [rootNavigation, zoneLabelForQuestionTicket]
+  );
+
   /** Hóa đơn cần thanh toán trên toàn bộ căn tenant đang có (dải header + tổng mở). */
   const headerPayableInvoices = useMemo(() => {
     const ids = new Set(
@@ -262,6 +444,8 @@ const HomeScreen = ({ navigation }: HomeScreenProps) => {
   const loading = loadingHouses;
 
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const { scrollAtTop, onScrollForRefreshGate } = useRefreshControlGate();
+  const showHomeRefreshControl = scrollAtTop || isRefreshing || loading;
 
   const onRefresh = useCallback(async () => {
     setIsRefreshing(true);
@@ -270,6 +454,7 @@ const HomeScreen = ({ navigation }: HomeScreenProps) => {
         refetchHouses(),
         ...(invoiceQueryEnabled ? [refetchInvoices()] : []),
         ...(contextHouseId ? [electricUsage.refetch(), waterUsage.refetch()] : []),
+        loadQuestionTicker(),
       ]);
     } finally {
       setIsRefreshing(false);
@@ -281,6 +466,7 @@ const HomeScreen = ({ navigation }: HomeScreenProps) => {
     contextHouseId,
     electricUsage.refetch,
     waterUsage.refetch,
+    loadQuestionTicker,
   ]);
 
   const handleSelectMainHouse = useCallback(
@@ -493,7 +679,12 @@ const HomeScreen = ({ navigation }: HomeScreenProps) => {
           </Pressable>
         ) : null}
 
-        <View style={homeStyles.utilitySection}>
+        <View
+          style={[
+            homeStyles.utilitySection,
+            !myHouse ? { marginTop: HOME_CARD_STACK_GAP } : null,
+          ]}
+        >
           <Text style={homeStyles.utilitySectionTitle}>{t("home.utilities_title")}</Text>
           <View style={[homeStyles.utilityGrid, { gap: utilityGridGap }]}>
             <Pressable
@@ -618,6 +809,19 @@ const HomeScreen = ({ navigation }: HomeScreenProps) => {
             ) : null}
           </View>
         </View>
+
+        {hasAnyTenantHouse && questionTickerItems.length > 0 ? (
+          <View style={homeStyles.questionFeedbackSection}>
+            <Text style={homeStyles.questionFeedbackSectionTitle}>
+              {t("home.question_feedback_card_title")}
+            </Text>
+            <HomeQuestionTickerCard
+              items={questionTickerItems}
+              getZoneLabel={zoneLabelForQuestionTicket}
+              onOpen={openQuestionDetailFromTicker}
+            />
+          </View>
+        ) : null}
 
         {showFullHomeFeatures && myHouse ? (
               <View style={homeStyles.usageSummarySection}>
@@ -811,13 +1015,17 @@ const HomeScreen = ({ navigation }: HomeScreenProps) => {
             homeStyles.accessGateEmptyWrap,
             { paddingBottom: 24 + insets.bottom },
           ]}
+          onScroll={onScrollForRefreshGate}
+          scrollEventThrottle={16}
           refreshControl={
-            <RefreshControl
-              refreshing={isRefreshing || loading}
-              onRefresh={onRefresh}
-              colors={[brandPrimary]}
-              tintColor={brandPrimary}
-            />
+            showHomeRefreshControl ? (
+              <RefreshControl
+                refreshing={isRefreshing || loading}
+                onRefresh={onRefresh}
+                colors={[brandPrimary]}
+                tintColor={brandPrimary}
+              />
+            ) : undefined
           }
         >
           <Text style={homeStyles.accessGateEmptyText}>{t("home.access.no_house")}</Text>
@@ -855,13 +1063,17 @@ const HomeScreen = ({ navigation }: HomeScreenProps) => {
           ]}
           showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="handled"
+          onScroll={onScrollForRefreshGate}
+          scrollEventThrottle={16}
           refreshControl={
-            <RefreshControl
-              refreshing={isRefreshing || loading}
-              onRefresh={onRefresh}
-              colors={[brandPrimary]}
-              tintColor={brandPrimary}
-            />
+            showHomeRefreshControl ? (
+              <RefreshControl
+                refreshing={isRefreshing || loading}
+                onRefresh={onRefresh}
+                colors={[brandPrimary]}
+                tintColor={brandPrimary}
+              />
+            ) : undefined
           }
         >
           {renderHomeScrollContent()}

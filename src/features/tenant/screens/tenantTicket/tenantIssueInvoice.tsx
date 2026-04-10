@@ -137,7 +137,7 @@ export default function TenantIssueInvoiceScreen({ navigation, route }: Props) {
             </View>
             <Text style={styles.detailInvoiceCode}>{titleDisplay}</Text>
             <Text style={styles.detailTotalHero}>
-              {formatTenantInvoiceAmount(invoice.amount, invoice.currency, locale)}
+              {formatTenantInvoiceAmount(invoice.amount, invoice.currency, locale, t)}
             </Text>
           </View>
         </View>

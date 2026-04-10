@@ -1,4 +1,5 @@
 import type { InvoicePaymentAttemptFromApi, TenantInvoiceFromApi } from "../types/api";
+import { formatVndDisplay } from "./currencyFormat";
 
 /**
  * Dịch mã loại hóa đơn từ BE (vd. MONTHLY_RENT) qua `tenant_invoice.type_<CODE>`.
@@ -134,14 +135,18 @@ export function isTenantInvoicePayable(status: string | undefined): boolean {
 export function formatTenantInvoiceAmount(
   amount: number,
   currency: string | undefined,
-  locale: string
+  locale: string,
+  t: (key: string, options?: Record<string, unknown>) => string
 ): string {
   const cur = (currency ?? "VND").trim().toUpperCase();
+  if (cur === "VND") {
+    return formatVndDisplay(amount, locale, t);
+  }
   try {
     return new Intl.NumberFormat(locale, {
       style: "currency",
-      currency: cur === "VND" ? "VND" : cur,
-      maximumFractionDigits: cur === "VND" ? 0 : 2,
+      currency: cur,
+      maximumFractionDigits: 2,
     }).format(amount);
   } catch {
     return `${amount} ${cur}`;
@@ -185,7 +190,7 @@ export function buildInvoicePaymentFlowSummary(
 
   if (success.length === 1) {
     const p = success[0]!;
-    const amt = formatTenantInvoiceAmount(Number(p.amount ?? 0), currency, locale);
+    const amt = formatTenantInvoiceAmount(Number(p.amount ?? 0), currency, locale, t);
     return `${methodLabel(p.method)} · ${amt}`;
   }
   return t("tenant_invoice.payment_flow_success_count", { count: success.length });

@@ -15,7 +15,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useTranslation } from "react-i18next";
 import { CustomAlert as Alert } from "../../../../shared/components/alert";
 import { RootStackParamList, TenantTicketFromApi } from "../../../../shared/types";
-import { useTenantContext } from "../../../../shared/hooks";
+import { useTenantContext, useRefreshControlGate } from "../../../../shared/hooks";
 import {
   getIssueQuotesByTicket,
   getTenantTickets,
@@ -30,6 +30,7 @@ import { PaginationBar } from "../../../../shared/components/PaginationBar";
 import {
   CLIENT_LIST_PAGE_SIZE,
   formatTenantIssueDateTime,
+  formatVndDisplay,
   getTotalPages,
   slicePage,
 } from "../../../../shared/utils";
@@ -187,6 +188,8 @@ const TenantTicketListScreen = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const { scrollAtTop, onScrollForRefreshGate } = useRefreshControlGate();
+  const showPullRefresh = scrollAtTop || refreshing;
   const [error, setError] = useState<string | null>(null);
   /** Đang tạo link VNPay từ danh sách — khóa trùng tap. */
   const [payingTicketId, setPayingTicketId] = useState<string | null>(null);
@@ -253,13 +256,8 @@ const TenantTicketListScreen = () => {
   }, []);
 
   const formatMoney = useCallback(
-    (v: number) => {
-      const num = Number(v);
-      if (!Number.isFinite(num)) return "—";
-      const s = num.toLocaleString(locale, { maximumFractionDigits: 0 });
-      return `${s} đ`;
-    },
-    [locale]
+    (v: number) => formatVndDisplay(v, locale, t),
+    [locale, t]
   );
 
   const statusLabel = (status: string) => {
@@ -615,8 +613,12 @@ const TenantTicketListScreen = () => {
                 { paddingBottom: listBottomPad },
                 filteredAll.length === 0 && styles.listEmptyGrow,
               ]}
+              onScroll={onScrollForRefreshGate}
+              scrollEventThrottle={16}
               refreshControl={
-                <RefreshControl refreshing={refreshing} onRefresh={() => load(true)} tintColor={brandSecondary} />
+                showPullRefresh ? (
+                  <RefreshControl refreshing={refreshing} onRefresh={() => load(true)} tintColor={brandSecondary} />
+                ) : undefined
               }
               ListEmptyComponent={
                 <Text style={styles.empty}>{t("tenant_ticket_list.empty")}</Text>

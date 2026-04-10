@@ -31,7 +31,7 @@ import { getWorkSlotById } from "../../../../shared/services/scheduleApi";
 import Icons from "../../../../shared/theme/icon";
 import { brandPrimary, brandSecondary, neutral } from "../../../../shared/theme/color";
 import { tenantTicketDetailStyles as styles, tenantTicketListStyles as badge } from "./ticketStyles";
-import { formatTenantIssueDateTime } from "../../../../shared/utils";
+import { formatTenantIssueDateTime, formatVndDisplay } from "../../../../shared/utils";
 import { formatApiErrorForTenantAlert } from "../../../../shared/utils/apiErrorMessage";
 import {
   StackScreenTitleBadge,
@@ -190,13 +190,8 @@ const TenantTicketDetailScreen = ({ navigation, route }: Props) => {
   }, [quotes]);
 
   const formatMoney = useCallback(
-    (v: number) => {
-      const num = Number(v);
-      if (!Number.isFinite(num)) return "—";
-      const s = num.toLocaleString(locale, { maximumFractionDigits: 0 });
-      return `${s} đ`;
-    },
-    [locale]
+    (v: number) => formatVndDisplay(v, locale, t),
+    [locale, t]
   );
 
   /**
