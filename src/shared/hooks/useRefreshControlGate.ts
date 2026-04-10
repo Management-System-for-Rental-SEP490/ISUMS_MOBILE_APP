@@ -8,6 +8,8 @@ const AT_TOP_EPSILON = 5;
  * Chỉ cho phép pull-to-refresh khi người dùng đang ở đầu nội dung cuộn.
  * Gắn `onScrollForRefreshGate` + `scrollEventThrottle` vào ScrollView/FlatList,
  * rồi chỉ render `refreshControl` khi `scrollAtTop || đangRefreshing`.
+ *
+ * `onRefresh` thường gọi `refetch()` / API qua axios: **tối đa** chờ `DATA_LOAD_TIMEOUT_MS` (trần, không ép chờ đủ 8s).
  */
 export function useRefreshControlGate() {
   const [scrollAtTop, setScrollAtTop] = useState(true);

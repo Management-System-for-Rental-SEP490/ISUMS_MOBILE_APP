@@ -128,7 +128,9 @@ export default {
         "filter_in_progress": "In progress",
         "filter_sent": "Submitted",
         "filter_payment": "Payment due",
+        "filter_question": "Q&A",
         "filter_completed": "Completed",
+        "question_view_answer_btn": "View reply",
         "priority_emergency": "URGENT",
         "priority_standard": "STANDARD",
         "estimated_cost_prefix": "Cost:",
@@ -179,7 +181,11 @@ export default {
         "payment_paid_at_label": "Paid at",
         "payment_record_index": "Payment {{n}}",
         "view_invoice_btn": "View invoice",
-        "open_repair_invoice_detail": "Open repair invoice details"
+        "open_repair_invoice_detail": "Open repair invoice details",
+        "section_question_body": "Your question",
+        "section_answer": "Reply",
+        "answer_at": "Replied at",
+        "no_answer_yet": "No reply yet."
     },
     "tenant_question_list": {
         "screen_title": "Q&A replies",

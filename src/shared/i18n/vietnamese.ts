@@ -128,7 +128,9 @@ export default {
         "filter_in_progress": "Đang xử lý",
         "filter_sent": "Đã gửi",
         "filter_payment": "Cần thanh toán",
+        "filter_question": "Hỏi đáp",
         "filter_completed": "Hoàn tất",
+        "question_view_answer_btn": "Xem phản hồi",
         "priority_emergency": "KHẨN CẤP",
         "priority_standard": "TIÊU CHUẨN",
         "estimated_cost_prefix": "Chi phí:",
@@ -179,7 +181,11 @@ export default {
         "payment_paid_at_label": "Thời gian thanh toán",
         "payment_record_index": "Giao dịch {{n}}",
         "view_invoice_btn": "Xem hóa đơn",
-        "open_repair_invoice_detail": "Xem chi tiết hóa đơn sửa chữa"
+        "open_repair_invoice_detail": "Xem chi tiết hóa đơn sửa chữa",
+        "section_question_body": "Nội dung câu hỏi",
+        "section_answer": "Câu trả lời",
+        "answer_at": "Trả lời lúc",
+        "no_answer_yet": "Chưa có phản hồi."
     },
     "tenant_question_list": {
         "screen_title": "Giải đáp thắc mắc",

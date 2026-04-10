@@ -128,7 +128,9 @@ export default {
         "filter_in_progress": "対応中",
         "filter_sent": "送信済み",
         "filter_payment": "支払い待ち",
+        "filter_question": "質問",
         "filter_completed": "完了",
+        "question_view_answer_btn": "返信を見る",
         "priority_emergency": "緊急",
         "priority_standard": "通常",
         "estimated_cost_prefix": "費用:",
@@ -179,7 +181,11 @@ export default {
         "payment_paid_at_label": "支払い日時",
         "payment_record_index": "お支払い {{n}}",
         "view_invoice_btn": "請求書を見る",
-        "open_repair_invoice_detail": "修繕請求の詳細を見る"
+        "open_repair_invoice_detail": "修繕請求の詳細を見る",
+        "section_question_body": "質問内容",
+        "section_answer": "回答",
+        "answer_at": "回答日時",
+        "no_answer_yet": "まだ回答はありません。"
     },
     "tenant_question_list": {
         "screen_title": "質問への回答",
