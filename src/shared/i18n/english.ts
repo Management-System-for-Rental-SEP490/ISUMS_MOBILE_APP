@@ -631,6 +631,8 @@ export default {
             "payment_title": "Rent payment required",
             "payment_body": "Please pay your first rent installment to continue using the app.",
             "payment_banner": "Pay first-month rent for the home you're viewing to unlock the full app.",
+            "payment_restricted_banner":
+                "Access is limited due to unpaid deposit or rent. Please pay in the Invoices section.",
             "payment_alert_title": "Pay rent",
             "payment_alert_message": "You have an unpaid rent invoice. Tap Pay now to open payment (VNPay).",
             "pay_now": "Pay now"
@@ -643,7 +645,11 @@ export default {
             "PENDING_FIRST_RENT":
                 "This property still needs its first rent payment. Complete it for full features.",
             "PENDING_DEPOSIT": "Your security deposit has not been completed yet.",
-            "PENDING_HANDOVER": "This property is not yet handed over based on the contract date."
+            "PENDING_HANDOVER": "This property is not yet handed over based on the contract date.",
+            "PAYMENT_RESTRICTED":
+                "Access is limited due to unpaid deposit or rent. Please pay in the Invoices section.",
+            "ACCESS_PAYMENT_RESTRICTED":
+                "Access is limited due to unpaid deposit or rent. Please pay in the Invoices section."
         },
         "house_detail": {
             "set_main_house": "Set as main house",
@@ -660,7 +666,8 @@ export default {
             "ACCESSIBLE": "Accessible",
             "PENDING_HANDOVER": "Handover pending",
             "PENDING_DEPOSIT": "Deposit pending",
-            "PENDING_FIRST_RENT": "First rent pending"
+            "PENDING_FIRST_RENT": "First rent pending",
+            "PAYMENT_RESTRICTED": "Restricted — unpaid deposit/rent"
         },
         "house_member_role": {
             "OWNER": "Owner",

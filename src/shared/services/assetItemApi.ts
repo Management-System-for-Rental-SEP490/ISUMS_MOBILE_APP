@@ -4,6 +4,7 @@
 import axiosClient from "../api/axiosClient";
 import { ASSETS_API_BASE, BACKEND_API_BASE} from "../api/config";
 import {
+  isAssetItemDisposedStatus,
   normalizeAssetItemStatusFromApi,
   type ApiResponse,
   type AssetItemFromApi,
@@ -89,6 +90,10 @@ function normalizeAssetItemFromResponse(
   };
 }
 
+function filterOutDisposedItems(items: AssetItemFromApi[]): AssetItemFromApi[] {
+  return items.filter((i) => !isAssetItemDisposedStatus(i.status));
+}
+
 /**
  * Lấy danh sách thiết bị (GET /api/asset/items), có thể lọc theo houseId và/hoặc categoryId.
  * @param params - houseId, categoryId (optional); không truyền = lấy tất cả.
@@ -112,8 +117,10 @@ export const getAssetItems = async (
   if (Array.isArray(data.data)) {
     return {
       ...data,
-      data: data.data.map((i) =>
-        normalizeAssetItemFromResponse(i as AssetItemFromApi & { nfc_tag?: string | null; qr_tag?: string | null })
+      data: filterOutDisposedItems(
+        data.data.map((i) =>
+          normalizeAssetItemFromResponse(i as AssetItemFromApi & { nfc_tag?: string | null; qr_tag?: string | null })
+        )
       ),
     };
   }
@@ -136,8 +143,10 @@ export const getAssetItemsByHouseId = async (
   if (Array.isArray(data.data)) {
     return {
       ...data,
-      data: data.data.map((i) =>
-        normalizeAssetItemFromResponse(i as AssetItemFromApi & { nfc_tag?: string | null; qr_tag?: string | null })
+      data: filterOutDisposedItems(
+        data.data.map((i) =>
+          normalizeAssetItemFromResponse(i as AssetItemFromApi & { nfc_tag?: string | null; qr_tag?: string | null })
+        )
       ),
     };
   }
@@ -187,7 +196,9 @@ export const getAssetItemById = async (id: string): Promise<AssetItemFromApi | u
       functionalAreaId?: string | null;
       functional_area_id?: string | null;
     };
-    return normalizeAssetItemFromResponse(raw);
+    const normalized = normalizeAssetItemFromResponse(raw);
+    if (isAssetItemDisposedStatus(normalized.status)) return undefined;
+    return normalized;
   } catch {
     return undefined;
   }
@@ -242,7 +253,7 @@ export const getAssetItemByTag = async (
 
     if (!raw) return undefined;
 
-    return normalizeAssetItemFromResponse(
+    const normalized = normalizeAssetItemFromResponse(
       raw as AssetItemFromApi & {
         nfc_tag?: string | null;
         qr_tag?: string | null;
@@ -251,6 +262,8 @@ export const getAssetItemByTag = async (
         functional_area_id?: string | null;
       }
     );
+    if (isAssetItemDisposedStatus(normalized.status)) return undefined;
+    return normalized;
   } catch {
     try {
       const res = await getAssetItems();
@@ -269,15 +282,16 @@ export const getAssetItemByTag = async (
           (t) => t.isActive !== false && tagMatchesScanned(t.tagValue)
         );
       });
-      return found
-        ? normalizeAssetItemFromResponse(
-            found as AssetItemFromApi & {
-              nfc_tag?: string | null;
-              qr_tag?: string | null;
-              function_area_id?: string | null;
-            }
-          )
-        : undefined;
+      if (!found) return undefined;
+      const normalized = normalizeAssetItemFromResponse(
+        found as AssetItemFromApi & {
+          nfc_tag?: string | null;
+          qr_tag?: string | null;
+          function_area_id?: string | null;
+        }
+      );
+      if (isAssetItemDisposedStatus(normalized.status)) return undefined;
+      return normalized;
     } catch {
       return undefined;
     }

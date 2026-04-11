@@ -683,31 +683,42 @@ export const homeStyles = StyleSheet.create({
         marginBottom: 12,
         letterSpacing: -0.35,
     },
-    /** Căn trái + gap — số cột do Home gán động (3 màn hẹp / 4 màn rộng) */
-    utilityGrid: {
-        flexDirection: "row",
-        flexWrap: "wrap",
-        justifyContent: "flex-start",
+    /** Cột các hàng tiện ích — mỗi hàng 3 ô co giãn theo chiều ngang (flex), hàng lẻ có spacer. */
+    utilityGridColumn: {
+        flexDirection: "column",
+        alignItems: "stretch",
     },
-    /** Chiều rộng gán động ở màn Home theo useWindowDimensions */
+    /** Một hàng luôn 3 cột — mỗi cột một `utilityCellSlot` (có nút hoặc để trống). */
+    utilityRow: {
+        flexDirection: "row",
+        alignItems: "stretch",
+    },
+    /** Một ô cột: luôn chiếm đúng 1/3 hàng (trừ gap), kích thước giống mọi hàng. */
+    utilityCellSlot: {
+        flex: 1,
+        flexBasis: 0,
+        minWidth: 0,
+    },
+    /** Nút lấp đầy ô — không kéo rộng theo số nút còn lại trên hàng. */
     utilityItem: {
-        minHeight: 76,
-        borderRadius: 14,
-        paddingVertical: 8,
-        paddingHorizontal: 4,
+        flex: 1,
+        width: "100%",
+        alignSelf: "stretch",
+        minHeight: 68,
+        borderRadius: 11,
+        paddingVertical: 5,
+        paddingHorizontal: 2,
         alignItems: "center",
         justifyContent: "center",
         /** Không dùng hidden — trên Android dễ cắt mất glyph vector icon trong ô hẹp. */
     },
     utilityIconSlot: {
-        marginBottom: 5,
-        minHeight: 22,
+        marginBottom: 3,
+        minHeight: 20,
         alignItems: "center",
         justifyContent: "center",
     },
     utilityLabel: {
-        fontSize: 11,
-        lineHeight: 14,
         color: neutral.text,
         textAlign: "center",
         fontWeight: "600",

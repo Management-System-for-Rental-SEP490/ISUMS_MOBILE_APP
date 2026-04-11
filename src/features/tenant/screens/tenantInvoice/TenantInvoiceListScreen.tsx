@@ -22,6 +22,7 @@ import {
   useTenantInvoices,
   useUserProfile,
   useRefreshControlGate,
+  refreshControlAndroidGateProps,
 } from "../../../../shared/hooks";
 import {
   filterPayableInvoices,
@@ -95,7 +96,6 @@ export default function TenantInvoiceListScreen() {
   const [linkError, setLinkError] = useState<string | null>(null);
 
   const { scrollAtTop, onScrollForRefreshGate } = useRefreshControlGate();
-  const showPullRefresh = scrollAtTop || isRefetching;
 
   const normalizedSelectedHouseId = useMemo(
     () => String(selectedHouseIdFromStore ?? "").trim(),
@@ -735,9 +735,12 @@ export default function TenantInvoiceListScreen() {
           onScroll={onScrollForRefreshGate}
           scrollEventThrottle={16}
           refreshControl={
-            showPullRefresh ? (
-              <RefreshControl refreshing={isRefetching} onRefresh={() => refetch()} colors={[brandPrimary]} />
-            ) : undefined
+            <RefreshControl
+              refreshing={isRefetching}
+              onRefresh={() => refetch()}
+              colors={[brandPrimary]}
+              {...refreshControlAndroidGateProps(scrollAtTop, isRefetching)}
+            />
           }
           ListEmptyComponent={
             showPageHeading ? (

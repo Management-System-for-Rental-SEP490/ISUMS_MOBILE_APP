@@ -14,7 +14,11 @@ import Header from "../../../../shared/components/header";
 import Icons from "../../../../shared/theme/icon";
 import { FloorPlanView } from "../../houseStructure";
 import { waterUsageStyles } from "./waterUsageStyles";
-import { useTenantContext, useRefreshControlGate } from "../../../../shared/hooks";
+import {
+  useTenantContext,
+  useRefreshControlGate,
+  refreshControlAndroidGateProps,
+} from "../../../../shared/hooks";
 import { useTenantIoTConnection, useTenantTelemetry, useTenantUsage } from "../../hooks/useTenantIoT";
 import { waterAccent, brandPrimary, neutral } from "../../../../shared/theme/color";
 import {
@@ -42,7 +46,6 @@ const WaterUsageScreen = ({ showHeader = true }: WaterUsageScreenProps) => {
   const { water, waterHistory } = useTenantTelemetry(thingId);
   const [pullRefreshing, setPullRefreshing] = useState(false);
   const { scrollAtTop, onScrollForRefreshGate } = useRefreshControlGate();
-  const showPullRefresh = scrollAtTop || pullRefreshing;
   const onPullRefresh = useCallback(async () => {
     setPullRefreshing(true);
     try {
@@ -158,14 +161,13 @@ const WaterUsageScreen = ({ showHeader = true }: WaterUsageScreenProps) => {
         onScroll={onScrollForRefreshGate}
         scrollEventThrottle={16}
         refreshControl={
-          showPullRefresh ? (
-            <RefreshControl
-              refreshing={pullRefreshing}
-              onRefresh={onPullRefresh}
-              tintColor={waterAccent}
-              colors={[waterAccent]}
-            />
-          ) : undefined
+          <RefreshControl
+            refreshing={pullRefreshing}
+            onRefresh={onPullRefresh}
+            tintColor={waterAccent}
+            colors={[waterAccent]}
+            {...refreshControlAndroidGateProps(scrollAtTop, pullRefreshing)}
+          />
         }
       >
         <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 4 }}>

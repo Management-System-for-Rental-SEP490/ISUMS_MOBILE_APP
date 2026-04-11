@@ -92,6 +92,12 @@ export function isTenantInvoiceIssueType(inv: Pick<TenantInvoiceFromApi, "type">
   return String(inv.type ?? "").trim().toUpperCase() === "ISSUE";
 }
 
+/** Tiền cọc / tiền thuê định kỳ — dùng với PAYMENT_RESTRICTED. */
+export function isTenantInvoiceRentOrDepositType(inv: Pick<TenantInvoiceFromApi, "type">): boolean {
+  const n = String(inv.type ?? "").trim().toUpperCase().replace(/\s+/g, "_");
+  return n === "MONTHLY_RENT" || n === "DEPOSIT";
+}
+
 /** Phí sửa chữa / ticket: mở màn `TenantIssueInvoice`, không dùng chi tiết hóa đơn tiền nhà. */
 export function isTenantRepairInvoiceFlow(
   inv: Pick<TenantInvoiceFromApi, "issueTicketId" | "type">

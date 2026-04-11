@@ -15,7 +15,12 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useTranslation } from "react-i18next";
 import { CustomAlert as Alert } from "../../../../shared/components/alert";
 import { IssueTicketResponseFromApi, RootStackParamList, TenantTicketFromApi } from "../../../../shared/types";
-import { useTenantContext, useRefreshControlGate, useTenantHouses } from "../../../../shared/hooks";
+import {
+  useTenantContext,
+  useRefreshControlGate,
+  refreshControlAndroidGateProps,
+  useTenantHouses,
+} from "../../../../shared/hooks";
 import {
   getIssueQuotesByTicket,
   getIssueResponses,
@@ -227,7 +232,6 @@ const TenantTicketListScreen = () => {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const { scrollAtTop, onScrollForRefreshGate } = useRefreshControlGate();
-  const showPullRefresh = scrollAtTop || refreshing;
   const [error, setError] = useState<string | null>(null);
   /** Đang tạo link VNPay từ danh sách — khóa trùng tap. */
   const [payingTicketId, setPayingTicketId] = useState<string | null>(null);
@@ -703,9 +707,13 @@ const TenantTicketListScreen = () => {
               onScroll={onScrollForRefreshGate}
               scrollEventThrottle={16}
               refreshControl={
-                showPullRefresh ? (
-                  <RefreshControl refreshing={refreshing} onRefresh={() => load(true)} tintColor={brandSecondary} />
-                ) : undefined
+                <RefreshControl
+                  refreshing={refreshing}
+                  onRefresh={() => load(true)}
+                  tintColor={brandSecondary}
+                  colors={[brandSecondary]}
+                  {...refreshControlAndroidGateProps(scrollAtTop, refreshing)}
+                />
               }
               ListEmptyComponent={
                 <Text style={styles.empty}>{t("tenant_ticket_list.empty")}</Text>

@@ -632,6 +632,8 @@ export default {
             "payment_body": "Vui lòng thanh toán khoản tiền nhà tháng đầu để tiếp tục sử dụng ứng dụng.",
             "payment_banner":
                 "Hoàn tất tiền thuê tháng đầu cho căn đang chọn để dùng đầy đủ ứng dụng.",
+            "payment_restricted_banner":
+                "Tài khoản bị hạn chế do chưa thanh toán tiền cọc hoặc tiền thuê. Vui lòng thanh toán trong mục Hóa đơn.",
             "payment_alert_title": "Thanh toán tiền nhà",
             "payment_alert_message": "Bạn còn khoản tiền thuê chưa thanh toán. Nhấn \"Thanh toán ngay\" để chuyển tới trang thanh toán (VNPay).",
             "pay_now": "Thanh toán ngay"
@@ -644,7 +646,11 @@ export default {
             "PENDING_FIRST_RENT":
                 "Căn đang xem chưa thanh toán tiền thuê kỳ đầu. Hoàn tất để mở đầy đủ tính năng.",
             "PENDING_DEPOSIT": "Bạn chưa hoàn tất khoản đặt cọc theo hợp đồng.",
-            "PENDING_HANDOVER": "Căn nhà chưa đến ngày bàn giao theo hợp đồng."
+            "PENDING_HANDOVER": "Căn nhà chưa đến ngày bàn giao theo hợp đồng.",
+            "PAYMENT_RESTRICTED":
+                "Tài khoản bị hạn chế do chưa thanh toán tiền cọc hoặc tiền thuê. Vui lòng thanh toán trong mục Hóa đơn.",
+            "ACCESS_PAYMENT_RESTRICTED":
+                "Tài khoản bị hạn chế do chưa thanh toán tiền cọc hoặc tiền thuê. Vui lòng thanh toán trong mục Hóa đơn."
         },
         "house_detail": {
             "set_main_house": "Đặt làm nhà chính",
@@ -661,7 +667,8 @@ export default {
             "ACCESSIBLE": "Được vào nhà",
             "PENDING_HANDOVER": "Chưa tới ngày bàn giao",
             "PENDING_DEPOSIT": "Chưa đặt cọc",
-            "PENDING_FIRST_RENT": "Chưa thanh toán tiền nhà tháng đầu"
+            "PENDING_FIRST_RENT": "Chưa thanh toán tiền nhà tháng đầu",
+            "PAYMENT_RESTRICTED": "Hạn chế — chưa thanh toán cọc/thuê"
         },
         "house_member_role": {
             "OWNER": "Chủ hộ",

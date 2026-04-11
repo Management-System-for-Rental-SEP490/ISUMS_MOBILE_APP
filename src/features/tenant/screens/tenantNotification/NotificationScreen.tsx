@@ -28,6 +28,7 @@ import {
   useTenantContext,
   useTenantHouseIotAlertsInfinite,
   useRefreshControlGate,
+  refreshControlAndroidGateProps,
 } from "../../../../shared/hooks";
 import { notificationStyles } from "./notificationStyles";
 import {
@@ -238,7 +239,6 @@ const NotificationScreen = () => {
   const initialLoading = isPending && historyAlerts.length === 0;
   const refreshing = isRefetching && !isFetchingNextPage;
   const { scrollAtTop, onScrollForRefreshGate } = useRefreshControlGate();
-  const showPullRefresh = scrollAtTop || refreshing;
 
   if (accessBlock) {
     const title =
@@ -313,14 +313,13 @@ const NotificationScreen = () => {
         ref={scrollRef}
         showsVerticalScrollIndicator={false}
         refreshControl={
-          showPullRefresh ? (
-            <RefreshControl
-              refreshing={refreshing}
-              onRefresh={() => refetch()}
-              tintColor={brandPrimary}
-              colors={[brandPrimary]}
-            />
-          ) : undefined
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={() => refetch()}
+            tintColor={brandPrimary}
+            colors={[brandPrimary]}
+            {...refreshControlAndroidGateProps(scrollAtTop, refreshing)}
+          />
         }
         contentContainerStyle={notificationStyles.listContent}
         onScroll={(e) => {
@@ -343,21 +342,10 @@ const NotificationScreen = () => {
         scrollEventThrottle={16}
       >
         <>
-          <View style={notificationStyles.sectionIntro}>
-            <View style={notificationStyles.sectionIntroText}>
-              <Text style={notificationStyles.sectionTitle}>{t("notification.section_iot")}</Text>
-              <Text style={notificationStyles.sectionSubtitle}>{t("notification.page_subtitle")}</Text>
-            </View>
-            {!initialLoading && filtered2.length > 0 ? (
-              <View style={notificationStyles.countPill}>
-                <Text style={notificationStyles.countPillText}>{filtered2.length}</Text>
-              </View>
-            ) : null}
-          </View>
-
           <Text style={notificationStyles.dateFilterLabel}>{t("notification.filter_by_date")}</Text>
           <ScrollView
             horizontal
+            nestedScrollEnabled
             showsHorizontalScrollIndicator={false}
             contentContainerStyle={notificationStyles.dateRow}
           >

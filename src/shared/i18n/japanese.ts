@@ -631,6 +631,8 @@ export default {
             "payment_title": "家賃のお支払いが必要です",
             "payment_body": "初回の家賃をお支払いいただくまでアプリをご利用いただけません。",
             "payment_banner": "表示中の物件の初月家賃をお支払いいただくと全機能が利用できます。",
+            "payment_restricted_banner":
+                "敷金または家賃が未払いのため利用が制限されています。請求一覧からお支払いください。",
             "payment_alert_title": "家賃の支払い",
             "payment_alert_message": "未払いの家賃があります。「今すぐ支払う」で決済ページ（VNPay）を開きます。",
             "pay_now": "今すぐ支払う"
@@ -643,7 +645,11 @@ export default {
             "PENDING_FIRST_RENT":
                 "表示中の物件の初回家賃が未払いです。お支払い後に全機能をご利用いただけます。",
             "PENDING_DEPOSIT": "契約に必要な敷金のお支払いが未完了です。",
-            "PENDING_HANDOVER": "契約上の引き渡し日がまだ到来していません。"
+            "PENDING_HANDOVER": "契約上の引き渡し日がまだ到来していません。",
+            "PAYMENT_RESTRICTED":
+                "敷金または家賃が未払いのため利用が制限されています。請求一覧からお支払いください。",
+            "ACCESS_PAYMENT_RESTRICTED":
+                "敷金または家賃が未払いのため利用が制限されています。請求一覧からお支払いください。"
         },
         "house_detail": {
             "set_main_house": "メインの家に設定",
@@ -660,7 +666,8 @@ export default {
             "ACCESSIBLE": "利用可能",
             "PENDING_HANDOVER": "引き渡し前",
             "PENDING_DEPOSIT": "敷金未払い",
-            "PENDING_FIRST_RENT": "初回家賃未払い"
+            "PENDING_FIRST_RENT": "初回家賃未払い",
+            "PAYMENT_RESTRICTED": "制限中（敷金・家賃未払い）"
         },
         "house_member_role": {
             "OWNER": "代表",

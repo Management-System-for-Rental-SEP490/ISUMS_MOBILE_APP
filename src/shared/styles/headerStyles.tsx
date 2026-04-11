@@ -78,32 +78,40 @@ const headerStyles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
+  /** Chuông header: chỉ icon — vùng bấm gọn hơn (sát icon), không elevation. */
   notificationBtn: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: headerOnBrand.btnGlass,
     alignItems: "center",
     justifyContent: "center",
+    backgroundColor: "transparent",
+    borderWidth: 0,
+    borderColor: "transparent",
+    minWidth: 34,
+    minHeight: 34,
+    padding: 2,
+    elevation: 0,
   },
-  /** Trang Home: eyebrow + chào, chuông phải — canh trên để chuông không lệch khi khối trái cao (hóa đơn + nút). */
-  homeHeaderRow: {
-    flexDirection: "row",
-    alignItems: "flex-start",
+  /** Trang Home: bọc nội dung + chuông neo góc dưới phải (chuông không chiếm flex → chữ dùng hết ngang). */
+  homeHeaderRowWrap: {
+    position: "relative",
     width: "100%",
-    gap: 6,
+  },
+  /** Lời chào + dải hóa đơn — full width; chữ có thể chồng lên vùng icon chuông (chuông nằm layer trên). */
+  homeHeaderMainContent: {
+    width: "100%",
   },
   homeBrandPressable: {
-    flex: 1,
+    width: "100%",
     minWidth: 0,
-    flexDirection: "row",
-    alignItems: "center",
+  },
+  /** Bấm tên: full width để Text wrap theo đúng bề ngang header (kể cả chồng lên vùng chuông). */
+  homeHeaderHelloPressable: {
+    width: "100%",
+    alignSelf: "stretch",
   },
   homeBrandColumn: {
-    flex: 1,
+    width: "100%",
     minWidth: 0,
     justifyContent: "center",
-    paddingRight: 4,
   },
   homeEyebrowInline: {
     fontSize: 10,
@@ -114,10 +122,11 @@ const headerStyles = StyleSheet.create({
     textTransform: "uppercase",
   },
   homeHelloInline: {
+    width: "100%",
     fontSize: 18,
     fontWeight: "700",
     color: headerOnBrand.fg,
-    marginTop: 2,
+    marginTop: 0,
     lineHeight: 24,
     letterSpacing: -0.2,
     opacity: 0.98,
@@ -127,18 +136,41 @@ const headerStyles = StyleSheet.create({
     lineHeight: 21,
   },
   notificationBtnHome: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
     flexShrink: 0,
+    elevation: 0,
+  },
+  /** Chuông Home (không có dải hóa đơn): góc dưới phải, kéo lên gần greeting; zIndex khi chữ chồng lên. */
+  notificationBtnHomeAbsolute: {
+    position: "absolute",
+    right: 0,
+    bottom: 6,
+    zIndex: 2,
+    elevation: 0,
+  },
+  /** Hàng: dải hóa đơn + chuông cùng baseline/căn giữa theo chiều dọc — sát greeting hơn. */
+  homeInvoiceStripOuterRow: {
+    marginTop: 2,
+    width: "100%",
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+  },
+  homeInvoiceStripInvoiceCol: {
+    flex: 1,
+    minWidth: 0,
+  },
+  /** Chuông cạnh dải hóa đơn — sát mép phải, neo theo hàng thông báo. */
+  notificationBtnHomeBesideInvoice: {
+    flexShrink: 0,
+    marginRight: -2,
+    zIndex: 2,
+    elevation: 0,
   },
   homeInvoiceStripLoading: {
-    marginTop: 8,
     alignSelf: "flex-start",
   },
   /** Một dòng: không còn hóa đơn cần trả. */
   homeInvoiceStripAllPaidLine: {
-    marginTop: 8,
     alignSelf: "flex-start",
     maxWidth: "100%",
     fontSize: 13,
@@ -175,7 +207,6 @@ const headerStyles = StyleSheet.create({
   },
   /** Dải hóa đơn cần trả — chữ dạng liên kết (gạch dưới), bấm mở danh sách hóa đơn. */
   homeInvoiceStripPayableWrap: {
-    marginTop: 8,
     width: "100%",
     alignSelf: "flex-start",
   },
