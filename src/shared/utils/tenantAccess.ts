@@ -1,7 +1,13 @@
-import type { HouseFromApi, TenantHouseAccessFromApi, TenantHouseAccessStatus } from "../types/api";
+import type {
+  HouseFromApi,
+  TenantHouseAccessFromApi,
+  TenantHouseAccessStatus,
+  TenantInvoiceFromApi,
+} from "../types/api";
+import { isTenantInvoicePayable, isTenantInvoiceRentOrDepositType } from "./tenantInvoice";
 
-/** Chặn dùng app theo GET /api/houses/my-access: chỉ khi chưa tới ngày bàn giao hoặc chưa cọc. */
-export type TenantAccessBlockKind = "handover" | "deposit";
+/** Chặn dùng app theo GET /api/houses/my-access: handover/deposit hoặc PAYMENT_RESTRICTED + hóa đơn cọc/thuê. */
+export type TenantAccessBlockKind = "handover" | "deposit" | "payment_restricted";
 
 /**
  * Map một phần tử my-access sang HouseFromApi (id = houseId, name = houseName).
@@ -38,16 +44,40 @@ export function isHandoverDateReached(handoverDate?: string | null): boolean {
 
 /**
  * Loại chặn tính năng đầy đủ theo `accessStatus` từ my-access. `null` = không chặn (kể cả PENDING_FIRST_RENT: vào được, nhắc ở banner).
- * Không dùng `hasUnpaidInvoice` / danh sách hóa đơn — nợ ISSUE hay tiền tháng chưa trả chỉ hiển thị nhắc thanh toán, không khóa app.
+ * `PAYMENT_RESTRICTED`: cần `invoices` để xác nhận có hóa đơn DEPOSIT/MONTHLY_RENT còn phải trả trên đúng căn.
  */
 export function getTenantAccessBlock(
-  house: HouseFromApi | null | undefined
+  house: HouseFromApi | null | undefined,
+  invoices?: TenantInvoiceFromApi[]
 ): TenantAccessBlockKind | null {
   if (!house) return null;
   const st = (house.accessStatus ?? "").trim().toUpperCase();
 
   if (st === "PENDING_DEPOSIT") return "deposit";
   if (st === "PENDING_HANDOVER") return "handover";
+
+  if (st === "PAYMENT_RESTRICTED") {
+    const hid = String(house.id ?? "").trim();
+    if (!hid || !Array.isArray(invoices) || invoices.length === 0) {
+      if (typeof __DEV__ !== "undefined" && __DEV__) {
+        // eslint-disable-next-line no-console
+        console.warn("[TenantAccess] PAYMENT_RESTRICTED but no invoices to match rent/deposit");
+      }
+      return null;
+    }
+    const hasMatch = invoices.some(
+      (inv) =>
+        String(inv.houseId ?? "").trim() === hid &&
+        isTenantInvoiceRentOrDepositType(inv) &&
+        isTenantInvoicePayable(inv.status)
+    );
+    if (hasMatch) return "payment_restricted";
+    if (typeof __DEV__ !== "undefined" && __DEV__) {
+      // eslint-disable-next-line no-console
+      console.warn("[TenantAccess] PAYMENT_RESTRICTED but no unpaid DEPOSIT/MONTHLY_RENT for house");
+    }
+    return null;
+  }
 
   return null;
 }

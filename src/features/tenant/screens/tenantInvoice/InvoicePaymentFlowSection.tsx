@@ -157,7 +157,7 @@ export function InvoicePaymentFlowSection({
               paidRaw && String(paidRaw).trim()
                 ? formatTenantIssueDateTime(String(paidRaw), locale)
                 : "—";
-            const amt = formatTenantInvoiceAmount(Number(p.amount ?? 0), "VND", locale);
+            const amt = formatTenantInvoiceAmount(Number(p.amount ?? 0), "VND", locale, t);
             const method = resolvePaymentMethodLabel(p.method, t);
             return (
               <View key={p.id} style={styles.paymentAttemptRow}>

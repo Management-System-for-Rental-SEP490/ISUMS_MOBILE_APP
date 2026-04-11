@@ -15,6 +15,9 @@ const ELEV_CARD = {
   elevation: 6,
 };
 
+/** Khoảng cách dọc giữa các card SOFT trên Home — card sau dùng marginTop: 0 để tránh cộng đôi. */
+export const HOME_CARD_STACK_GAP = 12;
+
 /** Khung trắng mềm — đồng bộ utility / khu vực nhà / sơ đồ */
 const SOFT_CARD = {
   backgroundColor: neutral.surface,
@@ -286,8 +289,8 @@ export const homeStyles = StyleSheet.create({
      */
     usageSummarySection: {
         marginHorizontal: 16,
-        marginTop: 12,
-        marginBottom: 12,
+        marginTop: 0,
+        marginBottom: HOME_CARD_STACK_GAP,
         paddingHorizontal: 16,
         paddingTop: 18,
         paddingBottom: 16,
@@ -382,8 +385,8 @@ export const homeStyles = StyleSheet.create({
      */
     homeSiteFooter: {
         marginHorizontal: 16,
-        marginTop: 8,
-        marginBottom: 4,
+        marginTop: 0,
+        marginBottom: HOME_CARD_STACK_GAP,
         paddingVertical: 16,
         paddingHorizontal: 14,
         backgroundColor: neutral.surface,
@@ -620,7 +623,8 @@ export const homeStyles = StyleSheet.create({
     /** Thẻ nhà đang ở + đổi nhà (phía trên thao tác nhanh) */
     currentHouseSection: {
         marginHorizontal: 16,
-        marginTop: 12,
+        marginTop: HOME_CARD_STACK_GAP,
+        marginBottom: HOME_CARD_STACK_GAP,
         paddingVertical: 14,
         paddingHorizontal: 14,
         ...SOFT_CARD,
@@ -662,11 +666,11 @@ export const homeStyles = StyleSheet.create({
         fontWeight: "700",
         color: brandSecondary,
     },
-    /** Khối “Quick actions” — cùng SOFT_CARD */
+    /** Khối “Quick actions” — cùng SOFT_CARD; marginTop gán ở Home (0 nếu đã có thẻ nhà). */
     utilitySection: {
         marginHorizontal: 16,
-        marginTop: 12,
-        marginBottom: 12,
+        marginTop: 0,
+        marginBottom: HOME_CARD_STACK_GAP,
         paddingHorizontal: 16,
         paddingTop: 18,
         paddingBottom: 16,
@@ -679,34 +683,124 @@ export const homeStyles = StyleSheet.create({
         marginBottom: 12,
         letterSpacing: -0.35,
     },
-    /** Căn trái + gap — số cột do Home gán động (3 màn hẹp / 4 màn rộng) */
-    utilityGrid: {
-        flexDirection: "row",
-        flexWrap: "wrap",
-        justifyContent: "flex-start",
+    /** Cột các hàng tiện ích — mỗi hàng 3 ô co giãn theo chiều ngang (flex), hàng lẻ có spacer. */
+    utilityGridColumn: {
+        flexDirection: "column",
+        alignItems: "stretch",
     },
-    /** Chiều rộng gán động ở màn Home theo useWindowDimensions */
+    /** Một hàng luôn 3 cột — mỗi cột một `utilityCellSlot` (có nút hoặc để trống). */
+    utilityRow: {
+        flexDirection: "row",
+        alignItems: "stretch",
+    },
+    /** Một ô cột: luôn chiếm đúng 1/3 hàng (trừ gap), kích thước giống mọi hàng. */
+    utilityCellSlot: {
+        flex: 1,
+        flexBasis: 0,
+        minWidth: 0,
+    },
+    /** Nút lấp đầy ô — không kéo rộng theo số nút còn lại trên hàng. */
     utilityItem: {
-        minHeight: 76,
-        borderRadius: 14,
-        paddingVertical: 8,
-        paddingHorizontal: 4,
+        flex: 1,
+        width: "100%",
+        alignSelf: "stretch",
+        minHeight: 68,
+        borderRadius: 11,
+        paddingVertical: 5,
+        paddingHorizontal: 2,
         alignItems: "center",
         justifyContent: "center",
         /** Không dùng hidden — trên Android dễ cắt mất glyph vector icon trong ô hẹp. */
     },
     utilityIconSlot: {
-        marginBottom: 5,
-        minHeight: 22,
+        marginBottom: 3,
+        minHeight: 20,
         alignItems: "center",
         justifyContent: "center",
     },
     utilityLabel: {
-        fontSize: 11,
-        lineHeight: 14,
         color: neutral.text,
         textAlign: "center",
         fontWeight: "600",
+    },
+    /** Card “Phản hồi” — ngay dưới Thao tác nhanh */
+    questionFeedbackSection: {
+        marginHorizontal: 16,
+        marginTop: 0,
+        marginBottom: HOME_CARD_STACK_GAP,
+        paddingHorizontal: 16,
+        paddingTop: 18,
+        paddingBottom: 16,
+        ...SOFT_CARD,
+    },
+    questionFeedbackSectionTitle: {
+        fontSize: 17,
+        fontWeight: "800",
+        color: neutral.black,
+        marginBottom: 12,
+        letterSpacing: -0.35,
+    },
+    /** Nội dung xoay vòng trong card Phản hồi */
+    questionTickerWrap: {
+        marginBottom: 0,
+        borderRadius: 14,
+        overflow: "hidden",
+        backgroundColor: "#EEF2FF",
+        borderWidth: 1,
+        borderColor: "rgba(79, 70, 229, 0.14)",
+    },
+    questionTickerPress: {
+        flexDirection: "row",
+        alignItems: "flex-start",
+        paddingVertical: 12,
+        paddingHorizontal: 12,
+        gap: 10,
+    },
+    questionTickerIconCircle: {
+        width: 36,
+        height: 36,
+        borderRadius: 18,
+        backgroundColor: "rgba(79, 70, 229, 0.14)",
+        alignItems: "center",
+        justifyContent: "center",
+    },
+    questionTickerBody: {
+        flex: 1,
+        minWidth: 0,
+    },
+    questionTickerText: {
+        fontSize: 14,
+        lineHeight: 20,
+        fontWeight: "600",
+        color: neutral.heading,
+    },
+    questionTickerMeta: {
+        fontSize: 11,
+        marginTop: 4,
+        color: neutral.textMuted,
+        fontWeight: "500",
+    },
+    questionTickerChevron: {
+        paddingTop: 2,
+        flexShrink: 0,
+    },
+    questionTickerDots: {
+        flexDirection: "row",
+        justifyContent: "center",
+        alignItems: "center",
+        gap: 5,
+        paddingBottom: 10,
+        paddingTop: 0,
+    },
+    questionTickerDot: {
+        width: 5,
+        height: 5,
+        borderRadius: 999,
+        backgroundColor: "rgba(79, 70, 229, 0.28)",
+    },
+    questionTickerDotActive: {
+        backgroundColor: "#4F46E5",
+        width: 14,
     },
 });
 

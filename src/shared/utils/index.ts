@@ -15,6 +15,7 @@ export {
 } from "./truncateDisplayText";
 export {
   DROPDOWN_SEARCH_TOP_INSET_PX,
+  isFieldObscuredByKeyboard,
   parentScrollOffsetForDropdownField,
 } from "./dropdownSearchScroll";
 export {
@@ -34,6 +35,7 @@ export {
   formatVnpPayDateFromGateway,
   toLocalYyyyMmDd,
 } from "./dateTimeFormat";
+export { APP_DEFAULT_CURRENCY_CODE, formatVndDisplay } from "./currencyFormat";
 export {
   buildTenantHouseFilterOptions,
   enrichTenantHouseOptionsWithByIdApi,

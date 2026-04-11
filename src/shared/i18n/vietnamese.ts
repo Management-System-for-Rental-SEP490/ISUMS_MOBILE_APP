@@ -25,7 +25,9 @@ export default {
         "a11y_notifications": "Mở thông báo",
         "a11y_app_logo": "Logo ISUMS",
         "a11y_open_profile": "Mở hồ sơ",
-        "a11y_brand_go_home": "Về trang chủ"
+        "a11y_brand_go_home": "Về trang chủ",
+        "currency_vnd_unit": "VNĐ",
+        "currency_not_available": "—"
     },
     "device_detail": {
         "title": "Chi tiết thiết bị",
@@ -126,7 +128,9 @@ export default {
         "filter_in_progress": "Đang xử lý",
         "filter_sent": "Đã gửi",
         "filter_payment": "Cần thanh toán",
+        "filter_question": "Hỏi đáp",
         "filter_completed": "Hoàn tất",
+        "question_view_answer_btn": "Xem phản hồi",
         "priority_emergency": "KHẨN CẤP",
         "priority_standard": "TIÊU CHUẨN",
         "estimated_cost_prefix": "Chi phí:",
@@ -177,7 +181,11 @@ export default {
         "payment_paid_at_label": "Thời gian thanh toán",
         "payment_record_index": "Giao dịch {{n}}",
         "view_invoice_btn": "Xem hóa đơn",
-        "open_repair_invoice_detail": "Xem chi tiết hóa đơn sửa chữa"
+        "open_repair_invoice_detail": "Xem chi tiết hóa đơn sửa chữa",
+        "section_question_body": "Nội dung câu hỏi",
+        "section_answer": "Câu trả lời",
+        "answer_at": "Trả lời lúc",
+        "no_answer_yet": "Chưa có phản hồi."
     },
     "tenant_question_list": {
         "screen_title": "Giải đáp thắc mắc",
@@ -560,9 +568,12 @@ export default {
         "utility_profile": "Hồ sơ",
         "utility_electric": "Điện",
         "utility_water": "Nước",
+        "utility_consumption": "Tiêu thụ",
         "utility_invoice": "Hóa đơn",
         "utility_ticket": "Sự cố",
         "utility_qa": "Giải đáp",
+        "question_feedback_card_title": "Phản hồi",
+        "question_ticker_a11y": "Chạm để xem chi tiết phản hồi",
         "utility_scan": "Tra cứu",
         "utility_house": "Nhà",
         "utility_notification": "Thông báo",
@@ -621,6 +632,8 @@ export default {
             "payment_body": "Vui lòng thanh toán khoản tiền nhà tháng đầu để tiếp tục sử dụng ứng dụng.",
             "payment_banner":
                 "Hoàn tất tiền thuê tháng đầu cho căn đang chọn để dùng đầy đủ ứng dụng.",
+            "payment_restricted_banner":
+                "Tài khoản bị hạn chế do chưa thanh toán tiền cọc hoặc tiền thuê. Vui lòng thanh toán trong mục Hóa đơn.",
             "payment_alert_title": "Thanh toán tiền nhà",
             "payment_alert_message": "Bạn còn khoản tiền thuê chưa thanh toán. Nhấn \"Thanh toán ngay\" để chuyển tới trang thanh toán (VNPay).",
             "pay_now": "Thanh toán ngay"
@@ -633,7 +646,11 @@ export default {
             "PENDING_FIRST_RENT":
                 "Căn đang xem chưa thanh toán tiền thuê kỳ đầu. Hoàn tất để mở đầy đủ tính năng.",
             "PENDING_DEPOSIT": "Bạn chưa hoàn tất khoản đặt cọc theo hợp đồng.",
-            "PENDING_HANDOVER": "Căn nhà chưa đến ngày bàn giao theo hợp đồng."
+            "PENDING_HANDOVER": "Căn nhà chưa đến ngày bàn giao theo hợp đồng.",
+            "PAYMENT_RESTRICTED":
+                "Tài khoản bị hạn chế do chưa thanh toán tiền cọc hoặc tiền thuê. Vui lòng thanh toán trong mục Hóa đơn.",
+            "ACCESS_PAYMENT_RESTRICTED":
+                "Tài khoản bị hạn chế do chưa thanh toán tiền cọc hoặc tiền thuê. Vui lòng thanh toán trong mục Hóa đơn."
         },
         "house_detail": {
             "set_main_house": "Đặt làm nhà chính",
@@ -650,7 +667,8 @@ export default {
             "ACCESSIBLE": "Được vào nhà",
             "PENDING_HANDOVER": "Chưa tới ngày bàn giao",
             "PENDING_DEPOSIT": "Chưa đặt cọc",
-            "PENDING_FIRST_RENT": "Chưa thanh toán tiền nhà tháng đầu"
+            "PENDING_FIRST_RENT": "Chưa thanh toán tiền nhà tháng đầu",
+            "PAYMENT_RESTRICTED": "Hạn chế — chưa thanh toán cọc/thuê"
         },
         "house_member_role": {
             "OWNER": "Chủ hộ",

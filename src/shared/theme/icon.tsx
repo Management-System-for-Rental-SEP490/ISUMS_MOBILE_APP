@@ -25,6 +25,10 @@ const Icons = {
   electric: ({ size = 24, color = 'black' }: IconProps = {}) => (
     <MaterialIcons name="electrical-services" size={size} color={color} />
   ),
+  /** Tiêu thụ (điện + nước) — biểu đồ sử dụng. */
+  consumption: ({ size = 24, color = 'black' }: IconProps = {}) => (
+    <MaterialIcons name="insights" size={size} color={color} />
+  ),
   search: ({ size = 24, color = 'black' }: IconProps = {}) => (
     <MaterialIcons name="search" size={size} color={color} />
   ),

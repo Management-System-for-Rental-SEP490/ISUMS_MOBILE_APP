@@ -30,6 +30,8 @@ import {
   useMyEContracts,
   useTenantContext,
   useTenantHouses,
+  useRefreshControlGate,
+  refreshControlAndroidGateProps,
 } from "../../../shared/hooks";
 import type { TenantEContractFromApi } from "../../../shared/types/api";
 import { isHandoverDateReached, shortHouseIdForDisplay, tenantAccessibleHouseIdSet } from "../../../shared/utils";
@@ -128,6 +130,9 @@ const UserProfileScreen = () => {
     void refetchContracts();
     void refetchTenantHouses();
   }, [refetchContracts, refetchTenantHouses]);
+
+  const { scrollAtTop, onScrollForRefreshGate } = useRefreshControlGate();
+
   /**
    * Ẩn thông tin nhạy cảm khi chưa bàn giao.
    * Bao gồm cả lúc đang tải context để tránh lóe dữ liệu trong vài frame đầu.
@@ -225,12 +230,15 @@ const UserProfileScreen = () => {
     <View style={userProfileStyles.container}>
       <ScrollView
         contentContainerStyle={[userProfileStyles.contentContainer]}
+        onScroll={onScrollForRefreshGate}
+        scrollEventThrottle={16}
         refreshControl={
           <RefreshControl
             refreshing={contractsRefetching}
             onRefresh={onRefreshContracts}
             colors={[brandPrimary]}
             tintColor={brandPrimary}
+            {...refreshControlAndroidGateProps(scrollAtTop, contractsRefetching)}
           />
         }
       >

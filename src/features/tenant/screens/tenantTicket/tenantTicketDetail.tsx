@@ -12,13 +12,14 @@ import {
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useTranslation } from "react-i18next";
-import { RootStackParamList } from "../../../../shared/types";
+import { IssueTicketResponseFromApi, RootStackParamList } from "../../../../shared/types";
 import { CustomAlert as Alert } from "../../../../shared/components/alert";
 import type { IssueQuoteFromApi } from "../../../../shared/types/api";
 import { getAssetItemById } from "../../../../shared/services/assetItemApi";
 import {
   confirmIssueQuoteStatus,
   getIssueQuotesByTicket,
+  getIssueResponses,
   getTenantTicketById,
   getTenantTicketImages,
   type TenantTicketImageFromApi,
@@ -31,7 +32,7 @@ import { getWorkSlotById } from "../../../../shared/services/scheduleApi";
 import Icons from "../../../../shared/theme/icon";
 import { brandPrimary, brandSecondary, neutral } from "../../../../shared/theme/color";
 import { tenantTicketDetailStyles as styles, tenantTicketListStyles as badge } from "./ticketStyles";
-import { formatTenantIssueDateTime } from "../../../../shared/utils";
+import { formatTenantIssueDateTime, formatVndDisplay } from "../../../../shared/utils";
 import { formatApiErrorForTenantAlert } from "../../../../shared/utils/apiErrorMessage";
 import {
   StackScreenTitleBadge,
@@ -91,6 +92,19 @@ function quoteAwaitingTenantConfirm(q: { status?: string | null }): boolean {
   return st === "WAITING_TENANT_APPROVAL" || st === "WAITING_TENANT_APPROVAL_QUOTE";
 }
 
+function pickLatestResponseForTicket(
+  responses: IssueTicketResponseFromApi[],
+  ticketId: string
+): IssueTicketResponseFromApi | null {
+  const list = responses.filter((r) => r.ticketId === ticketId);
+  if (!list.length) return null;
+  return list.reduce((best, r) => {
+    const tb = new Date(best.createdAt).getTime();
+    const tr = new Date(r.createdAt).getTime();
+    return tr > tb ? r : best;
+  });
+}
+
 const TenantTicketDetailScreen = ({ navigation, route }: Props) => {
   const { t, i18n } = useTranslation();
   const insets = useSafeAreaInsets();
@@ -118,6 +132,14 @@ const TenantTicketDetailScreen = ({ navigation, route }: Props) => {
   const [confirmQuoteError, setConfirmQuoteError] = useState<string | null>(null);
   const [payRepairLoading, setPayRepairLoading] = useState(false);
 
+  const isQuestionTicket = useMemo(
+    () => String(ticket?.type ?? "").toUpperCase() === "QUESTION",
+    [ticket?.type]
+  );
+
+  const [questionResponse, setQuestionResponse] = useState<IssueTicketResponseFromApi | null>(null);
+  const [questionResponseLoading, setQuestionResponseLoading] = useState(false);
+
   const { data: invoiceQueryData, refetch: refetchTenantInvoices } = useTenantInvoices();
   const linkedRepairInvoice = useMemo(() => {
     const rows = invoiceQueryData ?? [];
@@ -140,6 +162,11 @@ const TenantTicketDetailScreen = ({ navigation, route }: Props) => {
   );
 
   const loadAsset = useCallback(async () => {
+    if (String(ticket?.type ?? "").toUpperCase() === "QUESTION") {
+      setAssetName(null);
+      setAssetLoading(false);
+      return;
+    }
     if (!ticket.assetId) {
       setAssetName(null);
       setAssetLoading(false);
@@ -149,13 +176,18 @@ const TenantTicketDetailScreen = ({ navigation, route }: Props) => {
     const item = await getAssetItemById(ticket.assetId);
     setAssetName(item?.displayName?.trim() ? item.displayName : null);
     setAssetLoading(false);
-  }, [ticket.assetId]);
+  }, [ticket.assetId, ticket?.type]);
 
   useEffect(() => {
     loadAsset();
   }, [loadAsset]);
 
   const loadImages = useCallback(async () => {
+    if (String(ticket?.type ?? "").toUpperCase() === "QUESTION") {
+      setTicketImages([]);
+      setImagesLoading(false);
+      return;
+    }
     if (!ticket?.id) {
       setTicketImages([]);
       return;
@@ -170,11 +202,36 @@ const TenantTicketDetailScreen = ({ navigation, route }: Props) => {
     } finally {
       setImagesLoading(false);
     }
-  }, [ticket?.id]);
+  }, [ticket?.id, ticket?.type]);
 
   useEffect(() => {
     loadImages();
   }, [loadImages]);
+
+  useEffect(() => {
+    if (!isQuestionTicket || !ticket?.id) {
+      setQuestionResponse(null);
+      setQuestionResponseLoading(false);
+      return;
+    }
+    let cancelled = false;
+    const tid = String(ticket.id).trim();
+    setQuestionResponseLoading(true);
+    void getIssueResponses()
+      .then((responses) => {
+        if (cancelled) return;
+        setQuestionResponse(pickLatestResponseForTicket(responses, tid));
+      })
+      .catch(() => {
+        if (!cancelled) setQuestionResponse(null);
+      })
+      .finally(() => {
+        if (!cancelled) setQuestionResponseLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [isQuestionTicket, ticket?.id]);
 
   const activeQuote = useMemo(() => {
     if (!quotes?.length) return null;
@@ -190,13 +247,8 @@ const TenantTicketDetailScreen = ({ navigation, route }: Props) => {
   }, [quotes]);
 
   const formatMoney = useCallback(
-    (v: number) => {
-      const num = Number(v);
-      if (!Number.isFinite(num)) return "—";
-      const s = num.toLocaleString(locale, { maximumFractionDigits: 0 });
-      return `${s} đ`;
-    },
-    [locale]
+    (v: number) => formatVndDisplay(v, locale, t),
+    [locale, t]
   );
 
   /**
@@ -274,6 +326,8 @@ const TenantTicketDetailScreen = ({ navigation, route }: Props) => {
       setPredictedHandlingTime(null);
       setWorkSlotLoading(false);
 
+      if (String(ticket?.type ?? "").toUpperCase() === "QUESTION") return;
+
       // Không có slot thì không thể suy ra startTime.
       if (nilUuid(ticket.slotId)) return;
 
@@ -300,7 +354,7 @@ const TenantTicketDetailScreen = ({ navigation, route }: Props) => {
       cancelled = true;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [ticket.slotId, locale]);
+  }, [ticket.slotId, ticket?.type, locale]);
 
   const loadQuotes = useCallback(async () => {
     if (!ticket?.id) {
@@ -515,147 +569,197 @@ const TenantTicketDetailScreen = ({ navigation, route }: Props) => {
         ]}
         showsVerticalScrollIndicator={false}
       >
-        <View style={styles.heroCard}>
-          <Text style={styles.heroTitle}>{ticket.title}</Text>
-          <View style={styles.badgeRow}>
-            <View style={[badge.typeTag, typeTagBg(ticket.type), { marginBottom: 0 }]}>
-              <Text style={[badge.typeTagText, typeTagFg(ticket.type)]}>{typeLabel(ticket.type)}</Text>
-            </View>
-            <View style={[badge.statusPill, sv.pill, { flexShrink: 0 }]}>
-              <View style={[badge.statusDot, sv.dot]} />
-              <Text style={[badge.statusPillText, sv.text]}>{statusLabel(ticket.status)}</Text>
-            </View>
-          </View>
-          <View style={styles.heroDateRow}>
-            <Icons.clock size={15} color={neutral.textMuted} />
-            <Text style={styles.heroDateText}>
-              {t("tenant_ticket_detail.sent_at")}: {formatTenantIssueDateTime(ticket.createdAt, locale)}
-            </Text>
-          </View>
-          {repairInvoicePaid && linkedRepairInvoice ? (
-            <TouchableOpacity
-              style={[styles.payNowBtn, { marginTop: 14 }]}
-              onPress={() => navigation.navigate("TenantIssueInvoice", { invoice: linkedRepairInvoice })}
-              activeOpacity={0.85}
-              accessibilityRole="button"
-              accessibilityLabel={t("tenant_ticket_detail.view_invoice_btn")}
-            >
-              <Icons.invoice size={22} color={neutral.surface} />
-              <Text style={styles.payNowBtnText}>{t("tenant_ticket_detail.view_invoice_btn")}</Text>
-            </TouchableOpacity>
-          ) : null}
-        </View>
-
-        <TicketDetailSection
-          title={t("tenant_ticket_detail.section_info")}
-          headerIcon={<Icons.infoOutline size={22} color={brandPrimary} />}
-        >
-          <View style={styles.detailFieldRow}>
-            <Text style={styles.fieldLabel}>{t("tenant_ticket_detail.field_device")}</Text>
-            {assetLoading ? (
-              <View style={styles.assetLoadingRow}>
-                <ActivityIndicator size="small" color={brandSecondary} />
-                <Text style={styles.fieldValueMuted}>{t("tenant_ticket_detail.asset_loading")}</Text>
+        {isQuestionTicket ? (
+          <>
+            <View style={styles.heroCard}>
+              <Text style={styles.heroTitle}>{ticket.title?.trim() ? ticket.title : "—"}</Text>
+              <View style={styles.heroDateRow}>
+                <Icons.clock size={15} color={neutral.textMuted} />
+                <Text style={styles.heroDateText}>
+                  {t("tenant_ticket_detail.sent_at")}: {formatTenantIssueDateTime(ticket.createdAt, locale)}
+                </Text>
               </View>
-            ) : assetName ? (
-              <Text style={styles.fieldValue}>{assetName}</Text>
-            ) : (
-              <Text style={styles.fieldValueMuted}>{t("tenant_ticket_detail.asset_fallback")}</Text>
-            )}
-          </View>
-          <View style={styles.detailFieldRow}>
-            <Text style={styles.fieldLabel}>{t("tenant_ticket_detail.field_assigned_staff")}</Text>
-            {staffAssigned ? (
-              <Text style={styles.fieldValue} selectable numberOfLines={1}>
-                {staffName || "—"}
-              </Text>
-            ) : (
-              <Text style={styles.fieldValueMuted} selectable>
-                {t("tenant_ticket_detail.not_assigned")}
-              </Text>
-            )}
-          </View>
-          <View style={styles.detailFieldRow}>
-            <Text style={styles.fieldLabel}>{t("tenant_ticket_detail.field_staff_phone")}</Text>
-            <Text style={staffAssigned ? styles.fieldValuePhone : styles.fieldValueMuted} selectable numberOfLines={1}>
-              {staffAssigned ? staffPhone || "—" : "—"}
-            </Text>
-          </View>
-          <View style={[styles.detailFieldRow, styles.detailFieldRowLast]}>
-            <Text style={styles.fieldLabel}>{t("tenant_ticket_detail.field_slot")}</Text>
-            <Text
-              style={
-                nilUuid(ticket.slotId) || workSlotLoading || predictedHandlingTime == null
-                  ? styles.fieldValueMuted
-                  : styles.fieldValue
-              }
-              selectable
-            >
-              {nilUuid(ticket.slotId)
-                ? t("tenant_ticket_detail.no_slot")
-                : workSlotLoading
-                  ? t("common.loading")
-                  : predictedHandlingTime ?? t("tenant_ticket_detail.slot_time_tbd")}
-            </Text>
-          </View>
-        </TicketDetailSection>
-
-        <TicketDetailSection
-          title={t("tenant_ticket_detail.section_description")}
-          headerIcon={<Icons.subject size={22} color={brandPrimary} />}
-        >
-          <Text style={styles.descriptionBody} selectable>
-            {ticket.description?.trim() ? ticket.description : "—"}
-          </Text>
-        </TicketDetailSection>
-
-        <TicketDetailSection
-          title={t("ticket.images_label")}
-          headerIcon={<Icons.photoLibrary size={22} color={brandPrimary} />}
-        >
-          {imagesLoading ? (
-            <View style={styles.assetLoadingRow}>
-              <ActivityIndicator size="small" color={brandSecondary} />
-              <Text style={styles.fieldValueMuted}>{t("common.loading")}</Text>
             </View>
-          ) : ticketImages.length > 0 ? (
-            ticketImages.length === 1 ? (
-              <TouchableOpacity
-                style={styles.ticketImageThumbFull}
-                activeOpacity={0.85}
-                onPress={() => setActiveImageUrl(ticketImages[0]!.url)}
-              >
-                <Image
-                  source={{ uri: ticketImages[0]!.url }}
-                  style={styles.ticketImage}
-                  resizeMode="cover"
-                />
-              </TouchableOpacity>
-            ) : (
-              <ScrollView
-                horizontal
-                showsHorizontalScrollIndicator={false}
-                style={styles.ticketImagesScroll}
-                contentContainerStyle={styles.ticketImagesStrip}
-              >
-                {ticketImages.map((img) => (
-                  <TouchableOpacity
-                    key={img.id}
-                    style={[styles.ticketImageThumb, styles.ticketImageThumbHorizontal]}
-                    activeOpacity={0.85}
-                    onPress={() => setActiveImageUrl(img.url)}
-                  >
-                    <Image source={{ uri: img.url }} style={styles.ticketImage} resizeMode="cover" />
-                  </TouchableOpacity>
-                ))}
-              </ScrollView>
-            )
-          ) : (
-            <Text style={styles.fieldValueMuted}>{t("ticket.images_empty")}</Text>
-          )}
-        </TicketDetailSection>
 
-        {ticketNeedsTenantQuoteConfirm(ticket.status) && (
+            <TicketDetailSection
+              title={t("tenant_ticket_detail.section_question_body")}
+              headerIcon={<Icons.helpOutline size={22} color={brandPrimary} />}
+            >
+              <Text style={styles.descriptionBody} selectable>
+                {ticket.description?.trim() ? ticket.description : "—"}
+              </Text>
+            </TicketDetailSection>
+
+            <TicketDetailSection
+              title={t("tenant_ticket_detail.section_answer")}
+              headerIcon={<Icons.subject size={22} color={brandPrimary} />}
+            >
+              {questionResponseLoading ? (
+                <View style={styles.assetLoadingRow}>
+                  <ActivityIndicator size="small" color={brandSecondary} />
+                  <Text style={styles.fieldValueMuted}>{t("common.loading")}</Text>
+                </View>
+              ) : questionResponse ? (
+                <>
+                  <Text style={styles.descriptionBody} selectable>
+                    {questionResponse.content?.trim() ? questionResponse.content : "—"}
+                  </Text>
+                  <View style={[styles.heroDateRow, { marginTop: 12 }]}>
+                    <Icons.clock size={15} color={neutral.textMuted} />
+                    <Text style={styles.heroDateText}>
+                      {t("tenant_ticket_detail.answer_at")}:{" "}
+                      {formatTenantIssueDateTime(questionResponse.createdAt, locale)}
+                    </Text>
+                  </View>
+                </>
+              ) : (
+                <Text style={styles.fieldValueMuted}>{t("tenant_ticket_detail.no_answer_yet")}</Text>
+              )}
+            </TicketDetailSection>
+          </>
+        ) : (
+          <>
+            <View style={styles.heroCard}>
+              <Text style={styles.heroTitle}>{ticket.title}</Text>
+              <View style={styles.badgeRow}>
+                <View style={[badge.typeTag, typeTagBg(ticket.type), { marginBottom: 0 }]}>
+                  <Text style={[badge.typeTagText, typeTagFg(ticket.type)]}>{typeLabel(ticket.type)}</Text>
+                </View>
+                <View style={[badge.statusPill, sv.pill, { flexShrink: 0 }]}>
+                  <View style={[badge.statusDot, sv.dot]} />
+                  <Text style={[badge.statusPillText, sv.text]}>{statusLabel(ticket.status)}</Text>
+                </View>
+              </View>
+              <View style={styles.heroDateRow}>
+                <Icons.clock size={15} color={neutral.textMuted} />
+                <Text style={styles.heroDateText}>
+                  {t("tenant_ticket_detail.sent_at")}: {formatTenantIssueDateTime(ticket.createdAt, locale)}
+                </Text>
+              </View>
+              {repairInvoicePaid && linkedRepairInvoice ? (
+                <TouchableOpacity
+                  style={[styles.payNowBtn, { marginTop: 14 }]}
+                  onPress={() => navigation.navigate("TenantIssueInvoice", { invoice: linkedRepairInvoice })}
+                  activeOpacity={0.85}
+                  accessibilityRole="button"
+                  accessibilityLabel={t("tenant_ticket_detail.view_invoice_btn")}
+                >
+                  <Icons.invoice size={22} color={neutral.surface} />
+                  <Text style={styles.payNowBtnText}>{t("tenant_ticket_detail.view_invoice_btn")}</Text>
+                </TouchableOpacity>
+              ) : null}
+            </View>
+
+            <TicketDetailSection
+              title={t("tenant_ticket_detail.section_info")}
+              headerIcon={<Icons.infoOutline size={22} color={brandPrimary} />}
+            >
+              <View style={styles.detailFieldRow}>
+                <Text style={styles.fieldLabel}>{t("tenant_ticket_detail.field_device")}</Text>
+                {assetLoading ? (
+                  <View style={styles.assetLoadingRow}>
+                    <ActivityIndicator size="small" color={brandSecondary} />
+                    <Text style={styles.fieldValueMuted}>{t("tenant_ticket_detail.asset_loading")}</Text>
+                  </View>
+                ) : assetName ? (
+                  <Text style={styles.fieldValue}>{assetName}</Text>
+                ) : (
+                  <Text style={styles.fieldValueMuted}>{t("tenant_ticket_detail.asset_fallback")}</Text>
+                )}
+              </View>
+              <View style={styles.detailFieldRow}>
+                <Text style={styles.fieldLabel}>{t("tenant_ticket_detail.field_assigned_staff")}</Text>
+                {staffAssigned ? (
+                  <Text style={styles.fieldValue} selectable numberOfLines={1}>
+                    {staffName || "—"}
+                  </Text>
+                ) : (
+                  <Text style={styles.fieldValueMuted} selectable>
+                    {t("tenant_ticket_detail.not_assigned")}
+                  </Text>
+                )}
+              </View>
+              <View style={styles.detailFieldRow}>
+                <Text style={styles.fieldLabel}>{t("tenant_ticket_detail.field_staff_phone")}</Text>
+                <Text style={staffAssigned ? styles.fieldValuePhone : styles.fieldValueMuted} selectable numberOfLines={1}>
+                  {staffAssigned ? staffPhone || "—" : "—"}
+                </Text>
+              </View>
+              <View style={[styles.detailFieldRow, styles.detailFieldRowLast]}>
+                <Text style={styles.fieldLabel}>{t("tenant_ticket_detail.field_slot")}</Text>
+                <Text
+                  style={
+                    nilUuid(ticket.slotId) || workSlotLoading || predictedHandlingTime == null
+                      ? styles.fieldValueMuted
+                      : styles.fieldValue
+                  }
+                  selectable
+                >
+                  {nilUuid(ticket.slotId)
+                    ? t("tenant_ticket_detail.no_slot")
+                    : workSlotLoading
+                      ? t("common.loading")
+                      : predictedHandlingTime ?? t("tenant_ticket_detail.slot_time_tbd")}
+                </Text>
+              </View>
+            </TicketDetailSection>
+
+            <TicketDetailSection
+              title={t("tenant_ticket_detail.section_description")}
+              headerIcon={<Icons.subject size={22} color={brandPrimary} />}
+            >
+              <Text style={styles.descriptionBody} selectable>
+                {ticket.description?.trim() ? ticket.description : "—"}
+              </Text>
+            </TicketDetailSection>
+
+            <TicketDetailSection
+              title={t("ticket.images_label")}
+              headerIcon={<Icons.photoLibrary size={22} color={brandPrimary} />}
+            >
+              {imagesLoading ? (
+                <View style={styles.assetLoadingRow}>
+                  <ActivityIndicator size="small" color={brandSecondary} />
+                  <Text style={styles.fieldValueMuted}>{t("common.loading")}</Text>
+                </View>
+              ) : ticketImages.length > 0 ? (
+                ticketImages.length === 1 ? (
+                  <TouchableOpacity
+                    style={styles.ticketImageThumbFull}
+                    activeOpacity={0.85}
+                    onPress={() => setActiveImageUrl(ticketImages[0]!.url)}
+                  >
+                    <Image
+                      source={{ uri: ticketImages[0]!.url }}
+                      style={styles.ticketImage}
+                      resizeMode="cover"
+                    />
+                  </TouchableOpacity>
+                ) : (
+                  <ScrollView
+                    horizontal
+                    showsHorizontalScrollIndicator={false}
+                    style={styles.ticketImagesScroll}
+                    contentContainerStyle={styles.ticketImagesStrip}
+                  >
+                    {ticketImages.map((img) => (
+                      <TouchableOpacity
+                        key={img.id}
+                        style={[styles.ticketImageThumb, styles.ticketImageThumbHorizontal]}
+                        activeOpacity={0.85}
+                        onPress={() => setActiveImageUrl(img.url)}
+                      >
+                        <Image source={{ uri: img.url }} style={styles.ticketImage} resizeMode="cover" />
+                      </TouchableOpacity>
+                    ))}
+                  </ScrollView>
+                )
+              ) : (
+                <Text style={styles.fieldValueMuted}>{t("ticket.images_empty")}</Text>
+              )}
+            </TicketDetailSection>
+
+            {ticketNeedsTenantQuoteConfirm(ticket.status) && (
           <TicketDetailSection
             title={t("tenant_ticket_detail.section_quote")}
             headerIcon={<Icons.invoice size={22} color={brandPrimary} />}
@@ -814,6 +918,8 @@ const TenantTicketDetailScreen = ({ navigation, route }: Props) => {
             />
           </TicketDetailSection>
         ) : null}
+          </>
+        )}
       </ScrollView>
 
       <Modal

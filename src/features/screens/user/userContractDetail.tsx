@@ -292,43 +292,9 @@ export default function UserContractDetailScreen({ navigation, route }: Props) {
         scrollIndicatorInsets={{ bottom: insets.bottom }}
         showsVerticalScrollIndicator={false}
       >
-        <View style={styles.heroCard}>
-          <View style={styles.heroIconWrap}>
-            <Icons.eContract size={28} color={brandSecondary} />
-          </View>
-          <Text style={styles.heroTitle} numberOfLines={4}>
-            {contract.name || "—"}
-          </Text>
-          <View style={styles.badgeRow}>
-            <StatusPill label={statusLabel} pill={pill} />
-          </View>
-
-          <View style={styles.heroMetaBlock}>
-            <View style={styles.heroMetaRow}>
-              <Icons.home size={18} color={neutral.textMuted} />
-              <View style={styles.heroMetaTextCol}>
-                <Text style={styles.heroMetaCaption}>{t("profile.e_contract_house_caption")}</Text>
-                <Text style={styles.heroMetaValue}>{houseDisplayName}</Text>
-                {houseOutsideAccess ? (
-                  <Text style={styles.heroMetaDisclaimer}>{t("tenant_access.house_not_owned_disclaimer")}</Text>
-                ) : null}
-              </View>
-            </View>
-            <View style={styles.heroMetaRow}>
-              <Icons.calendar size={18} color={neutral.textMuted} />
-              <View style={styles.heroMetaTextCol}>
-                <Text style={styles.heroMetaCaption}>{t("profile.e_contract_validity_caption")}</Text>
-                <Text style={styles.heroMetaValue}>
-                  {`${startFmt} — ${endFmt}`}
-                </Text>
-              </View>
-            </View>
-          </View>
-        </View>
-
         <View style={styles.detailCard}>
           <View style={styles.detailCardHeaderRow}>
-            <Icons.infoOutline size={20} color={brandSecondary} />
+            <Icons.eContract size={22} color={brandSecondary} />
             <Text style={styles.detailCardHeaderLabel}>{t("profile.e_contract_section_detail")}</Text>
           </View>
 

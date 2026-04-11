@@ -14,7 +14,11 @@ import Header from "../../../../shared/components/header";
 import Icons from "../../../../shared/theme/icon";
 import { FloorPlanView } from "../../houseStructure";
 import { electricUsageStyles } from "./electricUsageStyles";
-import { useTenantContext } from "../../../../shared/hooks";
+import {
+  useTenantContext,
+  useRefreshControlGate,
+  refreshControlAndroidGateProps,
+} from "../../../../shared/hooks";
 import { useTenantIoTConnection, useTenantTelemetry, useTenantUsage } from "../../hooks/useTenantIoT";
 import { brandPrimary, neutral } from "../../../../shared/theme/color";
 import {
@@ -40,6 +44,7 @@ const ElectricUsageScreen = ({ showHeader = true }: ElectricUsageScreenProps) =>
   const usage = useTenantUsage({ houseId, metric: "electricity" });
   const { power, powerHistory } = useTenantTelemetry(thingId);
   const [pullRefreshing, setPullRefreshing] = useState(false);
+  const { scrollAtTop, onScrollForRefreshGate } = useRefreshControlGate();
   const onPullRefresh = useCallback(async () => {
     setPullRefreshing(true);
     try {
@@ -172,12 +177,15 @@ const ElectricUsageScreen = ({ showHeader = true }: ElectricUsageScreenProps) =>
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
         keyboardDismissMode="on-drag"
+        onScroll={onScrollForRefreshGate}
+        scrollEventThrottle={16}
         refreshControl={
           <RefreshControl
             refreshing={pullRefreshing}
             onRefresh={onPullRefresh}
             tintColor={brandPrimary}
             colors={[brandPrimary]}
+            {...refreshControlAndroidGateProps(scrollAtTop, pullRefreshing)}
           />
         }
       >

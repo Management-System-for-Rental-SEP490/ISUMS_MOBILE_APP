@@ -952,6 +952,26 @@ export const tenantTicketListStyles = StyleSheet.create({
     fontWeight: "800",
     color: neutral.surface,
   },
+  /** Ticket QUESTION đã có phản hồi — mở TenantQuestionDetail. */
+  questionAnswerBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+    marginTop: 12,
+    backgroundColor: neutral.surface,
+    borderWidth: 1.5,
+    borderColor: brandSecondary,
+    borderRadius: 12,
+    paddingVertical: 12,
+    paddingHorizontal: 14,
+  },
+  questionAnswerBtnText: {
+    flex: 1,
+    fontSize: 15,
+    fontWeight: "700",
+    color: brandSecondary,
+  },
   detailLinkCenter: {
     alignSelf: "center",
     paddingVertical: 8,

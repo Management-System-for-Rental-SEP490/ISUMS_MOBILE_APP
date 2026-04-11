@@ -63,6 +63,8 @@ import type {
   FunctionalAreaFromApi,
 } from "../../../../shared/types/api";
 import {
+  DROPDOWN_SEARCH_TOP_INSET_PX,
+  isFieldObscuredByKeyboard,
   mergeFunctionalAreasForHouse,
   parentScrollOffsetForDropdownField,
 } from "../../../../shared/utils";
@@ -157,7 +159,9 @@ const TenantHouseDescription = () => {
 
   const planScrollRef = useRef<ScrollView>(null);
   const deviceCategoryFilterYRef = useRef(0);
+  const deviceCategoryFilterMeasureRef = useRef<View>(null);
   const prevSelectedAreaRef = useRef<string | null>(null);
+  const keyboardHeightRef = useRef(0);
   const [keyboardExtraBottom, setKeyboardExtraBottom] = useState(0);
   const [selectedCategoryId, setSelectedCategoryId] = useState<string | null>(null);
   const [deviceFloor, setDeviceFloor] = useState("1");
@@ -168,9 +172,13 @@ const TenantHouseDescription = () => {
   useEffect(() => {
     const onShow = (e: { endCoordinates?: { height?: number } }) => {
       const keyboardHeight = e.endCoordinates?.height ?? 0;
+      keyboardHeightRef.current = keyboardHeight;
       setKeyboardExtraBottom(Math.max(0, keyboardHeight - insets.bottom));
     };
-    const onHide = () => setKeyboardExtraBottom(0);
+    const onHide = () => {
+      keyboardHeightRef.current = 0;
+      setKeyboardExtraBottom(0);
+    };
     const showSub = Keyboard.addListener("keyboardDidShow", onShow);
     const hideSub = Keyboard.addListener("keyboardDidHide", onHide);
     const subs = [showSub, hideSub];
@@ -181,18 +189,40 @@ const TenantHouseDescription = () => {
   }, [insets.bottom]);
 
   const scrollDeviceCategoryFilterIntoView = useCallback(() => {
-    const scrollToSearch = (extraOffset = 0) => {
-      const target = parentScrollOffsetForDropdownField(
-        deviceCategoryFilterYRef.current,
-        extraOffset
-      );
-      planScrollRef.current?.scrollTo({ y: target, animated: true });
+    const attemptScroll = (attempt: number) => {
+      const kh = keyboardHeightRef.current;
+      if (Platform.OS === "ios" && kh <= 0) {
+        if (attempt < 14) {
+          setTimeout(() => attemptScroll(attempt + 1), 60);
+        }
+        return;
+      }
+
+      deviceCategoryFilterMeasureRef.current?.measureInWindow((x, y, w, h) => {
+        const fieldBottom = y + h;
+        if (!isFieldObscuredByKeyboard(fieldBottom, kh)) {
+          return;
+        }
+
+        const topInset =
+          kh > 0
+            ? Math.max(
+                36,
+                DROPDOWN_SEARCH_TOP_INSET_PX - Math.min(Math.round(kh * 0.45), 120)
+              )
+            : DROPDOWN_SEARCH_TOP_INSET_PX;
+        const scrollY = parentScrollOffsetForDropdownField(
+          deviceCategoryFilterYRef.current,
+          topInset
+        );
+        planScrollRef.current?.scrollTo({ y: scrollY, animated: true });
+      });
     };
+
     requestAnimationFrame(() => {
-      requestAnimationFrame(() => scrollToSearch(32));
+      requestAnimationFrame(() => attemptScroll(0));
     });
-    setTimeout(() => scrollToSearch(96), 180);
-    setTimeout(() => scrollToSearch(132), 320);
+    setTimeout(() => attemptScroll(0), Platform.OS === "ios" ? 120 : 240);
   }, []);
 
   const scrollDeviceDropdownOpenIntoView = useCallback(() => {
@@ -595,6 +625,7 @@ const TenantHouseDescription = () => {
           ]}
           showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="handled"
+          automaticallyAdjustKeyboardInsets={Platform.OS === "ios"}
         >
         <View style={tenantHouseStyles.card}>
           <Text style={tenantHouseStyles.houseName}>{buildingName}</Text>
@@ -677,6 +708,7 @@ const TenantHouseDescription = () => {
           <View style={homeStyles.homeZoneCard}>
             {deviceDropdownSections ? (
               <View
+                ref={deviceCategoryFilterMeasureRef}
                 onLayout={(e) => {
                   deviceCategoryFilterYRef.current = e.nativeEvent.layout.y;
                 }}
@@ -686,6 +718,7 @@ const TenantHouseDescription = () => {
                   summary={categoryFilterSummary}
                   onSelect={handleHouseDropdownSelect}
                   style={{ marginTop: 0, marginHorizontal: 0, marginBottom: 14 }}
+                  keyboardVerticalOffset={insets.top + 56}
                   onSearchInputFocus={scrollDeviceCategoryFilterIntoView}
                   onSearchChange={setDeviceSearchQuery}
                   searchAutoFocus={false}

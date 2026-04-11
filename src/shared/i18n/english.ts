@@ -25,7 +25,9 @@ export default {
         "a11y_notifications": "Open notifications",
         "a11y_app_logo": "ISUMS logo",
         "a11y_open_profile": "Open profile",
-        "a11y_brand_go_home": "Go to home"
+        "a11y_brand_go_home": "Go to home",
+        "currency_vnd_unit": "VND",
+        "currency_not_available": "—"
     },
     "device_detail": {
         "title": "Device Details",
@@ -126,7 +128,9 @@ export default {
         "filter_in_progress": "In progress",
         "filter_sent": "Submitted",
         "filter_payment": "Payment due",
+        "filter_question": "Q&A",
         "filter_completed": "Completed",
+        "question_view_answer_btn": "View reply",
         "priority_emergency": "URGENT",
         "priority_standard": "STANDARD",
         "estimated_cost_prefix": "Cost:",
@@ -177,7 +181,11 @@ export default {
         "payment_paid_at_label": "Paid at",
         "payment_record_index": "Payment {{n}}",
         "view_invoice_btn": "View invoice",
-        "open_repair_invoice_detail": "Open repair invoice details"
+        "open_repair_invoice_detail": "Open repair invoice details",
+        "section_question_body": "Your question",
+        "section_answer": "Reply",
+        "answer_at": "Replied at",
+        "no_answer_yet": "No reply yet."
     },
     "tenant_question_list": {
         "screen_title": "Q&A replies",
@@ -560,9 +568,12 @@ export default {
         "utility_profile": "Profile",
         "utility_electric": "Electric",
         "utility_water": "Water",
+        "utility_consumption": "Consumption",
         "utility_invoice": "Invoices",
         "utility_ticket": "Tickets",
         "utility_qa": "Q&A",
+        "question_feedback_card_title": "Feedback",
+        "question_ticker_a11y": "Tap to view reply details",
         "utility_scan": "Lookup",
         "utility_house": "House",
         "utility_notification": "Notification",
@@ -620,6 +631,8 @@ export default {
             "payment_title": "Rent payment required",
             "payment_body": "Please pay your first rent installment to continue using the app.",
             "payment_banner": "Pay first-month rent for the home you're viewing to unlock the full app.",
+            "payment_restricted_banner":
+                "Access is limited due to unpaid deposit or rent. Please pay in the Invoices section.",
             "payment_alert_title": "Pay rent",
             "payment_alert_message": "You have an unpaid rent invoice. Tap Pay now to open payment (VNPay).",
             "pay_now": "Pay now"
@@ -632,7 +645,11 @@ export default {
             "PENDING_FIRST_RENT":
                 "This property still needs its first rent payment. Complete it for full features.",
             "PENDING_DEPOSIT": "Your security deposit has not been completed yet.",
-            "PENDING_HANDOVER": "This property is not yet handed over based on the contract date."
+            "PENDING_HANDOVER": "This property is not yet handed over based on the contract date.",
+            "PAYMENT_RESTRICTED":
+                "Access is limited due to unpaid deposit or rent. Please pay in the Invoices section.",
+            "ACCESS_PAYMENT_RESTRICTED":
+                "Access is limited due to unpaid deposit or rent. Please pay in the Invoices section."
         },
         "house_detail": {
             "set_main_house": "Set as main house",
@@ -649,7 +666,8 @@ export default {
             "ACCESSIBLE": "Accessible",
             "PENDING_HANDOVER": "Handover pending",
             "PENDING_DEPOSIT": "Deposit pending",
-            "PENDING_FIRST_RENT": "First rent pending"
+            "PENDING_FIRST_RENT": "First rent pending",
+            "PAYMENT_RESTRICTED": "Restricted — unpaid deposit/rent"
         },
         "house_member_role": {
             "OWNER": "Owner",

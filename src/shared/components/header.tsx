@@ -112,102 +112,128 @@ const Header = ({
           headerStyles.gradient,
           {
             paddingTop: insets.top + 6,
-            paddingBottom: hasHomeWelcome ? (showInvoiceStrip ? 14 : 10) : 18,
+            paddingBottom: hasHomeWelcome ? (showInvoiceStrip ? 4 : 5) : 18,
           },
           isSmallScreen && { paddingHorizontal: 12 },
         ]}
       >
         {homeWelcome ? (
-          <View style={headerStyles.homeHeaderRow}>
-            <View style={headerStyles.homeBrandPressable}>
-              <View style={headerStyles.homeBrandColumn}>
-                {homeWelcome.eyebrow?.trim() ? (
-                  <Text style={headerStyles.homeEyebrowInline} numberOfLines={1}>
-                    {homeWelcome.eyebrow}
-                  </Text>
-                ) : null}
-                <Pressable
-                  onPress={onHomeWelcomeNamePress}
-                  disabled={!onHomeWelcomeNamePress}
-                  accessibilityRole="button"
-                  accessibilityLabel={homeWelcome.helloLine}
-                  hitSlop={{ top: 6, bottom: 6, left: 4, right: 8 }}
-                  android_ripple={
-                    onHomeWelcomeNamePress ? { color: headerOnBrand.ripple } : undefined
-                  }
-                >
-                  <Text
-                    style={[
-                      headerStyles.homeHelloInline,
-                      isSmallScreen && headerStyles.homeHelloInlineCompact,
-                    ]}
-                    numberOfLines={2}
+          <View style={headerStyles.homeHeaderRowWrap}>
+            <View style={headerStyles.homeHeaderMainContent}>
+              <View style={headerStyles.homeBrandPressable}>
+                <View style={headerStyles.homeBrandColumn}>
+                  {homeWelcome.eyebrow?.trim() ? (
+                    <Text style={headerStyles.homeEyebrowInline} numberOfLines={1}>
+                      {homeWelcome.eyebrow}
+                    </Text>
+                  ) : null}
+                  <Pressable
+                    style={headerStyles.homeHeaderHelloPressable}
+                    onPress={onHomeWelcomeNamePress}
+                    disabled={!onHomeWelcomeNamePress}
+                    accessibilityRole="button"
+                    accessibilityLabel={homeWelcome.helloLine}
+                    hitSlop={{ top: 6, bottom: 6, left: 4, right: 8 }}
+                    android_ripple={
+                      onHomeWelcomeNamePress ? { color: headerOnBrand.ripple } : undefined
+                    }
                   >
-                    {homeWelcome.helloLine}
-                  </Text>
-                </Pressable>
-                {homeInvoiceStrip?.kind === "loading" ? (
-                  <View style={headerStyles.homeInvoiceStripLoading}>
-                    <ActivityIndicator color={headerOnBrand.activityIndicator} size="small" />
-                  </View>
-                ) : homeInvoiceStrip?.kind === "all_paid" ? (
-                  <Text style={headerStyles.homeInvoiceStripAllPaidLine} numberOfLines={2}>
-                    {t("home.header_invoice_all_paid")}
-                  </Text>
-                ) : homeInvoiceStrip?.kind === "payable" ? (
-                  <View style={headerStyles.homeInvoiceStripPayableWrap}>
-                    {(() => {
-                      const prefix = t("home.header_invoice_payable_line_prefix");
-                      const suffix = t("home.header_invoice_payable_line_suffix");
-                      const n = homeInvoiceStrip.count;
-                      const a11y = `${prefix}${n}${suffix}`;
-                      const lineStyle = [
-                        headerStyles.homeInvoiceStripPayableLine,
-                        homeInvoiceStrip.urgent && headerStyles.homeInvoiceStripPayableLineUrgent,
-                        onHomeInvoicePress && headerStyles.homeInvoiceStripPayableUnderline,
-                      ];
-                      const countStyle = [
-                        headerStyles.homeInvoiceStripPayableLineCount,
-                        homeInvoiceStrip.urgent && headerStyles.homeInvoiceStripPayableLineCountUrgent,
-                      ];
-                      const line = (
-                        <Text style={lineStyle} numberOfLines={3}>
-                          {prefix}
-                          <Text style={countStyle}>{n}</Text>
-                          {suffix}
-                        </Text>
-                      );
-                      return onHomeInvoicePress ? (
+                    <Text
+                      style={[
+                        headerStyles.homeHelloInline,
+                        isSmallScreen && headerStyles.homeHelloInlineCompact,
+                      ]}
+                      numberOfLines={3}
+                    >
+                      {homeWelcome.helloLine}
+                    </Text>
+                  </Pressable>
+                  {showInvoiceStrip ? (
+                    <View style={headerStyles.homeInvoiceStripOuterRow}>
+                      <View style={headerStyles.homeInvoiceStripInvoiceCol}>
+                        {homeInvoiceStrip?.kind === "loading" ? (
+                          <View style={headerStyles.homeInvoiceStripLoading}>
+                            <ActivityIndicator color={headerOnBrand.activityIndicator} size="small" />
+                          </View>
+                        ) : homeInvoiceStrip?.kind === "all_paid" ? (
+                          <Text style={headerStyles.homeInvoiceStripAllPaidLine} numberOfLines={2}>
+                            {t("home.header_invoice_all_paid")}
+                          </Text>
+                        ) : homeInvoiceStrip?.kind === "payable" ? (
+                          <View style={headerStyles.homeInvoiceStripPayableWrap}>
+                            {(() => {
+                              const prefix = t("home.header_invoice_payable_line_prefix");
+                              const suffix = t("home.header_invoice_payable_line_suffix");
+                              const n = homeInvoiceStrip.count;
+                              const a11y = `${prefix}${n}${suffix}`;
+                              const lineStyle = [
+                                headerStyles.homeInvoiceStripPayableLine,
+                                homeInvoiceStrip.urgent && headerStyles.homeInvoiceStripPayableLineUrgent,
+                                onHomeInvoicePress && headerStyles.homeInvoiceStripPayableUnderline,
+                              ];
+                              const countStyle = [
+                                headerStyles.homeInvoiceStripPayableLineCount,
+                                homeInvoiceStrip.urgent &&
+                                  headerStyles.homeInvoiceStripPayableLineCountUrgent,
+                              ];
+                              const line = (
+                                <Text style={lineStyle} numberOfLines={3}>
+                                  {prefix}
+                                  <Text style={countStyle}>{n}</Text>
+                                  {suffix}
+                                </Text>
+                              );
+                              return onHomeInvoicePress ? (
+                                <Pressable
+                                  onPress={onHomeInvoicePress}
+                                  accessibilityRole="link"
+                                  accessibilityLabel={a11y}
+                                  android_ripple={{ color: headerOnBrand.ripple }}
+                                  hitSlop={{ top: 6, bottom: 6, left: 4, right: 8 }}
+                                >
+                                  {line}
+                                </Pressable>
+                              ) : (
+                                line
+                              );
+                            })()}
+                          </View>
+                        ) : null}
+                      </View>
+                      {showNotification ? (
                         <Pressable
-                          onPress={onHomeInvoicePress}
-                          accessibilityRole="link"
-                          accessibilityLabel={a11y}
-                          android_ripple={{ color: headerOnBrand.ripple }}
-                          hitSlop={{ top: 6, bottom: 6, left: 4, right: 8 }}
+                          style={[
+                            headerStyles.notificationBtn,
+                            headerStyles.notificationBtnHome,
+                            headerStyles.notificationBtnHomeBesideInvoice,
+                          ]}
+                          accessibilityRole="button"
+                          accessibilityLabel={t("common.a11y_notifications")}
+                          onPress={() => (navigation as any).navigate("NotificationScreen")}
+                          android_ripple={{ color: headerOnBrand.ripple, radius: 18 }}
                         >
-                          {line}
+                          <Icons.notification color={headerOnBrand.fg} size={22} />
                         </Pressable>
-                      ) : (
-                        line
-                      );
-                    })()}
-                  </View>
-                ) : null}
+                      ) : null}
+                    </View>
+                  ) : null}
+                </View>
               </View>
             </View>
 
-            {showNotification ? (
+            {showNotification && !showInvoiceStrip ? (
               <Pressable
                 style={[
                   headerStyles.notificationBtn,
                   headerStyles.notificationBtnHome,
+                  headerStyles.notificationBtnHomeAbsolute,
                 ]}
                 accessibilityRole="button"
                 accessibilityLabel={t("common.a11y_notifications")}
                 onPress={() => (navigation as any).navigate("NotificationScreen")}
-                android_ripple={{ color: headerOnBrand.ripple }}
+                android_ripple={{ color: headerOnBrand.ripple, radius: 18 }}
               >
-                <Icons.notification color={headerOnBrand.fg} size={20} />
+                <Icons.notification color={headerOnBrand.fg} size={22} />
               </Pressable>
             ) : null}
           </View>
@@ -269,9 +295,9 @@ const Header = ({
                 accessibilityRole="button"
                 accessibilityLabel={t("common.a11y_notifications")}
                 onPress={() => (navigation as any).navigate("NotificationScreen")}
-                android_ripple={{ color: headerOnBrand.ripple }}
+                android_ripple={{ color: headerOnBrand.ripple, radius: 20 }}
               >
-                <Icons.notification color={headerOnBrand.fg} size={24} />
+                <Icons.notification color={headerOnBrand.fg} size={26} />
               </Pressable>
             ) : null}
           </View>

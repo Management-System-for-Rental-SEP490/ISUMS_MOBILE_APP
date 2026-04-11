@@ -30,8 +30,8 @@ import {
   type VnpayReturnUrlDisplayFields,
   validateVnpayReturnUrl,
 } from "../../../../shared/services/tenantPaymentApi";
+import { formatVndDisplay } from "../../../../shared/utils/currencyFormat";
 import { formatVnpPayDateFromGateway } from "../../../../shared/utils/dateTimeFormat";
-import { formatApiErrorForTenantAlert } from "../../../../shared/utils/apiErrorMessage";
 import { brandPrimary, neutral } from "../../../../shared/theme/color";
 import { appTypography } from "../../../../shared/utils/typography";
 import { HOUSES_KEYS, TENANT_INVOICES_QUERY_KEY } from "../../../../shared/hooks";
@@ -49,24 +49,15 @@ type VnpayReturnUiState =
 
 function buildVnpayReturnDetailRows(
   fields: VnpayReturnUrlDisplayFields,
-  t: (key: string) => string,
+  t: (key: string, options?: Record<string, unknown>) => string,
   locale: string
 ): VnpayReturnDetailRow[] {
   const rows: VnpayReturnDetailRow[] = [];
   if (fields.amountVnd != null && Number.isFinite(fields.amountVnd)) {
-    try {
-      const formatted = new Intl.NumberFormat(locale, {
-        style: "currency",
-        currency: "VND",
-        maximumFractionDigits: 0,
-      }).format(fields.amountVnd);
-      rows.push({ label: t("tenant_payment.return_detail_amount"), value: formatted });
-    } catch {
-      rows.push({
-        label: t("tenant_payment.return_detail_amount"),
-        value: `${Math.round(fields.amountVnd).toLocaleString(locale)} ₫`,
-      });
-    }
+    rows.push({
+      label: t("tenant_payment.return_detail_amount"),
+      value: formatVndDisplay(fields.amountVnd, locale, t),
+    });
   }
   const payFmt = fields.payDateRaw ? formatVnpPayDateFromGateway(fields.payDateRaw, locale) : null;
   if (payFmt) {
@@ -87,18 +78,6 @@ function buildVnpayReturnDetailRows(
     rows.push({ label: t("tenant_payment.return_detail_status"), value });
   }
   return rows;
-}
-
-function extractPaymentReturnLogDetail(message: unknown, data: unknown): string | undefined {
-  const parts: string[] = [];
-  for (const x of [message, data]) {
-    if (typeof x !== "string") continue;
-    const s = x.trim();
-    if (!s) continue;
-    parts.push(s);
-  }
-  const joined = parts.join("\n").trim();
-  return joined.length ? joined : undefined;
 }
 
 /**
@@ -148,7 +127,6 @@ export default function TenantVnpayCheckoutScreen({ navigation, route }: Props) 
       setReturnUi({ kind: "confirming" });
       try {
         const payload = await validateVnpayReturnUrl(url);
-        const detail = extractPaymentReturnLogDetail(payload.message, payload.data);
         const ok = Boolean(payload.success);
         if (ok) {
           await Promise.all([
@@ -158,41 +136,27 @@ export default function TenantVnpayCheckoutScreen({ navigation, route }: Props) 
         }
         await new Promise((resolve) => setTimeout(resolve, 280));
         if (ok) {
-          if (detail) {
-            console.warn("[ISUMS][vnpay-return] Xác thực OK — nội dung máy chủ (chỉ log):", detail);
-          }
           setReturnUi({ kind: "success", fields });
         } else {
-          console.warn("[ISUMS][vnpay-return] success=false từ API:", { payload, detail });
           setReturnUi({ kind: "failed", fields });
         }
-      } catch (e: unknown) {
+      } catch {
         if (isVnpayReturnGatewaySuccess(url)) {
           await Promise.all([
             queryClient.invalidateQueries({ queryKey: TENANT_INVOICES_QUERY_KEY }),
             queryClient.invalidateQueries({ queryKey: HOUSES_KEYS.tenant }),
           ]);
           await new Promise((resolve) => setTimeout(resolve, 280));
-          console.warn(
-            "[ISUMS][vnpay-return] Cổng 00 nhưng xác thực lỗi — hiển thị thành công gọn; chi tiết:",
-            formatApiErrorForTenantAlert(e, t, "vnpay_return"),
-            e
-          );
           setReturnUi({ kind: "verify_skipped", fields });
           return;
         }
 
         handledVnpayReturnUrlsRef.current.delete(url);
         await new Promise((resolve) => setTimeout(resolve, 220));
-        console.warn(
-          "[ISUMS][vnpay-return] Lỗi xác thực (chỉ log):",
-          formatApiErrorForTenantAlert(e, t, "vnpay_return"),
-          e
-        );
         setReturnUi({ kind: "failed", fields });
       }
     },
-    [queryClient, t]
+    [queryClient]
   );
 
   const onReturnResultPrimary = useCallback(() => {

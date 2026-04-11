@@ -14,10 +14,16 @@ import { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useTranslation } from "react-i18next";
 import { CustomAlert as Alert } from "../../../../shared/components/alert";
-import { RootStackParamList, TenantTicketFromApi } from "../../../../shared/types";
-import { useTenantContext } from "../../../../shared/hooks";
+import { IssueTicketResponseFromApi, RootStackParamList, TenantTicketFromApi } from "../../../../shared/types";
+import {
+  useTenantContext,
+  useRefreshControlGate,
+  refreshControlAndroidGateProps,
+  useTenantHouses,
+} from "../../../../shared/hooks";
 import {
   getIssueQuotesByTicket,
+  getIssueResponses,
   getTenantTickets,
   getTenantTicketImages,
 } from "../../../../shared/services/issuesApi";
@@ -30,6 +36,7 @@ import { PaginationBar } from "../../../../shared/components/PaginationBar";
 import {
   CLIENT_LIST_PAGE_SIZE,
   formatTenantIssueDateTime,
+  formatVndDisplay,
   getTotalPages,
   slicePage,
 } from "../../../../shared/utils";
@@ -46,7 +53,7 @@ import {
 
 type NavProp = NativeStackNavigationProp<RootStackParamList, "TenantTicketList">;
 
-type TicketListFilter = "all" | "in_progress" | "sent" | "payment" | "completed";
+type TicketListFilter = "all" | "in_progress" | "sent" | "question" | "payment" | "completed";
 
 type ListTicketExtras = {
   thumbUrl?: string;
@@ -106,6 +113,7 @@ function sortTicketsForDisplay(a: TenantTicketFromApi, b: TenantTicketFromApi) {
 function ticketMatchesFilter(item: TenantTicketFromApi, f: TicketListFilter): boolean {
   const s = normalizeIssueStatus(item.status);
   if (f === "all") return true;
+  if (f === "question") return String(item.type || "").toUpperCase() === "QUESTION";
   if (f === "payment") return s === "WAITING_PAYMENT";
   if (f === "completed") return s === "DONE" || s === "CLOSED";
   if (f === "in_progress") return s === "IN_PROGRESS" || s === "SCHEDULED";
@@ -121,6 +129,29 @@ function ticketMatchesFilter(item: TenantTicketFromApi, f: TicketListFilter): bo
     );
   }
   return true;
+}
+
+/** Phản hồi mới nhất theo ticket QUESTION (mở TenantQuestionDetail). */
+function latestResponseByQuestionTicketId(
+  tickets: TenantTicketFromApi[],
+  responses: IssueTicketResponseFromApi[]
+): Record<string, IssueTicketResponseFromApi> {
+  const questionIds = new Set(
+    tickets.filter((t) => String(t.type || "").toUpperCase() === "QUESTION").map((t) => t.id)
+  );
+  const out: Record<string, IssueTicketResponseFromApi> = {};
+  for (const r of responses) {
+    if (!questionIds.has(r.ticketId)) continue;
+    const prev = out[r.ticketId];
+    if (!prev) {
+      out[r.ticketId] = r;
+      continue;
+    }
+    const tr = new Date(r.createdAt).getTime();
+    const tp = new Date(prev.createdAt).getTime();
+    if (tr > tp) out[r.ticketId] = r;
+  }
+  return out;
 }
 
 async function enrichTicketForList(item: TenantTicketFromApi): Promise<ListTicketExtras> {
@@ -171,6 +202,19 @@ const TenantTicketListScreen = () => {
   const { t, i18n } = useTranslation();
   const navigation = useNavigation<NavProp>();
   const { houseId } = useTenantContext();
+  const { data: housesData } = useTenantHouses();
+  const tenantHouseList = housesData?.data ?? [];
+
+  const houseNameById = useMemo(() => {
+    const m = new Map<string, string>();
+    for (const h of tenantHouseList) {
+      const id = String(h.id ?? "").trim();
+      if (!id) continue;
+      const name = String(h.name ?? "").trim();
+      m.set(id, name.length ? name : id);
+    }
+    return m;
+  }, [tenantHouseList]);
 
   const locale = useMemo(() => {
     const lang = String(i18n.language || "").toLowerCase();
@@ -187,17 +231,23 @@ const TenantTicketListScreen = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const { scrollAtTop, onScrollForRefreshGate } = useRefreshControlGate();
   const [error, setError] = useState<string | null>(null);
   /** Đang tạo link VNPay từ danh sách — khóa trùng tap. */
   const [payingTicketId, setPayingTicketId] = useState<string | null>(null);
+  /** Phản hồi staff cho ticket QUESTION (để biết đã trả lời + mở chi tiết hỏi đáp). */
+  const [responseByTicketId, setResponseByTicketId] = useState<
+    Record<string, IssueTicketResponseFromApi>
+  >({});
 
   const load = useCallback(async (isRefresh = false) => {
     if (isRefresh) setRefreshing(true);
     else setLoading(true);
     setError(null);
     try {
-      const data = await getTenantTickets();
+      const [data, responses] = await Promise.all([getTenantTickets(), getIssueResponses()]);
       const sorted = [...data].sort(sortTicketsForDisplay);
+      setResponseByTicketId(latestResponseByQuestionTicketId(sorted, responses));
       setAllItems(sorted);
       setCurrentPage(1);
       setExtrasById({});
@@ -215,6 +265,7 @@ const TenantTicketListScreen = () => {
       setError(t("tenant_ticket_list.load_error"));
       setAllItems([]);
       setExtrasById({});
+      setResponseByTicketId({});
       setCurrentPage(1);
     } finally {
       setLoading(false);
@@ -253,13 +304,8 @@ const TenantTicketListScreen = () => {
   }, []);
 
   const formatMoney = useCallback(
-    (v: number) => {
-      const num = Number(v);
-      if (!Number.isFinite(num)) return "—";
-      const s = num.toLocaleString(locale, { maximumFractionDigits: 0 });
-      return `${s} đ`;
-    },
-    [locale]
+    (v: number) => formatVndDisplay(v, locale, t),
+    [locale, t]
   );
 
   const statusLabel = (status: string) => {
@@ -305,6 +351,27 @@ const TenantTicketListScreen = () => {
   const onPressDetail = (item: TenantTicketFromApi) => {
     navigation.navigate("TenantTicketDetail", { ticket: item });
   };
+
+  const zoneLabelForTicket = useCallback(
+    (item: TenantTicketFromApi) => {
+      const hid = String(item.houseId ?? "").trim();
+      if (!hid) return t("tenant_question_list.zone_unknown");
+      return houseNameById.get(hid) ?? t("tenant_question_list.zone_unknown");
+    },
+    [houseNameById, t]
+  );
+
+  const onPressQuestionAnswerDetail = useCallback(
+    (item: TenantTicketFromApi) => {
+      const r = responseByTicketId[item.id];
+      if (!r) return;
+      navigation.navigate("TenantQuestionDetail", {
+        response: r,
+        zoneLabel: zoneLabelForTicket(item),
+      });
+    },
+    [navigation, responseByTicketId, zoneLabelForTicket]
+  );
 
   const handlePayFromList = useCallback(
     async (item: TenantTicketFromApi) => {
@@ -357,6 +424,7 @@ const TenantTicketListScreen = () => {
         { key: "all" as const, label: t("tenant_ticket_list.filter_all") },
         { key: "in_progress" as const, label: t("tenant_ticket_list.filter_in_progress") },
         { key: "sent" as const, label: t("tenant_ticket_list.filter_sent") },
+        { key: "question" as const, label: t("tenant_ticket_list.filter_question") },
         { key: "payment" as const, label: t("tenant_ticket_list.filter_payment") },
         { key: "completed" as const, label: t("tenant_ticket_list.filter_completed") },
       ] as const,
@@ -419,6 +487,9 @@ const TenantTicketListScreen = () => {
     const contactSoon = showContactSoonInset(item);
 
     const payingThis = payingTicketId != null && payingTicketId === item.id;
+    const isQuestionTicket = String(item.type || "").toUpperCase() === "QUESTION";
+    const questionAnswer = isQuestionTicket ? responseByTicketId[item.id] : undefined;
+    const showViewAnswerBtn = questionAnswer != null;
 
     return (
       <View
@@ -542,9 +613,27 @@ const TenantTicketListScreen = () => {
         ) : null}
         </TouchableOpacity>
 
+        {showViewAnswerBtn ? (
+          <TouchableOpacity
+            style={styles.questionAnswerBtn}
+            onPress={() => onPressQuestionAnswerDetail(item)}
+            activeOpacity={0.88}
+            accessibilityRole="button"
+            accessibilityLabel={t("tenant_ticket_list.question_view_answer_btn")}
+          >
+            <Icons.helpOutline size={20} color={brandSecondary} />
+            <Text style={styles.questionAnswerBtnText}>{t("tenant_ticket_list.question_view_answer_btn")}</Text>
+            <Icons.chevronForward size={18} color={brandSecondary} />
+          </TouchableOpacity>
+        ) : null}
+
         {waitingPay ? (
           <TouchableOpacity
-            style={[styles.payBtnFull, (payingThis || payingTicketId != null) && { opacity: 0.72 }]}
+            style={[
+              styles.payBtnFull,
+              showViewAnswerBtn && { marginTop: 10 },
+              (payingThis || payingTicketId != null) && { opacity: 0.72 },
+            ]}
             onPress={() => void handlePayFromList(item)}
             disabled={payingTicketId != null}
             activeOpacity={0.88}
@@ -609,14 +698,22 @@ const TenantTicketListScreen = () => {
               data={pagedItems}
               keyExtractor={(it) => it.id}
               renderItem={renderItem}
-              extraData={{ extrasById, payingTicketId, listFilter, currentPage }}
+              extraData={{ extrasById, payingTicketId, listFilter, currentPage, responseByTicketId }}
               contentContainerStyle={[
                 styles.listContent,
                 { paddingBottom: listBottomPad },
                 filteredAll.length === 0 && styles.listEmptyGrow,
               ]}
+              onScroll={onScrollForRefreshGate}
+              scrollEventThrottle={16}
               refreshControl={
-                <RefreshControl refreshing={refreshing} onRefresh={() => load(true)} tintColor={brandSecondary} />
+                <RefreshControl
+                  refreshing={refreshing}
+                  onRefresh={() => load(true)}
+                  tintColor={brandSecondary}
+                  colors={[brandSecondary]}
+                  {...refreshControlAndroidGateProps(scrollAtTop, refreshing)}
+                />
               }
               ListEmptyComponent={
                 <Text style={styles.empty}>{t("tenant_ticket_list.empty")}</Text>

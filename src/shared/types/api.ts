@@ -376,7 +376,7 @@ export type AssetItemsParams = {
 
 /**
  * Trạng thái thiết bị (asset) theo enum BE: không AVAILABLE / DELETED.
- * BE cũ: `AVAILABLE` → IN_USE; `DELETED` → DISPOSED (chuẩn hóa trong `normalizeAssetItemStatusFromApi`).
+ * BE cũ: `AVAILABLE` → IN_USE; `DELETED` / `DISPOSE` → DISPOSED (chuẩn hóa trong `normalizeAssetItemStatusFromApi`).
  */
 export type AssetStatus = "IN_USE" | "ACTIVE" | "BROKEN" | "DISPOSED";
 
@@ -385,8 +385,14 @@ export function normalizeAssetItemStatusFromApi(
 ): string {
   const s = status != null ? String(status).trim() : "";
   if (s === "" || s === "AVAILABLE") return "IN_USE";
-  if (s === "DELETED") return "DISPOSED";
+  const upper = s.toUpperCase();
+  if (upper === "DELETED" || upper === "DISPOSE") return "DISPOSED";
   return s;
+}
+
+/** Thiết bị đã thanh lý — không hiển thị trong danh sách / picker / quét tag (tenant). */
+export function isAssetItemDisposedStatus(status: string | null | undefined): boolean {
+  return normalizeAssetItemStatusFromApi(status) === "DISPOSED";
 }
 
 /** Một thiết bị/item từ API GET /api/asset/items (có thể filter theo houseId, categoryId). */

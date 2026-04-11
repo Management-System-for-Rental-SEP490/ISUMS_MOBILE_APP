@@ -1,5 +1,5 @@
 ---
-description: ISUMS Mobile (tenant) — tương tác AI, i18n, spec, ticket/mock, data source. Chi tiết kỹ thuật code trong 010-architecture-conventions.mdc.
+description: ISUMS Mobile (tenant) — tương tác AI, i18n, chú thích hàm + commit; copy UI ngắn. Spec/ticket trong docs; kỹ thuật trong 010-architecture-conventions.mdc.
 globs: **/*
 alwaysApply: true
 ---
@@ -24,15 +24,30 @@ Khi bạn nhận thấy cần tạo một file mới, bạn phải thực hiện
 
 *(Tạo file rule `.mdc` mới trong `.cursor/rules/` cũng áp dụng quy trình này — trừ khi user yêu cầu rõ.)*
 
-## 2. Quy định về Giải thích Code (Gen Code)
+## 2. Chú thích theo hàm, commit, và chữ trên giao diện
 
-Mọi đoạn code được sinh ra phải đi kèm với chú thích và giải thích cực kỳ chi tiết, dành cho người mới bắt đầu (kém lập trình).
+### 2.1. Chú thích từng hàm (để nắm code)
 
-*   **Comment trong code**: Phải giải thích từng dòng hoặc từng khối lệnh quan trọng.
-*   **Giải thích bên ngoài**:
-    *   Giải thích ý nghĩa của từng syntax (cú pháp) đặc biệt (ví dụ: `useEffect` làm gì, `?.` nghĩa là gì...).
-    *   Giải thích logic của hàm: Đầu vào là gì, xử lý gì, đầu ra là gì.
-    *   Tránh dùng thuật ngữ chuyên ngành quá sâu mà không giải thích lại bằng ngôn ngữ đơn giản dễ hiểu.
+Với **hàm / hook / handler** (và phần logic không tầm thường), thêm **khối chú thích phía trên** (JSDoc hoặc comment nhiều dòng) giải thích **chi tiết đủ để sau này đọc lại vẫn hiểu**:
+
+*   **Hàm dùng để làm gì** (mục đích trong luồng nghiệp vụ hoặc màn hình).
+*   **Chức năng / hành vi**: xử lý gì, gọi gì, điều kiện quan trọng, luồng phụ.
+*   Có thể ghi **tham số, giá trị trả về**, edge case — khi không suy ra nhanh từ signature.
+
+**Không** cần comment lặp lại từng dòng hiển nhiên; ưu tiên **một khối đầu hàm đầy đủ** thay vì rải rác câu ngắn thừa.
+
+### 2.2. Commit message
+
+Commit / mô tả PR: **giải thích** đã thay đổi gì và **vì sao** (câu đầy đủ, rõ luồng), để owner nắm được code và ngữ cảnh.
+
+### 2.3. Chuỗi hiển thị cho người dùng (UI) — tách biệt chú thích dev
+
+**Chuỗi trên màn hình** (label, nút, placeholder, **alert**, toast, tiêu đề): **ngắn gọn**, trung tính, đúng hành động — không nhồi giải thích nội bộ dài cho end user.
+
+*   **Ví dụ alert thành công:** chỉ **“Thành công”** (hoặc key i18n tương đương), **không** thêm phụ đề kiểu *“Ca làm việc và công việc đã đổi sang trạng thái … trên hệ thống”* trừ khi user yêu cầu rõ.
+*   Lỗi/cảnh báo: thông báo ngắn, có thể hành động (nếu cần); tránh văn bản marketing hoặc giải thích kiến trúc cho người dùng cuối.
+
+*(i18n: mục 5 — mọi chuỗi user-facing qua `t()`, thêm đủ 3 ngôn ngữ.)*
 
 ## 3. Ngôn ngữ
 
@@ -104,7 +119,7 @@ Nội dung cũ **mục 8–17** (BE, React Query, Zustand, CustomAlert, `color.t
 
 ### 8.1. Gen trong chat vs áp dụng luôn
 
-*   **Mặc định:** có thể gen trong chat đủ để user code tay — khớp mục **2**.
+*   **Mặc định:** có thể gen trong chat đủ để user code tay — khớp mục **2** (chú thích đầu hàm đầy đủ; copy UI ngắn).
 *   **User yêu cầu** “gen luôn” / patch repo: được tool sửa file; vẫn tuân thủ **`010`**.
 
 ---

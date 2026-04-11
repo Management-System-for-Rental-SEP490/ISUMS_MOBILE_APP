@@ -25,7 +25,9 @@ export default {
         "a11y_notifications": "通知を開く",
         "a11y_app_logo": "ISUMSのロゴ",
         "a11y_open_profile": "プロフィールを開く",
-        "a11y_brand_go_home": "ホームへ"
+        "a11y_brand_go_home": "ホームへ",
+        "currency_vnd_unit": "VND",
+        "currency_not_available": "—"
     },
     "device_detail": {
         "title": "デバイス詳細",
@@ -126,7 +128,9 @@ export default {
         "filter_in_progress": "対応中",
         "filter_sent": "送信済み",
         "filter_payment": "支払い待ち",
+        "filter_question": "質問",
         "filter_completed": "完了",
+        "question_view_answer_btn": "返信を見る",
         "priority_emergency": "緊急",
         "priority_standard": "通常",
         "estimated_cost_prefix": "費用:",
@@ -177,7 +181,11 @@ export default {
         "payment_paid_at_label": "支払い日時",
         "payment_record_index": "お支払い {{n}}",
         "view_invoice_btn": "請求書を見る",
-        "open_repair_invoice_detail": "修繕請求の詳細を見る"
+        "open_repair_invoice_detail": "修繕請求の詳細を見る",
+        "section_question_body": "質問内容",
+        "section_answer": "回答",
+        "answer_at": "回答日時",
+        "no_answer_yet": "まだ回答はありません。"
     },
     "tenant_question_list": {
         "screen_title": "質問への回答",
@@ -560,9 +568,12 @@ export default {
         "utility_profile": "プロフィール",
         "utility_electric": "電気",
         "utility_water": "水",
+        "utility_consumption": "使用量",
         "utility_invoice": "請求書",
         "utility_ticket": "チケット",
         "utility_qa": "質問",
+        "question_feedback_card_title": "フィードバック",
+        "question_ticker_a11y": "タップして詳細を表示",
         "utility_scan": "検索",
         "utility_house": "家",
         "utility_notification": "通知",
@@ -620,6 +631,8 @@ export default {
             "payment_title": "家賃のお支払いが必要です",
             "payment_body": "初回の家賃をお支払いいただくまでアプリをご利用いただけません。",
             "payment_banner": "表示中の物件の初月家賃をお支払いいただくと全機能が利用できます。",
+            "payment_restricted_banner":
+                "敷金または家賃が未払いのため利用が制限されています。請求一覧からお支払いください。",
             "payment_alert_title": "家賃の支払い",
             "payment_alert_message": "未払いの家賃があります。「今すぐ支払う」で決済ページ（VNPay）を開きます。",
             "pay_now": "今すぐ支払う"
@@ -632,7 +645,11 @@ export default {
             "PENDING_FIRST_RENT":
                 "表示中の物件の初回家賃が未払いです。お支払い後に全機能をご利用いただけます。",
             "PENDING_DEPOSIT": "契約に必要な敷金のお支払いが未完了です。",
-            "PENDING_HANDOVER": "契約上の引き渡し日がまだ到来していません。"
+            "PENDING_HANDOVER": "契約上の引き渡し日がまだ到来していません。",
+            "PAYMENT_RESTRICTED":
+                "敷金または家賃が未払いのため利用が制限されています。請求一覧からお支払いください。",
+            "ACCESS_PAYMENT_RESTRICTED":
+                "敷金または家賃が未払いのため利用が制限されています。請求一覧からお支払いください。"
         },
         "house_detail": {
             "set_main_house": "メインの家に設定",
@@ -649,7 +666,8 @@ export default {
             "ACCESSIBLE": "利用可能",
             "PENDING_HANDOVER": "引き渡し前",
             "PENDING_DEPOSIT": "敷金未払い",
-            "PENDING_FIRST_RENT": "初回家賃未払い"
+            "PENDING_FIRST_RENT": "初回家賃未払い",
+            "PAYMENT_RESTRICTED": "制限中（敷金・家賃未払い）"
         },
         "house_member_role": {
             "OWNER": "代表",

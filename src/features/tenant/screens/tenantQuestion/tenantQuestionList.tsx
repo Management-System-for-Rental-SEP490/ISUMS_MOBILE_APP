@@ -16,7 +16,11 @@ import {
   IssueTicketResponseFromApi,
 } from "../../../../shared/types";
 import { getIssueResponses, getTenantTickets } from "../../../../shared/services/issuesApi";
-import { useTenantHouses } from "../../../../shared/hooks";
+import {
+  useTenantHouses,
+  useRefreshControlGate,
+  refreshControlAndroidGateProps,
+} from "../../../../shared/hooks";
 import Icons from "../../../../shared/theme/icon";
 import { brandSecondary, neutral } from "../../../../shared/theme/color";
 import { tenantQuestionListStyles as styles } from "./tenantQuestionStyles";
@@ -99,6 +103,7 @@ const TenantQuestionListScreen = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const { scrollAtTop, onScrollForRefreshGate } = useRefreshControlGate();
   const [error, setError] = useState<string | null>(null);
 
   const load = useCallback(async (isRefresh = false) => {
@@ -252,8 +257,16 @@ const TenantQuestionListScreen = () => {
             { paddingBottom: listBottomPad },
             allItems.length === 0 && styles.listEmptyGrow,
           ]}
+          onScroll={onScrollForRefreshGate}
+          scrollEventThrottle={16}
           refreshControl={
-            <RefreshControl refreshing={refreshing} onRefresh={() => load(true)} tintColor={brandSecondary} />
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={() => load(true)}
+              tintColor={brandSecondary}
+              colors={[brandSecondary]}
+              {...refreshControlAndroidGateProps(scrollAtTop, refreshing)}
+            />
           }
           ListEmptyComponent={<Text style={styles.empty}>{t("tenant_question_list.empty")}</Text>}
           ListFooterComponent={
