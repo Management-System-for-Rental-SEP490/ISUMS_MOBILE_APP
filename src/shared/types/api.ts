@@ -200,6 +200,15 @@ export interface InvoicePaymentAttemptFromApi {
   createdAt?: string | null;
 }
 
+/** Một dòng hạng mục báo giá trong GET /api/payments/invoices/:id (`issueItems`). */
+export interface InvoiceIssueItemFromApi {
+  id: string;
+  itemName: string;
+  price: number;
+  /** Khớp với GET /api/issues/banners — khi BE gửi kèm. */
+  bannerId?: string | null;
+}
+
 /** Một hóa đơn của tenant (danh sách + chi tiết — BE có thể gộp hoặc tách GET by id). */
 export interface TenantInvoiceFromApi {
   id: string;
@@ -213,6 +222,8 @@ export interface TenantInvoiceFromApi {
   status: TenantInvoicePaymentStatus;
   houseId?: string | null;
   houseName?: string | null;
+  /** Địa chỉ căn — GET invoice by id. */
+  houseAddress?: string | null;
   notes?: string | null;
   /** Các trường chi tiết từ GET /api/payments/invoices */
   contractId?: string | null;
@@ -220,8 +231,19 @@ export interface TenantInvoiceFromApi {
   periodKey?: string | null;
   totalAmount?: number | null;
   baseAmount?: number | null;
+  /** Phí dịch vụ (tách khỏi base) — GET invoice by id. */
+  serviceAmount?: number | null;
   penaltyAmount?: number | null;
   createdAt?: string | null;
+  /** Tenant trên hóa đơn — GET invoice by id. */
+  tenantName?: string | null;
+  tenantPhone?: string | null;
+  /** ID báo giá / ticket (luồng sửa chữa) — GET invoice by id. */
+  quoteId?: string | null;
+  /** ID ticket sửa chữa thô từ BE — GET invoice by id (có thể trùng `issueTicketId`). */
+  issueId?: string | null;
+  /** Hạng mục báo giá chi tiết — GET invoice by id. */
+  issueItems?: InvoiceIssueItemFromApi[] | null;
   /**
    * ID ticket sửa chữa khi hóa đơn phát sinh từ báo giá/issue (BE có thể trả `issueTicketId` | `issueId` | `ticketId`).
    * Dùng để gom nhóm trong danh sách và mở chi tiết ticket.
@@ -395,6 +417,13 @@ export function isAssetItemDisposedStatus(status: string | null | undefined): bo
   return normalizeAssetItemStatusFromApi(status) === "DISPOSED";
 }
 
+/** Ảnh đính kèm thiết bị — từ GET item (embed) hoặc GET .../items/:id/images. */
+export interface AssetItemImageFromApi {
+  id: string;
+  url: string;
+  createdAt?: string | null;
+}
+
 /** Một thiết bị/item từ API GET /api/asset/items (có thể filter theo houseId, categoryId). */
 export interface AssetItemFromApi {
   /** ID thiết bị. */
@@ -422,6 +451,8 @@ export interface AssetItemFromApi {
    * BE có thể trả `functionAreaId` hoặc `functionalAreaId` — service chuẩn hóa về `functionAreaId`.
    */
   functionAreaId?: string | null;
+  /** Ảnh — BE có thể trả sẵn trong GET item (không cần gọi GET .../images). */
+  images?: AssetItemImageFromApi[];
 }
 
 /** Response body của API GET /api/asset/items. */

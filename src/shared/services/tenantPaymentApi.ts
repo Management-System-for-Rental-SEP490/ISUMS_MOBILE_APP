@@ -1,5 +1,5 @@
 import axiosClient from "../api/axiosClient";
-import { BACKEND_API_BASE } from "../api/config";
+import { BACKEND_API_BASE, FALLBACK_BACKEND_URL } from "../api/config";
 import type { ApiResponse, VnpayPaymentCreateRequest } from "../types/api";
 
 /** URL redirect sau thanh toán có đủ tham số VNPay để gửi BE xác thực. */
@@ -136,7 +136,9 @@ function buildVnpayReturnValidateUrls(redirectUrl: string, search: string): stri
   }
 
   add(`${BACKEND_API_BASE}/payments/vnpay/return${search}`);
-  add(`${BACKEND_API_BASE}/payments/result${search}`);
+  //add(`${FALLBACK_BACKEND_URL}/payments/vnpay/return${search}`);
+  //add(`${BACKEND_API_BASE}/payments/result${search}`);
+  //add(`${FALLBACK_BACKEND_URL}/payments/result${search}`);
 
   if (parsed) {
     const noHash = redirectUrl.split("#")[0]?.trim() ?? "";
@@ -286,7 +288,9 @@ export async function createVnpayPaymentLink(
     throw new Error("NO_VNPAY_TARGET");
   }
 
+ 
   const url = `${BACKEND_API_BASE}/payments/vnpay`;
+  //const url = `https://unrestrictable-lan-syzygial.ngrok-free.dev/api/payments/vnpay`;
   const body: VnpayPaymentCreateRequest = quoteRaw
     ? { quoteId: quoteRaw, bankCode, locale }
     : { invoiceIds, bankCode, locale };

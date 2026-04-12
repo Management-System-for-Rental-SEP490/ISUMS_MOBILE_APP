@@ -1,3 +1,5 @@
+import "react-native-gesture-handler";
+
 /**
  * Suppress "topSvgLayout" error from react-native-svg
  * See: https://github.com/software-mansion/react-native-svg/issues/2387

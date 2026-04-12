@@ -8,17 +8,14 @@ import {
   normalizeAssetItemStatusFromApi,
   type ApiResponse,
   type AssetItemFromApi,
+  type AssetItemImageFromApi,
   type AssetItemsApiResponse,
   type AssetItemsParams,
   type GetAssetByTagValueApiResponse,
   type IotDevicesByHouseApiResponse,
 } from "../types/api";
 
-export type AssetItemImageFromApi = {
-  id: string;
-  url: string;
-  createdAt?: string | null;
-};
+export type { AssetItemImageFromApi };
 
 /**
  * Chuẩn hóa tagValue trước khi gửi lên BE.
@@ -40,7 +37,7 @@ function pickActiveTagValueFromTags(
   tags: AssetItemFromApi["tags"],
   tagType: "NFC" | "QR_CODE"
 ): string | null {
-  if (!tags?.length) return null;
+  if (!Array.isArray(tags) || tags.length === 0) return null;
   for (const t of tags) {
     if (t.tagType !== tagType) continue;
     if (t.isActive === false) continue;
@@ -95,6 +92,62 @@ function filterOutDisposedItems(items: AssetItemFromApi[]): AssetItemFromApi[] {
 }
 
 /**
+ * BE có thể trả `data` là mảng hoặc gói paginated / lồng nhau.
+ * Chuẩn hóa về mảng để hook/UI không gọi `.filter` trên non-array
+ * (object truthy làm `?? []` không chạy → lỗi "filter is not a function").
+ */
+function coerceAssetItemsArray(raw: unknown): AssetItemFromApi[] {
+  if (raw === null || raw === undefined) return [];
+  if (Array.isArray(raw)) return raw as AssetItemFromApi[];
+  if (typeof raw === "object") {
+    const o = raw as Record<string, unknown>;
+    const pick = (v: unknown) => (Array.isArray(v) ? (v as AssetItemFromApi[]) : null);
+    for (const k of ["items", "results", "data", "content", "assetItems", "records", "value"] as const) {
+      const arr = pick(o[k]);
+      if (arr) return arr;
+    }
+    if (o.data && typeof o.data === "object" && !Array.isArray(o.data)) {
+      return coerceAssetItemsArray(o.data);
+    }
+    for (const v of Object.values(o)) {
+      if (Array.isArray(v)) return v as AssetItemFromApi[];
+    }
+  }
+  return [];
+}
+
+/**
+ * Dùng tại màn/hook khi đọc `itemsData?.data` từ cache — luôn được mảng (có thể rỗng).
+ */
+export function asAssetItemArray(raw: unknown): AssetItemFromApi[] {
+  return coerceAssetItemsArray(raw);
+}
+
+function assetItemsFromAxiosBody(
+  body: unknown,
+  finalize: (items: AssetItemFromApi[]) => AssetItemFromApi[]
+): AssetItemsApiResponse {
+  if (Array.isArray(body)) {
+    const rawList = coerceAssetItemsArray(body);
+    return { data: finalize(rawList as AssetItemFromApi[]) };
+  }
+  if (body && typeof body === "object" && "data" in body) {
+    const envelope = body as AssetItemsApiResponse;
+    const rawList = coerceAssetItemsArray(envelope.data);
+    return {
+      ...envelope,
+      data: finalize(rawList as AssetItemFromApi[]),
+    };
+  }
+  return { data: finalize([]) };
+}
+
+const mapNormalizeAssetItemRow = (i: AssetItemFromApi) =>
+  normalizeAssetItemFromResponse(
+    i as AssetItemFromApi & { nfc_tag?: string | null; qr_tag?: string | null }
+  );
+
+/**
  * Lấy danh sách thiết bị (GET /api/asset/items), có thể lọc theo houseId và/hoặc categoryId.
  * @param params - houseId, categoryId (optional); không truyền = lấy tất cả.
  * @returns Promise<AssetItemsApiResponse> - data là mảng AssetItemFromApi.
@@ -112,19 +165,10 @@ export const getAssetItems = async (
     ? `${BACKEND_API_BASE}/assets/items?${query}`
     : `${BACKEND_API_BASE}/assets/items`;
 
-  const response = await axiosClient.get<AssetItemsApiResponse>(url);
-  const data = response.data;
-  if (Array.isArray(data.data)) {
-    return {
-      ...data,
-      data: filterOutDisposedItems(
-        data.data.map((i) =>
-          normalizeAssetItemFromResponse(i as AssetItemFromApi & { nfc_tag?: string | null; qr_tag?: string | null })
-        )
-      ),
-    };
-  }
-  return data;
+  const response = await axiosClient.get<unknown>(url);
+  return assetItemsFromAxiosBody(response.data, (items) =>
+    filterOutDisposedItems(items.map(mapNormalizeAssetItemRow))
+  );
 };
 
 /**
@@ -136,21 +180,12 @@ export const getAssetItems = async (
 export const getAssetItemsByHouseId = async (
   houseId: string
 ): Promise<AssetItemsApiResponse> => {
-  const response = await axiosClient.get<AssetItemsApiResponse>(
+  const response = await axiosClient.get<unknown>(
     `${BACKEND_API_BASE}/assets/items/house/${encodeURIComponent(houseId)}`
   );
-  const data = response.data;
-  if (Array.isArray(data.data)) {
-    return {
-      ...data,
-      data: filterOutDisposedItems(
-        data.data.map((i) =>
-          normalizeAssetItemFromResponse(i as AssetItemFromApi & { nfc_tag?: string | null; qr_tag?: string | null })
-        )
-      ),
-    };
-  }
-  return data;
+  return assetItemsFromAxiosBody(response.data, (items) =>
+    filterOutDisposedItems(items.map(mapNormalizeAssetItemRow))
+  );
 };
 
 /**
@@ -278,8 +313,9 @@ export const getAssetItemByTag = async (
           }
         );
         if (tagMatchesScanned(item.nfcTag) || tagMatchesScanned(item.qrTag)) return true;
-        return item.tags?.some(
-          (t) => t.isActive !== false && tagMatchesScanned(t.tagValue)
+        return (
+          Array.isArray(item.tags) &&
+          item.tags.some((t) => t.isActive !== false && tagMatchesScanned(t.tagValue))
         );
       });
       if (!found) return undefined;

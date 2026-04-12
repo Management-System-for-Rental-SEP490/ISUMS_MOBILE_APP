@@ -1,4 +1,4 @@
-import React, { useCallback, useLayoutEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useLayoutEffect, useMemo, useState } from "react";
 import { ActivityIndicator, ScrollView, Text, TouchableOpacity, View } from "react-native";
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { useTranslation } from "react-i18next";
@@ -14,11 +14,11 @@ import {
   isTenantInvoicePayable,
   isTenantRepairInvoiceFlow,
 } from "../../../../shared/utils/tenantInvoice";
-import { formatTenantIssueDateTime } from "../../../../shared/utils";
+import { formatTenantIssueDateTime, formatVndDisplay, logAllInvoicePaymentIdResolutions } from "../../../../shared/utils";
 import { formatApiErrorForTenantAlert } from "../../../../shared/utils/apiErrorMessage";
 import Icons from "../../../../shared/theme/icon";
 import { createVnpayPaymentLink } from "../../../../shared/services/tenantPaymentApi";
-import { brandPrimary, neutral, tenantInvoicePaidBadgeFg } from "../../../../shared/theme/color";
+import { brandPrimary, brandSecondary, neutral, tenantInvoicePaidBadgeFg } from "../../../../shared/theme/color";
 import { useAuthStore } from "../../../../store/useAuthStore";
 import { useHouseById, useTenantHouses, useTenantInvoices } from "../../../../shared/hooks";
 import {
@@ -37,10 +37,15 @@ import {
 } from "../../../../shared/components/StackScreenTitleBadge";
 import { tenantInvoiceStyles as styles } from "./tenantInvoiceStyles";
 import { InvoicePaymentFlowSection } from "./InvoicePaymentFlowSection";
+import { fetchTenantInvoiceDetail } from "../../../../shared/services/tenantInvoiceApi";
+import { getIssueBanners, getIssueQuotesByTicket } from "../../../../shared/services/issuesApi";
+import type { InvoiceIssueItemFromApi, IssueBannerFromApi, IssueQuoteFromApi } from "../../../../shared/types/api";
+
+function normalizeIssueQuoteStatus(status: string | undefined): string {
+  return String(status ?? "").trim().toUpperCase();
+}
 
 type Props = NativeStackScreenProps<RootStackParamList, "TenantInvoiceDetail">;
-
-type FeeLine = { key: string; label: string; amount: number };
 
 const EMPTY_TENANT_INVOICES: TenantInvoiceFromApi[] = [];
 
@@ -48,12 +53,17 @@ export default function TenantInvoiceDetailScreen({ navigation, route }: Props) 
   const { t, i18n } = useTranslation();
   const insets = useSafeAreaInsets();
   const { invoice } = route.params;
+  const [detailInvoice, setDetailInvoice] = useState<Partial<TenantInvoiceFromApi>>({});
+  const mergedInvoice = useMemo(
+    () => ({ ...invoice, ...detailInvoice }),
+    [invoice, detailInvoice]
+  );
 
   useLayoutEffect(() => {
-    if (isTenantRepairInvoiceFlow(invoice) && !isTenantInvoiceIssueType(invoice)) {
-      navigation.replace("TenantIssueInvoice", { invoice });
+    if (isTenantRepairInvoiceFlow(mergedInvoice) && !isTenantInvoiceIssueType(mergedInvoice)) {
+      navigation.replace("TenantIssueInvoice", { invoice: mergedInvoice });
     }
-  }, [invoice, navigation]);
+  }, [mergedInvoice, navigation]);
   const { houseId: selectedHouseIdFromStore } = useAuthStore();
   const { data: invoiceQueryData } = useTenantInvoices();
   const { data: housesData } = useTenantHouses();
@@ -67,14 +77,14 @@ export default function TenantInvoiceDetailScreen({ navigation, route }: Props) 
 
   const accessHouseIds = useMemo(() => tenantAccessibleHouseIdSet(tenantHouseRows), [tenantHouseRows]);
 
-  const invoiceHouseId = useMemo(() => String(invoice.houseId ?? "").trim(), [invoice.houseId]);
+  const invoiceHouseId = useMemo(() => String(mergedInvoice.houseId ?? "").trim(), [mergedInvoice.houseId]);
 
   const invoiceHouseOutsideAccess = useMemo(
     () => Boolean(invoiceHouseId && isHouseIdOutsideTenantAccess(invoiceHouseId, accessHouseIds)),
     [invoiceHouseId, accessHouseIds]
   );
 
-  const lacksInvoiceHouseName = !String(invoice.houseName ?? "").trim();
+  const lacksInvoiceHouseName = !String(mergedInvoice.houseName ?? "").trim();
   const hasNameFromMyAccess = useMemo(() => {
     if (!invoiceHouseId) return false;
     const found = tenantHouseRows.find((h) => String(h.id ?? "").trim() === invoiceHouseId);
@@ -88,7 +98,7 @@ export default function TenantInvoiceDetailScreen({ navigation, route }: Props) 
 
   const invoiceHouseLabel = useMemo(() => {
     if (!invoiceHouseId) return "";
-    const fromInv = String(invoice.houseName ?? "").trim();
+    const fromInv = String(mergedInvoice.houseName ?? "").trim();
     if (fromInv) return fromInv;
     const found = tenantHouseRows.find((h) => String(h.id ?? "").trim() === invoiceHouseId);
     const n = found?.name?.trim();
@@ -99,7 +109,7 @@ export default function TenantInvoiceDetailScreen({ navigation, route }: Props) 
         : "";
     if (fromHouseById) return fromHouseById;
     return shortHouseIdForDisplay(invoiceHouseId);
-  }, [invoice.houseName, invoiceHouseId, tenantHouseRows, invoiceHouseByIdRes]);
+  }, [mergedInvoice.houseName, invoiceHouseId, tenantHouseRows, invoiceHouseByIdRes]);
 
   const locale = useMemo(() => {
     const lang = String(i18n.language || "").toLowerCase();
@@ -115,9 +125,9 @@ export default function TenantInvoiceDetailScreen({ navigation, route }: Props) 
     return formatTenantIssueDateTime(String(iso), locale);
   };
 
-  const detailHeroTitle = useMemo(() => formatTenantInvoiceCardTitle(invoice, t), [invoice, t]);
+  const detailHeroTitle = useMemo(() => formatTenantInvoiceCardTitle(mergedInvoice, t), [mergedInvoice, t]);
 
-  const payable = isTenantInvoicePayable(invoice.status);
+  const payable = isTenantInvoicePayable(mergedInvoice.status);
   const normalizedSelectedHouseId = useMemo(
     () => String(selectedHouseIdFromStore ?? "").trim(),
     [selectedHouseIdFromStore]
@@ -136,61 +146,169 @@ export default function TenantInvoiceDetailScreen({ navigation, route }: Props) 
   }, [rawInvoiceData, normalizedSelectedHouseId]);
 
   const statusLabel = () => {
-    const key = `tenant_invoice.status_${String(invoice.status || "").toUpperCase()}`;
+    const key = `tenant_invoice.status_${String(mergedInvoice.status || "").toUpperCase()}`;
     const label = t(key);
     if (label !== key) return label;
-    return invoice.status || "—";
+    return mergedInvoice.status || "—";
   };
 
-  const feeLines = useMemo((): FeeLine[] => {
-    const isIssueTicketInvoice = isTenantInvoiceIssueType(invoice);
-    const total = Number(invoice.amount ?? 0);
-    const base = Number(invoice.baseAmount ?? 0);
-    const penalty = Number(invoice.penaltyAmount ?? 0);
-    const lines: FeeLine[] = [];
-    if (base > 0.01) {
-      lines.push({
-        key: "base",
-        label: isIssueTicketInvoice
-          ? t("tenant_invoice.line_issue_repair_main")
-          : t("tenant_invoice.line_apartment_rent"),
-        amount: base,
-      });
+  const issueFlow = useMemo(
+    () =>
+      isTenantInvoiceIssueType(mergedInvoice) ||
+      Boolean(String(mergedInvoice.issueTicketId ?? "").trim()) ||
+      Boolean(String(mergedInvoice.issueId ?? "").trim()) ||
+      Boolean(String(mergedInvoice.quoteId ?? "").trim()) ||
+      (mergedInvoice.issueItems?.length ?? 0) > 0,
+    [mergedInvoice]
+  );
+
+  const [issueQuotes, setIssueQuotes] = useState<IssueQuoteFromApi[]>([]);
+  const [issueQuotesLoading, setIssueQuotesLoading] = useState(false);
+  const [issueBannersCatalog, setIssueBannersCatalog] = useState<IssueBannerFromApi[]>([]);
+
+  useEffect(() => {
+    let cancelled = false;
+    const invId = String(invoice.id ?? "").trim();
+    if (!invId) return;
+    setIssueQuotesLoading(true);
+    void (async () => {
+      try {
+        const detail = await fetchTenantInvoiceDetail(invId);
+        if (!cancelled && detail?.invoice) {
+          setDetailInvoice(detail.invoice);
+        }
+        const payments = detail?.payments ?? [];
+        const inv = detail?.invoice;
+        if (!inv) {
+          if (!cancelled) {
+            setIssueQuotes([]);
+            setIssueBannersCatalog([]);
+          }
+          return;
+        }
+
+        const shouldIssueFlow =
+          isTenantInvoiceIssueType(inv) ||
+          Boolean(String(inv.issueTicketId ?? "").trim()) ||
+          Boolean(String(inv.issueId ?? "").trim()) ||
+          Boolean(String(inv.quoteId ?? "").trim()) ||
+          (inv.issueItems?.length ?? 0) > 0;
+
+        if (!shouldIssueFlow) {
+          if (!cancelled) {
+            setIssueQuotes([]);
+            setIssueBannersCatalog([]);
+          }
+          return;
+        }
+
+        const tid =
+          String(inv.issueId ?? "").trim() ||
+          String(inv.issueTicketId ?? "").trim() ||
+          String(invoice.issueTicketId ?? "").trim();
+        let quotes: IssueQuoteFromApi[] = [];
+        let ticketIdUsedForFetch: string | null = tid || null;
+
+        const hasIssueItemsFromApi = (inv.issueItems?.length ?? 0) > 0;
+        if (hasIssueItemsFromApi) {
+          quotes = [];
+        } else if (tid) {
+          quotes = await getIssueQuotesByTicket(tid);
+        } else if (String(inv.quoteId ?? "").trim()) {
+          const qid = String(inv.quoteId).trim();
+          try {
+            quotes = await getIssueQuotesByTicket(qid);
+            ticketIdUsedForFetch = qid;
+          } catch {
+            /* ignore */
+          }
+        } else if (payments.length > 0) {
+          const tryId = String(payments[0]?.id ?? "").trim();
+          if (tryId) {
+            try {
+              quotes = await getIssueQuotesByTicket(tryId);
+              ticketIdUsedForFetch = tryId;
+            } catch {
+              /* ignore */
+            }
+          }
+        }
+
+        const items = inv.issueItems ?? [];
+        const needBannerCatalog = items.some((x) => String(x.bannerId ?? "").trim());
+        if (needBannerCatalog) {
+          try {
+            const b = await getIssueBanners();
+            if (!cancelled) setIssueBannersCatalog(b);
+          } catch {
+            if (!cancelled) setIssueBannersCatalog([]);
+          }
+        } else if (!cancelled) {
+          setIssueBannersCatalog([]);
+        }
+
+        logAllInvoicePaymentIdResolutions(invId, payments, tid || null, quotes, ticketIdUsedForFetch);
+
+        if (!cancelled) setIssueQuotes(quotes);
+      } catch {
+        if (!cancelled) {
+          setIssueQuotes([]);
+          setIssueBannersCatalog([]);
+        }
+      } finally {
+        if (!cancelled) setIssueQuotesLoading(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [invoice.id, invoice.issueTicketId]);
+
+  const issueQuoteForDisplay = useMemo(() => {
+    if (!issueQuotes.length) return null;
+    const approved = issueQuotes.find((q) => normalizeIssueQuoteStatus(q.status) === "APPROVED");
+    if (approved) return approved;
+    return (
+      [...issueQuotes].sort((a, b) => {
+        const ta = new Date(a.createdAt ?? 0).getTime();
+        const tb = new Date(b.createdAt ?? 0).getTime();
+        if (tb !== ta) return tb - ta;
+        return String(a.id).localeCompare(String(b.id));
+      })[0] ?? null
+    );
+  }, [issueQuotes]);
+
+  const invoiceIssueItemsLines = useMemo((): InvoiceIssueItemFromApi[] => {
+    const raw = mergedInvoice.issueItems;
+    return Array.isArray(raw) && raw.length > 0 ? raw : [];
+  }, [mergedInvoice.issueItems]);
+
+  /** Luôn rỗng — tránh `ReferenceError` khi Metro/HMR còn chunk cũ tham chiếu tên biến này. */
+  const quoteTicketBannerRows = useMemo(() => [] as { key: string; labelKey: string; id: string }[], []);
+  void quoteTicketBannerRows;
+
+  const issueQuoteDisplayTotal = useMemo(() => {
+    if (invoiceIssueItemsLines.length > 0) {
+      return invoiceIssueItemsLines.reduce((s, x) => s + Number(x.price ?? 0), 0);
     }
-    if (penalty > 0.01) {
-      lines.push({ key: "penalty", label: t("tenant_invoice.field_penalty_amount"), amount: penalty });
-    }
-    const other = Math.max(0, total - base - penalty);
-    if (other > 0.01) {
-      const hasSplit = base > 0.01 || penalty > 0.01;
-      lines.push({
-        key: "service",
-        label: hasSplit
-          ? isIssueTicketInvoice
-            ? t("tenant_invoice.line_issue_repair_other")
-            : t("tenant_invoice.line_management_fee")
-          : t("tenant_invoice.field_total_amount"),
-        amount: other,
-      });
-    }
-    if (lines.length === 0 && total > 0) {
-      lines.push({
-        key: "total_only",
-        label: isIssueTicketInvoice
-          ? t("tenant_invoice.type_ISSUE")
-          : t("tenant_invoice.field_total_amount"),
-        amount: total,
-      });
-    }
-    return lines;
-  }, [invoice, t]);
+    return Number(issueQuoteForDisplay?.totalPrice ?? 0);
+  }, [invoiceIssueItemsLines, issueQuoteForDisplay]);
+
+  const hasIssueQuoteLines =
+    invoiceIssueItemsLines.length > 0 ||
+    Boolean(issueQuoteForDisplay?.items && issueQuoteForDisplay.items.length > 0);
+
+  const formatIssueMoney = useCallback(
+    (v: number) => formatVndDisplay(v, locale, t),
+    [locale, t]
+  );
 
   const openPay = useCallback(async () => {
     if (creatingLink) return;
-    const invId = String(invoice.id ?? "").trim();
+    const invId = String(mergedInvoice.id ?? "").trim();
     if (!invId) return;
     /** Hóa đơn sửa chữa: chỉ một id; tiền nhà/cọc cùng căn có thể gộp với các hóa đơn bắt buộc khác. */
-    const selectedIds = isTenantRepairInvoiceFlow(invoice)
+    const selectedIds = isTenantRepairInvoiceFlow(mergedInvoice)
       ? [invId]
       : Array.from(new Set([invId, ...mandatorySelectedHouseInvoiceIds].filter(Boolean)));
     if (selectedIds.length === 0) return;
@@ -203,7 +321,7 @@ export default function TenantInvoiceDetailScreen({ navigation, route }: Props) 
       navigation.navigate("VnpayCheckout", {
         checkoutUrl,
         afterSuccess: "invoiceList",
-        ...(isTenantRepairInvoiceFlow(invoice)
+        ...(isTenantRepairInvoiceFlow(mergedInvoice)
           ? { vnpayUiContext: "repair_fee_invoice" as const }
           : { vnpayUiContext: "house_invoice" as const }),
       });
@@ -213,12 +331,12 @@ export default function TenantInvoiceDetailScreen({ navigation, route }: Props) 
     } finally {
       setCreatingLink(false);
     }
-  }, [creatingLink, invoice, mandatorySelectedHouseInvoiceIds, i18n.language, navigation, t]);
+  }, [creatingLink, mergedInvoice, mandatorySelectedHouseInvoiceIds, i18n.language, navigation, t]);
 
   const isPaidVisual = !payable;
-  const hasPaidSuccessAt = Boolean(invoice.paidAt && String(invoice.paidAt).trim());
+  const hasPaidSuccessAt = Boolean(mergedInvoice.paidAt && String(mergedInvoice.paidAt).trim());
 
-  if (isTenantRepairInvoiceFlow(invoice) && !isTenantInvoiceIssueType(invoice)) {
+  if (isTenantRepairInvoiceFlow(mergedInvoice) && !isTenantInvoiceIssueType(mergedInvoice)) {
     return (
       <View style={[styles.container, { justifyContent: "center", flex: 1 }]}>
         <ActivityIndicator size="large" color={brandPrimary} />
@@ -282,7 +400,7 @@ export default function TenantInvoiceDetailScreen({ navigation, route }: Props) 
             </View>
             <Text style={styles.detailInvoiceCode}>{detailHeroTitle}</Text>
             <Text style={styles.detailTotalHero}>
-              {formatTenantInvoiceAmount(invoice.amount, invoice.currency, locale, t)}
+              {formatTenantInvoiceAmount(mergedInvoice.amount, mergedInvoice.currency, locale, t)}
             </Text>
           </View>
         </View>
@@ -327,10 +445,10 @@ export default function TenantInvoiceDetailScreen({ navigation, route }: Props) 
               <View style={styles.detailTimelineBlock}>
                 <Text style={styles.detailTimelineLabel}>{t("tenant_invoice.detail_created_at_label")}</Text>
                 <Text style={styles.detailTimelineValue}>
-                  {invoice.createdAt
-                    ? formatInvoiceDate(invoice.createdAt)
-                    : invoice.issuedAt
-                      ? formatInvoiceDate(invoice.issuedAt)
+                  {mergedInvoice.createdAt
+                    ? formatInvoiceDate(mergedInvoice.createdAt)
+                    : mergedInvoice.issuedAt
+                      ? formatInvoiceDate(mergedInvoice.issuedAt)
                       : "—"}
                 </Text>
               </View>
@@ -345,7 +463,7 @@ export default function TenantInvoiceDetailScreen({ navigation, route }: Props) 
                   ]}
                 >
                   {hasPaidSuccessAt
-                    ? formatInvoiceDate(invoice.paidAt)
+                    ? formatInvoiceDate(mergedInvoice.paidAt)
                     : t("tenant_invoice.detail_payment_success_pending")}
                 </Text>
               </View>
@@ -354,33 +472,80 @@ export default function TenantInvoiceDetailScreen({ navigation, route }: Props) 
           <View style={styles.detailTimelineDueSection}>
             <Text style={styles.detailTimelineLabel}>{t("tenant_invoice.field_due")}</Text>
             <Text style={styles.detailTimelineValue}>
-              {invoice.dueDate ? formatInvoiceDate(invoice.dueDate) : "—"}
+              {mergedInvoice.dueDate ? formatInvoiceDate(mergedInvoice.dueDate) : "—"}
             </Text>
           </View>
         </View>
 
-        {feeLines.length > 0 ? (
+        {issueFlow ? (
           <View style={styles.detailFeeCard}>
-            <Text style={styles.detailFeeCardTitle}>{t("tenant_invoice.fee_breakdown_title")}</Text>
-            {feeLines.map((line) => (
-              <View key={line.key} style={styles.detailFeeRow}>
-                <Text style={styles.detailFeeRowLabel}>{line.label}</Text>
-                <Text style={styles.detailFeeRowValue}>
-                  {formatTenantInvoiceAmount(line.amount, invoice.currency, locale, t)}
-                </Text>
+            <Text style={styles.detailFeeCardTitle}>{t("tenant_invoice.issue_quote_section_title")}</Text>
+            {issueQuotesLoading ? (
+              <View style={styles.issueQuoteLoadingRow}>
+                <ActivityIndicator size="small" color={brandSecondary} />
+                <Text style={styles.meta}>{t("common.loading")}</Text>
               </View>
-            ))}
-            <View style={styles.detailFeeDivider} />
-            <View style={styles.detailFeeTotalRow}>
-              <Text style={styles.detailFeeTotalLabel}>{t("tenant_invoice.total_combined")}</Text>
-              <Text style={styles.detailFeeTotalValue}>
-                {formatTenantInvoiceAmount(invoice.amount, invoice.currency, locale, t)}
-              </Text>
-            </View>
+            ) : hasIssueQuoteLines ? (
+              <>
+                {invoiceIssueItemsLines.length > 0
+                  ? invoiceIssueItemsLines.map((it) => {
+                      const banner =
+                        it.bannerId != null && String(it.bannerId).trim()
+                          ? issueBannersCatalog.find((b) => b.id === String(it.bannerId).trim())
+                          : undefined;
+                      return (
+                        <View key={it.id}>
+                          <View style={styles.issueQuoteLineRow}>
+                            <View style={{ flex: 1, minWidth: 0 }}>
+                              <Text style={styles.issueQuoteLineName} numberOfLines={2}>
+                                {it.itemName}
+                              </Text>
+                            </View>
+                            <Text style={styles.issueQuoteLinePrice}>{formatIssueMoney(Number(it.price ?? 0))}</Text>
+                          </View>
+                          {banner ? (
+                            <View style={styles.issueBannerCatalogRow}>
+                              <Text style={styles.issueBannerCatalogName} numberOfLines={2}>
+                                {t("tenant_invoice.issue_quote_banner_catalog")}: {banner.name}
+                              </Text>
+                              <Text style={styles.issueBannerCatalogPrice}>
+                                {formatIssueMoney(Number(banner.currentPrice ?? 0))}
+                              </Text>
+                            </View>
+                          ) : null}
+                        </View>
+                      );
+                    })
+                  : (issueQuoteForDisplay?.items ?? []).map((it) => (
+                      <View key={it.id} style={styles.issueQuoteLineRow}>
+                        <View style={{ flex: 1, minWidth: 0 }}>
+                          <Text style={styles.issueQuoteLineName} numberOfLines={2}>
+                            {it.itemName}
+                          </Text>
+                          {it.description != null && String(it.description).trim() !== "" ? (
+                            <Text style={styles.issueQuoteLineDesc} numberOfLines={3}>
+                              {String(it.description).trim()}
+                            </Text>
+                          ) : null}
+                        </View>
+                        <Text style={styles.issueQuoteLinePrice}>{formatIssueMoney(Number(it.price ?? 0))}</Text>
+                      </View>
+                    ))}
+                <View style={styles.issueQuoteDivider} />
+                <View style={styles.issueQuoteTotalRow}>
+                  <Text style={styles.issueQuoteTotalLabel}>
+                    {t("tenant_ticket_detail.quote_total_label")}
+                  </Text>
+                  <Text style={styles.issueQuoteTotalValue}>{formatIssueMoney(issueQuoteDisplayTotal)}</Text>
+                </View>
+              </>
+            ) : (
+              <Text style={styles.meta}>{t("tenant_invoice.issue_quote_empty")}</Text>
+            )}
           </View>
         ) : null}
 
-        <InvoicePaymentFlowSection invoiceId={invoice.id} />
+        <InvoicePaymentFlowSection invoiceId={mergedInvoice.id} />
 
         {!payable ? (
           <View style={styles.detailNoticeCard}>

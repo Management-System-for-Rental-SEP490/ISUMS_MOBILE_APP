@@ -563,6 +563,9 @@ const TicketScreen = () => {
         }}
         libraryLabel={t("ticket.images_library")}
         libraryPermissionErrorMessage={t("ticket.library_permission_no_permission")}
+        cameraShotsRemaining={Math.max(0, MAX_TICKET_ATTACHMENT_IMAGES - selectedImages.length)}
+        librarySelectionLimit={Math.max(0, MAX_TICKET_ATTACHMENT_IMAGES - selectedImages.length)}
+        maxImagesForAlert={MAX_TICKET_ATTACHMENT_IMAGES}
       />
     </View>
   );

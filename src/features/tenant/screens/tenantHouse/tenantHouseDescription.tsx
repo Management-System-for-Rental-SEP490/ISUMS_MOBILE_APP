@@ -48,6 +48,7 @@ import {
   useUpdateMainHouseMutation,
   useUserProfile,
   useAssetItems,
+  asAssetItemArray,
   useAssetCategories,
   useFunctionalAreasByHouseId,
 } from "../../../../shared/hooks";
@@ -310,7 +311,7 @@ const TenantHouseDescription = () => {
   } = useAssetItems({ houseId: buildingId });
 
   const devices: AssetItemFromApi[] = useMemo(
-    () => (itemsData?.data ?? []).filter((item) => item.houseId === buildingId),
+    () => asAssetItemArray(itemsData?.data).filter((item) => item.houseId === buildingId),
     [itemsData?.data, buildingId]
   );
 

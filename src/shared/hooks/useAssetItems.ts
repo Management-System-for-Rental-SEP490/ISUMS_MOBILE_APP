@@ -59,8 +59,11 @@ export const useAssetItems = (params: UseAssetItemsParams = {}) => {
     queryFn: async () => {
       if (houseId) {
         const res = await getAssetItemsByHouseId(houseId);
-        if (categoryId && res.data) {
-          res.data = res.data.filter((item) => item.categoryId === categoryId);
+        if (categoryId && Array.isArray(res.data)) {
+          return {
+            ...res,
+            data: res.data.filter((item) => item.categoryId === categoryId),
+          };
         }
         return res;
       }
@@ -81,3 +84,5 @@ export const useIotDevicesByHouseId = (houseId: string) => {
     enabled: Boolean(houseId),
   });
 };
+
+export { asAssetItemArray } from "../services/assetItemApi";

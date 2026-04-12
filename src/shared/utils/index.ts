@@ -56,3 +56,9 @@ export {
   translateTenantAccessReason,
   type TenantAccessBlockKind,
 } from "./tenantAccess";
+export {
+  logAllInvoicePaymentIdResolutions,
+  logInvoicePaymentIdResolution,
+  resolveInvoicePaymentId,
+  type InvoicePaymentIdResolution,
+} from "./invoicePaymentIdResolution";

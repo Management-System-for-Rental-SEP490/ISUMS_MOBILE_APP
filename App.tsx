@@ -1,3 +1,4 @@
+import { GestureHandlerRootView } from "react-native-gesture-handler";
 import {
   SafeAreaProvider,
   initialWindowMetrics,
@@ -22,11 +23,13 @@ import { GlobalAlert } from "./src/shared/components/alert";
 export default function App() {
   // SafeAreaProvider được sử dụng để đảm bảo nội dung hiển thị đúng trong vùng an toàn của thiết bị (ví dụ: tránh phần notch, thanh trạng thái trên iPhone X trở lên).
   return (
-    <QueryClientProvider client={queryClient}>
-      <SafeAreaProvider initialMetrics={initialWindowMetrics}>
+    <GestureHandlerRootView style={{ flex: 1 }}>
+      <QueryClientProvider client={queryClient}>
+        <SafeAreaProvider initialMetrics={initialWindowMetrics}>
           <Navigation />
           <GlobalAlert />
-      </SafeAreaProvider>
-    </QueryClientProvider>
+        </SafeAreaProvider>
+      </QueryClientProvider>
+    </GestureHandlerRootView>
   );
 }
