@@ -1,14 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
-import {
-  ActivityIndicator,
-  FlatList,
-  ListRenderItemInfo,
-  RefreshControl,
-  ScrollView,
-  Text,
-  TouchableOpacity,
-  View,
-} from "react-native";
+import { FlatList, ListRenderItemInfo, ScrollView, Text, TouchableOpacity, View } from "react-native";
 import { useFocusEffect, useNavigation } from "@react-navigation/native";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { useTranslation } from "react-i18next";
@@ -22,8 +13,12 @@ import {
   useTenantInvoices,
   useUserProfile,
   useRefreshControlGate,
-  refreshControlAndroidGateProps,
 } from "../../../../shared/hooks";
+import {
+  PullToRefreshControl,
+  RefreshLogoInline,
+  RefreshLogoOverlay,
+} from "@shared/components/RefreshLogoOverlay";
 import {
   filterPayableInvoices,
   formatTenantInvoiceAmount,
@@ -710,8 +705,8 @@ export default function TenantInvoiceListScreen() {
       </StackScreenTitleHeaderStrip>
 
       {isLoading && !isRefetching ? (
-        <View style={[styles.listEmptyGrow, { paddingBottom: insets.bottom }]}>
-          <ActivityIndicator size="large" color={brandPrimary} />
+        <View style={[styles.listEmptyGrow, { paddingBottom: insets.bottom, position: "relative" }]}>
+          <RefreshLogoOverlay visible mode="page" />
         </View>
       ) : isError ? (
         <View style={[styles.listEmptyGrow, { paddingBottom: insets.bottom }]}>
@@ -721,50 +716,52 @@ export default function TenantInvoiceListScreen() {
           </TouchableOpacity>
         </View>
       ) : (
-        <FlatList
-          data={listRows}
-          keyExtractor={(row) => row.key}
-          renderItem={renderRow}
-          ListHeaderComponent={listHeader}
-          contentInsetAdjustmentBehavior="automatic"
-          contentContainerStyle={[
-            styles.listContentMerged,
-            data.length === 0 ? styles.listEmptyGrow : undefined,
-            { paddingBottom: listBottomPad },
-          ]}
-          onScroll={onScrollForRefreshGate}
-          scrollEventThrottle={16}
-          refreshControl={
-            <RefreshControl
-              refreshing={isRefetching}
-              onRefresh={() => refetch()}
-              colors={[brandPrimary]}
-              {...refreshControlAndroidGateProps(scrollAtTop, isRefetching)}
-            />
-          }
-          ListEmptyComponent={
-            showPageHeading ? (
-              <View style={styles.mergedCardEmpty}>
+        <View style={{ flex: 1, position: "relative" }}>
+          <RefreshLogoOverlay visible={isRefetching} />
+          <FlatList
+            data={listRows}
+            keyExtractor={(row) => row.key}
+            renderItem={renderRow}
+            ListHeaderComponent={listHeader}
+            contentInsetAdjustmentBehavior="automatic"
+            contentContainerStyle={[
+              styles.listContentMerged,
+              data.length === 0 ? styles.listEmptyGrow : undefined,
+              { paddingBottom: listBottomPad },
+            ]}
+            onScroll={onScrollForRefreshGate}
+            scrollEventThrottle={16}
+            refreshControl={
+              <PullToRefreshControl
+                refreshing={isRefetching}
+                onRefresh={() => refetch()}
+                scrollAtTop={scrollAtTop}
+              />
+            }
+            ListEmptyComponent={
+              showPageHeading ? (
+                <View style={styles.mergedCardEmpty}>
+                  <Text style={styles.emptyText}>{t("tenant_invoice.empty_list")}</Text>
+                </View>
+              ) : (
                 <Text style={styles.emptyText}>{t("tenant_invoice.empty_list")}</Text>
-              </View>
-            ) : (
-              <Text style={styles.emptyText}>{t("tenant_invoice.empty_list")}</Text>
-            )
-          }
-          extraData={{ invoicePage, selected, creatingLink }}
-          ListFooterComponent={
-            data.length > 0 ? (
-              <View style={styles.mergedCardFooter}>
-                <PaginationBar
-                  currentPage={invoicePage}
-                  totalPages={totalPages}
-                  onPageChange={setInvoicePage}
-                  hideWhenSingle
-                />
-              </View>
-            ) : null
-          }
-        />
+              )
+            }
+            extraData={{ invoicePage, selected, creatingLink }}
+            ListFooterComponent={
+              data.length > 0 ? (
+                <View style={styles.mergedCardFooter}>
+                  <PaginationBar
+                    currentPage={invoicePage}
+                    totalPages={totalPages}
+                    onPageChange={setInvoicePage}
+                    hideWhenSingle
+                  />
+                </View>
+              ) : null
+            }
+          />
+        </View>
       )}
 
       {hasPayable && !isLoading && !isError ? (
@@ -788,7 +785,7 @@ export default function TenantInvoiceListScreen() {
               disabled={paySelectionLocked}
             >
               {creatingLink ? (
-                <ActivityIndicator size="small" color={neutral.surface} />
+                <RefreshLogoInline logoPx={18} />
               ) : (
                 <Text
                   style={[styles.multiPayBtnText, paySelectionLocked && styles.multiPayBtnTextDisabled]}

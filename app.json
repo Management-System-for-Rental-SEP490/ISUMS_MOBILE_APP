@@ -1,5 +1,8 @@
 {
   "expo": {
+    "experiments": {
+      "tsconfigPaths": true
+    },
     "name": "ISUMS",
     "slug": "ISUMS",
     "scheme": "isumstenant",

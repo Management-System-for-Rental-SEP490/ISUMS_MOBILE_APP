@@ -1,14 +1,5 @@
 import React, { useCallback, useMemo, useState } from "react";
-import {
-  ActivityIndicator,
-  Modal,
-  Platform,
-  Pressable,
-  ScrollView,
-  Text,
-  TouchableOpacity,
-  View,
-} from "react-native";
+import { Modal, Platform, Pressable, ScrollView, Text, TouchableOpacity, View } from "react-native";
 import axios from "axios";
 import * as WebBrowser from "expo-web-browser";
 import WebView from "react-native-webview";
@@ -26,6 +17,10 @@ import {
 } from "../../../shared/utils";
 import { getEContractPresignedPdfUrl } from "../../../shared/services/econtractApi";
 import Icons from "../../../shared/theme/icon";
+import {
+  RefreshLogoInline,
+  RefreshLogoOverlay,
+} from "@shared/components/RefreshLogoOverlay";
 import {
   brandBlueMutedBg,
   brandFocusBorder,
@@ -249,8 +244,8 @@ export default function UserContractDetailScreen({ navigation, route }: Props) {
                   allowsBackForwardNavigationGestures
                   originWhitelist={["https://*", "http://*"]}
                   renderLoading={() => (
-                    <View style={styles.pdfModalLoading}>
-                      <ActivityIndicator size="large" color={brandPrimary} accessibilityLabel={t("common.loading")} />
+                    <View style={[styles.pdfModalLoading, { position: "relative" }]}>
+                      <RefreshLogoOverlay visible mode="page" />
                     </View>
                   )}
                   onError={() => {
@@ -341,7 +336,7 @@ export default function UserContractDetailScreen({ navigation, route }: Props) {
           ]}
         >
           {pdfLoading ? (
-            <ActivityIndicator color={neutral.surface} accessibilityLabel={t("common.loading")} />
+            <RefreshLogoInline logoPx={20} />
           ) : (
             <Icons.pictureAsPdf size={22} color={neutral.surface} />
           )}

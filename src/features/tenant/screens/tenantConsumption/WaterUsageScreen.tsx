@@ -1,24 +1,16 @@
 import React, { useMemo, useState, useEffect, useCallback } from "react";
-import {
-  View,
-  Text,
-  ScrollView,
-  useWindowDimensions,
-  ActivityIndicator,
-  RefreshControl,
-  TouchableOpacity,
-  StyleSheet,
-} from "react-native";
+import { View, Text, ScrollView, useWindowDimensions, TouchableOpacity, StyleSheet } from "react-native";
 import { useTranslation } from "react-i18next";
 import Header from "../../../../shared/components/header";
 import Icons from "../../../../shared/theme/icon";
 import { FloorPlanView } from "../../houseStructure";
 import { waterUsageStyles } from "./waterUsageStyles";
+import { useTenantContext, useRefreshControlGate } from "../../../../shared/hooks";
 import {
-  useTenantContext,
-  useRefreshControlGate,
-  refreshControlAndroidGateProps,
-} from "../../../../shared/hooks";
+  PullToRefreshControl,
+  RefreshLogoInline,
+  RefreshLogoOverlay,
+} from "@shared/components/RefreshLogoOverlay";
 import { useTenantIoTConnection, useTenantTelemetry, useTenantUsage } from "../../hooks/useTenantIoT";
 import { waterAccent, brandPrimary, neutral } from "../../../../shared/theme/color";
 import {
@@ -152,24 +144,24 @@ const WaterUsageScreen = ({ showHeader = true }: WaterUsageScreenProps) => {
   return (
     <View style={waterUsageStyles.container}>
       {showHeader ? <Header variant="water" /> : null}
-      <ScrollView
-        style={waterUsageStyles.content}
-        contentContainerStyle={waterUsageStyles.contentContainer}
-        showsVerticalScrollIndicator={false}
-        keyboardShouldPersistTaps="handled"
-        keyboardDismissMode="on-drag"
-        onScroll={onScrollForRefreshGate}
-        scrollEventThrottle={16}
-        refreshControl={
-          <RefreshControl
-            refreshing={pullRefreshing}
-            onRefresh={onPullRefresh}
-            tintColor={waterAccent}
-            colors={[waterAccent]}
-            {...refreshControlAndroidGateProps(scrollAtTop, pullRefreshing)}
-          />
-        }
-      >
+      <View style={{ flex: 1, position: "relative" }}>
+        <RefreshLogoOverlay visible={pullRefreshing} />
+        <ScrollView
+          style={waterUsageStyles.content}
+          contentContainerStyle={waterUsageStyles.contentContainer}
+          showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
+          keyboardDismissMode="on-drag"
+          onScroll={onScrollForRefreshGate}
+          scrollEventThrottle={16}
+          refreshControl={
+            <PullToRefreshControl
+              refreshing={pullRefreshing}
+              onRefresh={onPullRefresh}
+              scrollAtTop={scrollAtTop}
+            />
+          }
+        >
         <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 4 }}>
           <Text style={waterUsageStyles.title}>
             {t("screens.water")}
@@ -328,7 +320,9 @@ const WaterUsageScreen = ({ showHeader = true }: WaterUsageScreenProps) => {
               {t("consumption.chart_title_water")}
             </Text>
             {usage.loading ? (
-              <ActivityIndicator size="large" color={waterAccent} style={{ marginVertical: 24 }} />
+              <View style={{ marginVertical: 24, alignItems: "center" }}>
+                <RefreshLogoInline logoPx={22} showLabel />
+              </View>
             ) : (
               <View
                 style={[
@@ -378,6 +372,7 @@ const WaterUsageScreen = ({ showHeader = true }: WaterUsageScreenProps) => {
           </Text>
         </View>
       </ScrollView>
+      </View>
     </View>
   );
 };

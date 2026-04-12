@@ -1,12 +1,5 @@
 import React, { useCallback, useMemo, useRef, useState } from "react";
-import {
-  ActivityIndicator,
-  FlatList,
-  RefreshControl,
-  Text,
-  TouchableOpacity,
-  View,
-} from "react-native";
+import { FlatList, Text, TouchableOpacity, View } from "react-native";
 import { useFocusEffect, useNavigation } from "@react-navigation/native";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -16,13 +9,13 @@ import {
   IssueTicketResponseFromApi,
 } from "../../../../shared/types";
 import { getIssueResponses, getTenantTickets } from "../../../../shared/services/issuesApi";
+import { useTenantHouses, useRefreshControlGate } from "../../../../shared/hooks";
 import {
-  useTenantHouses,
-  useRefreshControlGate,
-  refreshControlAndroidGateProps,
-} from "../../../../shared/hooks";
+  PullToRefreshControl,
+  RefreshLogoOverlay,
+} from "@shared/components/RefreshLogoOverlay";
 import Icons from "../../../../shared/theme/icon";
-import { brandSecondary, neutral } from "../../../../shared/theme/color";
+import { neutral } from "../../../../shared/theme/color";
 import { tenantQuestionListStyles as styles } from "./tenantQuestionStyles";
 import { PaginationBar } from "../../../../shared/components/PaginationBar";
 import {
@@ -234,9 +227,13 @@ const TenantQuestionListScreen = () => {
       ) : null}
 
       {loading && !refreshing ? (
-        <View style={[styles.centered, { paddingBottom: Math.max(insets.bottom, 20) }]}>
-          <ActivityIndicator size="large" color={brandSecondary} />
-          <Text style={styles.hint}>{t("common.loading")}</Text>
+        <View
+          style={[
+            styles.centered,
+            { flex: 1, paddingBottom: Math.max(insets.bottom, 20), position: "relative" },
+          ]}
+        >
+          <RefreshLogoOverlay visible mode="page" />
         </View>
       ) : error ? (
         <View style={[styles.centered, { flex: 1, paddingBottom: Math.max(insets.bottom, 20) }]}>
@@ -246,38 +243,39 @@ const TenantQuestionListScreen = () => {
           </TouchableOpacity>
         </View>
       ) : (
-        <FlatList
-          ref={listRef}
-          style={{ flex: 1 }}
-          data={pagedItems}
-          keyExtractor={(it) => it.id}
-          renderItem={renderItem}
-          contentContainerStyle={[
-            styles.listContent,
-            { paddingBottom: listBottomPad },
-            allItems.length === 0 && styles.listEmptyGrow,
-          ]}
-          onScroll={onScrollForRefreshGate}
-          scrollEventThrottle={16}
-          refreshControl={
-            <RefreshControl
-              refreshing={refreshing}
-              onRefresh={() => load(true)}
-              tintColor={brandSecondary}
-              colors={[brandSecondary]}
-              {...refreshControlAndroidGateProps(scrollAtTop, refreshing)}
-            />
-          }
+        <View style={{ flex: 1, position: "relative" }}>
+          <RefreshLogoOverlay visible={refreshing} />
+          <FlatList
+            ref={listRef}
+            style={{ flex: 1 }}
+            data={pagedItems}
+            keyExtractor={(it) => it.id}
+            renderItem={renderItem}
+            contentContainerStyle={[
+              styles.listContent,
+              { paddingBottom: listBottomPad },
+              allItems.length === 0 && styles.listEmptyGrow,
+            ]}
+            onScroll={onScrollForRefreshGate}
+            scrollEventThrottle={16}
+            refreshControl={
+              <PullToRefreshControl
+                refreshing={refreshing}
+                onRefresh={() => load(true)}
+                scrollAtTop={scrollAtTop}
+              />
+            }
           ListEmptyComponent={<Text style={styles.empty}>{t("tenant_question_list.empty")}</Text>}
-          ListFooterComponent={
-            <PaginationBar
-              currentPage={currentPage}
-              totalPages={totalPages}
-              onPageChange={onPageChange}
-              style={{ paddingBottom: 10 }}
-            />
-          }
-        />
+            ListFooterComponent={
+              <PaginationBar
+                currentPage={currentPage}
+                totalPages={totalPages}
+                onPageChange={onPageChange}
+                style={{ paddingBottom: 10 }}
+              />
+            }
+          />
+        </View>
       )}
     </View>
   );

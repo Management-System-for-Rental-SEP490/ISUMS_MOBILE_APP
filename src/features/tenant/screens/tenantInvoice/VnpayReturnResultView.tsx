@@ -1,13 +1,5 @@
 import React from "react";
-import {
-  ActivityIndicator,
-  Platform,
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  Text,
-  View,
-} from "react-native";
+import { Platform, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import {
@@ -20,6 +12,7 @@ import {
 } from "../../../../shared/theme/color";
 import { appTypography } from "../../../../shared/utils/typography";
 import { tenantInvoiceStyles as invStyles } from "./tenantInvoiceStyles";
+import { RefreshLogoOverlay } from "@shared/components/RefreshLogoOverlay";
 
 export type VnpayReturnUiPhase = "confirming" | "success" | "verify_skipped" | "failed";
 
@@ -81,8 +74,8 @@ export function VnpayReturnResultView({
       >
         <View style={invStyles.detailSummaryCard}>
           {isConfirming ? (
-            <View style={styles.heroInCard}>
-              <ActivityIndicator size="large" color={brandPrimary} />
+            <View style={[styles.heroInCard, { position: "relative", minHeight: 100 }]}>
+              <RefreshLogoOverlay visible mode="page" />
             </View>
           ) : (
             <View style={styles.heroInCard}>

@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useLayoutEffect, useMemo, useState } from "react";
-import { ActivityIndicator, ScrollView, Text, TouchableOpacity, View } from "react-native";
+import { ScrollView, Text, TouchableOpacity, View } from "react-native";
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { useTranslation } from "react-i18next";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -18,7 +18,7 @@ import { formatTenantIssueDateTime, formatVndDisplay, logAllInvoicePaymentIdReso
 import { formatApiErrorForTenantAlert } from "../../../../shared/utils/apiErrorMessage";
 import Icons from "../../../../shared/theme/icon";
 import { createVnpayPaymentLink } from "../../../../shared/services/tenantPaymentApi";
-import { brandPrimary, brandSecondary, neutral, tenantInvoicePaidBadgeFg } from "../../../../shared/theme/color";
+import { neutral, tenantInvoicePaidBadgeFg } from "../../../../shared/theme/color";
 import { useAuthStore } from "../../../../store/useAuthStore";
 import { useHouseById, useTenantHouses, useTenantInvoices } from "../../../../shared/hooks";
 import {
@@ -36,6 +36,7 @@ import {
   stackScreenTitleSideSlotStyle,
 } from "../../../../shared/components/StackScreenTitleBadge";
 import { tenantInvoiceStyles as styles } from "./tenantInvoiceStyles";
+import { RefreshLogoInline, RefreshLogoOverlay } from "@shared/components/RefreshLogoOverlay";
 import { InvoicePaymentFlowSection } from "./InvoicePaymentFlowSection";
 import { fetchTenantInvoiceDetail } from "../../../../shared/services/tenantInvoiceApi";
 import { getIssueBanners, getIssueQuotesByTicket } from "../../../../shared/services/issuesApi";
@@ -338,8 +339,8 @@ export default function TenantInvoiceDetailScreen({ navigation, route }: Props) 
 
   if (isTenantRepairInvoiceFlow(mergedInvoice) && !isTenantInvoiceIssueType(mergedInvoice)) {
     return (
-      <View style={[styles.container, { justifyContent: "center", flex: 1 }]}>
-        <ActivityIndicator size="large" color={brandPrimary} />
+      <View style={[styles.container, { justifyContent: "center", flex: 1, position: "relative" }]}>
+        <RefreshLogoOverlay visible mode="page" />
       </View>
     );
   }
@@ -481,9 +482,8 @@ export default function TenantInvoiceDetailScreen({ navigation, route }: Props) 
           <View style={styles.detailFeeCard}>
             <Text style={styles.detailFeeCardTitle}>{t("tenant_invoice.issue_quote_section_title")}</Text>
             {issueQuotesLoading ? (
-              <View style={styles.issueQuoteLoadingRow}>
-                <ActivityIndicator size="small" color={brandSecondary} />
-                <Text style={styles.meta}>{t("common.loading")}</Text>
+              <View style={[styles.issueQuoteLoadingRow, { flexDirection: "column", alignItems: "flex-start" }]}>
+                <RefreshLogoInline logoPx={20} showLabel />
               </View>
             ) : hasIssueQuoteLines ? (
               <>
@@ -563,7 +563,7 @@ export default function TenantInvoiceDetailScreen({ navigation, route }: Props) 
             disabled={creatingLink}
           >
             {creatingLink ? (
-              <ActivityIndicator size="small" color={neutral.surface} />
+              <RefreshLogoInline logoPx={20} />
             ) : (
               <>
                 <FontAwesome5 name="money-bill-wave" size={20} color={neutral.surface} />

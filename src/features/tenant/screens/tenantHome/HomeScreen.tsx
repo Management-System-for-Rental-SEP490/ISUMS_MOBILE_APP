@@ -3,9 +3,7 @@ import {
   View,
   Text,
   FlatList,
-  ActivityIndicator,
   TouchableOpacity,
-  RefreshControl,
   Modal,
   TouchableWithoutFeedback,
   Platform,
@@ -35,8 +33,12 @@ import {
   useTenantContext,
   useTenantInvoices,
   useRefreshControlGate,
-  refreshControlAndroidGateProps,
 } from "../../../../shared/hooks";
+import {
+  PullToRefreshControl,
+  RefreshLogoInline,
+  RefreshLogoOverlay,
+} from "@shared/components/RefreshLogoOverlay";
 import { useTenantIoTConnection, useTenantUsage } from "../../hooks/useTenantIoT";
 
 import {
@@ -924,7 +926,9 @@ const HomeScreen = ({ navigation }: HomeScreenProps) => {
                         {t("consumption.electric_summary")}
                       </Text>
                       {electricUsage.loading ? (
-                        <ActivityIndicator color={brandPrimary} style={{ marginVertical: 8 }} />
+                        <View style={{ marginVertical: 8, alignItems: "flex-start" }}>
+                          <RefreshLogoInline logoPx={18} />
+                        </View>
                       ) : (
                         <>
                           <Text style={homeStyles.usageSummaryCardRow}>
@@ -971,7 +975,9 @@ const HomeScreen = ({ navigation }: HomeScreenProps) => {
                         {t("consumption.water_summary")}
                       </Text>
                       {waterUsage.loading ? (
-                        <ActivityIndicator color={waterAccent} style={{ marginVertical: 8 }} />
+                        <View style={{ marginVertical: 8, alignItems: "flex-start" }}>
+                          <RefreshLogoInline logoPx={18} />
+                        </View>
                       ) : (
                         <>
                           <Text style={homeStyles.usageSummaryCardRow}>
@@ -1056,26 +1062,27 @@ const HomeScreen = ({ navigation }: HomeScreenProps) => {
     return (
       <View style={homeStyles.container}>
         <Header variant="default" onBrandPress={navigateToProfileFromHeader} />
-        <ScrollView
-          style={{ flex: 1 }}
-          contentContainerStyle={[
-            homeStyles.accessGateEmptyWrap,
-            { paddingBottom: 24 + insets.bottom },
-          ]}
-          onScroll={onScrollForRefreshGate}
-          scrollEventThrottle={16}
-          refreshControl={
-            <RefreshControl
-              refreshing={isRefreshing || loading}
-              onRefresh={onRefresh}
-              colors={[brandPrimary]}
-              tintColor={brandPrimary}
-              {...refreshControlAndroidGateProps(scrollAtTop, isRefreshing || loading)}
-            />
-          }
-        >
-          <Text style={homeStyles.accessGateEmptyText}>{t("home.access.no_house")}</Text>
-        </ScrollView>
+        <View style={{ flex: 1, position: "relative" }}>
+          <RefreshLogoOverlay visible={isRefreshing || loading} />
+          <ScrollView
+            style={{ flex: 1 }}
+            contentContainerStyle={[
+              homeStyles.accessGateEmptyWrap,
+              { paddingBottom: 24 + insets.bottom },
+            ]}
+            onScroll={onScrollForRefreshGate}
+            scrollEventThrottle={16}
+            refreshControl={
+              <PullToRefreshControl
+                refreshing={isRefreshing || loading}
+                onRefresh={onRefresh}
+                scrollAtTop={scrollAtTop}
+              />
+            }
+          >
+            <Text style={homeStyles.accessGateEmptyText}>{t("home.access.no_house")}</Text>
+          </ScrollView>
+        </View>
       </View>
     );
   }
@@ -1092,37 +1099,35 @@ const HomeScreen = ({ navigation }: HomeScreenProps) => {
       />
 
       {loading && !housesData ? (
-        <View style={homeStyles.loadingContainer}>
-          <ActivityIndicator size="large" color={brandPrimary} />
-          <Text style={{ marginTop: 10, color: neutral.textSecondary }}>
-            {t("home.loading_data")}
-          </Text>
+        <View style={[homeStyles.loadingContainer, { position: "relative" }]}>
+          <RefreshLogoOverlay visible mode="page" labelKey="home.loading_data" />
         </View>
       ) : (
-        <ScrollView
-          style={{ flex: 1 }}
-          contentContainerStyle={[
-            homeStyles.deviceListContent,
-            {
-              paddingBottom: 24 + insets.bottom,
-            },
-          ]}
-          showsVerticalScrollIndicator={false}
-          keyboardShouldPersistTaps="handled"
-          onScroll={onScrollForRefreshGate}
-          scrollEventThrottle={16}
-          refreshControl={
-            <RefreshControl
-              refreshing={isRefreshing || loading}
-              onRefresh={onRefresh}
-              colors={[brandPrimary]}
-              tintColor={brandPrimary}
-              {...refreshControlAndroidGateProps(scrollAtTop, isRefreshing || loading)}
-            />
-          }
-        >
-          {renderHomeScrollContent()}
-        </ScrollView>
+        <View style={{ flex: 1, position: "relative" }}>
+          <RefreshLogoOverlay visible={isRefreshing || loading} />
+          <ScrollView
+            style={{ flex: 1 }}
+            contentContainerStyle={[
+              homeStyles.deviceListContent,
+              {
+                paddingBottom: 24 + insets.bottom,
+              },
+            ]}
+            showsVerticalScrollIndicator={false}
+            keyboardShouldPersistTaps="handled"
+            onScroll={onScrollForRefreshGate}
+            scrollEventThrottle={16}
+            refreshControl={
+              <PullToRefreshControl
+                refreshing={isRefreshing || loading}
+                onRefresh={onRefresh}
+                scrollAtTop={scrollAtTop}
+              />
+            }
+          >
+            {renderHomeScrollContent()}
+          </ScrollView>
+        </View>
       )}
 
       <Modal
@@ -1169,7 +1174,7 @@ const HomeScreen = ({ navigation }: HomeScreenProps) => {
                         {item.name}
                       </Text>
                       {isSubmittingMainHouse && item.id === pendingMainHouseId ? (
-                        <ActivityIndicator size="small" color={brandPrimary} />
+                        <RefreshLogoInline logoPx={18} />
                       ) : item.id === myHouse?.id ? (
                         <Text style={{ color: brandPrimary, fontWeight: "bold" }}>✓</Text>
                       ) : null}

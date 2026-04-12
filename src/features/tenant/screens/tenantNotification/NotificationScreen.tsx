@@ -1,13 +1,5 @@
 import React, { memo, useEffect, useMemo, useRef, useState } from "react";
-import {
-  ActivityIndicator,
-  RefreshControl,
-  ScrollView,
-  Text,
-  Pressable,
-  View,
-  StyleSheet,
-} from "react-native";
+import { ScrollView, Text, Pressable, View, StyleSheet } from "react-native";
 import type { ColorValue } from "react-native";
 import { useTranslation } from "react-i18next";
 import { useNavigation } from "@react-navigation/native";
@@ -28,8 +20,12 @@ import {
   useTenantContext,
   useTenantHouseIotAlertsInfinite,
   useRefreshControlGate,
-  refreshControlAndroidGateProps,
 } from "../../../../shared/hooks";
+import {
+  PullToRefreshControl,
+  RefreshLogoInline,
+  RefreshLogoOverlay,
+} from "@shared/components/RefreshLogoOverlay";
 import { notificationStyles } from "./notificationStyles";
 import {
   brandFocusBorder,
@@ -309,19 +305,19 @@ const NotificationScreen = () => {
           <StackScreenTitleBarBalance />
         </View>
       </StackScreenTitleHeaderStrip>
-      <ScrollView
-        ref={scrollRef}
-        showsVerticalScrollIndicator={false}
-        refreshControl={
-          <RefreshControl
-            refreshing={refreshing}
-            onRefresh={() => refetch()}
-            tintColor={brandPrimary}
-            colors={[brandPrimary]}
-            {...refreshControlAndroidGateProps(scrollAtTop, refreshing)}
-          />
-        }
-        contentContainerStyle={notificationStyles.listContent}
+      <View style={{ flex: 1, position: "relative" }}>
+        <RefreshLogoOverlay visible={refreshing} />
+        <ScrollView
+          ref={scrollRef}
+          showsVerticalScrollIndicator={false}
+          refreshControl={
+            <PullToRefreshControl
+              refreshing={refreshing}
+              onRefresh={() => refetch()}
+              scrollAtTop={scrollAtTop}
+            />
+          }
+          contentContainerStyle={notificationStyles.listContent}
         onScroll={(e) => {
           onScrollForRefreshGate(e);
           const { nativeEvent } = e;
@@ -378,8 +374,8 @@ const NotificationScreen = () => {
           </ScrollView>
 
           {initialLoading ? (
-            <View style={notificationStyles.loadingBlock}>
-              <ActivityIndicator size="large" color={brandPrimary} />
+            <View style={[notificationStyles.loadingBlock, { position: "relative", minHeight: 120 }]}>
+              <RefreshLogoOverlay visible mode="page" />
             </View>
           ) : filtered2.length === 0 ? (
             <View style={notificationStyles.emptyStateWrap}>
@@ -411,7 +407,7 @@ const NotificationScreen = () => {
 
           {isFetchingNextPage && (
             <View style={notificationStyles.loadingMoreBlock}>
-              <ActivityIndicator size="small" color={brandPrimary} />
+              <RefreshLogoInline logoPx={20} />
             </View>
           )}
           {!hasNextPage && filtered2.length > 0 && !isFetchingNextPage && (
@@ -424,7 +420,8 @@ const NotificationScreen = () => {
             onPageChange={handlePageChange}
           />
         </>
-      </ScrollView>
+        </ScrollView>
+      </View>
     </View>
   );
 };

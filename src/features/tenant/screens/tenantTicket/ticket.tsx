@@ -1,7 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import {
-  ActivityIndicator,
   Animated,
   Dimensions,
   Image,
@@ -23,6 +22,7 @@ import { ticketStyles } from "./ticketStyles";
 import { useTranslation } from "react-i18next";
 import Icons from "../../../../shared/theme/icon";
 import { brandPrimary, brandSecondary, neutral } from "../../../../shared/theme/color";
+import { RefreshLogoInline } from "@shared/components/RefreshLogoOverlay";
 import { ImageCaptureModal } from "../../../modal/imageCapture/ImageCaptureModal";
 import {
   StackScreenTitleBadge,
@@ -546,7 +546,7 @@ const TicketScreen = () => {
             activeOpacity={0.9}
           >
             {submitting ? (
-              <ActivityIndicator color={neutral.surface} />
+              <RefreshLogoInline logoPx={20} />
             ) : (
               <Text style={ticketStyles.submitButtonText}>{t("ticket.submit_button")}</Text>
             )}

@@ -11,7 +11,6 @@ import {
   Modal,
   TouchableWithoutFeedback,
   FlatList,
-  ActivityIndicator,
   Platform,
   Keyboard,
   KeyboardAvoidingView,
@@ -27,6 +26,7 @@ import { CustomAlert as Alert } from "../../../../shared/components/alert";
 import { RootStackParamList } from "../../../../shared/types";
 import type { HouseFromApi } from "../../../../shared/types/api";
 import tenantHouseStyles from "./tenantHouseStyles";
+import { RefreshLogoInline } from "@shared/components/RefreshLogoOverlay";
 import homeStyles from "../tenantHome/homeStyles";
 import {
   StackScreenTitleBadge,
@@ -694,7 +694,7 @@ const TenantHouseDescription = () => {
                 activeOpacity={0.85}
               >
                 {isSubmittingMainHouse ? (
-                  <ActivityIndicator color="#fff" size="small" />
+                  <RefreshLogoInline logoPx={18} />
                 ) : (
                   <Text style={tenantHouseStyles.setMainButtonText}>
                     {t("home.house_detail.set_main_house")}
@@ -782,7 +782,9 @@ const TenantHouseDescription = () => {
                 containerStyle={homeStyles.floorPlanInCard}
               />
             ) : loadingItems ? (
-              <ActivityIndicator style={{ marginVertical: 20 }} color={brandPrimary} />
+              <View style={{ marginVertical: 20, alignItems: "center" }}>
+                <RefreshLogoInline logoPx={22} showLabel />
+              </View>
             ) : null}
 
             {!loadingItems && devices.length === 0 ? (
@@ -881,7 +883,7 @@ const TenantHouseDescription = () => {
                         {item.name}
                       </Text>
                       {isSubmittingMainHouse && item.id === pendingMainHouseId ? (
-                        <ActivityIndicator size="small" color={brandPrimary} />
+                        <RefreshLogoInline logoPx={18} />
                       ) : item.id === houseId ? (
                         <Text style={{ color: brandPrimary, fontWeight: "bold" }}>✓</Text>
                       ) : null}

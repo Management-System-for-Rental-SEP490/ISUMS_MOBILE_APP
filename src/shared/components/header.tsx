@@ -1,5 +1,4 @@
 import {
-  ActivityIndicator,
   ColorValue,
   Dimensions,
   Image,
@@ -17,6 +16,7 @@ import { appTypography } from "../utils/typography";
 import { HeaderVariant, RootStackParamList } from "../types";
 import { NavigationProp, useNavigation } from "@react-navigation/native";
 import Icons from "../theme/icon";
+import { RefreshLogoInline } from "@shared/components/RefreshLogoOverlay";
 
 const LOGO_ASSET = require("../../../assets/logob.png");
 const LOGO_RING_PADDING = 3;
@@ -153,7 +153,7 @@ const Header = ({
                       <View style={headerStyles.homeInvoiceStripInvoiceCol}>
                         {homeInvoiceStrip?.kind === "loading" ? (
                           <View style={headerStyles.homeInvoiceStripLoading}>
-                            <ActivityIndicator color={headerOnBrand.activityIndicator} size="small" />
+                            <RefreshLogoInline logoPx={18} />
                           </View>
                         ) : homeInvoiceStrip?.kind === "all_paid" ? (
                           <Text style={headerStyles.homeInvoiceStripAllPaidLine} numberOfLines={2}>

@@ -1,12 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import {
-  ActivityIndicator,
-  StatusBar,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View,
-} from "react-native";
+import { StatusBar, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { SafeAreaView } from "react-native-safe-area-context";
 import WebView from "react-native-webview";
@@ -32,7 +25,8 @@ import {
 } from "../../../../shared/services/tenantPaymentApi";
 import { formatVndDisplay } from "../../../../shared/utils/currencyFormat";
 import { formatVnpPayDateFromGateway } from "../../../../shared/utils/dateTimeFormat";
-import { brandPrimary, neutral } from "../../../../shared/theme/color";
+import { neutral } from "../../../../shared/theme/color";
+import { RefreshLogoOverlay } from "@shared/components/RefreshLogoOverlay";
 import { appTypography } from "../../../../shared/utils/typography";
 import { HOUSES_KEYS, TENANT_INVOICES_QUERY_KEY } from "../../../../shared/hooks";
 import { dispatchAfterVnpaySuccess } from "../../../../shared/utils/tenantVnpayNavigation";
@@ -207,9 +201,8 @@ export default function TenantVnpayCheckoutScreen({ navigation, route }: Props) 
       <View style={styles.screenRoot}>
         {headerStrip}
         <SafeAreaView style={styles.flex} edges={["bottom"]}>
-          <View style={styles.loadingBody}>
-            <ActivityIndicator size="large" color={brandPrimary} />
-            <Text style={styles.loadingText}>{t("common.loading")}</Text>
+          <View style={[styles.loadingBody, { position: "relative" }]}>
+            <RefreshLogoOverlay visible mode="page" />
           </View>
         </SafeAreaView>
       </View>
@@ -271,8 +264,8 @@ export default function TenantVnpayCheckoutScreen({ navigation, route }: Props) 
           style={styles.flex}
           startInLoadingState
           renderLoading={() => (
-            <View style={styles.webLoadingOverlay}>
-              <ActivityIndicator size="large" color={brandPrimary} />
+            <View style={[styles.webLoadingOverlay, { position: "relative" }]}>
+              <RefreshLogoOverlay visible mode="page" />
             </View>
           )}
         injectedJavaScriptBeforeContentLoaded={`

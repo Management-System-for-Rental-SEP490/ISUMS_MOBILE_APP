@@ -1,7 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { useFocusEffect } from "@react-navigation/native";
 import {
-  ActivityIndicator,
   Image,
   Modal,
   ScrollView,
@@ -44,6 +43,7 @@ import {
   stackScreenTitleRowStyle,
   stackScreenTitleSideSlotStyle,
 } from "../../../../shared/components/StackScreenTitleBadge";
+import { RefreshLogoInline } from "@shared/components/RefreshLogoOverlay";
 
 type Props = NativeStackScreenProps<RootStackParamList, "TenantTicketDetail">;
 
@@ -596,7 +596,7 @@ const TenantTicketDetailScreen = ({ navigation, route }: Props) => {
             >
               {questionResponseLoading ? (
                 <View style={styles.assetLoadingRow}>
-                  <ActivityIndicator size="small" color={brandSecondary} />
+                  <RefreshLogoInline logoPx={18} />
                   <Text style={styles.fieldValueMuted}>{t("common.loading")}</Text>
                 </View>
               ) : questionResponse ? (
@@ -658,7 +658,7 @@ const TenantTicketDetailScreen = ({ navigation, route }: Props) => {
                 <Text style={styles.fieldLabel}>{t("tenant_ticket_detail.field_device")}</Text>
                 {assetLoading ? (
                   <View style={styles.assetLoadingRow}>
-                    <ActivityIndicator size="small" color={brandSecondary} />
+                    <RefreshLogoInline logoPx={18} />
                     <Text style={styles.fieldValueMuted}>{t("tenant_ticket_detail.asset_loading")}</Text>
                   </View>
                 ) : assetName ? (
@@ -719,7 +719,7 @@ const TenantTicketDetailScreen = ({ navigation, route }: Props) => {
             >
               {imagesLoading ? (
                 <View style={styles.assetLoadingRow}>
-                  <ActivityIndicator size="small" color={brandSecondary} />
+                  <RefreshLogoInline logoPx={18} />
                   <Text style={styles.fieldValueMuted}>{t("common.loading")}</Text>
                 </View>
               ) : ticketImages.length > 0 ? (
@@ -771,7 +771,7 @@ const TenantTicketDetailScreen = ({ navigation, route }: Props) => {
             ) : null}
             {quotesLoading ? (
               <View style={styles.assetLoadingRow}>
-                <ActivityIndicator size="small" color={brandSecondary} />
+                <RefreshLogoInline logoPx={18} />
                 <Text style={styles.fieldValueMuted}>{t("common.loading")}</Text>
               </View>
             ) : activeQuote?.id ? (
@@ -812,7 +812,7 @@ const TenantTicketDetailScreen = ({ navigation, route }: Props) => {
                   activeOpacity={0.8}
                 >
                   {confirmQuoteLoading ? (
-                    <ActivityIndicator size="small" color={neutral.surface} />
+                    <RefreshLogoInline logoPx={18} />
                   ) : (
                     <Text style={styles.confirmQuoteBtnText}>
                       {t("tenant_ticket_detail.confirm_quote_btn")}
@@ -833,7 +833,7 @@ const TenantTicketDetailScreen = ({ navigation, route }: Props) => {
           >
             {quotesLoading ? (
               <View style={styles.assetLoadingRow}>
-                <ActivityIndicator size="small" color={brandSecondary} />
+                <RefreshLogoInline logoPx={18} />
                 <Text style={styles.fieldValueMuted}>{t("common.loading")}</Text>
               </View>
             ) : paymentQuote?.items?.length ? (
@@ -860,7 +860,7 @@ const TenantTicketDetailScreen = ({ navigation, route }: Props) => {
                   disabled={payRepairLoading}
                 >
                   {payRepairLoading ? (
-                    <ActivityIndicator size="small" color={neutral.surface} />
+                    <RefreshLogoInline logoPx={18} />
                   ) : (
                     <Icons.wallet size={22} color={neutral.surface} />
                   )}
@@ -877,7 +877,7 @@ const TenantTicketDetailScreen = ({ navigation, route }: Props) => {
                   disabled={payRepairLoading}
                 >
                   {payRepairLoading ? (
-                    <ActivityIndicator size="small" color={neutral.surface} />
+                    <RefreshLogoInline logoPx={18} />
                   ) : (
                     <Icons.wallet size={22} color={neutral.surface} />
                   )}

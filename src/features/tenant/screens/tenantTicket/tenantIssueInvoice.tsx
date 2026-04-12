@@ -1,5 +1,5 @@
 import React, { useMemo } from "react";
-import { ActivityIndicator, ScrollView, Text, TouchableOpacity, View } from "react-native";
+import { ScrollView, Text, TouchableOpacity, View } from "react-native";
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { useTranslation } from "react-i18next";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -16,6 +16,7 @@ import { formatApiErrorForTenantAlert } from "../../../../shared/utils/apiErrorM
 import { createVnpayPaymentLink } from "../../../../shared/services/tenantPaymentApi";
 import Icons from "../../../../shared/theme/icon";
 import { neutral } from "../../../../shared/theme/color";
+import { RefreshLogoInline } from "@shared/components/RefreshLogoOverlay";
 import {
   StackScreenTitleBadge,
   StackScreenTitleHeaderStrip,
@@ -169,7 +170,7 @@ export default function TenantIssueInvoiceScreen({ navigation, route }: Props) {
             disabled={creatingLink}
           >
             {creatingLink ? (
-              <ActivityIndicator size="small" color={neutral.surface} />
+              <RefreshLogoInline logoPx={20} />
             ) : (
               <>
                 <FontAwesome5 name="money-bill-wave" size={20} color={neutral.surface} />

@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
-import { ActivityIndicator, Image, Modal, Platform, Text, TouchableOpacity, View } from "react-native";
+import { Image, Modal, Platform, Text, TouchableOpacity, View } from "react-native";
 import { CameraView, useCameraPermissions } from "expo-camera";
 import * as ImagePicker from "expo-image-picker";
 import * as MediaLibrary from "expo-media-library";
@@ -11,6 +11,7 @@ import { GestureDetector, GestureHandlerRootView } from "react-native-gesture-ha
 import { CustomAlert as Alert } from "../../../shared/components/alert";
 import { useCameraPinchZoom } from "../../../shared/hooks/useCameraPinchZoom";
 import { brandPrimary, neutral } from "../../../shared/theme/color";
+import { RefreshLogoInline, RefreshLogoOverlay } from "@shared/components/RefreshLogoOverlay";
 
 type Props = {
   visible: boolean;
@@ -185,18 +186,10 @@ export function ImageCaptureModal({
               justifyContent: "center",
               alignItems: "center",
               padding: 16,
+              position: "relative",
             }}
           >
-            <ActivityIndicator size="large" color={brandPrimary} />
-            <Text
-              style={{
-                marginTop: 12,
-                color: neutral.textOnDarkSoft,
-                textAlign: "center",
-              }}
-            >
-              {t("common.loading")}
-            </Text>
+            <RefreshLogoOverlay visible mode="page" />
             <TouchableOpacity
               onPress={onClose}
               style={{
@@ -284,7 +277,7 @@ export function ImageCaptureModal({
                   }}
                 >
                   {capturing ? (
-                    <ActivityIndicator color={neutral.surface} />
+                    <RefreshLogoInline logoPx={22} />
                   ) : (
                     <View
                       style={{

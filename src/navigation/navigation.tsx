@@ -1,11 +1,5 @@
 import React, { useEffect, useRef, useState } from "react";
-import {
-  View,
-  ActivityIndicator,
-  StyleSheet,
-  AppState,
-  type AppStateStatus,
-} from "react-native";
+import { View, StyleSheet, AppState, type AppStateStatus } from "react-native";
 import { useTranslation } from "react-i18next";
 import { useQueryClient } from "@tanstack/react-query";
 import { NavigationContainer } from "@react-navigation/native";
@@ -29,7 +23,7 @@ import TenantInvoiceListScreen from "../features/tenant/screens/tenantInvoice/Te
 import TenantInvoiceDetailScreen from "../features/tenant/screens/tenantInvoice/TenantInvoiceDetailScreen";
 import TenantIssueInvoiceScreen from "../features/tenant/screens/tenantTicket/tenantIssueInvoice";
 import TenantVnpayCheckoutScreen from "../features/tenant/screens/tenantInvoice/TenantVnpayCheckoutScreen";
-import { brandPrimary } from "../shared/theme/color";
+import { RefreshLogoOverlay } from "@shared/components/RefreshLogoOverlay";
 import { ensureTenantMainHouseSynced } from "../shared/services/userApi";
 import KeycloakChangePasswordWebViewOverlay from "../shared/components/KeycloakChangePasswordWebViewOverlay";
 import NotificationScreen from "../features/tenant/screens/tenantNotification/NotificationScreen";
@@ -140,18 +134,17 @@ const Navigation = () => {
   }, [isReady, isLoggedIn, role]);
 
   if (!isReady) {
-      return (
-          <View style={{flex: 1, justifyContent: 'center', alignItems: 'center'}}>
-            {/* Hiển thị loading khi đang đọc state từ AsyncStorage vào store(cái vòng tròn xoay */}
-              <ActivityIndicator size="large" color={brandPrimary} /> 
-          </View>
-      );
+    return (
+      <View style={{ flex: 1, position: "relative" }}>
+        <RefreshLogoOverlay visible mode="page" />
+      </View>
+    );
   }
 
   if (isLoggedIn && role === "tenant" && isSyncingMainHouseOnLogin) {
     return (
-      <View style={{ flex: 1, justifyContent: "center", alignItems: "center" }}>
-        <ActivityIndicator size="large" color={brandPrimary} />
+      <View style={{ flex: 1, position: "relative" }}>
+        <RefreshLogoOverlay visible mode="page" />
       </View>
     );
   }

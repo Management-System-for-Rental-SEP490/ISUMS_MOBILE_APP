@@ -1,12 +1,5 @@
 import { useNavigation, useRoute, RouteProp } from "@react-navigation/native";
-import {
-  Text,
-  TouchableOpacity,
-  View,
-  ActivityIndicator,
-  Pressable,
-  Animated,
-} from "react-native";
+import { Text, TouchableOpacity, View, Pressable, Animated } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { CustomAlert as Alert } from "../../../shared/components/alert";
 import { useEffect, useMemo, useState, useRef } from "react";

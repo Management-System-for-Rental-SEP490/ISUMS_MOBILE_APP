@@ -1,26 +1,17 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import {
-  ActivityIndicator,
-  FlatList,
-  Image,
-  RefreshControl,
-  ScrollView,
-  Text,
-  TouchableOpacity,
-  View,
-} from "react-native";
+import { FlatList, Image, ScrollView, Text, TouchableOpacity, View } from "react-native";
 import { useFocusEffect, useNavigation } from "@react-navigation/native";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useTranslation } from "react-i18next";
 import { CustomAlert as Alert } from "../../../../shared/components/alert";
 import { IssueTicketResponseFromApi, RootStackParamList, TenantTicketFromApi } from "../../../../shared/types";
+import { useTenantContext, useRefreshControlGate, useTenantHouses } from "../../../../shared/hooks";
 import {
-  useTenantContext,
-  useRefreshControlGate,
-  refreshControlAndroidGateProps,
-  useTenantHouses,
-} from "../../../../shared/hooks";
+  PullToRefreshControl,
+  RefreshLogoInline,
+  RefreshLogoOverlay,
+} from "@shared/components/RefreshLogoOverlay";
 import {
   getIssueQuotesByTicket,
   getIssueResponses,
@@ -641,7 +632,7 @@ const TenantTicketListScreen = () => {
             accessibilityLabel={t("tenant_ticket_list.pay_btn")}
           >
             {payingThis ? (
-              <ActivityIndicator size="small" color={neutral.surface} />
+              <RefreshLogoInline logoPx={18} />
             ) : (
               <Icons.wallet size={20} color={neutral.surface} />
             )}
@@ -677,9 +668,8 @@ const TenantTicketListScreen = () => {
       </StackScreenTitleHeaderStrip>
 
       {loading && !refreshing ? (
-        <View style={styles.centered}>
-          <ActivityIndicator size="large" color={brandSecondary} />
-          <Text style={styles.hint}>{t("common.loading")}</Text>
+        <View style={[styles.centered, { flex: 1, position: "relative" }]}>
+          <RefreshLogoOverlay visible mode="page" />
         </View>
       ) : error ? (
         <View style={[styles.centered, { flex: 1 }]}>
@@ -690,7 +680,8 @@ const TenantTicketListScreen = () => {
         </View>
       ) : (
         <>
-          <View style={{ flex: 1 }}>
+          <View style={{ flex: 1, position: "relative" }}>
+            <RefreshLogoOverlay visible={refreshing} />
             <View style={styles.filterSectionWrap}>{renderFilterHeader()}</View>
             <FlatList
               ref={listRef}
@@ -707,12 +698,10 @@ const TenantTicketListScreen = () => {
               onScroll={onScrollForRefreshGate}
               scrollEventThrottle={16}
               refreshControl={
-                <RefreshControl
+                <PullToRefreshControl
                   refreshing={refreshing}
                   onRefresh={() => load(true)}
-                  tintColor={brandSecondary}
-                  colors={[brandSecondary]}
-                  {...refreshControlAndroidGateProps(scrollAtTop, refreshing)}
+                  scrollAtTop={scrollAtTop}
                 />
               }
               ListEmptyComponent={

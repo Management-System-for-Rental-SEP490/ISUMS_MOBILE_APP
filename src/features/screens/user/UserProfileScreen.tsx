@@ -1,13 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
-import {
-  View,
-  Text,
-  TouchableOpacity,
-  ScrollView,
-  Pressable,
-  ActivityIndicator,
-  RefreshControl,
-} from "react-native";
+import { View, Text, TouchableOpacity, ScrollView, Pressable } from "react-native";
 import { CustomAlert as Alert } from "../../../shared/components/alert";
 import { useNavigation } from "@react-navigation/native";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
@@ -31,8 +23,12 @@ import {
   useTenantContext,
   useTenantHouses,
   useRefreshControlGate,
-  refreshControlAndroidGateProps,
 } from "../../../shared/hooks";
+import {
+  PullToRefreshControl,
+  RefreshLogoInline,
+  RefreshLogoOverlay,
+} from "@shared/components/RefreshLogoOverlay";
 import type { TenantEContractFromApi } from "../../../shared/types/api";
 import { isHandoverDateReached, shortHouseIdForDisplay, tenantAccessibleHouseIdSet } from "../../../shared/utils";
 import {
@@ -227,18 +223,17 @@ const UserProfileScreen = () => {
   };
 
   return (
-    <View style={userProfileStyles.container}>
+    <View style={[userProfileStyles.container, { position: "relative" }]}>
+      <RefreshLogoOverlay visible={contractsRefetching} />
       <ScrollView
         contentContainerStyle={[userProfileStyles.contentContainer]}
         onScroll={onScrollForRefreshGate}
         scrollEventThrottle={16}
         refreshControl={
-          <RefreshControl
+          <PullToRefreshControl
             refreshing={contractsRefetching}
             onRefresh={onRefreshContracts}
-            colors={[brandPrimary]}
-            tintColor={brandPrimary}
-            {...refreshControlAndroidGateProps(scrollAtTop, contractsRefetching)}
+            scrollAtTop={scrollAtTop}
           />
         }
       >
@@ -264,10 +259,10 @@ const UserProfileScreen = () => {
         </StackScreenTitleHeaderStrip>
 
         {/* Profile Card — chờ GET /users/me để tránh lóe username/role từ Keycloak */}
-        <View style={userProfileStyles.profileCard}>
+        <View style={[userProfileStyles.profileCard, { position: "relative", minHeight: !profileLoaded ? 160 : undefined }]}>
           {!profileLoaded ? (
-            <View style={userProfileStyles.profileCardLoader}>
-              <ActivityIndicator size="large" color={brandPrimary} accessibilityLabel={t("common.loading")} />
+            <View style={[userProfileStyles.profileCardLoader, { minHeight: 160 }]}>
+              <RefreshLogoOverlay visible mode="page" />
             </View>
           ) : (
             <>
@@ -286,7 +281,7 @@ const UserProfileScreen = () => {
 
             {!profileLoaded ? (
               <View style={userProfileStyles.sectionLoader}>
-                <ActivityIndicator color={brandPrimary} accessibilityLabel={t("common.loading")} />
+                <RefreshLogoInline logoPx={22} showLabel />
               </View>
             ) : (
               <>
@@ -340,7 +335,7 @@ const UserProfileScreen = () => {
             </Text>
             {contractsLoading && contracts.length === 0 ? (
               <View style={userProfileStyles.eContractsLoader}>
-                <ActivityIndicator color={brandPrimary} accessibilityLabel={t("common.loading")} />
+                <RefreshLogoInline logoPx={22} showLabel />
               </View>
             ) : null}
             {contractsError ? (

@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
-import { ActivityIndicator, Text, TouchableOpacity, View } from "react-native";
+import { Text, TouchableOpacity, View } from "react-native";
 import { useTranslation } from "react-i18next";
 import { fetchTenantInvoiceDetail } from "../../../../shared/services/tenantInvoiceApi";
 import type { InvoicePaymentAttemptFromApi } from "../../../../shared/types/api";
@@ -8,7 +8,7 @@ import {
   formatTenantInvoiceAmount,
 } from "../../../../shared/utils/tenantInvoice";
 import { formatTenantIssueDateTime } from "../../../../shared/utils";
-import { brandSecondary } from "../../../../shared/theme/color";
+import { RefreshLogoInline } from "@shared/components/RefreshLogoOverlay";
 import { tenantInvoiceStyles as styles } from "./tenantInvoiceStyles";
 
 type Props = {
@@ -133,7 +133,7 @@ export function InvoicePaymentFlowSection({
     return (
       <View style={shellStyle}>
         {titleBlock}
-        <ActivityIndicator size="small" color={brandSecondary} />
+        <RefreshLogoInline logoPx={20} showLabel />
       </View>
     );
   }

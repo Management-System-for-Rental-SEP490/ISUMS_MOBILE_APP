@@ -1,6 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
-  ActivityIndicator,
   FlatList,
   KeyboardAvoidingView,
   Modal,
@@ -16,7 +15,8 @@ import { useTranslation } from "react-i18next";
 import type { AssetItemFromApi } from "../../../../shared/types/api";
 import { getAssetItemsByHouseId } from "../../../../shared/services/assetItemApi";
 import Icons from "../../../../shared/theme/icon";
-import { brandSecondary, neutral } from "../../../../shared/theme/color";
+import { neutral } from "../../../../shared/theme/color";
+import { RefreshLogoOverlay } from "@shared/components/RefreshLogoOverlay";
 import { ticketAssetSelectStyles as styles } from "./ticketStyles";
 
 export type TicketAssetSelection = { id: string; displayName: string };
@@ -123,8 +123,8 @@ export function TicketAssetSelect({ houseId, value, onChange }: Props) {
                 />
               </View>
               {loading ? (
-                <View style={styles.loadingBox}>
-                  <ActivityIndicator size="large" color={brandSecondary} />
+                <View style={[styles.loadingBox, { position: "relative", minHeight: 120 }]}>
+                  <RefreshLogoOverlay visible mode="page" />
                 </View>
               ) : loadError ? (
                 <Text style={styles.emptyText}>{t("ticket.asset_load_error")}</Text>

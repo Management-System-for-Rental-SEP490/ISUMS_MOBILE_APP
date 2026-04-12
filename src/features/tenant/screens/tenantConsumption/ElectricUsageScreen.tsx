@@ -1,24 +1,16 @@
 import React, { useMemo, useState, useEffect, useCallback } from "react";
-import {
-  View,
-  Text,
-  ScrollView,
-  useWindowDimensions,
-  ActivityIndicator,
-  RefreshControl,
-  TouchableOpacity,
-  StyleSheet,
-} from "react-native";
+import { View, Text, ScrollView, useWindowDimensions, TouchableOpacity, StyleSheet } from "react-native";
 import { useTranslation } from "react-i18next";
 import Header from "../../../../shared/components/header";
 import Icons from "../../../../shared/theme/icon";
 import { FloorPlanView } from "../../houseStructure";
 import { electricUsageStyles } from "./electricUsageStyles";
+import { useTenantContext, useRefreshControlGate } from "../../../../shared/hooks";
 import {
-  useTenantContext,
-  useRefreshControlGate,
-  refreshControlAndroidGateProps,
-} from "../../../../shared/hooks";
+  PullToRefreshControl,
+  RefreshLogoInline,
+  RefreshLogoOverlay,
+} from "@shared/components/RefreshLogoOverlay";
 import { useTenantIoTConnection, useTenantTelemetry, useTenantUsage } from "../../hooks/useTenantIoT";
 import { brandPrimary, neutral } from "../../../../shared/theme/color";
 import {
@@ -171,24 +163,24 @@ const ElectricUsageScreen = ({ showHeader = true }: ElectricUsageScreenProps) =>
   return (
     <View style={electricUsageStyles.container}>
       {showHeader ? <Header variant="electric" /> : null}
-      <ScrollView
-        style={electricUsageStyles.content}
-        contentContainerStyle={electricUsageStyles.contentContainer}
-        showsVerticalScrollIndicator={false}
-        keyboardShouldPersistTaps="handled"
-        keyboardDismissMode="on-drag"
-        onScroll={onScrollForRefreshGate}
-        scrollEventThrottle={16}
-        refreshControl={
-          <RefreshControl
-            refreshing={pullRefreshing}
-            onRefresh={onPullRefresh}
-            tintColor={brandPrimary}
-            colors={[brandPrimary]}
-            {...refreshControlAndroidGateProps(scrollAtTop, pullRefreshing)}
-          />
-        }
-      >
+      <View style={{ flex: 1, position: "relative" }}>
+        <RefreshLogoOverlay visible={pullRefreshing} />
+        <ScrollView
+          style={electricUsageStyles.content}
+          contentContainerStyle={electricUsageStyles.contentContainer}
+          showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
+          keyboardDismissMode="on-drag"
+          onScroll={onScrollForRefreshGate}
+          scrollEventThrottle={16}
+          refreshControl={
+            <PullToRefreshControl
+              refreshing={pullRefreshing}
+              onRefresh={onPullRefresh}
+              scrollAtTop={scrollAtTop}
+            />
+          }
+        >
         <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 4 }}>
           <Text style={electricUsageStyles.title}>
             {t("screens.electric")}
@@ -348,7 +340,9 @@ const ElectricUsageScreen = ({ showHeader = true }: ElectricUsageScreenProps) =>
               {t("consumption.chart_title_electric")}
             </Text>
             {usage.loading ? (
-              <ActivityIndicator size="large" color="#82A762" style={{ marginVertical: 24 }} />
+              <View style={{ marginVertical: 24, alignItems: "center" }}>
+                <RefreshLogoInline logoPx={22} showLabel />
+              </View>
             ) : (
               <View
                 style={[
@@ -399,6 +393,7 @@ const ElectricUsageScreen = ({ showHeader = true }: ElectricUsageScreenProps) =>
           </Text>
         </View>
       </ScrollView>
+      </View>
     </View>
   );
 };
