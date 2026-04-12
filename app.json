@@ -21,7 +21,7 @@
     },
     "androidStatusBar": {
       "translucent": true,
-      "backgroundColor": "#3bb582"
+      "backgroundColor": "#00000000"
     },
     "androidNavigationBar": {
       "backgroundColor": "#00000000",
@@ -39,7 +39,8 @@
         "android.permission.CAMERA",
         "android.permission.READ_MEDIA_IMAGES",
         "android.permission.READ_EXTERNAL_STORAGE",
-        "android.permission.NFC"
+        "android.permission.NFC",
+        "android.permission.POST_NOTIFICATIONS"
       ],
       "package": "com.anonymous.isums",
       "intentFilters": [
@@ -65,12 +66,13 @@
       [
         "expo-navigation-bar",
         {
-          "position": "relative",
+          "position": "absolute",
           "backgroundColor": "#00000000",
           "barStyle": "light"
         }
       ],
       "expo-web-browser",
+      "expo-notifications",
       [
         "expo-media-library",
         {

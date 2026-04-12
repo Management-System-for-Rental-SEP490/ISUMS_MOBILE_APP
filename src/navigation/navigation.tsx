@@ -3,6 +3,7 @@ import { View, StyleSheet, AppState, type AppStateStatus } from "react-native";
 import { useTranslation } from "react-i18next";
 import { useQueryClient } from "@tanstack/react-query";
 import { NavigationContainer } from "@react-navigation/native";
+import { navigationRef } from "./navigationRef";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import { CustomAlert } from "../shared/components/alert";
 import Login from "../features/screens/authentication/LoginScreen";
@@ -30,6 +31,9 @@ import NotificationScreen from "../features/tenant/screens/tenantNotification/No
 import UserProfileScreen from "../features/screens/user/UserProfileScreen";
 import UserContractDetailScreen from "../features/screens/user/userContractDetail";
 import ConsumptionScreen from "../features/tenant/screens/tenantConsumption/ConsumptionScreen";
+import IotAlertDetailScreen from "../features/tenant/screens/tenantNotification/IotAlertDetailScreen";
+import { useSetupIotNotifications } from "../features/tenant/components/IotPushAlertOverlay";
+import { TenantIotAlertOverlay } from "../features/tenant/components/TenantIotAlertOverlay";
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
 
@@ -49,6 +53,8 @@ const Navigation = () => {
 
   const [isReady, setIsReady] = useState(false);
   const [isSyncingMainHouseOnLogin, setIsSyncingMainHouseOnLogin] = useState(false);
+
+  useSetupIotNotifications();
 
   // Kiểm tra xem User hiện tại đã xem Onboarding chưa
   const showOnboarding = isLoggedIn && user && !onboardedUsers.includes(user);
@@ -151,11 +157,28 @@ const Navigation = () => {
 
   return (
     <View style={navStyles.root}>
-      <NavigationContainer>
-        <Stack.Navigator screenOptions={{ headerShown: false }}>
+      <NavigationContainer ref={navigationRef}>
+        <Stack.Navigator
+          screenOptions={{
+            headerShown: false,
+            /** Android edge-to-edge: nội dung vẽ phía sau status bar + thanh điều hướng (mặc định RN Screens: navigationBarTranslucent = false). */
+            statusBarTranslucent: true,
+            navigationBarTranslucent: true,
+            navigationBarColor: "#00000000",
+          }}
+        >
           {isLoggedIn ? (
             showOnboarding ? (
-              <Stack.Screen name="OnBoarding" component={OnBoarding} />
+              <Stack.Screen
+                name="OnBoarding"
+                component={OnBoarding}
+                options={{
+                  /** Gradient tối → icon status bar sáng; nền trong suốt để thấy đồng hồ/pin. */
+                  statusBarStyle: "light",
+                  statusBarBackgroundColor: "transparent",
+                  statusBarTranslucent: true,
+                }}
+              />
             ) : (
               <>
                 <Stack.Screen name="Main" component={HomeScreen} />
@@ -188,6 +211,7 @@ const Navigation = () => {
                 />
                 <Stack.Screen name="ConsumptionScreen" component={ConsumptionScreen} />
                 <Stack.Screen name="NotificationScreen" component={NotificationScreen} />
+                <Stack.Screen name="IotAlertDetail" component={IotAlertDetailScreen} />
                 <Stack.Screen name="ProfileScreen" component={UserProfileScreen} />
                 <Stack.Screen name="UserContractDetail" component={UserContractDetailScreen} />
               </>
@@ -205,6 +229,7 @@ const Navigation = () => {
           )}
         </Stack.Navigator>
       </NavigationContainer>
+      {isLoggedIn && role === "tenant" && !showOnboarding ? <TenantIotAlertOverlay /> : null}
       <KeycloakChangePasswordWebViewOverlay />
     </View>
   );

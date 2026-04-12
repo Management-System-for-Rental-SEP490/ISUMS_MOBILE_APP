@@ -161,3 +161,69 @@ export const headerOnBrand = {
   btnGlass: "rgba(255, 255, 255, 0.22)",
   ripple: "rgba(255,255,255,0.2)",
 } as const;
+
+// ── Tiêu thụ IoT (điện/nước) — gom theo 010, không rải hex ngoài file này ─────
+
+/** Banner cảnh báo (cam) — alert IoT / nhắc nhở */
+export const consumptionWarningBannerBg = "#FFF7ED";
+export const consumptionWarningBannerBorder = "#FED7AA";
+
+/** Banner nguy hiểm (đỏ) */
+export const consumptionDangerBannerBg = "#FEF2F2";
+export const consumptionDangerBannerBorder = "#FECACA";
+export const consumptionDangerBannerTitle = "#B91C1C";
+export const consumptionDangerBannerSub = "#7F1D1D";
+
+/** Chip sự kiện relay (nạp lại / mất điện) */
+export const consumptionPowerEventChip = {
+  restoredBg: tenantInvoicePaidBadgeBg,
+  restoredBorder: "#BBF7D0",
+  restoredText: tenantInvoicePaidBadgeFg,
+  lostBg: consumptionDangerBannerBg,
+  lostBorder: consumptionDangerBannerBorder,
+  lostText: BRAND_DANGER,
+} as const;
+
+/** Ô chỉ số gas (critical / warn / an toàn) */
+export const consumptionGasCell = {
+  critical: { border: "#FECACA", bg: "#FFF5F5" },
+  warn: { border: "#FED7AA", bg: "#FFFBEB" },
+  ok: { border: "#BBF7D0", bg: "#F0FDF4" },
+} as const;
+
+/** Badge live / offline (chip IoT) */
+export const iotConnectionBadge = {
+  onBackground: neutral.sectionTintMint,
+  offBackground: consumptionDangerBannerBg,
+  onDot: "#22C55E",
+  offDot: "#EF4444",
+  onLabel: "#16A34A",
+  offLabel: BRAND_DANGER,
+} as const;
+
+/** Màu cột phân bổ theo khu vực — điện (accent xanh lá) */
+export const consumptionAreaDistributionColors = [
+  brandPrimary,
+  BRAND_BLUE,
+  "#8B5CF6",
+  "#F97316",
+  "#EC4899",
+] as const;
+
+/** Màu cột phân bổ — nước (accent xanh biển, thứ hai xanh lá thương hiệu) */
+export const consumptionAreaDistributionColorsWater = [
+  waterAccent,
+  brandPrimary,
+  "#8B5CF6",
+  "#F97316",
+  "#EC4899",
+] as const;
+
+/** Chỉ số V / A trên card monitoring */
+export const consumptionTelemetryMetric = {
+  voltage: "#16A34A",
+  current: BRAND_BLUE,
+} as const;
+
+/** Nút “bật điện” (xanh) khi khu vực đang tắt */
+export const consumptionPowerOnGreen = "#16A34A";

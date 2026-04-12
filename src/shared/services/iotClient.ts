@@ -1,17 +1,20 @@
 /**
- * IoT Client – kết nối WebSocket + REST tới AWS cho dữ liệu điện/nước realtime.
- * Dùng chung cho tenant (và sau này staff nếu cần).
- * Không gán cứng houseId/areaId/thingId; các giá trị đó lấy từ useTenantContext hoặc param.
+ * IoT Client – WebSocket + REST AWS (điện/nước realtime).
  */
 import { EventEmitter } from "eventemitter3";
 import { DATA_LOAD_TIMEOUT_MS, IOT_WS_URL, IOT_REST_BASE } from "../api/config";
-import type { TelemetryMessage, UsageData } from "../types/iot";
+import type { TelemetryMessage, TelemetryStream, UsageData } from "../types/iot";
 
 class IotClient extends EventEmitter {
   private ws: WebSocket | null = null;
   private subscriptions = new Set<string>();
+  private topicSubs = new Set<string>();
   private reconnectTimer: ReturnType<typeof setTimeout> | null = null;
   private shouldConnect = false;
+
+  get isConnected(): boolean {
+    return this.ws?.readyState === WebSocket.OPEN;
+  }
 
   connect(): void {
     this.shouldConnect = true;
@@ -27,6 +30,7 @@ class IotClient extends EventEmitter {
   }
 
   subscribe(thing: string): void {
+    if (!thing) return;
     this.subscriptions.add(thing);
     this._send({ action: "subscribe", thing });
   }
@@ -36,13 +40,17 @@ class IotClient extends EventEmitter {
     this._send({ action: "unsubscribe", thing });
   }
 
-  /**
-   * Gọi REST API usage của AWS.
-   * Trần thời gian = `DATA_LOAD_TIMEOUT_MS` (fetch abort nếu quá lâu; phản hồi sớm vẫn trả ngay).
-   * @param pk – partition key, format: `${houseId}#${metric}` (metric = "electricity" | "water").
-   * @param period – "day" | "week" | "month".
-   * @param value – chuỗi ngày/tuần/tháng (vd "2026-03-10", "2026-W10", "2026-03").
-   */
+  subscribeTopic(topic: string): void {
+    if (!topic) return;
+    this.topicSubs.add(topic);
+    this._send({ action: "subscribe", topic });
+  }
+
+  unsubscribeTopic(topic: string): void {
+    this.topicSubs.delete(topic);
+    this._send({ action: "unsubscribe", topic });
+  }
+
   async getUsage(
     pk: string,
     period: "day" | "week" | "month",
@@ -71,15 +79,69 @@ class IotClient extends EventEmitter {
       this.subscriptions.forEach((thing) =>
         this._send({ action: "subscribe", thing })
       );
+      this.topicSubs.forEach((topic) =>
+        this._send({ action: "subscribe", topic })
+      );
     };
 
     this.ws.onmessage = (event) => {
       try {
-        const msg: TelemetryMessage = JSON.parse(event.data);
+        const msg = JSON.parse(event.data);
         this.emit("telemetry", msg);
-        this.emit(`telemetry:${msg.thing}`, msg);
+        if (msg?.type === "telemetry" && msg?.thing) {
+          this.emit(`telemetry:${msg.thing}`, msg as TelemetryMessage);
+        }
+        if (msg?.type === "telemetry_batch" && msg?.thing && Array.isArray(msg?.nodes)) {
+          for (const node of msg.nodes as Record<string, unknown>[]) {
+            if (!node.houseId) continue;
+            const base = {
+              type: "telemetry" as const,
+              thing: msg.thing as string,
+              serial: node.serial as string | undefined,
+              houseId: node.houseId as string,
+              areaId: (node.areaId as string) || "",
+              areaName: node.areaName as string | undefined,
+              ts: (msg.ts as number) ?? Date.now(),
+            };
+            const streams: { flag: string; stream: TelemetryStream }[] = [
+              { flag: "ok_electric", stream: "power" },
+              { flag: "ok_water", stream: "water" },
+              { flag: "ok_gas", stream: "gas" },
+              { flag: "ok_env", stream: "environment" },
+            ];
+            for (const { flag, stream } of streams) {
+              if (!node[flag]) continue;
+              const m: TelemetryMessage = {
+                ...base,
+                stream,
+                features: {
+                  v: node.v as number | undefined,
+                  i: node.i as number | undefined,
+                  p: node.p as number | undefined,
+                  kwh: node.kwh as number | undefined,
+                  hz: node.hz as number | undefined,
+                  pf: node.pf as number | undefined,
+                  d_kwh: node.d_kwh as number | undefined,
+                  w_lpm: node.w_lpm as number | undefined,
+                  w_tot: node.w_tot as number | undefined,
+                  d_w_tot: node.d_w_tot as number | undefined,
+                  gas_ppm: node.gas_ppm as number | undefined,
+                  temp_c: node.temp_c as number | undefined,
+                  humidity_pct: node.humidity_pct as number | undefined,
+                  env_alert_flags: node.env_alert_flags as number | undefined,
+                  dt: node.dt as number | undefined,
+                  buzzer_active: node.buzzer_active as boolean | undefined,
+                  power_lost: node.power_lost as boolean | undefined,
+                  power_restored: node.power_restored as boolean | undefined,
+                  water_leak_suspected: node.water_leak_suspected as boolean | undefined,
+                },
+              };
+              this.emit(`telemetry:${msg.thing}`, m);
+            }
+          }
+        }
       } catch {
-        // ignore parse error
+        /* ignore */
       }
     };
 

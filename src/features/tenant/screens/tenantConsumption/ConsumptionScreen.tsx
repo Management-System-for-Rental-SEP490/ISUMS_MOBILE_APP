@@ -16,6 +16,7 @@ import {
   stackScreenTitleSideSlotStyle,
 } from "../../../../shared/components/StackScreenTitleBadge";
 import { brandPrimary, waterAccent, neutral } from "../../../../shared/theme/color";
+import { tenantSoftCard } from "../../../../shared/styles/tenantSoftCard";
 import ElectricUsageScreen from "./ElectricUsageScreen";
 import WaterUsageScreen from "./WaterUsageScreen";
 
@@ -96,7 +97,7 @@ const ConsumptionScreen = () => {
                   {
                     translateX: slideAnim.interpolate({
                       inputRange: [0, 1],
-                      outputRange: [0, (screenWidth - 64) / 2],
+                      outputRange: [0, (screenWidth - 32) / 2],
                     }),
                   },
                 ],
@@ -109,7 +110,7 @@ const ConsumptionScreen = () => {
             onPress={() => switchTab("electric")}
           >
             <Icons.electric
-              color={activeTab === "electric" ? "#fff" : neutral.textSecondary}
+              color={activeTab === "electric" ? neutral.surface : neutral.textSecondary}
               size={18}
             />
             <Text
@@ -126,7 +127,7 @@ const ConsumptionScreen = () => {
             onPress={() => switchTab("water")}
           >
             <Icons.water
-              color={activeTab === "water" ? "#fff" : neutral.textSecondary}
+              color={activeTab === "water" ? neutral.surface : neutral.textSecondary}
               size={18}
             />
             <Text
@@ -164,20 +165,18 @@ export default ConsumptionScreen;
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: neutral.background,
+    backgroundColor: neutral.canvasMuted,
   },
   switchContainer: {
-    paddingHorizontal: 32,
+    paddingHorizontal: 16,
     paddingVertical: 12,
-    backgroundColor: neutral.background,
+    backgroundColor: neutral.canvasMuted,
   },
   switchTrack: {
     flexDirection: "row",
-    backgroundColor: neutral.surface,
-    borderRadius: 25,
+    ...tenantSoftCard,
+    borderRadius: 999,
     padding: 3,
-    borderWidth: 1,
-    borderColor: neutral.border,
     position: "relative",
     overflow: "hidden",
   },
@@ -203,7 +202,7 @@ const styles = StyleSheet.create({
     color: neutral.textSecondary,
   },
   switchTabTextActive: {
-    color: "#fff",
+    color: neutral.surface,
   },
   contentRow: {
     flexDirection: "row",

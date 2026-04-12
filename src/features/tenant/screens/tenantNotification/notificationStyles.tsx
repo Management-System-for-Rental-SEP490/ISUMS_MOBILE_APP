@@ -5,6 +5,7 @@ import {
   brandTintBg,
   neutral,
 } from "../../../../shared/theme/color";
+import { tenantSoftCard } from "../../../../shared/styles/tenantSoftCard";
 import { appTypography } from "../../../../shared/utils/typography";
 
 export const notificationStyles = StyleSheet.create({
@@ -13,15 +14,22 @@ export const notificationStyles = StyleSheet.create({
     backgroundColor: neutral.canvasMuted,
   },
   listContent: {
-    paddingHorizontal: 20,
+    paddingHorizontal: 16,
     paddingTop: 12,
     paddingBottom: 100,
+  },
+  /** Bọc nhãn + chip ngày — cùng token card với Home / Tiêu thụ. */
+  dateFilterCard: {
+    ...tenantSoftCard,
+    paddingVertical: 12,
+    paddingHorizontal: 12,
+    marginBottom: 16,
   },
   dateFilterLabel: {
     ...appTypography.micro,
     fontWeight: "700",
     color: neutral.slate500,
-    marginBottom: 8,
+    marginBottom: 10,
     textTransform: "uppercase",
     letterSpacing: 0.4,
   },
@@ -57,17 +65,17 @@ export const notificationStyles = StyleSheet.create({
     color: brandSecondary,
   },
   dateRow: {
-    paddingBottom: 16,
     gap: 10,
+    paddingBottom: 0,
   },
   dateChip: {
     paddingHorizontal: 16,
     paddingVertical: 9,
     borderRadius: 999,
     borderWidth: 1,
-    borderColor: neutral.slate200,
+    borderColor: neutral.borderMuted,
     marginRight: 10,
-    backgroundColor: neutral.surface,
+    backgroundColor: neutral.canvasMuted,
   },
   dateChipText: {
     ...appTypography.caption,
@@ -102,7 +110,7 @@ export const notificationStyles = StyleSheet.create({
     fontWeight: "700",
   },
   paginationRow: {
-    paddingHorizontal: 20,
+    paddingHorizontal: 16,
     paddingBottom: 10,
   },
   pageBtn: {
@@ -126,104 +134,12 @@ export const notificationStyles = StyleSheet.create({
   pageBtnTextActive: {
     color: brandSecondary,
   },
-  alertCard: {
-    backgroundColor: neutral.surface,
-    borderRadius: 16,
-    padding: 14,
-    marginBottom: 12,
-    borderWidth: 1,
-    borderColor: neutral.borderMuted,
-    shadowColor: neutral.slate900,
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.06,
-    shadowRadius: 10,
-    elevation: 2,
-    borderCurve: "continuous",
-  },
-  alertCardRow: {
-    flexDirection: "row",
-    alignItems: "flex-start",
-    gap: 12,
-  },
-  alertIconCircle: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    alignItems: "center",
-    justifyContent: "center",
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: neutral.borderMuted,
-  },
-  alertMain: {
-    flex: 1,
-    minWidth: 0,
-    gap: 8,
-  },
-  alertBadge: {
-    alignSelf: "flex-start",
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-    borderRadius: 8,
-  },
-  alertBadgeText: {
-    ...appTypography.badge,
-    fontWeight: "800",
-  },
-  alertBadgeStream: {
-    ...appTypography.badge,
-    fontWeight: "600",
-  },
-  alertTitle: {
-    ...appTypography.listTitle,
-    fontWeight: "800",
-    lineHeight: 20,
-  },
-  alertDetail: {
-    ...appTypography.secondary,
-    color: neutral.slate600,
-    lineHeight: 18,
-  },
-  alertFooter: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    gap: 10,
-    marginTop: 2,
-  },
-  areaBadge: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 4,
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: neutral.slate200,
-    backgroundColor: neutral.backgroundSubtle,
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-    maxWidth: "72%",
-  },
-  areaText: {
-    ...appTypography.badge,
-    fontWeight: "600",
-    color: neutral.slate600,
-    flexShrink: 1,
-  },
-  alertTime: {
-    ...appTypography.badge,
-    color: neutral.slate400,
-    flexShrink: 0,
-  },
   itemCard: {
     flexDirection: "row",
-    backgroundColor: neutral.surface,
-    borderRadius: 16,
+    alignItems: "flex-start",
     padding: 16,
     marginBottom: 12,
-    shadowColor: neutral.slate900,
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.06,
-    shadowRadius: 8,
-    elevation: 3,
+    ...tenantSoftCard,
   },
   itemCardUnread: {
     borderLeftWidth: 4,
@@ -273,7 +189,7 @@ export const notificationStyles = StyleSheet.create({
   },
   emptyStateWrap: {
     paddingVertical: 40,
-    paddingHorizontal: 24,
+    paddingHorizontal: 16,
     alignItems: "center",
     gap: 12,
   },
@@ -283,11 +199,16 @@ export const notificationStyles = StyleSheet.create({
     borderRadius: 36,
     backgroundColor: neutral.surface,
     borderWidth: 1,
-    borderColor: neutral.slate200,
+    borderColor: "rgba(0,0,0,0.06)",
     alignItems: "center",
     justifyContent: "center",
     marginBottom: 4,
     borderCurve: "continuous",
+    shadowColor: neutral.black,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.05,
+    shadowRadius: 10,
+    elevation: 2,
   },
   emptyText: {
     ...appTypography.dialogMessage,

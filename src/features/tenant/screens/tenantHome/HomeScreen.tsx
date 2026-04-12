@@ -64,6 +64,7 @@ import {
 import { CustomAlert } from "../../../../shared/components/alert";
 import Icons from "../../../../shared/theme/icon";
 import { tenantFooterLinks } from "../../../../shared/constants/tenantFooterLinks";
+import { IotPushAlertOverlay } from "../../components/IotPushAlertOverlay";
 
 const EMPTY_TENANT_HOUSES: HouseFromApi[] = [];
 const EMPTY_TENANT_INVOICES: TenantInvoiceFromApi[] = [];
@@ -1083,6 +1084,7 @@ const HomeScreen = ({ navigation }: HomeScreenProps) => {
             <Text style={homeStyles.accessGateEmptyText}>{t("home.access.no_house")}</Text>
           </ScrollView>
         </View>
+        <IotPushAlertOverlay />
       </View>
     );
   }
@@ -1187,6 +1189,7 @@ const HomeScreen = ({ navigation }: HomeScreenProps) => {
           </View>
         </TouchableWithoutFeedback>
       </Modal>
+      <IotPushAlertOverlay />
     </View>
   );
 };

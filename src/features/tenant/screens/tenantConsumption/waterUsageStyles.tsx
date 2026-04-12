@@ -1,8 +1,21 @@
 import { StyleSheet, Dimensions } from "react-native";
-import { neutral, waterAccent } from "../../../../shared/theme/color";
+import { tenantSoftCard } from "../../../../shared/styles/tenantSoftCard";
+import {
+  BRAND_DANGER,
+  consumptionDangerBannerBg,
+  consumptionDangerBannerBorder,
+  neutral,
+  waterAccent,
+} from "../../../../shared/theme/color";
 import { appTypography } from "../../../../shared/utils/typography";
 
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
+
+/** Token dùng cho màn IoT nước (WaterUsageScreen). */
+const WU_CARD = neutral.surface;
+const WU_T1 = neutral.slate900;
+const WU_T2 = neutral.slate500;
+const WU_BDR = neutral.borderMuted;
 
 /**
  * Styles cho màn hình tiêu thụ nước.
@@ -17,7 +30,7 @@ export const waterUsageStyles = StyleSheet.create({
     flex: 1,
   },
   contentContainer: {
-    paddingHorizontal: 20,
+    paddingHorizontal: 16,
     paddingTop: 16,
     paddingBottom: 100,
   },
@@ -270,4 +283,215 @@ export const waterUsageStyles = StyleSheet.create({
     ...appTypography.caption,
     color: neutral.slate500,
   },
+});
+
+// ── IoT WaterUsageScreen ────────────────────────────────────────────────────
+
+export const waterUsageLiveBadgeStyles = StyleSheet.create({
+  wrap: {
+    flexDirection: "row",
+    alignItems: "center",
+    borderRadius: 999,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+  },
+  dot: { width: 6, height: 6, borderRadius: 3, marginRight: 4 },
+  txt: { fontSize: 10, fontWeight: "800", letterSpacing: 0.5 },
+});
+
+export const waterUsageAreaTabStyles = StyleSheet.create({
+  cardWrap: {
+    marginHorizontal: 16,
+    marginTop: 8,
+    marginBottom: 4,
+    paddingVertical: 12,
+    paddingHorizontal: 12,
+    ...tenantSoftCard,
+  },
+  sectionLabel: {
+    fontSize: 11,
+    fontWeight: "800",
+    color: WU_T2,
+    letterSpacing: 0.45,
+    textTransform: "uppercase",
+    marginBottom: 10,
+  },
+  scroll: {},
+  content: {
+    flexDirection: "row",
+    flexWrap: "nowrap",
+    alignItems: "center",
+    gap: 8,
+    paddingRight: 8,
+  },
+  chip: {
+    paddingHorizontal: 14,
+    paddingVertical: 9,
+    borderRadius: 999,
+    borderWidth: 1,
+    borderColor: WU_BDR,
+    backgroundColor: neutral.canvasMuted,
+  },
+  chipText: {
+    fontSize: 13,
+  },
+});
+
+export const waterUsageHeroStyles = StyleSheet.create({
+  card: {
+    marginHorizontal: 16,
+    marginTop: 14,
+    padding: 18,
+    borderLeftWidth: 4,
+    ...tenantSoftCard,
+  },
+  label: { fontSize: 10, fontWeight: "800", color: WU_T2, letterSpacing: 1, marginBottom: 14 },
+  row: { flexDirection: "row", alignItems: "center" },
+  cell: { flex: 1, alignItems: "center" },
+  divider: { width: 1, height: 40, backgroundColor: WU_BDR },
+  period: { fontSize: 11, color: WU_T2, fontWeight: "600", marginBottom: 4 },
+  val: { fontSize: 22, fontWeight: "900", color: WU_T1 },
+  unit: { fontSize: 11, fontWeight: "600", color: WU_T2 },
+});
+
+export const waterUsageMetricStyles = StyleSheet.create({
+  wrap: { flex: 1, flexDirection: "row", alignItems: "center", paddingVertical: 12, paddingHorizontal: 12 },
+  icon: { fontSize: 16, width: 24, textAlign: "center", marginRight: 8 },
+  body: { flex: 1 },
+  label: { fontSize: 10, color: WU_T2, fontWeight: "700", letterSpacing: 0.4, marginBottom: 3 },
+  value: { fontSize: 17, fontWeight: "800", color: WU_T1 },
+});
+
+export const waterUsageCardStyles = StyleSheet.create({
+  card: {
+    marginHorizontal: 16,
+    marginTop: 14,
+    overflow: "hidden",
+    ...tenantSoftCard,
+  },
+});
+
+export const waterUsageCardHeaderStyles = StyleSheet.create({
+  wrap: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    borderBottomWidth: 1,
+    borderBottomColor: WU_BDR,
+  },
+  left: { flex: 1 },
+  title: { fontSize: 14, fontWeight: "800", color: WU_T1 },
+  sub: { fontSize: 11, color: WU_T2, fontWeight: "600", marginTop: 2 },
+});
+
+export const waterUsageMonitoringSkeletonStyles = StyleSheet.create({
+  card: {
+    marginHorizontal: 16,
+    marginTop: 14,
+    backgroundColor: WU_CARD,
+    borderRadius: 18,
+    borderWidth: 1,
+    borderColor: WU_BDR,
+    overflow: "hidden",
+  },
+  header: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    paddingHorizontal: 16,
+    paddingVertical: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: WU_BDR,
+  },
+  row: { flexDirection: "row" },
+  cell: { flex: 1, paddingVertical: 13, paddingHorizontal: 14 },
+  vDiv: { width: 1, backgroundColor: WU_BDR },
+});
+
+export const waterUsageScreenIoTStyles = StyleSheet.create({
+  flowStrip: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+  },
+  flowDot: { width: 8, height: 8, borderRadius: 99, marginRight: 10 },
+  flowBody: { flex: 1 },
+  flowStatus: { fontSize: 14, fontWeight: "800" },
+  flowSub: { fontSize: 12, color: WU_T2, fontWeight: "600" },
+  leakBadge: { borderRadius: 8, paddingHorizontal: 8, paddingVertical: 4 },
+  leakBadgeTxt: { color: neutral.surface, fontWeight: "900", fontSize: 12 },
+  metricRow: { flexDirection: "row" },
+  metricVDiv: { width: 1, backgroundColor: WU_BDR },
+  metricHDiv: { height: 1, backgroundColor: WU_BDR },
+  leakBanner: {
+    padding: 14,
+    backgroundColor: consumptionDangerBannerBg,
+    borderTopWidth: 1,
+    borderTopColor: consumptionDangerBannerBorder,
+  },
+  leakBannerTxt: { fontSize: 12, color: BRAND_DANGER, fontWeight: "700", lineHeight: 18 },
+  waitRow: { flexDirection: "row", alignItems: "center", gap: 10, padding: 16 },
+  waitTxt: { fontSize: 13, color: WU_T2, fontWeight: "600" },
+  distSortRow: {
+    flexDirection: "row",
+    gap: 16,
+    paddingHorizontal: 16,
+    paddingBottom: 8,
+  },
+  sortTxt: { fontSize: 12, color: WU_T2, fontWeight: "600" },
+  sortActive: { color: waterAccent, fontWeight: "800" },
+  distBody: { padding: 16, paddingTop: 6 },
+  distRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingVertical: 10,
+    borderBottomWidth: 1,
+    borderBottomColor: neutral.canvasMuted,
+  },
+  distL: { flexDirection: "row", alignItems: "center", flex: 1, marginRight: 10 },
+  distDot: { width: 8, height: 8, borderRadius: 99, marginRight: 9 },
+  distLbl: { fontSize: 13, color: WU_T1, fontWeight: "700", flex: 1 },
+  distR: { width: 115, alignItems: "flex-end" },
+  distVal: { fontSize: 13, fontWeight: "800", marginBottom: 5 },
+  distTrack: {
+    width: "100%",
+    height: 4,
+    backgroundColor: WU_BDR,
+    borderRadius: 999,
+    overflow: "hidden",
+  },
+  distFill: { height: "100%", borderRadius: 999 },
+  emptyTxt: { fontSize: 13, color: WU_T2, fontWeight: "600", paddingVertical: 8 },
+  pager: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 20,
+    paddingBottom: 14,
+  },
+  pagerTxt: { fontSize: 22, color: waterAccent, fontWeight: "800" },
+  pagerMid: { fontSize: 13, fontWeight: "700", color: WU_T2 },
+});
+
+export const waterUsageGateStyles = StyleSheet.create({
+  gateWrap: {
+    flex: 1,
+    paddingHorizontal: 20,
+    paddingTop: 24,
+    justifyContent: "center",
+  },
+  gateBox: {
+    borderRadius: 16,
+    padding: 20,
+    backgroundColor: neutral.surface,
+    borderWidth: 1,
+    borderColor: neutral.borderMuted,
+  },
+  gateTitle: { fontSize: 18, fontWeight: "800", color: WU_T1, marginBottom: 8 },
+  gateBody: { fontSize: 14, color: WU_T2, lineHeight: 22 },
 });

@@ -1,6 +1,7 @@
 import { create } from "zustand";
 import { persist, createJSONStorage } from "zustand/middleware";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { useHomeIotAlertDismissStore } from "./useHomeIotAlertDismissStore";
 import { AuthState, ForgotPasswordState, RegisterState, MenuModalState } from "../shared/types";
 
 /*
@@ -66,7 +67,8 @@ const useAuthStore = create<AuthState>()(
         }));
       },
 
-      logout: () =>
+      logout: () => {
+        useHomeIotAlertDismissStore.getState().clearAllDismissed();
         set((state) => ({
           user: null,
           role: null,
@@ -78,8 +80,9 @@ const useAuthStore = create<AuthState>()(
           // Đảm bảo đóng WebView Keycloak nếu còn mở (tránh kẹt màn trắng khi logout).
           keycloakInAppSession: null,
           // KHÔNG reset onboardedUsers để ghi nhớ lịch sử của các user trên máy này
-          onboardedUsers: state.onboardedUsers, 
-        })),
+          onboardedUsers: state.onboardedUsers,
+        }));
+      },
 
       completeOnboarding: () => {
         const currentUser = get().user;

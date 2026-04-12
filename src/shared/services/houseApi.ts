@@ -4,7 +4,7 @@
  * và xử lý refresh token khi 401.
  */
 import axiosClient from "../api/axiosClient";
-import { BACKEND_API_BASE } from "../api/config";
+import { ASSETS_API_BASE, BACKEND_API_BASE } from "../api/config";
 import { mapTenantAccessItemToHouse } from "../utils/tenantAccess";
 import type {
   ApiResponse,
@@ -97,12 +97,9 @@ export const getHouseIotAlerts = async (
   sp.set("date", params.date);
   const c = params.cursor;
   if (c) sp.set("cursor", c);
-  const url = `${BACKEND_API_BASE}/assets/houses/${encodeURIComponent(
+  const url = `${ASSETS_API_BASE}/assets/houses/${encodeURIComponent(
     houseId
   )}/iot/alerts?${sp.toString()}`;
-  // const url = `https://api-dev.isums.pro/api/assets/houses/${encodeURIComponent(
-  //   houseId
-  // )}/iot/alerts?${sp.toString()}`;
   const response = await axiosClient.get<HouseIotAlertsApiResponse>(url);
   return response.data;
 };

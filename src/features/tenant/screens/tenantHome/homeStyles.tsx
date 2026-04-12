@@ -6,6 +6,7 @@ import {
   brandTintBg,
   neutral,
 } from "../../../../shared/theme/color";
+import { tenantSoftCard } from "../../../../shared/styles/tenantSoftCard";
 
 const ELEV_CARD = {
   shadowColor: neutral.black,
@@ -17,19 +18,6 @@ const ELEV_CARD = {
 
 /** Khoảng cách dọc giữa các card SOFT trên Home — card sau dùng marginTop: 0 để tránh cộng đôi. */
 export const HOME_CARD_STACK_GAP = 12;
-
-/** Khung trắng mềm — đồng bộ utility / khu vực nhà / sơ đồ */
-const SOFT_CARD = {
-  backgroundColor: neutral.surface,
-  borderRadius: 20,
-  borderWidth: 1,
-  borderColor: "rgba(0,0,0,0.04)",
-  shadowColor: neutral.black,
-  shadowOffset: { width: 0, height: 8 },
-  shadowOpacity: 0.06,
-  shadowRadius: 16,
-  elevation: 4,
-};
 
 /** Chip tầng — bóng nhẹ, bo mềm; active dùng bóng gắn brand */
 const SOFT_CHIP = {
@@ -58,7 +46,7 @@ export const homeStyles = StyleSheet.create({
         paddingHorizontal: 14,
         paddingTop: 14,
         paddingBottom: 16,
-        ...SOFT_CARD,
+        ...tenantSoftCard,
     },
     areaSectionTopRow: {
         flexDirection: "row",
@@ -294,7 +282,7 @@ export const homeStyles = StyleSheet.create({
         paddingHorizontal: 16,
         paddingTop: 18,
         paddingBottom: 16,
-        ...SOFT_CARD,
+        ...tenantSoftCard,
     },
     usageSummaryHeader: {
         flexDirection: "row",
@@ -627,7 +615,7 @@ export const homeStyles = StyleSheet.create({
         marginBottom: HOME_CARD_STACK_GAP,
         paddingVertical: 14,
         paddingHorizontal: 14,
-        ...SOFT_CARD,
+        ...tenantSoftCard,
     },
     currentHouseRow: {
         flexDirection: "row",
@@ -674,7 +662,7 @@ export const homeStyles = StyleSheet.create({
         paddingHorizontal: 16,
         paddingTop: 18,
         paddingBottom: 16,
-        ...SOFT_CARD,
+        ...tenantSoftCard,
     },
     utilitySectionTitle: {
         fontSize: 17,
@@ -731,7 +719,7 @@ export const homeStyles = StyleSheet.create({
         paddingHorizontal: 16,
         paddingTop: 18,
         paddingBottom: 16,
-        ...SOFT_CARD,
+        ...tenantSoftCard,
     },
     questionFeedbackSectionTitle: {
         fontSize: 17,
@@ -801,6 +789,59 @@ export const homeStyles = StyleSheet.create({
     questionTickerDotActive: {
         backgroundColor: "#4F46E5",
         width: 14,
+    },
+    /** Modal thông báo IoT một lần trên Home (chạm nền để đóng). */
+    iotHomeAlertModalWrap: {
+        flex: 1,
+        backgroundColor: "rgba(0,0,0,0.45)",
+    },
+    iotHomeAlertBackdropTap: {
+        flex: 1,
+    },
+    iotHomeAlertCardOuter: {
+        paddingHorizontal: 16,
+    },
+    iotHomeAlertCard: {
+        borderRadius: 18,
+        paddingVertical: 14,
+        paddingHorizontal: 14,
+        borderLeftWidth: 4,
+        backgroundColor: neutral.surface,
+        ...ELEV_CARD,
+    },
+    iotHomeAlertCardTop: {
+        flexDirection: "row",
+        alignItems: "flex-start",
+        gap: 12,
+    },
+    iotHomeAlertIconBubble: {
+        width: 40,
+        height: 40,
+        borderRadius: 12,
+        alignItems: "center",
+        justifyContent: "center",
+    },
+    iotHomeAlertTextBlock: {
+        flex: 1,
+        minWidth: 0,
+    },
+    iotHomeAlertTitle: {
+        fontSize: 15,
+        fontWeight: "800",
+        color: neutral.heading,
+        letterSpacing: -0.2,
+    },
+    iotHomeAlertSub: {
+        fontSize: 12,
+        fontWeight: "600",
+        color: neutral.textSecondary,
+        marginTop: 4,
+    },
+    iotHomeAlertHint: {
+        fontSize: 11,
+        fontWeight: "600",
+        color: neutral.textMuted,
+        marginTop: 10,
     },
 });
 

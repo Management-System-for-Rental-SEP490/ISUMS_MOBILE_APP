@@ -1,8 +1,8 @@
-import React, { memo, useEffect, useMemo, useRef, useState } from "react";
+import React, { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ScrollView, Text, Pressable, View, StyleSheet } from "react-native";
 import type { ColorValue } from "react-native";
 import { useTranslation } from "react-i18next";
-import { useNavigation } from "@react-navigation/native";
+import { useFocusEffect, useNavigation } from "@react-navigation/native";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { RootStackParamList } from "../../../../shared/types";
 import Icons from "../../../../shared/theme/icon";
@@ -47,12 +47,13 @@ import {
   translateTenantAccessReason,
 } from "../../../../shared/utils";
 import type { IotAlertItem } from "../../../../shared/types/api";
+import { dismissLatestIotHomeBannerForHouse } from "../../utils/dismissIotHomeBanner";
 
 const todayStr = () => toLocalYyyyMmDd(new Date());
 
 const normalizeAlertLevel = (level: string) => String(level ?? "").trim().toUpperCase();
 
-type NotificationAlertCardProps = {
+type NotificationCardRowProps = {
   title: string;
   detail: string | null;
   areaLabel: string;
@@ -60,10 +61,11 @@ type NotificationAlertCardProps = {
   levelLabel: string;
   levelFg: ColorValue;
   levelBg: ColorValue;
+  onPress: () => void;
 };
 
-/** Một thẻ cảnh báo: icon mức độ + badge + nội dung + khu vực + thời gian (hàng gọn, tối ưu re-render). */
-const NotificationAlertCard = memo(function NotificationAlertCard({
+/** Một mục trong danh sách — dạng card (icon + nội dung + thời gian). */
+const NotificationCardRow = memo(function NotificationCardRow({
   title,
   detail,
   areaLabel,
@@ -71,33 +73,37 @@ const NotificationAlertCard = memo(function NotificationAlertCard({
   levelLabel,
   levelFg,
   levelBg,
-}: NotificationAlertCardProps) {
+  onPress,
+}: NotificationCardRowProps) {
+  const metaLine = `${areaLabel} · ${levelLabel}`;
   return (
-    <View style={notificationStyles.alertCard}>
-      <View style={notificationStyles.alertCardRow}>
-        <View style={[notificationStyles.alertIconCircle, { backgroundColor: levelBg }]}>
-          <Icons.warning size={22} color={levelFg} />
-        </View>
-        <View style={notificationStyles.alertMain}>
-          <View style={[notificationStyles.alertBadge, { backgroundColor: levelBg }]}>
-            <Text style={[notificationStyles.alertBadgeText, { color: levelFg }]}>{levelLabel}</Text>
-          </View>
-          <Text style={notificationStyles.alertTitle} numberOfLines={2}>
-            {title}
-          </Text>
-          {detail ? <Text style={notificationStyles.alertDetail}>{detail}</Text> : null}
-          <View style={notificationStyles.alertFooter}>
-            <View style={notificationStyles.areaBadge}>
-              <Icons.place size={14} color={neutral.slate500} />
-              <Text style={notificationStyles.areaText} numberOfLines={1}>
-                {areaLabel}
-              </Text>
-            </View>
-            <Text style={notificationStyles.alertTime}>{timeStr}</Text>
-          </View>
-        </View>
+    <Pressable
+      accessibilityRole="button"
+      onPress={onPress}
+      style={({ pressed }) => [
+        notificationStyles.itemCard,
+        { borderLeftWidth: 4, borderLeftColor: levelFg },
+        pressed && { opacity: 0.92 },
+      ]}
+    >
+      <View style={[notificationStyles.iconWrapper, { backgroundColor: levelBg }]}>
+        <Icons.notification size={22} color={levelFg} />
       </View>
-    </View>
+      <View style={notificationStyles.itemBody}>
+        <Text style={notificationStyles.itemTitle} numberOfLines={2}>
+          {title}
+        </Text>
+        <Text style={notificationStyles.itemMessage} numberOfLines={2}>
+          {metaLine}
+        </Text>
+        {detail ? (
+          <Text style={notificationStyles.itemMessage} numberOfLines={3}>
+            {detail}
+          </Text>
+        ) : null}
+        <Text style={notificationStyles.itemTime}>{timeStr}</Text>
+      </View>
+    </Pressable>
   );
 });
 
@@ -118,6 +124,22 @@ const NotificationScreen = () => {
     }
   };
   const { houseId, house } = useTenantContext();
+
+  /** Đã vào danh sách thông báo → gỡ banner IoT cho cảnh báo mới nhất (khớp overlay). */
+  useFocusEffect(
+    useCallback(() => {
+      if (!houseId) return;
+      void dismissLatestIotHomeBannerForHouse(houseId);
+    }, [houseId])
+  );
+
+  const openIotAlertDetail = useCallback(
+    (alertId: string) => {
+      if (!houseId) return;
+      navigation.navigate("IotAlertDetail", { houseId, alertId });
+    },
+    [houseId, navigation]
+  );
 
   const PAGE_SIZE = CLIENT_LIST_PAGE_SIZE;
 
@@ -338,40 +360,42 @@ const NotificationScreen = () => {
         scrollEventThrottle={16}
       >
         <>
-          <Text style={notificationStyles.dateFilterLabel}>{t("notification.filter_by_date")}</Text>
-          <ScrollView
-            horizontal
-            nestedScrollEnabled
-            showsHorizontalScrollIndicator={false}
-            contentContainerStyle={notificationStyles.dateRow}
-          >
-            {dateOptions.map((d) => {
-              const active = selectedDate === d.str;
-              return (
-                <Pressable
-                  key={d.str}
-                  onPress={() => setSelectedDate(d.str)}
-                  style={({ pressed }) => [
-                    notificationStyles.dateChip,
-                    active && {
-                      backgroundColor: brandTintBg,
-                      borderColor: brandFocusBorder,
-                    },
-                    pressed && !active && { opacity: 0.88 },
-                  ]}
-                >
-                  <Text
-                    style={[
-                      notificationStyles.dateChipText,
-                      active && { color: brandSecondary },
+          <View style={notificationStyles.dateFilterCard}>
+            <Text style={notificationStyles.dateFilterLabel}>{t("notification.filter_by_date")}</Text>
+            <ScrollView
+              horizontal
+              nestedScrollEnabled
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={notificationStyles.dateRow}
+            >
+              {dateOptions.map((d) => {
+                const active = selectedDate === d.str;
+                return (
+                  <Pressable
+                    key={d.str}
+                    onPress={() => setSelectedDate(d.str)}
+                    style={({ pressed }) => [
+                      notificationStyles.dateChip,
+                      active && {
+                        backgroundColor: brandTintBg,
+                        borderColor: brandFocusBorder,
+                      },
+                      pressed && !active && { opacity: 0.88 },
                     ]}
                   >
-                    {d.label}
-                  </Text>
-                </Pressable>
-              );
-            })}
-          </ScrollView>
+                    <Text
+                      style={[
+                        notificationStyles.dateChipText,
+                        active && { color: brandSecondary },
+                      ]}
+                    >
+                      {d.label}
+                    </Text>
+                  </Pressable>
+                );
+              })}
+            </ScrollView>
+          </View>
 
           {initialLoading ? (
             <View style={[notificationStyles.loadingBlock, { position: "relative", minHeight: 120 }]}>
@@ -391,7 +415,7 @@ const NotificationScreen = () => {
               const { fg, bg } = getNotificationAlertLevelStyle(level);
               const detail = alert.detail?.trim() ? alert.detail.trim() : null;
               return (
-                <NotificationAlertCard
+                <NotificationCardRow
                   key={alert.alertId}
                   title={alert.title}
                   detail={detail}
@@ -400,6 +424,7 @@ const NotificationScreen = () => {
                   levelLabel={getLevelLabel(level)}
                   levelFg={fg}
                   levelBg={bg}
+                  onPress={() => openIotAlertDetail(alert.alertId)}
                 />
               );
             })
@@ -429,7 +454,7 @@ const NotificationScreen = () => {
 const gateStyles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: neutral.background,
+    backgroundColor: neutral.canvasMuted,
   },
   gateBox: {
     marginTop: 24,

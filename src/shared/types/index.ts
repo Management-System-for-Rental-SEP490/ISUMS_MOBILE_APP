@@ -92,6 +92,8 @@ export type RootStackParamList = AuthStackParamList & {
   ConsumptionScreen: { initialTab?: "electric" | "water" } | undefined;
   /** Thông báo (chuyển từ tab sang stack screen). */
   NotificationScreen: undefined;
+  /** Chi tiết cảnh báo IoT (từ banner hoặc danh sách). */
+  IotAlertDetail: { houseId: string; alertId: string };
   /** Hồ sơ cá nhân (chuyển từ tab sang stack screen). */
   ProfileScreen: undefined;
   /** Chi tiết hợp đồng điện tử (dữ liệu từ GET /api/econtracts/my). */
@@ -231,7 +233,16 @@ export type {
   VnpayReturnValidationApiResponse,
 } from "./api";
 
-export type { TelemetryMessage, UsageData } from "./iot";
+export type {
+  TelemetryMessage,
+  TelemetryStream,
+  TelemetryFeatures,
+  UsageData,
+  AlertWsMessage,
+  WsAlertItem,
+} from "./iot";
+
+export type { IAlert } from "./alert";
 
 export type ScanMode = "qr" | "nfc";
 export type HomeScreenProps = NativeStackScreenProps<RootStackParamList, "Main">;

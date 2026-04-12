@@ -13,13 +13,19 @@ const styles = StyleSheet.create({
     height: height,
     justifyContent: "flex-start",
     alignItems: "center",
-    paddingTop: height * 0.15,
   },
   imageContainer: {
     height: width * 0.8,
     justifyContent: "center",
     alignItems: "center",
     marginBottom: 40,
+  },
+  /** Slide có ghi chú: logo hơi nhỏ hơn slide thường, không thu quá mức. */
+  imageContainerCompact: {
+    height: width * 0.52,
+    justifyContent: "center",
+    alignItems: "center",
+    marginBottom: 18,
   },
   imageWrapper: {
     width: width * 0.6,
@@ -29,11 +35,34 @@ const styles = StyleSheet.create({
     alignItems: "center",
     overflow: "hidden",
   },
+  imageWrapperCompact: {
+    width: width * 0.54,
+    height: width * 0.54,
+    borderRadius: width * 0.27,
+    justifyContent: "center",
+    alignItems: "center",
+    overflow: "hidden",
+  },
   image: {
     width: width * 0.45,
     height: width * 0.45,
     borderRadius: width * 0.225,
     resizeMode: "cover",
+  },
+  imageCompact: {
+    width: width * 0.4,
+    height: width * 0.4,
+    borderRadius: width * 0.2,
+    resizeMode: "cover",
+  },
+  textScroll: {
+    flex: 1,
+    minHeight: 0,
+    width: "100%",
+  },
+  textScrollContent: {
+    flexGrow: 1,
+    paddingBottom: 12,
   },
   textContainer: {
     paddingHorizontal: 40,
@@ -54,7 +83,7 @@ const styles = StyleSheet.create({
     textAlign: "center",
   },
   footerNote: {
-    marginTop: 20,
+    marginTop: 16,
     paddingHorizontal: 14,
     paddingVertical: 12,
     borderRadius: 12,

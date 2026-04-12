@@ -101,8 +101,8 @@ const Header = ({
     <View style={headerStyles.container}>
       <StatusBar
         barStyle="light-content"
-        translucent={false}
-        backgroundColor={variant === "water" ? waterHeaderGradient[0] : brandGradient[0]}
+        translucent
+        backgroundColor="transparent"
       />
       <LinearGradient
         colors={gradientMaps[variant]}

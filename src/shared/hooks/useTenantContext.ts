@@ -1,38 +1,37 @@
 /**
  * Hook chứa ngữ cảnh tenant: nhà đang thuê, các khu vực chức năng, thingId IoT.
- * Danh sách IoT theo nhà: `useIotDevicesByHouseId(houseId)` (từ `useAssetItems`).
- * Dùng cho IoT (usage, telemetry) và màn consumption – dễ đối chiếu houseId/areaId với API.
+ * thingId lấy từ GET /api/assets/iot-devices/house/{houseId} (`useIotDevicesByHouseId`).
  * Chỉ dùng khi user đã đăng nhập với role tenant.
  */
 import { useMemo } from "react";
 import { useAuthStore } from "../../store/useAuthStore";
-import { useTenantHouses } from "./useHouses";
-import type { FunctionalAreaFromApi, HouseFromApi } from "../types/api";
+import { useTenantHouses, useFunctionalAreasByHouseId } from "./useHouses";
+import { useIotDevicesByHouseId } from "./useAssetItems";
+import type {
+  FunctionalAreaFromApi,
+  HouseFromApi,
+  IotNodeDeviceFromApi,
+} from "../types/api";
 
 /**
- * ThingId telemetry MQTT (tạm cứng). Sau này thay bằng `thingName` từ
- * `useIotDevicesByHouseId(houseId)` khi BE + app gắn xong.
+ * Fallback khi BE chưa trả `thingName` — giữ tương thích môi trường cũ.
+ * WS URL vẫn từ `EXPO_PUBLIC_IOT_WS_URL` trong [config](../api/config.ts).
  */
 export const TENANT_IOT_THING_ID =
   "ESP32-controller_62174095-1ba3-4296-ba16-40edf78c2de2";
 
 export interface TenantContextValue {
-  /** Nhà đang chọn (theo houseId trong auth hoặc căn đầu danh sách). */
   house: HouseFromApi | null;
-  /** ID căn nhà – dùng cho pk usage: houseId#electricity | houseId#water. */
   houseId: string | null;
-  /** Danh sách khu vực chức năng trong nhà (Bếp, Phòng khách, ...). */
   functionalAreas: FunctionalAreaFromApi[];
-  /** ID thiết bị IoT để subscribe WebSocket telemetry; hiện gán cứng. */
+  /** thingName controller — subscribe WebSocket telemetry. */
   thingId: string;
-  /** Đang tải dữ liệu nhà. */
+  thingLoading: boolean;
+  /** Node IoT theo nhà (serial, khu vực, …). */
+  iotNodes: IotNodeDeviceFromApi[];
   isLoading: boolean;
 }
 
-/**
- * Trả về ngữ cảnh tenant: house, houseId, functionalAreas, thingId.
- * Gọi useTenantHouses() và useAuthStore() để lấy houseId + danh sách nhà.
- */
 export function useTenantContext(): TenantContextValue {
   const { houseId: authHouseId } = useAuthStore();
   const { data: housesData, isLoading } = useTenantHouses();
@@ -48,21 +47,44 @@ export function useTenantContext(): TenantContextValue {
     if (authHouseId) {
       return tenantHouses.find((h) => h.id === authHouseId) ?? null;
     }
-    // Một căn: mặc định. Nhiều căn: houseId từ store (đồng bộ mainHouseId BE sau đăng nhập / chọn nhà chính).
     if (tenantHouses.length === 1) return tenantHouses[0]!;
     return null;
   }, [tenantHouses, authHouseId]);
 
+  const houseId = house?.id ?? null;
+
+  const { data: iotData, isLoading: thingLoading } = useIotDevicesByHouseId(
+    houseId ?? ""
+  );
+
+  const { data: areasData } = useFunctionalAreasByHouseId(houseId ?? "");
+
+  const thingId = useMemo<string>(() => {
+    const ctrl = iotData?.data;
+    const name = ctrl?.thingName?.trim();
+    if (name) return name;
+    return TENANT_IOT_THING_ID;
+  }, [iotData]);
+
+  const iotNodes = useMemo<IotNodeDeviceFromApi[]>(
+    () => iotData?.data?.devices ?? [],
+    [iotData]
+  );
+
   const functionalAreas = useMemo<FunctionalAreaFromApi[]>(() => {
-    const list = house?.functionalAreas ?? [];
-    return Array.isArray(list) ? list : [];
-  }, [house?.functionalAreas]);
+    const list = areasData?.data;
+    if (Array.isArray(list)) return list;
+    const embedded = house?.functionalAreas ?? [];
+    return Array.isArray(embedded) ? embedded : [];
+  }, [areasData, house?.functionalAreas]);
 
   return {
     house,
-    houseId: house?.id ?? null,
+    houseId,
     functionalAreas,
-    thingId: TENANT_IOT_THING_ID,
+    thingId,
+    thingLoading,
+    iotNodes,
     isLoading,
   };
 }

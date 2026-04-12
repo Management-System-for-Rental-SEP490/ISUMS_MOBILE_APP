@@ -1,80 +1,387 @@
-import React, { useMemo, useState, useEffect, useCallback } from "react";
-import { View, Text, ScrollView, useWindowDimensions, TouchableOpacity, StyleSheet } from "react-native";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import {
+  ActivityIndicator,
+  Animated,
+  ScrollView,
+  Text,
+  TouchableOpacity,
+  View,
+} from "react-native";
 import { useTranslation } from "react-i18next";
 import Header from "../../../../shared/components/header";
-import Icons from "../../../../shared/theme/icon";
-import { FloorPlanView } from "../../houseStructure";
-import { waterUsageStyles } from "./waterUsageStyles";
-import { useTenantContext, useRefreshControlGate } from "../../../../shared/hooks";
+import {
+  useTenantContext,
+  useAreasUsageDistribution,
+  useRefreshControlGate,
+} from "../../../../shared/hooks";
 import {
   PullToRefreshControl,
-  RefreshLogoInline,
   RefreshLogoOverlay,
 } from "@shared/components/RefreshLogoOverlay";
-import { useTenantIoTConnection, useTenantTelemetry, useTenantUsage } from "../../hooks/useTenantIoT";
-import { waterAccent, brandPrimary, neutral } from "../../../../shared/theme/color";
+import {
+  useTenantIoTConnection,
+  useAreaTelemetry,
+  useTenantUsage,
+} from "../../hooks/useTenantIoT";
+import {
+  waterAccent,
+  waterTintBg,
+  neutral,
+  BRAND_DANGER,
+  consumptionAreaDistributionColorsWater,
+  consumptionTelemetryMetric,
+  iotConnectionBadge,
+} from "../../../../shared/theme/color";
 import {
   formatDayMonthNumeric,
   getTenantAccessBlock,
   translateTenantAccessReason,
 } from "../../../../shared/utils";
+import {
+  waterUsageLiveBadgeStyles as lb,
+  waterUsageAreaTabStyles as at,
+  waterUsageHeroStyles as hc,
+  waterUsageMetricStyles as met,
+  waterUsageCardStyles as cd,
+  waterUsageCardHeaderStyles as ch,
+  waterUsageMonitoringSkeletonStyles as sk,
+  waterUsageScreenIoTStyles as styles,
+  waterUsageGateStyles as gateStyles,
+} from "./waterUsageStyles";
 
-/** ID khu vực: "all" = tổng cả nhà (dữ liệu thật từ AWS), còn lại = id từ functionalAreas (chưa có dữ liệu). */
-export type AreaId = string;
+const ACCENT = waterAccent;
+const BG = neutral.background;
+const T2 = neutral.slate500;
+const BDR = neutral.borderMuted;
+const AREA_COLORS = [...consumptionAreaDistributionColorsWater];
+const DIST_PAGE_SIZE = 5;
+
+function fmt(v?: number | null, d = 1) {
+  if (v == null || Number.isNaN(v)) return "—";
+  return v.toFixed(d);
+}
+
+function usePulse() {
+  const op = useRef(new Animated.Value(0.3)).current;
+  useEffect(() => {
+    const loop = Animated.loop(
+      Animated.sequence([
+        Animated.timing(op, { toValue: 0.7, duration: 650, useNativeDriver: true }),
+        Animated.timing(op, { toValue: 0.3, duration: 650, useNativeDriver: true }),
+      ])
+    );
+    loop.start();
+    return () => loop.stop();
+  }, [op]);
+  return op;
+}
+
+const Skel = ({
+  w, h, r = 8, mt = 0,
+}: { w: number | `${number}%`; h: number; r?: number; mt?: number }) => {
+  const op = usePulse();
+  return (
+    <Animated.View
+      style={{
+        width: w,
+        height: h,
+        borderRadius: r,
+        backgroundColor: neutral.slate200,
+        opacity: op,
+        marginTop: mt,
+      }}
+    />
+  );
+};
+
+const LiveBadge = ({ on }: { on: boolean }) => {
+  const { t } = useTranslation();
+  return (
+    <View
+      style={[
+        lb.wrap,
+        {
+          backgroundColor: on
+            ? iotConnectionBadge.onBackground
+            : iotConnectionBadge.offBackground,
+        },
+      ]}
+    >
+      <View
+        style={[
+          lb.dot,
+          { backgroundColor: on ? iotConnectionBadge.onDot : iotConnectionBadge.offDot },
+        ]}
+      />
+      <Text
+        style={[
+          lb.txt,
+          { color: on ? iotConnectionBadge.onLabel : iotConnectionBadge.offLabel },
+        ]}
+      >
+        {on ? t("consumption.iot_live") : t("consumption.iot_offline")}
+      </Text>
+    </View>
+  );
+};
+
+const AreaTabs = ({
+  chips,
+  selected,
+  accent,
+  tintBg,
+  onSelect,
+}: {
+  chips: { id: string; label: string }[];
+  selected: string;
+  accent: string;
+  tintBg: string;
+  onSelect: (id: string) => void;
+}) => {
+  const { t } = useTranslation();
+  return (
+    <View style={at.cardWrap}>
+      <Text style={at.sectionLabel}>{t("consumption.area_filter_section")}</Text>
+      <ScrollView
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        style={at.scroll}
+        contentContainerStyle={at.content}
+      >
+        {chips.map((c) => {
+          const active = selected === c.id;
+          return (
+            <TouchableOpacity
+              key={c.id}
+              style={[
+                at.chip,
+                active && {
+                  backgroundColor: tintBg,
+                  borderColor: accent,
+                },
+              ]}
+              onPress={() => onSelect(c.id)}
+              activeOpacity={0.7}
+            >
+              <Text
+                style={[
+                  at.chipText,
+                  { color: active ? accent : T2, fontWeight: active ? "800" : "600" },
+                ]}
+              >
+                {c.label}
+              </Text>
+            </TouchableOpacity>
+          );
+        })}
+      </ScrollView>
+    </View>
+  );
+};
+
+const HeroCard = ({
+  label,
+  dayVal,
+  weekVal,
+  monthVal,
+  unit,
+  accent,
+  loading,
+  periodDay,
+  periodWeek,
+  periodMonth,
+}: {
+  label: string;
+  dayVal: number;
+  weekVal: number;
+  monthVal: number;
+  unit: string;
+  accent: string;
+  loading: boolean;
+  periodDay: string;
+  periodWeek: string;
+  periodMonth: string;
+}) => (
+  <View style={[hc.card, { borderLeftColor: accent }]}>
+    <Text style={hc.label}>{label}</Text>
+    <View style={hc.row}>
+      {loading ? (
+        <>
+          <View style={hc.cell}><Skel w={52} h={28} /><Skel w={36} h={11} mt={6} /></View>
+          <View style={hc.divider} />
+          <View style={hc.cell}><Skel w={52} h={28} /><Skel w={36} h={11} mt={6} /></View>
+          <View style={hc.divider} />
+          <View style={hc.cell}><Skel w={52} h={28} /><Skel w={36} h={11} mt={6} /></View>
+        </>
+      ) : (
+        <>
+          <View style={hc.cell}>
+            <Text style={hc.period}>{periodDay}</Text>
+            <Text style={[hc.val, { color: accent }]}>
+              {dayVal.toFixed(1)}<Text style={hc.unit}> {unit}</Text>
+            </Text>
+          </View>
+          <View style={hc.divider} />
+          <View style={hc.cell}>
+            <Text style={hc.period}>{periodWeek}</Text>
+            <Text style={hc.val}>
+              {weekVal.toFixed(1)}<Text style={hc.unit}> {unit}</Text>
+            </Text>
+          </View>
+          <View style={hc.divider} />
+          <View style={hc.cell}>
+            <Text style={hc.period}>{periodMonth}</Text>
+            <Text style={hc.val}>
+              {monthVal.toFixed(1)}<Text style={hc.unit}> {unit}</Text>
+            </Text>
+          </View>
+        </>
+      )}
+    </View>
+  </View>
+);
+
+const Metric = ({
+  icon, label, value, valueColor,
+}: { icon: string; label: string; value: string; valueColor?: string }) => (
+  <View style={met.wrap}>
+    <Text style={met.icon}>{icon}</Text>
+    <View style={met.body}>
+      <Text style={met.label}>{label}</Text>
+      <Text style={[met.value, valueColor ? { color: valueColor } : null]}>{value}</Text>
+    </View>
+  </View>
+);
+
+const Card = ({ children }: { children: React.ReactNode }) => (
+  <View style={cd.card}>{children}</View>
+);
+
+const CardHeader = ({
+  title, subtitle, right,
+}: { title: string; subtitle?: string; right?: React.ReactNode }) => (
+  <View style={ch.wrap}>
+    <View style={ch.left}>
+      <Text style={ch.title}>{title}</Text>
+      {subtitle ? <Text style={ch.sub}>{subtitle}</Text> : null}
+    </View>
+    {right}
+  </View>
+);
 
 export type WaterUsageScreenProps = { showHeader?: boolean };
 
-const MAX_BAR_HEIGHT = 180;
-
 const WaterUsageScreen = ({ showHeader = true }: WaterUsageScreenProps) => {
   const { t, i18n } = useTranslation();
-  const { width: screenWidth } = useWindowDimensions();
-  const { houseId, functionalAreas, thingId, house } = useTenantContext();
+  const { houseId, functionalAreas, thingId, iotNodes, house } = useTenantContext();
   const accessBlock = useMemo(() => (house ? getTenantAccessBlock(house) : null), [house]);
-
-  const effectiveAreas = Array.isArray(functionalAreas) ? functionalAreas : [];
   const iotConnected = useTenantIoTConnection(thingId);
-  const usage = useTenantUsage({ houseId, metric: "water" });
-  const { water, waterHistory } = useTenantTelemetry(thingId);
-  const [pullRefreshing, setPullRefreshing] = useState(false);
   const { scrollAtTop, onScrollForRefreshGate } = useRefreshControlGate();
-  const onPullRefresh = useCallback(async () => {
-    setPullRefreshing(true);
-    try {
-      await usage.refetch();
-    } finally {
-      setPullRefreshing(false);
+
+  const areasWithNode = useMemo(() => {
+    const areas = Array.isArray(functionalAreas) ? functionalAreas : [];
+    if (!iotNodes.length) return areas;
+    return areas.filter((a) =>
+      iotNodes.some(
+        (n) => n.areaName?.trim().toLowerCase() === a.name?.trim().toLowerCase()
+      )
+    );
+  }, [functionalAreas, iotNodes]);
+
+  const areaChips = useMemo(() => {
+    const chips = [{ id: "all", label: t("consumption.area_all_house") }];
+    areasWithNode.forEach((a) => chips.push({ id: a.id, label: a.name }));
+    return chips;
+  }, [areasWithNode, t]);
+
+  const [selectedAreaId, setSelectedAreaId] = useState("all");
+  const isHouseLevel = selectedAreaId === "all";
+  const activeAreaId = isHouseLevel ? null : selectedAreaId;
+
+  const usage = useTenantUsage({ houseId, metric: "water", areaId: activeAreaId });
+  const [isAreaLoading, setIsAreaLoading] = useState(false);
+  const prevAreaRef = useRef("all");
+  useEffect(() => {
+    if (prevAreaRef.current !== selectedAreaId) {
+      prevAreaRef.current = selectedAreaId;
+      if (!isHouseLevel) setIsAreaLoading(true);
+      else setIsAreaLoading(false);
     }
-  }, [usage.refetch]);
+  }, [selectedAreaId, isHouseLevel]);
 
-  /** Tầng đang chọn: mặc định Tầng 1 (không còn "all"). */
-  const [selectedFloor, setSelectedFloor] = useState<string>("1");
-  /** Danh sách tầng suy ra từ khu vực chức năng (BE / house). */
-  const floorOptions = useMemo(() => {
-    const floors = new Set(effectiveAreas.map((a) => a.floorNo).filter(Boolean));
-    return Array.from(floors).sort((a, b) => parseInt(a, 10) - parseInt(b, 10));
-  }, [effectiveAreas]);
+  const distAreas = useMemo(
+    () => areasWithNode.map((a) => ({ id: a.id, name: a.name })),
+    [areasWithNode]
+  );
+  const areaDistribution = useAreasUsageDistribution({
+    houseId,
+    metric: "water",
+    areas: distAreas,
+  });
 
-  const summaryBars = useMemo(
-    () => [
-      { key: "day", label: t("consumption.period_day"), value: usage.dayVal },
-      { key: "week", label: t("consumption.period_week"), value: usage.weekVal },
-      { key: "month", label: t("consumption.period_month"), value: usage.monthVal },
-    ],
-    [usage.dayVal, usage.weekVal, usage.monthVal, t]
-  );
-  const maxSummary = useMemo(
-    () => Math.max(...summaryBars.map((b) => b.value), 0.001),
-    [summaryBars]
-  );
+  const { water } = useAreaTelemetry(thingId, activeAreaId);
+  useEffect(() => {
+    if (water != null) setIsAreaLoading(false);
+  }, [water]);
+
+  const [now, setNow] = useState(() => new Date());
+  useEffect(() => {
+    const id = setInterval(() => setNow(new Date()), 1000);
+    return () => clearInterval(id);
+  }, []);
+
+  const [pullRefreshing, setPullRefreshing] = useState(false);
+  const onRefresh = useCallback(async () => {
+    setPullRefreshing(true);
+    await Promise.all([usage.refetch(), areaDistribution.refetch()]);
+    setPullRefreshing(false);
+  }, [usage.refetch, areaDistribution.refetch]);
+
+  const w = water?.features;
+  const isFlowing = (w?.w_lpm ?? 0) > 0.1;
+  const leakSuspected = !!w?.water_leak_suspected;
+  const flowColor = leakSuspected ? BRAND_DANGER : isFlowing ? ACCENT : "#22C55E";
+  const flowLabel = leakSuspected
+    ? t("consumption.flow_leak")
+    : isFlowing
+      ? t("consumption.flow_running")
+      : t("consumption.flow_idle");
+
+  const [distSort, setDistSort] = useState<"value" | "name">("value");
+  const [distPage, setDistPage] = useState(1);
+  const sortedDist = useMemo(() => {
+    const raw = [...areaDistribution.items];
+    if (distSort === "value") raw.sort((a, b) => b.value - a.value);
+    else raw.sort((a, b) => (a.areaName || "").localeCompare(b.areaName || "", i18n.language));
+    return raw;
+  }, [areaDistribution.items, distSort, i18n.language]);
+  const distPages = Math.max(1, Math.ceil(sortedDist.length / DIST_PAGE_SIZE));
+  const distSlice = useMemo(() => {
+    const p = Math.min(distPage, distPages);
+    const start = (p - 1) * DIST_PAGE_SIZE;
+    return sortedDist.slice(start, start + DIST_PAGE_SIZE);
+  }, [sortedDist, distPage, distPages]);
+
+  useEffect(() => {
+    setDistPage(1);
+  }, [sortedDist.length, distSort]);
+
+  const heroLabel = isHouseLevel
+    ? t("consumption.hero_house_water")
+    : `${(areaChips.find((c) => c.id === selectedAreaId)?.label ?? "").toUpperCase()} · L`;
+
+  const unit = t("consumption.unit_L");
 
   if (accessBlock) {
     const title =
       accessBlock === "handover"
         ? t("home.access.handover_title")
         : t("home.access.deposit_title");
-
-    const accessReasonText = translateTenantAccessReason(house?.accessReason, house?.accessStatus, t);
+    const accessReasonText = translateTenantAccessReason(
+      house?.accessReason,
+      house?.accessStatus,
+      t
+    );
     const body =
       accessBlock === "handover"
         ? accessReasonText ||
@@ -84,9 +391,8 @@ const WaterUsageScreen = ({ showHeader = true }: WaterUsageScreenProps) => {
               : "—",
           })
         : accessReasonText || t("home.access.deposit_body");
-
     return (
-      <View style={waterUsageStyles.container}>
+      <View style={{ flex: 1, backgroundColor: BG }}>
         {showHeader ? <Header variant="water" /> : null}
         <View style={gateStyles.gateWrap}>
           <View style={gateStyles.gateBox}>
@@ -98,326 +404,212 @@ const WaterUsageScreen = ({ showHeader = true }: WaterUsageScreenProps) => {
     );
   }
 
-  const w = water?.features;
-
-  const formatFixedOrDash = (val: number | undefined | null, digits: number) =>
-    val == null || Number.isNaN(val) ? "—" : val.toFixed(digits);
-
-  const dwTotDisplay =
-    w?.d_w_tot != null && w.d_w_tot >= 0 ? w.d_w_tot.toFixed(3) : "—";
-
-  const sparkData = useMemo(
-    () => waterHistory.map((m) => m.features.w_lpm ?? 0),
-    [waterHistory]
-  );
-
-  const sparkCurrent =
-    w?.w_lpm != null && !Number.isNaN(w.w_lpm) ? w.w_lpm.toFixed(2) : "—";
-
-  const statItems = [
-    {
-      key: "w_lpm",
-      label: "LƯU LƯỢNG",
-      valueText: formatFixedOrDash(w?.w_lpm, 2),
-      unit: "L/min",
-    },
-    {
-      key: "w_tot",
-      label: "TỔNG TIÊU THỤ",
-      valueText: formatFixedOrDash(w?.w_tot, 3),
-      unit: "L",
-    },
-    {
-      key: "d_w_tot",
-      label: "d_w_tot",
-      valueText: dwTotDisplay,
-      unit: "L",
-    },
-    {
-      key: "dt",
-      label: "dt",
-      valueText: formatFixedOrDash(w?.dt, 0),
-      unit: "s",
-    },
-  ];
-
   return (
-    <View style={waterUsageStyles.container}>
+    <View style={{ flex: 1, backgroundColor: BG }}>
       {showHeader ? <Header variant="water" /> : null}
       <View style={{ flex: 1, position: "relative" }}>
         <RefreshLogoOverlay visible={pullRefreshing} />
         <ScrollView
-          style={waterUsageStyles.content}
-          contentContainerStyle={waterUsageStyles.contentContainer}
+          style={{ flex: 1 }}
           showsVerticalScrollIndicator={false}
-          keyboardShouldPersistTaps="handled"
-          keyboardDismissMode="on-drag"
           onScroll={onScrollForRefreshGate}
           scrollEventThrottle={16}
           refreshControl={
             <PullToRefreshControl
               refreshing={pullRefreshing}
-              onRefresh={onPullRefresh}
+              onRefresh={onRefresh}
               scrollAtTop={scrollAtTop}
             />
           }
         >
-        <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 4 }}>
-          <Text style={waterUsageStyles.title}>
-            {t("screens.water")}
-          </Text>
-          <View
-            style={{
-              flexDirection: "row",
-              alignItems: "center",
-              gap: 6,
-              paddingHorizontal: 10,
-              paddingVertical: 5,
-              borderRadius: 8,
-              backgroundColor: iotConnected ? "rgba(74,222,128,0.15)" : "rgba(248,113,113,0.15)",
-              borderWidth: 1,
-              borderColor: iotConnected ? "rgba(74,222,128,0.5)" : "rgba(248,113,113,0.5)",
-            }}
-          >
-            <View
-              style={{
-                width: 6,
-                height: 6,
-                borderRadius: 3,
-                backgroundColor: iotConnected ? "#4ADE80" : "#F87171",
-              }}
-            />
-            <Text
-              style={{
-                fontSize: 11,
-                fontWeight: "700",
-                color: iotConnected ? "#16a34a" : "#dc2626",
-              }}
-            >
-              {iotConnected ? t("consumption.iot_live") : t("consumption.iot_offline")}
-            </Text>
-          </View>
-        </View>
+          <AreaTabs
+            chips={areaChips}
+            selected={selectedAreaId}
+            accent={ACCENT}
+            tintBg={waterTintBg}
+            onSelect={setSelectedAreaId}
+          />
 
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          style={waterUsageStyles.categoryScroll}
-          contentContainerStyle={waterUsageStyles.categoryContent}
-        >
-          {floorOptions.map((floor) => {
-            const active = selectedFloor === floor;
-            return (
-              <TouchableOpacity
-                key={floor}
-                style={[
-                  waterUsageStyles.categoryChip,
-                  active && waterUsageStyles.categoryChipActive,
-                ]}
-                onPress={() => setSelectedFloor(floor)}
-                activeOpacity={0.8}
-              >
-                <Text
-                  style={[
-                    waterUsageStyles.categoryChipText,
-                    active && waterUsageStyles.categoryChipTextActive,
-                  ]}
-                >
-                  {t("consumption.floor_label", { floor })}
-                </Text>
-              </TouchableOpacity>
-            );
-          })}
-        </ScrollView>
+          <HeroCard
+            label={heroLabel}
+            dayVal={usage.dayVal}
+            weekVal={usage.weekVal}
+            monthVal={usage.monthVal}
+            unit={unit}
+            accent={ACCENT}
+            loading={usage.loading || isAreaLoading}
+            periodDay={t("consumption.period_day")}
+            periodWeek={t("consumption.period_week")}
+            periodMonth={t("consumption.period_month")}
+          />
 
-        {/* Sơ đồ nhà: Cover_Floor_Plan nền, khu vực theo position */}
-        <FloorPlanView
-          selectedFloor={selectedFloor}
-          selectedAreaId="all"
-          functionalAreas={effectiveAreas}
-          onSelectArea={() => {}}
-          accentColor={waterAccent}
-        />
-
-        {/* Realtime stat + sparkline (giống TestApp) */}
-        <View style={waterUsageStyles.realtimeCard}>
-          <View style={waterUsageStyles.realtimeTitleRow}>
-            <Text style={waterUsageStyles.realtimeTitle}>DỮ LIỆU NƯỚC REALTIME</Text>
-            <Text style={waterUsageStyles.realtimeTimestamp}>
-              {water?.ts ? new Date(water.ts).toLocaleTimeString("vi-VN") : ""}
-            </Text>
-          </View>
-
-          <View style={waterUsageStyles.statGrid}>
-            {statItems.map((item) => (
-              <View key={item.key} style={waterUsageStyles.statCard}>
-                <Text style={waterUsageStyles.statLabel}>{item.label}</Text>
-                <View style={waterUsageStyles.statValueRow}>
-                  <Text style={[waterUsageStyles.statValue, { color: waterAccent }]}>
-                    {item.valueText}
-                  </Text>
-                  <Text style={waterUsageStyles.statUnit}>{item.unit}</Text>
+          {!isHouseLevel &&
+            (isAreaLoading ? (
+              <View style={sk.card}>
+                <View style={sk.header}>
+                  <Skel w={120} h={16} />
+                  <Skel w={50} h={20} r={999} />
                 </View>
-              </View>
-            ))}
-          </View>
-        </View>
-
-        <View style={waterUsageStyles.sparkCard}>
-          <View style={waterUsageStyles.sparkHeader}>
-            <Text style={waterUsageStyles.sparkTitle}>LƯU LƯỢNG THỰC</Text>
-            <Text style={[waterUsageStyles.sparkCurrent, { color: waterAccent }]}>
-              {sparkCurrent} L/min
-            </Text>
-          </View>
-
-          {sparkData.length < 3 ? (
-            <Text style={{ fontSize: 13, color: "#64748b", textAlign: "center", paddingVertical: 18 }}>
-              Đang chờ dữ liệu realtime...
-            </Text>
-          ) : (
-            (() => {
-              const max = Math.max(...sparkData, 1);
-              const H = 52;
-              const bars = sparkData.slice(-30);
-              const sparkWidth = screenWidth - 80;
-              const barW = Math.max(2, sparkWidth / bars.length - 1);
-              return (
-                <View
-                  style={{
-                    flexDirection: "row",
-                    alignItems: "flex-end",
-                    height: H,
-                    alignSelf: "center",
-                    width: sparkWidth,
-                  }}
-                >
-                  {bars.map((v, i) => {
-                    const h = Math.max((v / max) * H, 2);
-                    const opacity = 0.3 + (i / bars.length) * 0.7;
-                    return (
-                      <View
-                        key={i}
-                        style={{
-                          height: h,
-                          width: barW,
-                          backgroundColor: waterAccent,
-                          opacity,
-                          borderTopLeftRadius: 4,
-                          borderTopRightRadius: 4,
-                        }}
-                      />
-                    );
-                  })}
-                </View>
-              );
-            })()
-          )}
-        </View>
-
-        <View style={waterUsageStyles.chartCard}>
-            <Text style={waterUsageStyles.chartTitle}>
-              {t("consumption.chart_title_water")}
-            </Text>
-            {usage.loading ? (
-              <View style={{ marginVertical: 24, alignItems: "center" }}>
-                <RefreshLogoInline logoPx={22} showLabel />
+                {[0, 1].map((i) => (
+                  <View
+                    key={i}
+                    style={[sk.row, i > 0 ? { borderTopWidth: 1, borderTopColor: BDR } : null]}
+                  >
+                    <View style={sk.cell}><Skel w={60} h={14} /><Skel w={80} h={22} mt={6} /></View>
+                    <View style={sk.vDiv} />
+                    <View style={sk.cell}><Skel w={60} h={14} /><Skel w={80} h={22} mt={6} /></View>
+                  </View>
+                ))}
               </View>
             ) : (
-              <View
-                style={[
-                  waterUsageStyles.chartWrapper,
-                  { width: screenWidth - 80 },
-                ]}
-              >
-                <View style={waterUsageStyles.chartBar}>
-                  {summaryBars.map((bar) => {
-                    const heightRatio = maxSummary > 0 ? bar.value / maxSummary : 0;
-                    const barHeight = Math.max(8, heightRatio * MAX_BAR_HEIGHT);
-                    return (
-                      <View key={bar.key} style={waterUsageStyles.barGroup}>
-                        <View
-                          style={{
-                            width: "80%",
-                            maxWidth: 48,
-                            height: barHeight,
-                            backgroundColor: waterAccent,
-                            borderTopLeftRadius: 6,
-                            borderTopRightRadius: 6,
-                          }}
-                        />
-                        <Text style={waterUsageStyles.barLabel} numberOfLines={1}>
-                          {bar.label}
-                        </Text>
-                        <Text style={{ fontSize: 10, color: "#64748b", marginTop: 2 }}>
-                          {bar.value.toFixed(2)} {usage.unit}
+              <Card>
+                <CardHeader
+                  title={t("consumption.monitoring_water")}
+                  subtitle={now.toLocaleTimeString(i18n.language)}
+                  right={<LiveBadge on={iotConnected} />}
+                />
+                {w ? (
+                  <>
+                    <View
+                      style={[
+                        styles.flowStrip,
+                        { backgroundColor: `${flowColor}12`, borderBottomColor: `${flowColor}30` },
+                      ]}
+                    >
+                      <View style={[styles.flowDot, { backgroundColor: flowColor }]} />
+                      <View style={styles.flowBody}>
+                        <Text style={[styles.flowStatus, { color: flowColor }]}>{flowLabel}</Text>
+                        <Text style={styles.flowSub}>
+                          {fmt(w.w_lpm, 2)} L/min
                         </Text>
                       </View>
-                    );
-                  })}
-                </View>
-              </View>
-            )}
-            <Text style={{ fontSize: 12, color: "#64748b", marginTop: 8, textAlign: "center" }}>
-              ({t("consumption.unit_L")})
-            </Text>
-        </View>
+                      {leakSuspected ? (
+                        <View style={[styles.leakBadge, { backgroundColor: BRAND_DANGER }]}>
+                          <Text style={styles.leakBadgeTxt}>!</Text>
+                        </View>
+                      ) : null}
+                    </View>
+                    <View style={styles.metricRow}>
+                      <Metric
+                        icon="L"
+                        label="L/min"
+                        value={`${fmt(w.w_lpm, 2)}`}
+                        valueColor={ACCENT}
+                      />
+                      <View style={styles.metricVDiv} />
+                      <Metric
+                        icon="d"
+                        label="Δ"
+                        value={`${fmt(w.d_w_tot, 2)} L`}
+                        valueColor={consumptionTelemetryMetric.current}
+                      />
+                    </View>
+                    <View style={styles.metricHDiv} />
+                    <View style={styles.metricRow}>
+                      <Metric icon="Σ" label="Σ" value={`${fmt(w.w_tot, 1)} L`} />
+                      <View style={styles.metricVDiv} />
+                      <Metric
+                        icon="?"
+                        label="OK"
+                        value={leakSuspected ? "!" : "OK"}
+                        valueColor={
+                          leakSuspected ? BRAND_DANGER : consumptionTelemetryMetric.voltage
+                        }
+                      />
+                    </View>
+                    {leakSuspected ? (
+                      <View style={styles.leakBanner}>
+                        <Text style={styles.leakBannerTxt}>{t("consumption.leak_banner")}</Text>
+                      </View>
+                    ) : null}
+                  </>
+                ) : (
+                  <View style={styles.waitRow}>
+                    <ActivityIndicator color={ACCENT} size="small" />
+                    <Text style={styles.waitTxt}>{t("consumption.waiting_device")}</Text>
+                  </View>
+                )}
+              </Card>
+            ))}
 
-        <View style={waterUsageStyles.chartCard}>
-          <Text style={waterUsageStyles.chartTitle}>
-            {t("consumption.chart_title_pie")}
-          </Text>
-          <Text style={{ fontSize: 13, color: "#64748b", textAlign: "center", paddingVertical: 16 }}>
-            {t("consumption.no_data_area")}
-          </Text>
-        </View>
-      </ScrollView>
+          {isHouseLevel ? (
+            <Card>
+              <CardHeader title={t("consumption.chart_title_pie")} />
+              <View style={styles.distSortRow}>
+                <TouchableOpacity onPress={() => setDistSort("value")}>
+                  <Text style={[styles.sortTxt, distSort === "value" && styles.sortActive]}>
+                    {t("consumption.sort_by_value")}
+                  </Text>
+                </TouchableOpacity>
+                <TouchableOpacity onPress={() => setDistSort("name")}>
+                  <Text style={[styles.sortTxt, distSort === "name" && styles.sortActive]}>
+                    {t("consumption.sort_by_name")}
+                  </Text>
+                </TouchableOpacity>
+              </View>
+              <View style={styles.distBody}>
+                {!distSlice.length ? (
+                  <Text style={styles.emptyTxt}>{t("consumption.no_area_month_data")}</Text>
+                ) : (
+                  distSlice.map((item, idx) => {
+                    const maxV = Math.max(...sortedDist.map((i) => i.value), 0.001);
+                    const col = AREA_COLORS[idx % AREA_COLORS.length];
+                    return (
+                      <View key={item.areaId} style={styles.distRow}>
+                        <View style={styles.distL}>
+                          <View style={[styles.distDot, { backgroundColor: col }]} />
+                          <Text style={styles.distLbl} numberOfLines={1}>
+                            {item.areaName || item.areaId}
+                          </Text>
+                        </View>
+                        <View style={styles.distR}>
+                          <Text style={[styles.distVal, { color: col }]}>
+                            {item.value.toFixed(1)} L
+                          </Text>
+                          <View style={styles.distTrack}>
+                            <View
+                              style={[
+                                styles.distFill,
+                                {
+                                  width: `${Math.max(5, (item.value / maxV) * 100)}%`,
+                                  backgroundColor: col,
+                                },
+                              ]}
+                            />
+                          </View>
+                        </View>
+                      </View>
+                    );
+                  })
+                )}
+              </View>
+              {distPages > 1 ? (
+                <View style={styles.pager}>
+                  <TouchableOpacity
+                    disabled={distPage <= 1}
+                    onPress={() => setDistPage((p) => Math.max(1, p - 1))}
+                  >
+                    <Text style={styles.pagerTxt}>‹</Text>
+                  </TouchableOpacity>
+                  <Text style={styles.pagerMid}>
+                    {distPage}/{distPages}
+                  </Text>
+                  <TouchableOpacity
+                    disabled={distPage >= distPages}
+                    onPress={() => setDistPage((p) => Math.min(distPages, p + 1))}
+                  >
+                    <Text style={styles.pagerTxt}>›</Text>
+                  </TouchableOpacity>
+                </View>
+              ) : null}
+            </Card>
+          ) : null}
+
+          <View style={{ height: 40 }} />
+        </ScrollView>
       </View>
     </View>
   );
 };
 
 export default WaterUsageScreen;
-
-const gateStyles = StyleSheet.create({
-  gateWrap: {
-    flex: 1,
-    justifyContent: "center",
-    paddingHorizontal: 16,
-    paddingBottom: 24,
-  },
-  gateBox: {
-    backgroundColor: neutral.surface,
-    borderRadius: 14,
-    padding: 16,
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: neutral.border,
-    alignItems: "center",
-  },
-  gateTitle: {
-    fontSize: 18,
-    fontWeight: "700",
-    color: neutral.heading,
-    textAlign: "center",
-    marginBottom: 10,
-  },
-  gateBody: {
-    fontSize: 15,
-    lineHeight: 22,
-    color: neutral.textSecondary,
-    textAlign: "center",
-    marginBottom: 16,
-  },
-  payBtn: {
-    backgroundColor: brandPrimary,
-    paddingVertical: 14,
-    borderRadius: 10,
-    paddingHorizontal: 18,
-    alignItems: "center",
-  },
-  payBtnText: {
-    color: "#fff",
-    fontSize: 16,
-    fontWeight: "600",
-  },
-});

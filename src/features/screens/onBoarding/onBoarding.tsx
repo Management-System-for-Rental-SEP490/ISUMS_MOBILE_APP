@@ -1,4 +1,4 @@
-import React, { useRef, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import {
   View,
   Text,
@@ -7,6 +7,9 @@ import {
   Animated,
   TouchableOpacity,
   Dimensions,
+  StatusBar as RNStatusBar,
+  Platform,
+  ScrollView,
 } from "react-native";
 import { useAuthStore } from "../../../store/useAuthStore";
 import styles from "./onBoardingStyles";
@@ -16,7 +19,10 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useTranslation } from "react-i18next";
 import { brandGradient } from "../../../shared/theme/color";
 
-const { width } = Dimensions.get("window"); //lấy chiều rộng của màn hình.
+const { width, height: windowHeight } = Dimensions.get("window");
+
+/** Chỗ để footer cố định (chấm + nút) — vừa đủ tránh che, không đẩy nội dung quá cao. */
+const ONBOARDING_FOOTER_RESERVE = 198;
 
 type SlideDef = {
   id: string;
@@ -55,8 +61,15 @@ const OnBoarding = () => {
   const scrollX = useRef(new Animated.Value(0)).current; //scrollX là biến để lưu trữ giá trị scroll của FlatList.
   const slidesRef = useRef<FlatList>(null); //slidesRef là biến để lưu trữ ref của FlatList.
   const completeOnboarding = useAuthStore((state) => state.completeOnboarding); //completeOnboarding là hàm để hoàn thành onboarding.
-  const insets = useSafeAreaInsets(); 
-  //hàm dùng để nhận biết người dùng đang ở trang nào để cập nhật thanh hiển thị
+  const insets = useSafeAreaInsets();
+
+  useEffect(() => {
+    RNStatusBar.setBarStyle("light-content", true);
+    if (Platform.OS === "android") {
+      RNStatusBar.setTranslucent(true);
+      RNStatusBar.setBackgroundColor("transparent");
+    }
+  }, []);
   const viewableItemsChanged = useRef(({ viewableItems }: any) => { 
     if (viewableItems && viewableItems.length > 0) {
       setCurrentIndex(viewableItems[0].index); //set giá trị của currentIndex về index của slide hiện tại.
@@ -117,10 +130,8 @@ const OnBoarding = () => {
       end={{ x: 1, y: 1 }}
       style={styles.container}
     >
-      {/* Thanh hiển thị trạng thái màn hình */}
-      <StatusBar style="light" />
-
-
+      <RNStatusBar translucent backgroundColor="transparent" barStyle="light-content" />
+      <StatusBar style="light" hidden={false} />
 
       {/* Nút Skip ở góc trên bên phải */}
       {currentIndex < SLIDES.length - 1 && (
@@ -136,24 +147,50 @@ const OnBoarding = () => {
       <View style={{ flex: 1 }}>
         <FlatList
           data={SLIDES}
-          renderItem={({ item }) => (
-            <View style={styles.slide}>
-              <View style={styles.imageContainer}>
-                <View style={styles.imageWrapper}>
-                   <Image source={item.image} style={styles.image} />
-                </View>
-              </View>
-              <View style={styles.textContainer}>
-                <Text style={styles.title}>{t(item.titleKey)}</Text>
-                <Text style={styles.description}>{t(item.descKey)}</Text>
-                {item.footerNoteKey ? (
-                  <View style={styles.footerNote}>
-                    <Text style={styles.footerNoteText}>{t(item.footerNoteKey)}</Text>
+          renderItem={({ item }) => {
+            const hasNote = Boolean(item.footerNoteKey);
+            return (
+              <View
+                style={[
+                  styles.slide,
+                  {
+                    paddingTop: insets.top + windowHeight * 0.065,
+                    paddingBottom: ONBOARDING_FOOTER_RESERVE + insets.bottom,
+                  },
+                ]}
+              >
+                <View style={hasNote ? styles.imageContainerCompact : styles.imageContainer}>
+                  <View style={hasNote ? styles.imageWrapperCompact : styles.imageWrapper}>
+                    <Image source={item.image} style={hasNote ? styles.imageCompact : styles.image} />
                   </View>
-                ) : null}
+                </View>
+                {hasNote ? (
+                  <ScrollView
+                    style={styles.textScroll}
+                    contentContainerStyle={styles.textScrollContent}
+                    showsVerticalScrollIndicator
+                    bounces={false}
+                    keyboardShouldPersistTaps="handled"
+                  >
+                    <View style={styles.textContainer}>
+                      <Text style={styles.title}>{t(item.titleKey)}</Text>
+                      <Text style={styles.description}>{t(item.descKey)}</Text>
+                      {item.footerNoteKey ? (
+                        <View style={styles.footerNote}>
+                          <Text style={styles.footerNoteText}>{t(item.footerNoteKey)}</Text>
+                        </View>
+                      ) : null}
+                    </View>
+                  </ScrollView>
+                ) : (
+                  <View style={styles.textContainer}>
+                    <Text style={styles.title}>{t(item.titleKey)}</Text>
+                    <Text style={styles.description}>{t(item.descKey)}</Text>
+                  </View>
+                )}
               </View>
-            </View>
-          )}
+            );
+          }}
           horizontal
           showsHorizontalScrollIndicator={false}
           pagingEnabled

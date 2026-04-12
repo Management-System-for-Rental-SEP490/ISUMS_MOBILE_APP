@@ -10,3 +10,4 @@ export * from "./useAssetItems";
 export * from "./useTenantInvoices";
 export * from "./useKeyboardBottomInset";
 export * from "./useRefreshControlGate";
+export * from "./useAreasUsageDistribution";
