@@ -227,7 +227,9 @@ export default {
         },
         "skip": "Bỏ qua",
         "start": "Bắt đầu ngay",
-        "continue": "Tiếp tục"
+        "continue": "Tiếp tục",
+        "rights_note":
+            "Ghi chú: Khi mới vào nhà, nếu thấy thiết bị hỏng, hãy tạo ticket báo cáo ngay để đảm bảo quyền lợi của bạn."
     },
     "camera": {
         "loading": "Đang tải...",

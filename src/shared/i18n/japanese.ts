@@ -227,7 +227,9 @@ export default {
         },
         "skip": "スキップ",
         "start": "今すぐ開始",
-        "continue": "次へ"
+        "continue": "次へ",
+        "rights_note":
+            "注意：入居時に故障した設備を見つけたら、すぐにチケットを作成して権利を確保してください。"
     },
     "camera": {
         "loading": "読み込み中...",

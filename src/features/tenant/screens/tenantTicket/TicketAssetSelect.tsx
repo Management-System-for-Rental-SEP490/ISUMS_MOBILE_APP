@@ -13,6 +13,7 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useTranslation } from "react-i18next";
 import type { AssetItemFromApi } from "../../../../shared/types/api";
+import { normalizeAssetItemStatusFromApi } from "../../../../shared/types/api";
 import { getAssetItemsByHouseId } from "../../../../shared/services/assetItemApi";
 import Icons from "../../../../shared/theme/icon";
 import { neutral } from "../../../../shared/theme/color";
@@ -138,18 +139,33 @@ export function TicketAssetSelect({ houseId, value, onChange }: Props) {
                   ListEmptyComponent={
                     <Text style={styles.emptyText}>{t("ticket.asset_empty_list")}</Text>
                   }
-                  renderItem={({ item: it }) => (
-                    <TouchableOpacity style={styles.assetRow} onPress={() => onPick(it)} activeOpacity={0.7}>
-                      <Text style={styles.assetRowTitle} numberOfLines={2}>
-                        {normalizeName(it, t("ticket.asset_unnamed"))}
-                      </Text>
-                      {(it.serialNumber ?? "").trim() ? (
-                        <Text style={styles.assetRowSub} numberOfLines={1}>
-                          {t("staff_item_create.serial_number_label")}: {it.serialNumber}
+                  renderItem={({ item: it }) => {
+                    const broken = normalizeAssetItemStatusFromApi(it.status) === "BROKEN";
+                    return (
+                      <TouchableOpacity
+                        style={[styles.assetRow, broken && styles.assetRowBroken]}
+                        onPress={() => onPick(it)}
+                        activeOpacity={0.7}
+                      >
+                        <Text
+                          style={[styles.assetRowTitle, broken && styles.assetRowTitleBroken]}
+                          numberOfLines={2}
+                        >
+                          {normalizeName(it, t("ticket.asset_unnamed"))}
                         </Text>
-                      ) : null}
-                    </TouchableOpacity>
-                  )}
+                        {broken ? (
+                          <Text style={styles.assetRowSub} numberOfLines={1}>
+                            {t("staff_item_create.status_broken")}
+                          </Text>
+                        ) : null}
+                        {(it.serialNumber ?? "").trim() ? (
+                          <Text style={styles.assetRowSub} numberOfLines={1}>
+                            {t("staff_item_create.serial_number_label")}: {it.serialNumber}
+                          </Text>
+                        ) : null}
+                      </TouchableOpacity>
+                    );
+                  }}
                 />
               )}
             </Pressable>

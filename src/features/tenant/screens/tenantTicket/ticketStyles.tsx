@@ -3,6 +3,8 @@ import {
   BRAND_DANGER,
   brandBlueMutedBg,
   brandBlueMutedBorder,
+  brandDangerBg,
+  brandDangerBorder,
   brandPrimary,
   brandSecondary,
   brandTintBg,
@@ -454,10 +456,18 @@ export const ticketAssetSelectStyles = StyleSheet.create({
     borderBottomWidth: StyleSheet.hairlineWidth,
     borderBottomColor: neutral.border,
   },
+  assetRowBroken: {
+    backgroundColor: brandDangerBg,
+    borderLeftWidth: 4,
+    borderLeftColor: brandDangerBorder,
+  },
   assetRowTitle: {
     ...appTypography.modalListItem,
     fontWeight: "600",
     color: neutral.text,
+  },
+  assetRowTitleBroken: {
+    color: BRAND_DANGER,
   },
   assetRowSub: {
     ...appTypography.labelRow,

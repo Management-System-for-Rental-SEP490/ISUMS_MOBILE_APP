@@ -179,7 +179,10 @@ export default function TenantItemDescriptionScreen() {
     if (normalizedStatus === "IN_USE" || normalizedStatus === "ACTIVE") {
       return itemScreenStyles.descriptionStatusInUse;
     }
-    if (normalizedStatus === "DISPOSED" || normalizedStatus === "BROKEN") {
+    if (normalizedStatus === "BROKEN") {
+      return itemScreenStyles.descriptionStatusBroken;
+    }
+    if (normalizedStatus === "DISPOSED") {
       return itemScreenStyles.descriptionStatusDisposed;
     }
     return itemScreenStyles.descriptionStatusOther;

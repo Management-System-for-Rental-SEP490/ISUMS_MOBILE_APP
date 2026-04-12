@@ -49,6 +49,12 @@ export const tenantItemDescriptionStyles = StyleSheet.create({
   descriptionStatusAvailable: { backgroundColor: statusBadgeBg.available },
   descriptionStatusInUse: { backgroundColor: statusBadgeBg.inUse },
   descriptionStatusDisposed: { backgroundColor: statusBadgeBg.disposed },
+  /** Trạng thái hỏng — nhấn mạnh hơn thanh lý. */
+  descriptionStatusBroken: {
+    backgroundColor: brandDangerBg,
+    borderWidth: 1,
+    borderColor: brandDangerBorder,
+  },
   descriptionStatusOther: { backgroundColor: neutral.background },
   descriptionEditBtn: {
     marginTop: 20,

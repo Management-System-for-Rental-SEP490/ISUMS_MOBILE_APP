@@ -14,7 +14,15 @@ import {
 } from "react-native";
 import { useTranslation } from "react-i18next";
 import Icons from "../theme/icon";
-import { brandBlueMutedBorder, brandPrimary, brandTintBg, neutral } from "../theme/color";
+import {
+  BRAND_DANGER,
+  brandBlueMutedBorder,
+  brandDangerBg,
+  brandDangerBorder,
+  brandPrimary,
+  brandTintBg,
+  neutral,
+} from "../theme/color";
 import { staffFormShape } from "../styles/staffFormShape";
 import { appTypography } from "../utils";
 
@@ -23,6 +31,8 @@ export type DropdownBoxItem = {
   label: string;
   /** Dòng phụ (địa chỉ…), dùng khi `itemLayout="list"`. */
   detail?: string;
+  /** Nhấn mạnh hàng (vd. thiết bị hỏng). */
+  listEmphasis?: "broken";
   /** Hiển thị dòng “Số thiết bị: **n**” (list layout). */
   deviceCount?: number;
   /** Dùng khi `itemLayout="card"`: các dòng như thẻ thiết bị. */
@@ -500,7 +510,11 @@ export function DropdownBox({
                             return (
                               <Pressable
                                 key={it.id}
-                                style={[styles.listRow, selected && styles.listRowSelected]}
+                                style={[
+                                  styles.listRow,
+                                  it.listEmphasis === "broken" && styles.listRowBroken,
+                                  selected && styles.listRowSelected,
+                                ]}
                                 onPress={() =>
                                   block.sec.multiSelect
                                     ? handleMultiListItemPress(block.sec.id, it.id)
@@ -511,14 +525,21 @@ export function DropdownBox({
                               >
                                 <View style={styles.listRowTextWrap}>
                                   <Text
-                                    style={[styles.listRowTitle, selected && styles.listRowTitleSelected]}
+                                    style={[
+                                      styles.listRowTitle,
+                                      it.listEmphasis === "broken" && styles.listRowTitleBroken,
+                                      selected && styles.listRowTitleSelected,
+                                    ]}
                                     numberOfLines={2}
                                   >
                                     {it.label}
                                   </Text>
                                   {it.detail ? (
                                     <Text
-                                      style={styles.listRowDetail}
+                                      style={[
+                                        styles.listRowDetail,
+                                        it.listEmphasis === "broken" && styles.listRowDetailBroken,
+                                      ]}
                                       numberOfLines={2}
                                       ellipsizeMode="tail"
                                     >
@@ -541,7 +562,12 @@ export function DropdownBox({
                                     {selected ? "✓" : ""}
                                   </Text>
                                 ) : (
-                                  <Icons.chevronForward size={20} color={neutral.textSecondary} />
+                                  <Icons.chevronForward
+                                    size={20}
+                                    color={
+                                      it.listEmphasis === "broken" ? BRAND_DANGER : neutral.textSecondary
+                                    }
+                                  />
                                 )}
                               </Pressable>
                             );
@@ -834,6 +860,11 @@ const styles = StyleSheet.create({
   listRowSelected: {
     backgroundColor: brandTintBg,
   },
+  listRowBroken: {
+    backgroundColor: brandDangerBg,
+    borderLeftWidth: 4,
+    borderLeftColor: brandDangerBorder,
+  },
   listRowTextWrap: {
     flex: 1,
     minWidth: 0,
@@ -846,10 +877,17 @@ const styles = StyleSheet.create({
   listRowTitleSelected: {
     color: brandPrimary,
   },
+  listRowTitleBroken: {
+    color: BRAND_DANGER,
+  },
   listRowDetail: {
     ...appTypography.secondary,
     color: neutral.textSecondary,
     marginTop: 4,
+  },
+  listRowDetailBroken: {
+    color: BRAND_DANGER,
+    fontWeight: "600",
   },
   listRowMeta: {
     ...appTypography.secondary,

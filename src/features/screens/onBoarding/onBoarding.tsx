@@ -18,12 +18,21 @@ import { brandGradient } from "../../../shared/theme/color";
 
 const { width } = Dimensions.get("window"); //lấy chiều rộng của màn hình.
 
-const SLIDES = [
+type SlideDef = {
+  id: string;
+  titleKey: string;
+  descKey: string;
+  image: number;
+  /** Ghi chú bổ sung (vd. quyền lợi khi nhận nhà). */
+  footerNoteKey?: string;
+};
+
+const SLIDES: SlideDef[] = [
   {
     id: "1",
     titleKey: "onboarding.slide1.title",
     descKey: "onboarding.slide1.desc",
-    image: require("../../../../assets/logob.png"), 
+    image: require("../../../../assets/logob.png"),
   },
   {
     id: "2",
@@ -36,6 +45,7 @@ const SLIDES = [
     titleKey: "onboarding.slide3.title",
     descKey: "onboarding.slide3.desc",
     image: require("../../../../assets/logob.png"),
+    footerNoteKey: "onboarding.rights_note",
   },
 ];
 
@@ -136,6 +146,11 @@ const OnBoarding = () => {
               <View style={styles.textContainer}>
                 <Text style={styles.title}>{t(item.titleKey)}</Text>
                 <Text style={styles.description}>{t(item.descKey)}</Text>
+                {item.footerNoteKey ? (
+                  <View style={styles.footerNote}>
+                    <Text style={styles.footerNoteText}>{t(item.footerNoteKey)}</Text>
+                  </View>
+                ) : null}
               </View>
             </View>
           )}

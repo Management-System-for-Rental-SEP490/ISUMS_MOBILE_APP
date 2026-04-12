@@ -63,6 +63,7 @@ import type {
   AssetItemFromApi,
   FunctionalAreaFromApi,
 } from "../../../../shared/types/api";
+import { normalizeAssetItemStatusFromApi } from "../../../../shared/types/api";
 import {
   DROPDOWN_SEARCH_TOP_INSET_PX,
   isFieldObscuredByKeyboard,
@@ -429,11 +430,17 @@ const TenantHouseDescription = () => {
       itemLayout: "list",
       selectedId: null,
       showAllOption: false,
-      items: filteredDeviceRows.map(({ categoryName, item }) => ({
-        id: item.id,
-        label: item.displayName ?? item.id,
-        detail: categoryName,
-      })),
+      items: filteredDeviceRows.map(({ categoryName, item }) => {
+        const broken = normalizeAssetItemStatusFromApi(item.status) === "BROKEN";
+        return {
+          id: item.id,
+          label: item.displayName ?? item.id,
+          detail: broken
+            ? `${categoryName} · ${t("staff_item_create.status_broken")}`
+            : categoryName,
+          listEmphasis: broken ? ("broken" as const) : undefined,
+        };
+      }),
     };
   }, [filteredDeviceRows, t]);
 

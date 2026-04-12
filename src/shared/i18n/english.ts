@@ -227,7 +227,9 @@ export default {
         },
         "skip": "Skip",
         "start": "Get Started",
-        "continue": "Continue"
+        "continue": "Continue",
+        "rights_note":
+            "Note: When you first enter the home, if you notice any broken equipment, create a ticket immediately to protect your rights."
     },
     "camera": {
         "loading": "Loading...",
