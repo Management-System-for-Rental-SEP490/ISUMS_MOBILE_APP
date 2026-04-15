@@ -3,6 +3,7 @@
  */
 import axiosClient from "../api/axiosClient";
 import { ASSETS_API_BASE, BACKEND_API_BASE} from "../api/config";
+import { resolveLocalizedJsonStringFromI18n } from "../utils/resolveLocalizedJsonString";
 import {
   isAssetItemDisposedStatus,
   normalizeAssetItemStatusFromApi,
@@ -12,6 +13,7 @@ import {
   type AssetItemsApiResponse,
   type AssetItemsParams,
   type GetAssetByTagValueApiResponse,
+  type IotControllerHouseDataFromApi,
   type IotDevicesByHouseApiResponse,
 } from "../types/api";
 
@@ -77,6 +79,7 @@ function normalizeAssetItemFromResponse(
     null;
   return {
     ...raw,
+    displayName: resolveLocalizedJsonStringFromI18n(raw.displayName),
     nfcTag: nfcStr !== "" ? nfcStr : null,
     qrTag: qrStr !== "" ? qrStr : null,
     status: normalizeAssetItemStatusFromApi(raw.status),
@@ -142,6 +145,21 @@ function assetItemsFromAxiosBody(
   return { data: finalize([]) };
 }
 
+function normalizeIotControllerHouseData(
+  data: IotControllerHouseDataFromApi
+): IotControllerHouseDataFromApi {
+  return {
+    ...data,
+    houseName: resolveLocalizedJsonStringFromI18n(data.houseName),
+    areaName: data.areaName != null ? resolveLocalizedJsonStringFromI18n(data.areaName) : null,
+    devices: (data.devices ?? []).map((d) => ({
+      ...d,
+      displayName: resolveLocalizedJsonStringFromI18n(d.displayName),
+      areaName: d.areaName != null ? resolveLocalizedJsonStringFromI18n(d.areaName) : null,
+    })),
+  };
+}
+
 const mapNormalizeAssetItemRow = (i: AssetItemFromApi) =>
   normalizeAssetItemFromResponse(
     i as AssetItemFromApi & { nfc_tag?: string | null; qr_tag?: string | null }
@@ -197,7 +215,12 @@ export const getIotDevicesByHouseId = async (
 ): Promise<IotDevicesByHouseApiResponse> => {
   const url = `${BACKEND_API_BASE}/assets/iot-devices/house/${encodeURIComponent(houseId)}`;
   const response = await axiosClient.get<IotDevicesByHouseApiResponse>(url);
-  return response.data;
+  const body = response.data;
+  if (!body?.data || typeof body.data !== "object") return body;
+  return {
+    ...body,
+    data: normalizeIotControllerHouseData(body.data),
+  };
 };
 
 /**

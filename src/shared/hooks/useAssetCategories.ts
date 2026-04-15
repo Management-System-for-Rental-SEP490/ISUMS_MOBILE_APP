@@ -1,5 +1,6 @@
 import { useQuery, useQueries } from "@tanstack/react-query";
 import { useMemo } from "react";
+import { useTranslation } from "react-i18next";
 import { getAssetCategories, getAssetCategoryById } from "../services/assetCategoryApi";
 import type {
   AssetCategoryByIdApiResponse,
@@ -21,8 +22,9 @@ export const ASSET_CATEGORY_KEYS = {
 };
 
 export const useAssetCategories = () => {
+  const { i18n } = useTranslation();
   return useQuery({
-    queryKey: ASSET_CATEGORY_KEYS.all,
+    queryKey: [...ASSET_CATEGORY_KEYS.all, i18n.language],
     queryFn: getAssetCategories,
     refetchOnMount: "always",
   });
@@ -33,9 +35,12 @@ export const useAssetCategories = () => {
  * - Dùng cho các màn chỉ có categoryId (không đủ danh sách categories để map name).
  */
 export const useAssetCategoryById = (categoryId?: string | null) => {
+  const { i18n } = useTranslation();
   const safeCategoryId = categoryId ?? null;
   return useQuery<AssetCategoryByIdApiResponse>({
-    queryKey: safeCategoryId ? ASSET_CATEGORY_KEYS.byId(safeCategoryId) : [...ASSET_CATEGORY_KEYS.all, "byId", "none"] as const,
+    queryKey: safeCategoryId
+      ? ([...ASSET_CATEGORY_KEYS.byId(safeCategoryId), i18n.language] as const)
+      : ([...ASSET_CATEGORY_KEYS.all, "byId", "none", i18n.language] as const),
     queryFn: () =>
       safeCategoryId
         ? getAssetCategoryById(safeCategoryId)
@@ -56,6 +61,7 @@ export const useAssetCategoryNamesByIds = (
   categoryIds: string[],
   categoriesFromList: AssetCategoryFromApi[]
 ) => {
+  const { i18n } = useTranslation();
   const missingIds = useMemo(
     () =>
       Array.from(new Set(categoryIds.filter(Boolean))).filter(
@@ -66,7 +72,7 @@ export const useAssetCategoryNamesByIds = (
 
   const queries = useQueries({
     queries: missingIds.map((id) => ({
-      queryKey: ASSET_CATEGORY_KEYS.byId(id),
+      queryKey: [...ASSET_CATEGORY_KEYS.byId(id), i18n.language],
       queryFn: () => getAssetCategoryById(id),
       enabled: Boolean(id),
       staleTime: 1000 * 60 * 5,

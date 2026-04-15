@@ -6,6 +6,7 @@
 import axiosClient from "../api/axiosClient";
 import { ASSETS_API_BASE, BACKEND_API_BASE } from "../api/config";
 import { mapTenantAccessItemToHouse } from "../utils/tenantAccess";
+import { resolveLocalizedJsonStringFromI18n } from "../utils/resolveLocalizedJsonString";
 import type {
   ApiResponse,
   FunctionalAreaFromApi,
@@ -14,6 +15,19 @@ import type {
   HousesApiResponse,
   TenantHouseAccessApiResponse,
 } from "../types/api";
+
+function localizeHouseFromApi(h: HouseFromApi): HouseFromApi {
+  return {
+    ...h,
+    name: resolveLocalizedJsonStringFromI18n(h.name),
+    functionalAreas: Array.isArray(h.functionalAreas)
+      ? h.functionalAreas.map((fa) => ({
+          ...fa,
+          name: resolveLocalizedJsonStringFromI18n(fa.name),
+        }))
+      : h.functionalAreas,
+  };
+}
 
 /**
  * Lấy danh sách TẤT CẢ căn nhà (GET /api/houses).
@@ -25,7 +39,12 @@ export const getHouses = async (): Promise<HousesApiResponse> => {
   const response = await axiosClient.get<HousesApiResponse>(
     `${BACKEND_API_BASE}/houses`
   );
-  return response.data;
+  const body = response.data;
+  if (!body?.data || !Array.isArray(body.data)) return body;
+  return {
+    ...body,
+    data: body.data.map(localizeHouseFromApi),
+  };
 };
 
 /**
@@ -42,7 +61,12 @@ export const getTenantHouses = async (): Promise<HousesApiResponse> => {
     message: body.message,
     statusCode: body.statusCode,
     success: body.success,
-    data: rows.map(mapTenantAccessItemToHouse),
+    data: rows.map((item) =>
+      mapTenantAccessItemToHouse({
+        ...item,
+        houseName: resolveLocalizedJsonStringFromI18n(item.houseName),
+      })
+    ),
   };
 };
 
@@ -58,7 +82,12 @@ export const getHouseById = async (houseId: string): Promise<ApiResponse<HouseFr
     const response = await axiosClient.get<ApiResponse<HouseFromApi>>(
       `${BACKEND_API_BASE}/houses/${encodeURIComponent(id)}`
     );
-    return response.data;
+    const envelope = response.data;
+    if (!envelope?.data) return envelope;
+    return {
+      ...envelope,
+      data: localizeHouseFromApi(envelope.data),
+    };
   } catch {
     return null;
   }
@@ -75,7 +104,15 @@ export const getFunctionalAreasByHouseId = async (
   )}`;
   const response =
     await axiosClient.get<ApiResponse<FunctionalAreaFromApi[]>>(url);
-  return response.data;
+  const body = response.data;
+  if (!body?.data || !Array.isArray(body.data)) return body;
+  return {
+    ...body,
+    data: body.data.map((fa) => ({
+      ...fa,
+      name: resolveLocalizedJsonStringFromI18n(fa.name),
+    })),
+  };
 };
 
 export type HouseIotAlertsQueryParams = {

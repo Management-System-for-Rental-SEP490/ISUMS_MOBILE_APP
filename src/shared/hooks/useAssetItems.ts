@@ -1,4 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
+import { useTranslation } from "react-i18next";
 import {
   getAssetItems,
   getAssetItemsByHouseId,
@@ -43,18 +44,14 @@ export const IOT_DEVICE_KEYS = {
  * Danh sách thiết bị (GET). Tenant: thường dùng kèm `houseId`.
  */
 export const useAssetItems = (params: UseAssetItemsParams = {}) => {
+  const { i18n } = useTranslation();
   const { houseId, categoryId } = params;
 
   const queryKey = houseId
-    ? ASSET_ITEM_KEYS.byHouse(houseId, categoryId)
-    : ASSET_ITEM_KEYS.byCategory(categoryId);
+    ? ([...ASSET_ITEM_KEYS.byHouse(houseId, categoryId), i18n.language] as const)
+    : ([...ASSET_ITEM_KEYS.byCategory(categoryId), i18n.language] as const);
 
-  return useQuery<
-    AssetItemsApiResponse,
-    unknown,
-    AssetItemsApiResponse,
-    ReturnType<typeof ASSET_ITEM_KEYS.byCategory> | ReturnType<typeof ASSET_ITEM_KEYS.byHouse>
-  >({
+  return useQuery<AssetItemsApiResponse, unknown, AssetItemsApiResponse>({
     queryKey,
     queryFn: async () => {
       if (houseId) {
@@ -78,8 +75,9 @@ export const useAssetItems = (params: UseAssetItemsParams = {}) => {
  * Controller + node IoT theo nhà (GET /api/assets/iot-devices/house/{houseId}).
  */
 export const useIotDevicesByHouseId = (houseId: string) => {
+  const { i18n } = useTranslation();
   return useQuery<IotDevicesByHouseApiResponse>({
-    queryKey: IOT_DEVICE_KEYS.byHouse(houseId),
+    queryKey: [...IOT_DEVICE_KEYS.byHouse(houseId), i18n.language],
     queryFn: () => getIotDevicesByHouseId(houseId),
     enabled: Boolean(houseId),
   });

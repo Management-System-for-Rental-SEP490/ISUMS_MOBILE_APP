@@ -1,5 +1,6 @@
 import { useInfiniteQuery, useQueries, useQuery } from "@tanstack/react-query";
 import { useMemo } from "react";
+import { useTranslation } from "react-i18next";
 import {
   getFunctionalAreasByHouseId,
   getHouseById,
@@ -32,9 +33,10 @@ export const HOUSE_IOT_ALERTS_KEYS = {
 };
 
 export const useHouses = () => {
+  const { i18n } = useTranslation();
   return useQuery({
     // Cache key: mọi nơi dùng houses đều share chung "houses".
-    queryKey: HOUSES_KEYS.all,
+    queryKey: [...HOUSES_KEYS.all, i18n.language],
     // Hàm gọi API thật sự (GET /api/houses).
     queryFn: getHouses,
   });
@@ -44,8 +46,9 @@ export const useHouses = () => {
  * Hook lấy danh sách nhà + quyền truy cập của tenant (GET /api/houses/my-access).
  */
 export const useTenantHouses = () => {
+  const { i18n } = useTranslation();
   return useQuery({
-    queryKey: HOUSES_KEYS.tenant,
+    queryKey: [...HOUSES_KEYS.tenant, i18n.language],
     queryFn: getTenantHouses,
   });
 };
@@ -54,9 +57,10 @@ export const useTenantHouses = () => {
  * GET /houses/{id} — bật khi cần (vd. căn không còn trong my-access).
  */
 export const useHouseById = (houseId: string | null | undefined, enabled: boolean) => {
+  const { i18n } = useTranslation();
   const id = String(houseId ?? "").trim();
   return useQuery({
-    queryKey: HOUSES_KEYS.byId(id),
+    queryKey: [...HOUSES_KEYS.byId(id), i18n.language],
     queryFn: () => getHouseById(id),
     enabled: Boolean(id && enabled),
     staleTime: 10 * 60 * 1000,
@@ -67,6 +71,7 @@ export const useHouseById = (houseId: string | null | undefined, enabled: boolea
  * Nhiều GET /houses/{id} song song — map id → tên (chỉ khi success).
  */
 export const useHouseNamesByIds = (houseIds: string[]) => {
+  const { i18n } = useTranslation();
   const idsKey = houseIds.join("\u0001");
   const sortedIds = useMemo(
     () =>
@@ -78,7 +83,7 @@ export const useHouseNamesByIds = (houseIds: string[]) => {
 
   const queries = useQueries({
     queries: sortedIds.map((id) => ({
-      queryKey: HOUSES_KEYS.byId(id),
+      queryKey: [...HOUSES_KEYS.byId(id), i18n.language],
       queryFn: () => getHouseById(id),
       enabled: Boolean(id),
       staleTime: 10 * 60 * 1000,
@@ -121,8 +126,9 @@ export const useHouseNamesByIds = (houseIds: string[]) => {
  * Tenant dùng khi response nhà không nhúng đủ `functionalAreas`.
  */
 export const useFunctionalAreasByHouseId = (houseId: string) => {
+  const { i18n } = useTranslation();
   return useQuery({
-    queryKey: HOUSES_KEYS.functionalAreas(houseId),
+    queryKey: [...HOUSES_KEYS.functionalAreas(houseId), i18n.language],
     queryFn: () => getFunctionalAreasByHouseId(houseId),
     enabled: Boolean(houseId),
   });

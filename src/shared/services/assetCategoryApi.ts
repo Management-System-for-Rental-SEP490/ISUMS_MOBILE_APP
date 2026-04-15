@@ -4,6 +4,7 @@
  */
 import axiosClient from "../api/axiosClient";
 import { BACKEND_API_BASE } from "../api/config";
+import { resolveLocalizedJsonStringFromI18n } from "../utils/resolveLocalizedJsonString";
 import type {
   AssetCategoriesApiResponse,
   AssetCategoryByIdApiResponse,
@@ -18,7 +19,16 @@ export const getAssetCategories = async (): Promise<AssetCategoriesApiResponse> 
   const response = await axiosClient.get<AssetCategoriesApiResponse>(
     `${BACKEND_API_BASE}/assets/categories`
   );
-  return response.data;
+  const body = response.data;
+  if (!body?.data || !Array.isArray(body.data)) return body;
+  return {
+    ...body,
+    data: body.data.map((c) => ({
+      ...c,
+      name: resolveLocalizedJsonStringFromI18n(c.name),
+      description: resolveLocalizedJsonStringFromI18n(c.description),
+    })),
+  };
 };
 
 /**
@@ -31,6 +41,16 @@ export const getAssetCategoryById = async (
   const response = await axiosClient.get<AssetCategoryByIdApiResponse>(
     `${BACKEND_API_BASE}/assets/categories/${encodeURIComponent(categoryId)}`
   );
-  return response.data;
+  const body = response.data;
+  if (!body?.data) return body;
+  const c = body.data;
+  return {
+    ...body,
+    data: {
+      ...c,
+      name: resolveLocalizedJsonStringFromI18n(c.name),
+      description: resolveLocalizedJsonStringFromI18n(c.description),
+    },
+  };
 };
 
