@@ -1,12 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import {
-  ActivityIndicator,
-  Animated,
-  ScrollView,
-  Text,
-  TouchableOpacity,
-  View,
-} from "react-native";
+import { Animated, ScrollView, Text, TouchableOpacity, View } from "react-native";
 import { useTranslation } from "react-i18next";
 import Header from "../../../../shared/components/header";
 import {
@@ -16,6 +9,7 @@ import {
 } from "../../../../shared/hooks";
 import {
   PullToRefreshControl,
+  RefreshLogoInline,
   RefreshLogoOverlay,
 } from "@shared/components/RefreshLogoOverlay";
 import {
@@ -525,7 +519,7 @@ const WaterUsageScreen = ({ showHeader = true }: WaterUsageScreenProps) => {
                   </>
                 ) : (
                   <View style={styles.waitRow}>
-                    <ActivityIndicator color={ACCENT} size="small" />
+                    <RefreshLogoInline logoPx={18} showLabel={false} />
                     <Text style={styles.waitTxt}>{t("consumption.waiting_device")}</Text>
                   </View>
                 )}

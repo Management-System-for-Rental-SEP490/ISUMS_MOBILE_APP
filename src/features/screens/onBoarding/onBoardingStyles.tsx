@@ -2,7 +2,7 @@ import { StyleSheet, Dimensions, Platform } from "react-native";
 import { brandPrimary, neutral } from "../../../shared/theme/color";
 import { appTypography } from "../../../shared/utils/typography";
 
-const { width, height } = Dimensions.get("window");
+const { width } = Dimensions.get("window");
 
 const styles = StyleSheet.create({
   container: {
@@ -10,7 +10,7 @@ const styles = StyleSheet.create({
   },
   slide: {
     width: width,
-    height: height,
+    height: "100%",
     justifyContent: "flex-start",
     alignItems: "center",
   },
@@ -62,7 +62,8 @@ const styles = StyleSheet.create({
   },
   textScrollContent: {
     flexGrow: 1,
-    paddingBottom: 12,
+    paddingBottom: 8,
+    justifyContent: "flex-start",
   },
   textContainer: {
     paddingHorizontal: 40,
@@ -101,10 +102,7 @@ const styles = StyleSheet.create({
     fontWeight: "500",
   },
   footer: {
-    position: "absolute",
-    bottom: 0,
-    left: 0,
-    right: 0,
+    width: "100%",
     paddingHorizontal: 20,
     alignItems: "center",
   },

@@ -1,12 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import {
-  ActivityIndicator,
-  Animated,
-  ScrollView,
-  Text,
-  TouchableOpacity,
-  View,
-} from "react-native";
+import { Animated, ScrollView, Text, TouchableOpacity, View } from "react-native";
 import Svg, { Polyline } from "react-native-svg";
 import { useTranslation } from "react-i18next";
 import Header from "../../../../shared/components/header";
@@ -18,6 +11,7 @@ import {
 } from "../../../../shared/hooks";
 import {
   PullToRefreshControl,
+  RefreshLogoInline,
   RefreshLogoOverlay,
 } from "@shared/components/RefreshLogoOverlay";
 import {
@@ -27,6 +21,7 @@ import {
   usePowerControl,
 } from "../../hooks/useTenantIoT";
 import iotCommandApi, { type AreaPowerStateResponse } from "../../../../shared/services/iotCommandApi";
+import { DATA_LOAD_TIMEOUT_MS } from "../../../../shared/api/config";
 import {
   brandPrimary,
   brandTintBg,
@@ -355,7 +350,7 @@ const PowerBtn = ({
     activeOpacity={0.85}
   >
     {loading ? (
-      <ActivityIndicator color={neutral.surface} size="small" />
+      <RefreshLogoInline logoPx={18} showLabel={false} />
     ) : (
       <Text style={pw.txt}>{isPowered ? tOff : tOn}</Text>
     )}
@@ -480,13 +475,18 @@ const ElectricUsageScreen = ({ showHeader = true }: ElectricUsageScreenProps) =>
 
   const [powerState, setPowerState] = useState<AreaPowerStateResponse | null>(null);
   const [isAreaLoading, setIsAreaLoading] = useState(false);
+  /** Hết DATA_LOAD_TIMEOUT_MS mà chưa có telemetry realtime → ẩn card “Theo dõi điện”. */
+  const [monitoringTimedOut, setMonitoringTimedOut] = useState(false);
   const prevAreaRef = useRef<string | null>(null);
   const powerStateReqRef = useRef(0);
 
   useEffect(() => {
     if (prevAreaRef.current !== selectedAreaId) {
       prevAreaRef.current = selectedAreaId;
-      if (!isHouseLevel) setIsAreaLoading(true);
+      if (!isHouseLevel) {
+        setIsAreaLoading(true);
+        setMonitoringTimedOut(false);
+      }
     }
   }, [selectedAreaId, isHouseLevel]);
 
@@ -559,6 +559,7 @@ const ElectricUsageScreen = ({ showHeader = true }: ElectricUsageScreenProps) =>
   const [pullRefreshing, setPullRefreshing] = useState(false);
   const onRefresh = useCallback(async () => {
     setPullRefreshing(true);
+    setMonitoringTimedOut(false);
     const tasks: Promise<unknown>[] = [
       Promise.resolve().then(() => {
         usage.refetch();
@@ -577,6 +578,25 @@ const ElectricUsageScreen = ({ showHeader = true }: ElectricUsageScreenProps) =>
   }, [usage.refetch, areaDistribution.refetch, activeAreaId, houseId]);
 
   const f = power?.features;
+
+  useEffect(() => {
+    if (isHouseLevel || !activeAreaId || !houseId) {
+      setMonitoringTimedOut(false);
+      return;
+    }
+    if (!isPowered) {
+      setMonitoringTimedOut(false);
+      return;
+    }
+    if (f) {
+      setMonitoringTimedOut(false);
+      return;
+    }
+    if (isAreaLoading) return;
+    const t = setTimeout(() => setMonitoringTimedOut(true), DATA_LOAD_TIMEOUT_MS);
+    return () => clearTimeout(t);
+  }, [activeAreaId, houseId, isHouseLevel, isPowered, isAreaLoading, f, thingId]);
+
   const g = gas?.features;
   const e = environment?.features;
   const gasLevel: "ok" | "warn" | "critical" = !g?.gas_ppm
@@ -691,7 +711,12 @@ const ElectricUsageScreen = ({ showHeader = true }: ElectricUsageScreenProps) =>
           {!isHouseLevel &&
             (isAreaLoading ? (
               <MonitoringSkeleton accent={ACCENT} />
-            ) : isPowered ? (
+            ) : !isPowered ? (
+              <Card style={styles.offCard}>
+                <Text style={styles.offTitle}>{t("consumption.area_power_off_title")}</Text>
+                <Text style={styles.offSub}>{t("consumption.area_power_off_body")}</Text>
+              </Card>
+            ) : monitoringTimedOut ? null : (
               <Card>
                 <CardHeader
                   title={t("consumption.monitoring_electric")}
@@ -778,15 +803,10 @@ const ElectricUsageScreen = ({ showHeader = true }: ElectricUsageScreenProps) =>
                   </>
                 ) : (
                   <View style={styles.waitRow}>
-                    <ActivityIndicator color={ACCENT} size="small" />
+                    <RefreshLogoInline logoPx={18} showLabel={false} />
                     <Text style={styles.waitTxt}>{t("consumption.waiting_device")}</Text>
                   </View>
                 )}
-              </Card>
-            ) : (
-              <Card style={styles.offCard}>
-                <Text style={styles.offTitle}>{t("consumption.area_power_off_title")}</Text>
-                <Text style={styles.offSub}>{t("consumption.area_power_off_body")}</Text>
               </Card>
             ))}
 

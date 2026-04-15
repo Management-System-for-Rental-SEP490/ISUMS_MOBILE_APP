@@ -262,13 +262,8 @@ export default function TenantVnpayCheckoutScreen({ navigation, route }: Props) 
         <WebView
           source={{ uri: checkoutUrl }}
           style={styles.flex}
-          startInLoadingState
-          renderLoading={() => (
-            <View style={[styles.webLoadingOverlay, { position: "relative" }]}>
-              <RefreshLogoOverlay visible mode="page" />
-            </View>
-          )}
-        injectedJavaScriptBeforeContentLoaded={`
+          startInLoadingState={false}
+          injectedJavaScriptBeforeContentLoaded={`
             (function() {
               function hideTestOrderInfo() {
                 try {
@@ -288,15 +283,15 @@ export default function TenantVnpayCheckoutScreen({ navigation, route }: Props) 
             })();
             true;
           `}
-        onShouldStartLoadWithRequest={(req) => {
-          const url = req.url;
-          if (!isLikelyVnpayReturnNavigation(url)) return true;
-          void processVnpayReturnIfNeeded(url);
-          return false;
-        }}
-        onNavigationStateChange={(nav) => {
-          void processVnpayReturnIfNeeded(nav.url);
-        }}
+          onShouldStartLoadWithRequest={(req) => {
+            const url = req.url;
+            if (!isLikelyVnpayReturnNavigation(url)) return true;
+            void processVnpayReturnIfNeeded(url);
+            return false;
+          }}
+          onNavigationStateChange={(nav) => {
+            void processVnpayReturnIfNeeded(nav.url);
+          }}
         />
       </SafeAreaView>
     </View>
@@ -314,12 +309,6 @@ const styles = StyleSheet.create({
   flex: { flex: 1, backgroundColor: neutral.background },
   loadingBody: {
     flex: 1,
-    justifyContent: "center",
-    alignItems: "center",
-    backgroundColor: neutral.background,
-  },
-  webLoadingOverlay: {
-    ...StyleSheet.absoluteFillObject,
     justifyContent: "center",
     alignItems: "center",
     backgroundColor: neutral.background,

@@ -27,7 +27,7 @@ export default {
         "a11y_app_logo": "Logo ISUMS",
         "a11y_open_profile": "Mở hồ sơ",
         "a11y_brand_go_home": "Về trang chủ",
-        "currency_vnd_unit": "VNĐ",
+        "currency_vnd_unit": "Đồng",
         "currency_not_available": "—"
     },
     "device_detail": {
@@ -172,7 +172,7 @@ export default {
         "not_assigned": "Chưa phân công",
         "field_slot": "Thời gian dự kiến xử lý",
         "no_slot": "Chưa có lịch",
-        "slot_time_tbd": "Sẽ được liên hệ để xác định thời gian",
+        "slot_time_tbd": "Sẽ được kỹ thuật viên liên hệ để xác định thời gian",
         "section_repair_invoice": "Hóa đơn & lịch sử thanh toán",
         "payment_content_label": "Nội dung thanh toán",
         "payment_content_repair_quote_heading": "Phí sửa chữa (theo báo giá đã duyệt)",
@@ -718,9 +718,9 @@ export default {
         "return_ui_success_subtitle": "Cảm ơn bạn. Nhấn Hoàn tất để tiếp tục.",
         "return_ui_success_subtitle_house": "Đã ghi nhận. Nhấn Hoàn tất để xem lại hóa đơn.",
         "return_ui_verify_skipped_subtitle":
-            "Giao dịch có thể đã thành công. Nhấn Hoàn tất và kiểm tra hóa đơn hoặc ticket trong app.",
+            "Giao dịch đã thành công. Nhấn Hoàn tất và kiểm tra hóa đơn hoặc ticket trong app.",
         "return_ui_verify_skipped_subtitle_house":
-            "Giao dịch có thể đã thành công. Nhấn Hoàn tất và kiểm tra danh sách hóa đơn.",
+            "Giao dịch đã thành công. Nhấn Hoàn tất và kiểm tra danh sách hóa đơn.",
         "return_ui_problem_title": "Chưa hoàn tất thanh toán",
         "return_ui_problem_subtitle": "Vui lòng thử lại sau hoặc liên hệ hỗ trợ nếu cần.",
         "return_success_gateway_verify_skipped":
@@ -737,7 +737,7 @@ export default {
         "error_401": "Phiên đăng nhập không hợp lệ hoặc đã hết hạn (401). Vui lòng đăng nhập lại.",
         "server_http_line": "Chi tiết kỹ thuật: HTTP {{status}}{{phrase}}",
         "quote_pending_payment_hint":
-            "Ý nghĩa: hệ thống đang giữ một lượt thanh toán VNPay chưa kết thúc cho báo giá này (thường do đã mở trang thanh toán rồi thoát giữa chừng, hoặc bước sau OTP lỗi). Cách xử lý: đợi vài phút đến khi phiên hết hạn rồi bấm thanh toán lại; nếu vẫn lỗi, cần quản trị/hỗ trợ xóa hoặc hủy giao dịch treo trên server.",
+            "Trước đó bạn đã mở thanh toán nhưng chưa hoàn tất (ví dụ thoát giữa chừng hoặc chưa xong bước xác nhận). Hãy đợi vài phút rồi bấm thanh toán lại. Nếu vẫn không được, liên hệ bộ phận hỗ trợ để được kiểm tra.",
         "issue_ticket_context": "Thanh toán liên quan ticket sửa chữa. Chọn hóa đơn phí sửa chữa (nếu đã được tạo) trong danh sách bên dưới.",
         "main_house_badge": "Nhà chính",
         "primary_house_required_title": "Bắt buộc thanh toán cho căn đang chọn trước",

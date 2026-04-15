@@ -129,7 +129,8 @@ export default function TenantInvoiceListScreen() {
     [distinctHouseIds, accessibleHouseIds, rawInvoiceData]
   );
 
-  const { namesById: orphanHouseNamesByApi } = useHouseNamesByIds(orphanHouseIdsForByIdApi);
+  const { namesById: orphanHouseNamesByApi, pendingHouseIds: orphanHouseNamesPending } =
+    useHouseNamesByIds(orphanHouseIdsForByIdApi);
 
   const filterHouseOptions = useMemo(
     () =>
@@ -448,10 +449,13 @@ export default function TenantInvoiceListScreen() {
     </View>
   );
 
-  const houseLineLabel = (inv: TenantInvoiceFromApi) => {
+  const houseLineForCard = (inv: TenantInvoiceFromApi): { loading: boolean; text: string } => {
     const hid = String(inv.houseId ?? "").trim();
-    if (!hid) return "—";
-    return houseNameById.get(hid) ?? `${hid.slice(0, 8)}…`;
+    if (!hid) return { loading: false, text: "—" };
+    const name = houseNameById.get(hid);
+    if (name) return { loading: false, text: name };
+    if (orphanHouseNamesPending.has(hid)) return { loading: true, text: "" };
+    return { loading: false, text: `${hid.slice(0, 8)}…` };
   };
 
   const orphanDisclaimerForInvoice = (inv: TenantInvoiceFromApi) => {
@@ -463,6 +467,7 @@ export default function TenantInvoiceListScreen() {
   };
 
   const renderInvoiceCard = (item: TenantInvoiceFromApi, navigateToTicketDetail: boolean) => {
+    const hl = houseLineForCard(item);
     const sv = statusStyle(item.status);
     const payable = isTenantInvoicePayable(item.status);
     const open = () => void onPressRow(item, navigateToTicketDetail);
@@ -490,9 +495,18 @@ export default function TenantInvoiceListScreen() {
             {getInvoiceDisplayTitle(item)}
           </Text>
           {showHouseOnCard && item.houseId ? (
-            <Text style={styles.cardHouseLine} numberOfLines={1}>
-              {t("tenant_invoice.field_house")}: {houseLineLabel(item)}
-            </Text>
+            <View style={{ flexDirection: "row", alignItems: "center", flexWrap: "wrap", gap: 6 }}>
+              <Text style={styles.cardHouseLine} numberOfLines={1}>
+                {t("tenant_invoice.field_house")}:
+              </Text>
+              {hl.loading ? (
+                <RefreshLogoInline logoPx={14} showLabel={false} />
+              ) : (
+                <Text style={styles.cardHouseLine} numberOfLines={1}>
+                  {hl.text}
+                </Text>
+              )}
+            </View>
           ) : null}
           {showHouseOnCard ? orphanDisclaimerForInvoice(item) : null}
           <View style={styles.cardBottomRow}>
@@ -540,9 +554,18 @@ export default function TenantInvoiceListScreen() {
             {getInvoiceDisplayTitle(item)}
           </Text>
           {showHouseOnCard && item.houseId ? (
-            <Text style={styles.cardHouseLine} numberOfLines={1}>
-              {t("tenant_invoice.field_house")}: {houseLineLabel(item)}
-            </Text>
+            <View style={{ flexDirection: "row", alignItems: "center", flexWrap: "wrap", gap: 6 }}>
+              <Text style={styles.cardHouseLine} numberOfLines={1}>
+                {t("tenant_invoice.field_house")}:
+              </Text>
+              {hl.loading ? (
+                <RefreshLogoInline logoPx={14} showLabel={false} />
+              ) : (
+                <Text style={styles.cardHouseLine} numberOfLines={1}>
+                  {hl.text}
+                </Text>
+              )}
+            </View>
           ) : null}
           {showHouseOnCard ? orphanDisclaimerForInvoice(item) : null}
           <View style={styles.cardBottomRow}>

@@ -21,8 +21,7 @@ import { brandGradient } from "../../../shared/theme/color";
 
 const { width, height: windowHeight } = Dimensions.get("window");
 
-/** Chỗ để footer cố định (chấm + nút) — vừa đủ tránh che, không đẩy nội dung quá cao. */
-const ONBOARDING_FOOTER_RESERVE = 198;
+const ONBOARDING_FOOTER_RESERVE = 0;
 
 type SlideDef = {
   id: string;
@@ -143,9 +142,10 @@ const OnBoarding = () => {
         </TouchableOpacity>
       )}
       
-      {/* Phần Slide Content */}
+      {/* Phần Slide Content — flex để chiều cao trừ footer thật, không bị đè bởi lớp absolute */}
       <View style={{ flex: 1 }}>
         <FlatList
+          style={{ flex: 1 }}
           data={SLIDES}
           renderItem={({ item }) => {
             const hasNote = Boolean(item.footerNoteKey);
@@ -155,7 +155,7 @@ const OnBoarding = () => {
                   styles.slide,
                   {
                     paddingTop: insets.top + windowHeight * 0.065,
-                    paddingBottom: ONBOARDING_FOOTER_RESERVE + insets.bottom,
+                    paddingBottom: ONBOARDING_FOOTER_RESERVE + insets.bottom + 8,
                   },
                 ]}
               >
@@ -167,20 +167,19 @@ const OnBoarding = () => {
                 {hasNote ? (
                   <ScrollView
                     style={styles.textScroll}
-                    contentContainerStyle={styles.textScrollContent}
-                    showsVerticalScrollIndicator
+                    contentContainerStyle={[styles.textContainer, styles.textScrollContent]}
+                    scrollEnabled={false}
+                    showsVerticalScrollIndicator={false}
                     bounces={false}
                     keyboardShouldPersistTaps="handled"
                   >
-                    <View style={styles.textContainer}>
-                      <Text style={styles.title}>{t(item.titleKey)}</Text>
-                      <Text style={styles.description}>{t(item.descKey)}</Text>
-                      {item.footerNoteKey ? (
-                        <View style={styles.footerNote}>
-                          <Text style={styles.footerNoteText}>{t(item.footerNoteKey)}</Text>
-                        </View>
-                      ) : null}
-                    </View>
+                    <Text style={styles.title}>{t(item.titleKey)}</Text>
+                    <Text style={styles.description}>{t(item.descKey)}</Text>
+                    {item.footerNoteKey ? (
+                      <View style={styles.footerNote}>
+                        <Text style={styles.footerNoteText}>{t(item.footerNoteKey)}</Text>
+                      </View>
+                    ) : null}
                   </ScrollView>
                 ) : (
                   <View style={styles.textContainer}>
@@ -207,7 +206,7 @@ const OnBoarding = () => {
         />
       </View>
 
-      {/* Phần Footer điều khiển */}
+      {/* Footer trong luồng layout — không đè lên ghi chú */}
       <View style={[styles.footer, { paddingBottom: insets.bottom + 20 }]}>
         <Paginator data={SLIDES} scrollX={scrollX} />
 

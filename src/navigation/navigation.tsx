@@ -25,6 +25,7 @@ import TenantInvoiceDetailScreen from "../features/tenant/screens/tenantInvoice/
 import TenantIssueInvoiceScreen from "../features/tenant/screens/tenantTicket/tenantIssueInvoice";
 import TenantVnpayCheckoutScreen from "../features/tenant/screens/tenantInvoice/TenantVnpayCheckoutScreen";
 import { RefreshLogoOverlay } from "@shared/components/RefreshLogoOverlay";
+import { neutral } from "../shared/theme/color";
 import { ensureTenantMainHouseSynced } from "../shared/services/userApi";
 import KeycloakChangePasswordWebViewOverlay from "../shared/components/KeycloakChangePasswordWebViewOverlay";
 import NotificationScreen from "../features/tenant/screens/tenantNotification/NotificationScreen";
@@ -141,7 +142,13 @@ const Navigation = () => {
 
   if (!isReady) {
     return (
-      <View style={{ flex: 1, position: "relative" }}>
+      <View
+        style={{
+          flex: 1,
+          position: "relative",
+          backgroundColor: neutral.background,
+        }}
+      >
         <RefreshLogoOverlay visible mode="page" />
       </View>
     );
@@ -149,7 +156,13 @@ const Navigation = () => {
 
   if (isLoggedIn && role === "tenant" && isSyncingMainHouseOnLogin) {
     return (
-      <View style={{ flex: 1, position: "relative" }}>
+      <View
+        style={{
+          flex: 1,
+          position: "relative",
+          backgroundColor: neutral.background,
+        }}
+      >
         <RefreshLogoOverlay visible mode="page" />
       </View>
     );
@@ -161,10 +174,11 @@ const Navigation = () => {
         <Stack.Navigator
           screenOptions={{
             headerShown: false,
-            /** Android edge-to-edge: nội dung vẽ phía sau status bar + thanh điều hướng (mặc định RN Screens: navigationBarTranslucent = false). */
-            statusBarTranslucent: true,
-            navigationBarTranslucent: true,
-            navigationBarColor: "#00000000",
+            /**
+             * Android: `edgeToEdgeEnabled` trong app.json — không truyền statusBarTranslucent /
+             * navigationBar* vào screen options (bị bỏ qua và cảnh báo bởi react-native-edge-to-edge).
+             * Nội dung sau system bars: SafeArea + `<StatusBar />` trên từng màn.
+             */
           }}
         >
           {isLoggedIn ? (
@@ -173,10 +187,8 @@ const Navigation = () => {
                 name="OnBoarding"
                 component={OnBoarding}
                 options={{
-                  /** Gradient tối → icon status bar sáng; nền trong suốt để thấy đồng hồ/pin. */
+                  /** Gradient tối → icon status bar sáng (màu nền/status translucent do edge-to-edge quản lý). */
                   statusBarStyle: "light",
-                  statusBarBackgroundColor: "transparent",
-                  statusBarTranslucent: true,
                 }}
               />
             ) : (
@@ -217,15 +229,7 @@ const Navigation = () => {
               </>
             )
           ) : (
-            <Stack.Screen
-              name="AuthLogin"
-              component={Login}
-              options={{
-                statusBarTranslucent: true,
-                navigationBarColor: "#00000000",
-                navigationBarTranslucent: true,
-              }}
-            />
+            <Stack.Screen name="AuthLogin" component={Login} />
           )}
         </Stack.Navigator>
       </NavigationContainer>

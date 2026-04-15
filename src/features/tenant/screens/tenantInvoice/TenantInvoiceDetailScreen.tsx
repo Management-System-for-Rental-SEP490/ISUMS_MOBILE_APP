@@ -92,10 +92,27 @@ export default function TenantInvoiceDetailScreen({ navigation, route }: Props) 
     return Boolean(found?.name?.trim());
   }, [invoiceHouseId, tenantHouseRows]);
 
-  const { data: invoiceHouseByIdRes } = useHouseById(
+  const needsInvoiceHouseById =
+    Boolean(invoiceHouseId && lacksInvoiceHouseName && !hasNameFromMyAccess);
+  const { data: invoiceHouseByIdRes, isPending: invoiceHouseByIdPending } = useHouseById(
     invoiceHouseId,
-    Boolean(invoiceHouseId && lacksInvoiceHouseName && !hasNameFromMyAccess)
+    needsInvoiceHouseById
   );
+
+  const invoiceHouseLabelLoading = useMemo(() => {
+    if (!invoiceHouseId) return false;
+    const fromInv = String(mergedInvoice.houseName ?? "").trim();
+    if (fromInv) return false;
+    const found = tenantHouseRows.find((h) => String(h.id ?? "").trim() === invoiceHouseId);
+    if (found?.name?.trim()) return false;
+    return needsInvoiceHouseById && invoiceHouseByIdPending;
+  }, [
+    invoiceHouseId,
+    mergedInvoice.houseName,
+    needsInvoiceHouseById,
+    invoiceHouseByIdPending,
+    tenantHouseRows,
+  ]);
 
   const invoiceHouseLabel = useMemo(() => {
     if (!invoiceHouseId) return "";
@@ -109,8 +126,15 @@ export default function TenantInvoiceDetailScreen({ navigation, route }: Props) 
         ? String(invoiceHouseByIdRes.data.name ?? "").trim()
         : "";
     if (fromHouseById) return fromHouseById;
+    if (invoiceHouseLabelLoading) return "";
     return shortHouseIdForDisplay(invoiceHouseId);
-  }, [mergedInvoice.houseName, invoiceHouseId, tenantHouseRows, invoiceHouseByIdRes]);
+  }, [
+    mergedInvoice.houseName,
+    invoiceHouseId,
+    tenantHouseRows,
+    invoiceHouseByIdRes,
+    invoiceHouseLabelLoading,
+  ]);
 
   const locale = useMemo(() => {
     const lang = String(i18n.language || "").toLowerCase();
@@ -409,7 +433,13 @@ export default function TenantInvoiceDetailScreen({ navigation, route }: Props) 
         {invoiceHouseId ? (
           <View style={styles.detailNoticeCard}>
             <Text style={styles.detailTimelineLabel}>{t("tenant_invoice.field_house")}</Text>
-            <Text style={styles.detailTimelineValue}>{invoiceHouseLabel}</Text>
+            {invoiceHouseLabelLoading ? (
+              <View style={{ minHeight: 24, justifyContent: "center" }}>
+                <RefreshLogoInline logoPx={18} showLabel={false} />
+              </View>
+            ) : (
+              <Text style={styles.detailTimelineValue}>{invoiceHouseLabel}</Text>
+            )}
             {invoiceHouseOutsideAccess ? (
               <Text style={[styles.accessMismatchNotice, { marginTop: 8 }]}>
                 {t("tenant_access.house_not_owned_disclaimer")}

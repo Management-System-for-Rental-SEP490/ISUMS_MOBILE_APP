@@ -1517,6 +1517,14 @@ export const tenantTicketDetailStyles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     paddingHorizontal: 16,
+    position: "relative",
+  },
+  imageModalBackdropDismiss: {
+    ...StyleSheet.absoluteFillObject,
+  },
+  imageModalPager: {
+    width: "100%",
+    height: 320,
   },
   imageModalContent: {
     width: "100%",
@@ -1525,6 +1533,7 @@ export const tenantTicketDetailStyles = StyleSheet.create({
     borderWidth: 1,
     borderColor: neutral.borderMuted ?? neutral.border,
     backgroundColor: neutral.surface,
+    zIndex: 1,
   },
   imageModalClose: {
     position: "absolute",

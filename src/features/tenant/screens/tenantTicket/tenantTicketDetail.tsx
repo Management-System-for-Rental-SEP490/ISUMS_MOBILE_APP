@@ -1,12 +1,15 @@
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useFocusEffect } from "@react-navigation/native";
 import {
+  FlatList,
   Image,
   Modal,
+  Pressable,
   ScrollView,
   Text,
   TouchableOpacity,
   View,
+  useWindowDimensions,
 } from "react-native";
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -110,6 +113,8 @@ const TenantTicketDetailScreen = ({ navigation, route }: Props) => {
   const insets = useSafeAreaInsets();
   const initialTicket = route.params.ticket;
   const [ticket, setTicket] = useState(initialTicket);
+  /** Chờ lần đầu `getTenantTicketById` — tránh hiển thị UUID (ví dụ `assignedStaffId`) trước khi BE trả đủ tên/SĐT. */
+  const [ticketDetailLoading, setTicketDetailLoading] = useState(true);
   const [predictedHandlingTime, setPredictedHandlingTime] = useState<string | null>(null);
   const [workSlotLoading, setWorkSlotLoading] = useState(false);
 
@@ -124,7 +129,11 @@ const TenantTicketDetailScreen = ({ navigation, route }: Props) => {
   const [assetLoading, setAssetLoading] = useState(true);
   const [ticketImages, setTicketImages] = useState<TenantTicketImageFromApi[]>([]);
   const [imagesLoading, setImagesLoading] = useState(false);
-  const [activeImageUrl, setActiveImageUrl] = useState<string | null>(null);
+  /** Index ảnh đang xem fullscreen; null = đóng modal. */
+  const [activeImageIndex, setActiveImageIndex] = useState<number | null>(null);
+  const imageModalListRef = useRef<FlatList<TenantTicketImageFromApi>>(null);
+  const { width: windowWidth } = useWindowDimensions();
+  const imageModalPageWidth = Math.max(0, windowWidth - 32);
 
   const [quotesLoading, setQuotesLoading] = useState(false);
   const [quotes, setQuotes] = useState<IssueQuoteFromApi[]>([]);
@@ -209,6 +218,15 @@ const TenantTicketDetailScreen = ({ navigation, route }: Props) => {
   }, [loadImages]);
 
   useEffect(() => {
+    if (activeImageIndex == null || ticketImages.length === 0) return;
+    const index = Math.min(Math.max(0, activeImageIndex), ticketImages.length - 1);
+    const timer = setTimeout(() => {
+      imageModalListRef.current?.scrollToIndex({ index, animated: false });
+    }, 0);
+    return () => clearTimeout(timer);
+  }, [activeImageIndex, ticketImages]);
+
+  useEffect(() => {
     if (!isQuestionTicket || !ticket?.id) {
       setQuestionResponse(null);
       setQuestionResponseLoading(false);
@@ -289,11 +307,16 @@ const TenantTicketDetailScreen = ({ navigation, route }: Props) => {
 
   const refreshTicket = useCallback(async () => {
     try {
-      if (!ticket?.id) return;
+      if (!ticket?.id) {
+        setTicketDetailLoading(false);
+        return;
+      }
       const updated = await getTenantTicketById(ticket.id);
       if (updated) setTicket(updated);
     } catch {
       // giữ ticket cũ nếu refresh lỗi
+    } finally {
+      setTicketDetailLoading(false);
     }
   }, [ticket?.id]);
 
@@ -533,8 +556,10 @@ const TenantTicketDetailScreen = ({ navigation, route }: Props) => {
 
   const sv = statusVisual(ticket.status);
   const staffAssigned = !nilUuid(ticket.assignedStaffId);
-  const staffName = staffAssigned ? ticket.staffName ?? ticket.assignedStaffId ?? "" : "";
-  const staffPhone = staffAssigned ? ticket.staffPhone ?? "" : "";
+  const staffNameTrim = String(ticket.staffName ?? "").trim();
+  const staffPhoneTrim = String(ticket.staffPhone ?? "").trim();
+  const staffNamePending = staffAssigned && ticketDetailLoading && !staffNameTrim;
+  const staffPhonePending = staffAssigned && ticketDetailLoading && !staffPhoneTrim;
 
   return (
     <View style={styles.container}>
@@ -669,38 +694,57 @@ const TenantTicketDetailScreen = ({ navigation, route }: Props) => {
               </View>
               <View style={styles.detailFieldRow}>
                 <Text style={styles.fieldLabel}>{t("tenant_ticket_detail.field_assigned_staff")}</Text>
-                {staffAssigned ? (
-                  <Text style={styles.fieldValue} selectable numberOfLines={1}>
-                    {staffName || "—"}
-                  </Text>
-                ) : (
+                {!staffAssigned ? (
                   <Text style={styles.fieldValueMuted} selectable>
                     {t("tenant_ticket_detail.not_assigned")}
+                  </Text>
+                ) : staffNamePending ? (
+                  <View style={styles.assetLoadingRow}>
+                    <RefreshLogoInline logoPx={18} />
+                    <Text style={styles.fieldValueMuted}>{t("common.loading")}</Text>
+                  </View>
+                ) : (
+                  <Text style={styles.fieldValue} selectable numberOfLines={1}>
+                    {staffNameTrim || "—"}
                   </Text>
                 )}
               </View>
               <View style={styles.detailFieldRow}>
                 <Text style={styles.fieldLabel}>{t("tenant_ticket_detail.field_staff_phone")}</Text>
-                <Text style={staffAssigned ? styles.fieldValuePhone : styles.fieldValueMuted} selectable numberOfLines={1}>
-                  {staffAssigned ? staffPhone || "—" : "—"}
-                </Text>
+                {!staffAssigned ? (
+                  <Text style={styles.fieldValueMuted} selectable numberOfLines={1}>
+                    —
+                  </Text>
+                ) : staffPhonePending ? (
+                  <View style={styles.assetLoadingRow}>
+                    <RefreshLogoInline logoPx={18} />
+                    <Text style={styles.fieldValueMuted}>{t("common.loading")}</Text>
+                  </View>
+                ) : (
+                  <Text style={styles.fieldValuePhone} selectable numberOfLines={1}>
+                    {staffPhoneTrim || "—"}
+                  </Text>
+                )}
               </View>
               <View style={[styles.detailFieldRow, styles.detailFieldRowLast]}>
                 <Text style={styles.fieldLabel}>{t("tenant_ticket_detail.field_slot")}</Text>
-                <Text
-                  style={
-                    nilUuid(ticket.slotId) || workSlotLoading || predictedHandlingTime == null
-                      ? styles.fieldValueMuted
-                      : styles.fieldValue
-                  }
-                  selectable
-                >
-                  {nilUuid(ticket.slotId)
-                    ? t("tenant_ticket_detail.no_slot")
-                    : workSlotLoading
-                      ? t("common.loading")
-                      : predictedHandlingTime ?? t("tenant_ticket_detail.slot_time_tbd")}
-                </Text>
+                {nilUuid(ticket.slotId) ? (
+                  <Text style={styles.fieldValueMuted} selectable>
+                    {t("tenant_ticket_detail.no_slot")}
+                  </Text>
+                ) : workSlotLoading ? (
+                  <View style={styles.assetLoadingRow}>
+                    <RefreshLogoInline logoPx={18} />
+                    <Text style={styles.fieldValueMuted}>{t("common.loading")}</Text>
+                  </View>
+                ) : (
+                  <Text
+                    style={predictedHandlingTime == null ? styles.fieldValueMuted : styles.fieldValue}
+                    selectable
+                  >
+                    {predictedHandlingTime ?? t("tenant_ticket_detail.slot_time_tbd")}
+                  </Text>
+                )}
               </View>
             </TicketDetailSection>
 
@@ -727,7 +771,7 @@ const TenantTicketDetailScreen = ({ navigation, route }: Props) => {
                   <TouchableOpacity
                     style={styles.ticketImageThumbFull}
                     activeOpacity={0.85}
-                    onPress={() => setActiveImageUrl(ticketImages[0]!.url)}
+                    onPress={() => setActiveImageIndex(0)}
                   >
                     <Image
                       source={{ uri: ticketImages[0]!.url }}
@@ -742,12 +786,12 @@ const TenantTicketDetailScreen = ({ navigation, route }: Props) => {
                     style={styles.ticketImagesScroll}
                     contentContainerStyle={styles.ticketImagesStrip}
                   >
-                    {ticketImages.map((img) => (
+                    {ticketImages.map((img, index) => (
                       <TouchableOpacity
                         key={img.id}
                         style={[styles.ticketImageThumb, styles.ticketImageThumbHorizontal]}
                         activeOpacity={0.85}
-                        onPress={() => setActiveImageUrl(img.url)}
+                        onPress={() => setActiveImageIndex(index)}
                       >
                         <Image source={{ uri: img.url }} style={styles.ticketImage} resizeMode="cover" />
                       </TouchableOpacity>
@@ -923,40 +967,62 @@ const TenantTicketDetailScreen = ({ navigation, route }: Props) => {
       </ScrollView>
 
       <Modal
-        visible={activeImageUrl != null}
+        visible={activeImageIndex !== null}
         transparent
         animationType="fade"
-        onRequestClose={() => setActiveImageUrl(null)}
+        onRequestClose={() => setActiveImageIndex(null)}
       >
-        <TouchableOpacity
-          style={styles.imageModalBackdrop}
-          activeOpacity={1}
-          onPress={() => setActiveImageUrl(null)}
-        >
-          <TouchableOpacity
-            activeOpacity={1}
-            onPress={(e) => {
-              // tránh click lan sang backdrop
-                e.stopPropagation();
-            }}
-            style={styles.imageModalContent}
-          >
+        <View style={styles.imageModalBackdrop}>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={t("common.close")}
+            style={styles.imageModalBackdropDismiss}
+            onPress={() => setActiveImageIndex(null)}
+          />
+          <View style={styles.imageModalContent}>
             <TouchableOpacity
               style={styles.imageModalClose}
-              onPress={() => setActiveImageUrl(null)}
+              onPress={() => setActiveImageIndex(null)}
               activeOpacity={0.8}
             >
               <Text style={styles.imageModalCloseText}>×</Text>
             </TouchableOpacity>
-            {activeImageUrl && (
-              <Image
-                source={{ uri: activeImageUrl }}
-                style={styles.imageModalImage}
-                resizeMode="contain"
+            {activeImageIndex !== null && ticketImages.length > 0 ? (
+              <FlatList
+                ref={imageModalListRef}
+                data={ticketImages}
+                horizontal
+                pagingEnabled
+                showsHorizontalScrollIndicator={false}
+                nestedScrollEnabled
+                style={styles.imageModalPager}
+                keyExtractor={(item) => item.id}
+                getItemLayout={(_, index) => ({
+                  length: imageModalPageWidth,
+                  offset: imageModalPageWidth * index,
+                  index,
+                })}
+                renderItem={({ item }) => (
+                  <View style={{ width: imageModalPageWidth }}>
+                    <Image
+                      source={{ uri: item.url }}
+                      style={styles.imageModalImage}
+                      resizeMode="contain"
+                    />
+                  </View>
+                )}
+                onScrollToIndexFailed={(info) => {
+                  setTimeout(() => {
+                    imageModalListRef.current?.scrollToIndex({
+                      index: info.index,
+                      animated: false,
+                    });
+                  }, 100);
+                }}
               />
-            )}
-          </TouchableOpacity>
-        </TouchableOpacity>
+            ) : null}
+          </View>
+        </View>
       </Modal>
     </View>
   );

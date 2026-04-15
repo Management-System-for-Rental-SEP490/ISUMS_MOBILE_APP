@@ -3,8 +3,18 @@
  * hiển thị giống staff ItemDescription (nhà, danh mục, tên, serial, NFC, QR, tình trạng, trạng thái).
  * Có nút "Báo cáo sự cố" chuyển sang Ticket.
  */
-import React, { useCallback, useMemo, useState } from "react";
-import { View, Text, TouchableOpacity, ScrollView, Image, Modal } from "react-native";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import {
+  View,
+  Text,
+  TouchableOpacity,
+  ScrollView,
+  Image,
+  Modal,
+  FlatList,
+  Pressable,
+  useWindowDimensions,
+} from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useTranslation } from "react-i18next";
 import { useNavigation, useRoute, useFocusEffect } from "@react-navigation/native";
@@ -90,7 +100,10 @@ export default function TenantItemDescriptionScreen() {
   const [itemImages, setItemImages] = useState<AssetItemImageFromApi[]>(() =>
     normalizeEmbeddedImages(initialItem.images)
   );
-  const [activeImageUrl, setActiveImageUrl] = useState<string | null>(null);
+  const [activeImageIndex, setActiveImageIndex] = useState<number | null>(null);
+  const imageModalListRef = useRef<FlatList<AssetItemImageFromApi>>(null);
+  const { width: windowWidth } = useWindowDimensions();
+  const imageModalPageWidth = Math.max(0, windowWidth - 32);
 
   const houseIdForAreas = String(item.houseId ?? "").trim();
   const { data: functionalAreasByHouseRes } =
@@ -151,6 +164,15 @@ export default function TenantItemDescriptionScreen() {
       };
     }, [initialItem.id, initialItem.nfcTag, initialItem.qrTag])
   );
+
+  useEffect(() => {
+    if (activeImageIndex == null || itemImages.length === 0) return;
+    const index = Math.min(Math.max(0, activeImageIndex), itemImages.length - 1);
+    const timer = setTimeout(() => {
+      imageModalListRef.current?.scrollToIndex({ index, animated: false });
+    }, 0);
+    return () => clearTimeout(timer);
+  }, [activeImageIndex, itemImages]);
 
   const houseName = house?.id === item.houseId ? house.name : item.houseId;
   const {
@@ -321,12 +343,12 @@ export default function TenantItemDescriptionScreen() {
                     style={itemScreenStyles.imageStripScroll}
                     contentContainerStyle={itemScreenStyles.imageStrip}
                   >
-                    {itemImages.map((img) => (
+                    {itemImages.map((img, index) => (
                       <TouchableOpacity
                         key={img.id}
                         style={[itemScreenStyles.imageThumb, itemScreenStyles.imageThumbHorizontal]}
                         activeOpacity={0.85}
-                        onPress={() => setActiveImageUrl(img.url)}
+                        onPress={() => setActiveImageIndex(index)}
                       >
                         <Image source={{ uri: img.url }} style={itemScreenStyles.imageThumbImg} resizeMode="cover" />
                       </TouchableOpacity>
@@ -368,33 +390,62 @@ export default function TenantItemDescriptionScreen() {
       )}
 
       <Modal
-        visible={activeImageUrl != null}
+        visible={activeImageIndex !== null}
         transparent
         animationType="fade"
-        onRequestClose={() => setActiveImageUrl(null)}
+        onRequestClose={() => setActiveImageIndex(null)}
       >
-        <TouchableOpacity
-          style={itemScreenStyles.imageModalBackdrop}
-          activeOpacity={1}
-          onPress={() => setActiveImageUrl(null)}
-        >
-          <TouchableOpacity
-            activeOpacity={1}
-            onPress={(e) => e.stopPropagation()}
-            style={itemScreenStyles.imageModalContent}
-          >
+        <View style={itemScreenStyles.imageModalBackdrop}>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={t("common.close")}
+            style={itemScreenStyles.imageModalBackdropDismiss}
+            onPress={() => setActiveImageIndex(null)}
+          />
+          <View style={itemScreenStyles.imageModalContent}>
             <TouchableOpacity
               style={itemScreenStyles.imageModalClose}
               activeOpacity={0.8}
-              onPress={() => setActiveImageUrl(null)}
+              onPress={() => setActiveImageIndex(null)}
             >
               <Text style={itemScreenStyles.imageModalCloseText}>×</Text>
             </TouchableOpacity>
-            {activeImageUrl && (
-              <Image source={{ uri: activeImageUrl }} style={itemScreenStyles.imageModalImage} resizeMode="contain" />
-            )}
-          </TouchableOpacity>
-        </TouchableOpacity>
+            {activeImageIndex !== null && itemImages.length > 0 ? (
+              <FlatList
+                ref={imageModalListRef}
+                data={itemImages}
+                horizontal
+                pagingEnabled
+                showsHorizontalScrollIndicator={false}
+                nestedScrollEnabled
+                style={itemScreenStyles.imageModalPager}
+                keyExtractor={(item) => item.id}
+                getItemLayout={(_, index) => ({
+                  length: imageModalPageWidth,
+                  offset: imageModalPageWidth * index,
+                  index,
+                })}
+                renderItem={({ item }) => (
+                  <View style={{ width: imageModalPageWidth, flex: 1 }}>
+                    <Image
+                      source={{ uri: item.url }}
+                      style={itemScreenStyles.imageModalImage}
+                      resizeMode="contain"
+                    />
+                  </View>
+                )}
+                onScrollToIndexFailed={(info) => {
+                  setTimeout(() => {
+                    imageModalListRef.current?.scrollToIndex({
+                      index: info.index,
+                      animated: false,
+                    });
+                  }, 100);
+                }}
+              />
+            ) : null}
+          </View>
+        </View>
       </Modal>
     </View>
   );

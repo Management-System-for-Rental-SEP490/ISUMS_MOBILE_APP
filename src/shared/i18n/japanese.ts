@@ -717,9 +717,9 @@ export default {
         "return_ui_success_subtitle": "ありがとうございます。「完了」で続行できます。",
         "return_ui_success_subtitle_house": "記録されました。「完了」で請求書をご確認ください。",
         "return_ui_verify_skipped_subtitle":
-            "お支払いは成功している可能性があります。「完了」後にアプリで請求書・チケットをご確認ください。",
+            "お支払いは成功しました。「完了」後にアプリで請求書・チケットをご確認ください。",
         "return_ui_verify_skipped_subtitle_house":
-            "お支払いは成功している可能性があります。「完了」後に請求書一覧をご確認ください。",
+            "お支払いは成功しました。「完了」後に請求書一覧をご確認ください。",
         "return_ui_problem_title": "お支払いが完了していません",
         "return_ui_problem_subtitle": "しばらくしてから再度お試しください。必要ならサポートへご連絡ください。",
         "return_success_gateway_verify_skipped":
@@ -736,7 +736,7 @@ export default {
         "error_401": "セッションが無効または期限切れです (401)。再度ログインしてください。",
         "server_http_line": "技術情報: HTTP {{status}}{{phrase}}",
         "quote_pending_payment_hint":
-            "意味: この見積に対する前回の VNPay セッションが未完了のままです（決済画面を途中で閉じた、OTP 後にエラーが出た、など）。しばらく待って期限切れになったら再度お試しください。改善しない場合は管理者に保留中の取引の解除を依頼してください。",
+            "前回のお支払いが途中で終わっています（画面を閉じた、最後の確認が済んでいない、など）。数分待ってから再度お試しください。解消しない場合はサポートへご連絡ください。",
         "issue_ticket_context": "修理チケットに関するお支払いです。修理料の請求書が表示されたら一覧から選択してください。",
         "main_house_badge": "メイン物件",
         "primary_house_required_title": "まず選択中の物件のお支払いが必要です",

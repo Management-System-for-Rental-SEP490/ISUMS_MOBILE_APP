@@ -1,12 +1,5 @@
 import React, { useEffect, useState } from "react";
-import {
-  ActivityIndicator,
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  Text,
-  View,
-} from "react-native";
+import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { useTranslation } from "react-i18next";
 import { useNavigation, useRoute, RouteProp } from "@react-navigation/native";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
@@ -22,17 +15,14 @@ import {
   stackScreenTitleRowStyle,
   stackScreenTitleSideSlotStyle,
 } from "../../../../shared/components/StackScreenTitleBadge";
-import {
-  brandPrimary,
-  getNotificationAlertLevelStyle,
-  neutral,
-} from "../../../../shared/theme/color";
+import { getNotificationAlertLevelStyle, neutral } from "../../../../shared/theme/color";
 import { tenantSoftCard } from "../../../../shared/styles/tenantSoftCard";
 import { appTypography } from "../../../../shared/utils/typography";
 import alertApi from "../../../../shared/services/alertApi";
 import type { IAlert } from "../../../../shared/types/alert";
 import { formatDayMonthNumeric, formatTimeAgoI18n } from "../../../../shared/utils";
 import { dismissIotHomeBannerForAlert } from "../../utils/dismissIotHomeBanner";
+import { RefreshLogoOverlay } from "@shared/components/RefreshLogoOverlay";
 
 type Route = RouteProp<RootStackParamList, "IotAlertDetail">;
 
@@ -96,7 +86,7 @@ const IotAlertDetailScreen = () => {
 
       {loading ? (
         <View style={styles.center}>
-          <ActivityIndicator size="large" color={brandPrimary} />
+          <RefreshLogoOverlay visible mode="page" />
         </View>
       ) : error || !alert ? (
         <View style={styles.center}>
@@ -133,7 +123,13 @@ const IotAlertDetailScreen = () => {
 
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: neutral.canvasMuted },
-  center: { flex: 1, justifyContent: "center", alignItems: "center", padding: 24 },
+  center: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    padding: 24,
+    position: "relative",
+  },
   err: { ...appTypography.secondary, color: neutral.slate600, textAlign: "center" },
   scroll: { flex: 1 },
   scrollContent: { paddingHorizontal: 16, paddingTop: 16, paddingBottom: 40 },

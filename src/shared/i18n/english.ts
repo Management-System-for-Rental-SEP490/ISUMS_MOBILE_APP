@@ -717,9 +717,9 @@ export default {
         "return_ui_success_subtitle": "Thank you. Tap Done to continue.",
         "return_ui_success_subtitle_house": "Recorded. Tap Done to review your invoices.",
         "return_ui_verify_skipped_subtitle":
-            "Your payment may have succeeded. Tap Done and check your invoices or tickets in the app.",
+            "Your payment succeeded. Tap Done and check your invoices or tickets in the app.",
         "return_ui_verify_skipped_subtitle_house":
-            "Your payment may have succeeded. Tap Done and check your invoice list.",
+            "Your payment succeeded. Tap Done and check your invoice list.",
         "return_ui_problem_title": "Payment not completed",
         "return_ui_problem_subtitle": "Please try again later or contact support if you need help.",
         "return_success_gateway_verify_skipped":
@@ -736,7 +736,7 @@ export default {
         "error_401": "Session is invalid or expired (401). Please sign in again.",
         "server_http_line": "Technical detail: HTTP {{status}}{{phrase}}",
         "quote_pending_payment_hint":
-            "Meaning: a previous VNPay attempt for this quote is still open (e.g. you opened checkout and left, or the post-OTP step failed). Wait a few minutes for it to expire, then pay again; if it persists, ask support to clear the stuck payment on the server.",
+            "You started paying but didn’t finish (for example you left checkout or didn’t complete the last step). Wait a few minutes and try again. If it still fails, contact support.",
         "issue_ticket_context": "Payment for your repair ticket. Select the repair invoice below when it is available.",
         "main_house_badge": "Main house",
         "primary_house_required_title": "Pay your current property first",

@@ -156,6 +156,10 @@ export const tenantItemDescriptionStyles = StyleSheet.create({
     padding: 16,
     alignItems: "center",
     justifyContent: "center",
+    position: "relative",
+  },
+  imageModalBackdropDismiss: {
+    ...StyleSheet.absoluteFillObject,
   },
   imageModalContent: {
     width: "100%",
@@ -165,6 +169,11 @@ export const tenantItemDescriptionStyles = StyleSheet.create({
     backgroundColor: "#0b1220",
     borderWidth: 1,
     borderColor: "rgba(148, 163, 184, 0.25)",
+    zIndex: 1,
+  },
+  imageModalPager: {
+    width: "100%",
+    flex: 1,
   },
   imageModalClose: {
     position: "absolute",

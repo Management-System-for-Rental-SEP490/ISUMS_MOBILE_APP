@@ -104,7 +104,16 @@ export const useHouseNamesByIds = (houseIds: string[]) => {
     return m;
   }, [sortedIds, nameKey]);
 
-  return { namesById };
+  const pendingKey = queries.map((q) => (q.isPending ? "1" : "0")).join("");
+  const pendingHouseIds = useMemo(() => {
+    const s = new Set<string>();
+    sortedIds.forEach((id, i) => {
+      if (queries[i]?.isPending) s.add(id);
+    });
+    return s;
+  }, [sortedIds, pendingKey]);
+
+  return { namesById, pendingHouseIds };
 };
 
 /**

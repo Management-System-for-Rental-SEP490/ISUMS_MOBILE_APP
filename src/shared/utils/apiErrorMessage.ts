@@ -134,18 +134,19 @@ export function formatApiErrorForTenantAlert(
   const fromApi = lines.join("\n").trim();
   const body = fromApi || defaultBodyForPayment(kind, status, t);
 
+  const showQuotePendingHint =
+    kind === "payment_link" &&
+    status === 400 &&
+    looksLikeQuotePendingPaymentError(body);
+
   let out = body;
-  if (status != null) {
+  if (status != null && !showQuotePendingHint) {
     const phrase = statusText?.length ? ` ${statusText}` : "";
     const httpLine = t("tenant_payment.server_http_line", { status, phrase });
     out = `${body}\n\n${httpLine}`;
   }
 
-  if (
-    kind === "payment_link" &&
-    status === 400 &&
-    looksLikeQuotePendingPaymentError(out)
-  ) {
+  if (showQuotePendingHint) {
     out = `${out}\n\n${t("tenant_payment.quote_pending_payment_hint")}`;
   }
 
