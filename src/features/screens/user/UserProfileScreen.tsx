@@ -7,8 +7,6 @@ import { RootStackParamList } from "../../../shared/types";
 import userProfileStyles from "./UserProfileScreenStyles";
 import { useAuthStore } from "../../../store/useAuthStore";
 import { logoutKeycloak, openChangePasswordPage } from "../../../shared/services/keycloakAuth";
-import { UserProfileResponse } from "../../../shared/types/api";
-import { getUserProfile } from "../../../shared/services/userApi";
 import Icons from "../../../shared/theme/icon";
 import {
   BRAND_DANGER,
@@ -22,6 +20,7 @@ import {
   useMyEContracts,
   useTenantContext,
   useTenantHouses,
+  useUserProfile,
   useRefreshControlGate,
 } from "../../../shared/hooks";
 import {
@@ -50,9 +49,15 @@ const UserProfileScreen = () => {
   const { t } = useTranslation();
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const { user, role, idToken, logout } = useAuthStore();
-  const [userInfo, setUserInfo] = useState<UserProfileResponse | null>(null);
-  const [profileLoaded, setProfileLoaded] = useState(false);
   const [eContractsListExpanded, setEContractsListExpanded] = useState(false);
+
+  const {
+    data: userInfo,
+    isPending: profilePending,
+    isRefetching: profileRefetching,
+    refetch: refetchProfile,
+  } = useUserProfile();
+  const profileLoaded = !profilePending;
 
   const { house, isLoading: tenantAccessLoading } = useTenantContext();
 
@@ -63,7 +68,11 @@ const UserProfileScreen = () => {
     refetch: refetchContracts,
     isRefetching: contractsRefetching,
   } = useMyEContracts();
-  const { data: tenantHousesRes, refetch: refetchTenantHouses } = useTenantHouses();
+  const {
+    data: tenantHousesRes,
+    refetch: refetchTenantHouses,
+    isRefetching: tenantHousesRefetching,
+  } = useTenantHouses();
 
   const contracts = contractsRaw ?? EMPTY_ECONTRACTS;
 
@@ -122,10 +131,15 @@ const UserProfileScreen = () => {
     return m;
   }, [tenantHousesRes, contracts, orphanContractHouseNames]);
 
-  const onRefreshContracts = useCallback(() => {
-    void refetchContracts();
-    void refetchTenantHouses();
-  }, [refetchContracts, refetchTenantHouses]);
+  const listRefetching = contractsRefetching || tenantHousesRefetching || profileRefetching;
+
+  const onRefreshAll = useCallback(async () => {
+    await Promise.all([
+      refetchProfile(),
+      refetchContracts(),
+      refetchTenantHouses(),
+    ]);
+  }, [refetchProfile, refetchContracts, refetchTenantHouses]);
 
   const { scrollAtTop, onScrollForRefreshGate } = useRefreshControlGate();
 
@@ -140,26 +154,6 @@ const UserProfileScreen = () => {
     if (status === "PENDING_HANDOVER") return true;
     return !isHandoverDateReached(house.handoverDate);
   }, [tenantAccessLoading, house]);
-
-  useEffect(() => {
-    let cancelled = false;
-    const fetchProfile = async () => {
-      try {
-        const data = await getUserProfile();
-        if (!cancelled && data) {
-          setUserInfo(data);
-        }
-      } finally {
-        if (!cancelled) {
-          setProfileLoaded(true);
-        }
-      }
-    };
-    fetchProfile();
-    return () => {
-      cancelled = true;
-    };
-  }, []);
 
   const handleLogout = () => {
     Alert.alert(
@@ -224,15 +218,15 @@ const UserProfileScreen = () => {
 
   return (
     <View style={[userProfileStyles.container, { position: "relative" }]}>
-      <RefreshLogoOverlay visible={contractsRefetching} />
+      <RefreshLogoOverlay visible={listRefetching} />
       <ScrollView
         contentContainerStyle={[userProfileStyles.contentContainer]}
         onScroll={onScrollForRefreshGate}
         scrollEventThrottle={16}
         refreshControl={
           <PullToRefreshControl
-            refreshing={contractsRefetching}
-            onRefresh={onRefreshContracts}
+            refreshing={listRefetching}
+            onRefresh={onRefreshAll}
             scrollAtTop={scrollAtTop}
           />
         }

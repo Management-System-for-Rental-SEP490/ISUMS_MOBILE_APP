@@ -4,7 +4,10 @@
  */
 import axiosClient from "../api/axiosClient";
 import { BACKEND_API_BASE } from "../api/config";
-import { resolveLocalizedJsonStringFromI18n } from "../utils/resolveLocalizedJsonString";
+import {
+  mergeTranslationMapsFromApi,
+  resolveLocalizedApiFieldFromI18n,
+} from "../utils/resolveLocalizedJsonString";
 import type {
   AssetCategoriesApiResponse,
   AssetCategoryByIdApiResponse,
@@ -23,11 +26,35 @@ export const getAssetCategories = async (): Promise<AssetCategoriesApiResponse> 
   if (!body?.data || !Array.isArray(body.data)) return body;
   return {
     ...body,
-    data: body.data.map((c) => ({
-      ...c,
-      name: resolveLocalizedJsonStringFromI18n(c.name),
-      description: resolveLocalizedJsonStringFromI18n(c.description),
-    })),
+    data: body.data.map((c) => {
+      const nameRaw =
+        c.nameRaw != null ? String(c.nameRaw) : c.name != null ? String(c.name) : "";
+      const descriptionRaw =
+        c.descriptionRaw != null
+          ? String(c.descriptionRaw)
+          : c.description != null
+            ? String(c.description)
+            : "";
+      const r = c as typeof c & {
+        name_translations?: Record<string, unknown>;
+        description_translations?: Record<string, unknown>;
+      };
+      const nameTranslations = mergeTranslationMapsFromApi(
+        r.nameTranslations as Record<string, unknown> | undefined,
+        r.name_translations
+      );
+      const descriptionTranslations = mergeTranslationMapsFromApi(
+        r.descriptionTranslations as Record<string, unknown> | undefined,
+        r.description_translations
+      );
+      return {
+        ...c,
+        nameRaw,
+        descriptionRaw,
+        name: resolveLocalizedApiFieldFromI18n(c.name, nameTranslations),
+        description: resolveLocalizedApiFieldFromI18n(c.description, descriptionTranslations),
+      };
+    }),
   };
 };
 
@@ -44,12 +71,34 @@ export const getAssetCategoryById = async (
   const body = response.data;
   if (!body?.data) return body;
   const c = body.data;
+  const nameRaw =
+    c.nameRaw != null ? String(c.nameRaw) : c.name != null ? String(c.name) : "";
+  const descriptionRaw =
+    c.descriptionRaw != null
+      ? String(c.descriptionRaw)
+      : c.description != null
+        ? String(c.description)
+        : "";
+  const r = c as typeof c & {
+    name_translations?: Record<string, unknown>;
+    description_translations?: Record<string, unknown>;
+  };
+  const nameTranslations = mergeTranslationMapsFromApi(
+    r.nameTranslations as Record<string, unknown> | undefined,
+    r.name_translations
+  );
+  const descriptionTranslations = mergeTranslationMapsFromApi(
+    r.descriptionTranslations as Record<string, unknown> | undefined,
+    r.description_translations
+  );
   return {
     ...body,
     data: {
       ...c,
-      name: resolveLocalizedJsonStringFromI18n(c.name),
-      description: resolveLocalizedJsonStringFromI18n(c.description),
+      nameRaw,
+      descriptionRaw,
+      name: resolveLocalizedApiFieldFromI18n(c.name, nameTranslations),
+      description: resolveLocalizedApiFieldFromI18n(c.description, descriptionTranslations),
     },
   };
 };

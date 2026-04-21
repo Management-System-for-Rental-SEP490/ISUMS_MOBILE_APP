@@ -29,6 +29,7 @@ export { mergeFunctionalAreasForHouse } from "./functionalAreas";
 export { mapLabelForFunctionalArea } from "./functionalAreaMapLabel";
 export {
   formatDayMonthNumeric,
+  formatPaidAtVietnamIsoForApi,
   formatTenantContractDay,
   formatTenantIssueDateTime,
   formatTimeAgoI18n,
@@ -62,3 +63,19 @@ export {
   resolveInvoicePaymentId,
   type InvoicePaymentIdResolution,
 } from "./invoicePaymentIdResolution";
+export {
+  canonicalDedupeId,
+  rememberDedupe,
+  wasDedupeSeen,
+  type DedupeEntry,
+} from "./notificationDedupe";
+export { formatAppNotificationTitle } from "./notificationDisplay";
+export {
+  resolveTenantNotificationNavigation,
+  type TenantNotificationNav,
+} from "./resolveTenantNotificationNavigation";
+export { normalizeStreamEventToAppNotification } from "./notificationStreamPayload";
+export {
+  categoryRequiresEntityIdForNavigation,
+  isSystemOrBroadcastCategory,
+} from "./notificationEntityRules";

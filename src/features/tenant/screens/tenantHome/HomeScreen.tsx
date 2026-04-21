@@ -1011,13 +1011,6 @@ const HomeScreen = ({ navigation }: HomeScreenProps) => {
           style={homeStyles.homeSiteFooter}
           accessibilityLabel={t("home.footer.aria_label")}
         >
-          <View style={homeStyles.homeSiteFooterVersionRow}>
-            <View style={homeStyles.homeSiteFooterPill}>
-              <Text style={homeStyles.homeSiteFooterPillText}>{t("home.footer.badge")}</Text>
-            </View>
-            <View style={homeStyles.homeSiteFooterDot} />
-            <Text style={homeStyles.homeSiteFooterBuild}>{t("home.footer.build")}</Text>
-          </View>
           <Text style={homeStyles.homeSiteFooterSupport}>{t("home.footer.support_line")}</Text>
           <View style={homeStyles.homeSiteFooterLinksRow}>
             {tenantFooterLinks.privacyPolicy.trim() ? (
@@ -1054,6 +1047,13 @@ const HomeScreen = ({ navigation }: HomeScreenProps) => {
             )}
           </View>
           <Text style={homeStyles.homeSiteFooterCopy}>{t("home.footer.copyright")}</Text>
+          <View style={homeStyles.homeSiteFooterVersionRow}>
+            <View style={homeStyles.homeSiteFooterPill}>
+              <Text style={homeStyles.homeSiteFooterPillText}>{t("home.footer.badge")}</Text>
+            </View>
+            <View style={homeStyles.homeSiteFooterDot} />
+            <Text style={homeStyles.homeSiteFooterBuild}>{t("home.footer.build")}</Text>
+          </View>
         </View>
       </View>
     );

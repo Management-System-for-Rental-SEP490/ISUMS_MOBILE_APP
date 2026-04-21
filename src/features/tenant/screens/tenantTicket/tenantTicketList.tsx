@@ -365,39 +365,64 @@ const TenantTicketListScreen = () => {
   );
 
   const handlePayFromList = useCallback(
-    async (item: TenantTicketFromApi) => {
+    (item: TenantTicketFromApi) => {
       const tid = String(item.id ?? "").trim();
       if (!tid || payingTicketId != null) return;
-      setPayingTicketId(tid);
-      try {
-        const quotes = await getIssueQuotesByTicket(tid);
-        const approved =
-          quotes.find((q) => normalizeIssueStatus(q.status) === "APPROVED") ?? quotes[0];
-        const quoteId = String(approved?.id ?? "").trim();
-        if (!quoteId) {
-          Alert.alert(t("tenant_payment.title"), t("tenant_ticket_list.pay_no_quote_body"), [
-            { text: t("common.close") },
-          ], { type: "error" });
-          return;
-        }
-        const checkoutUrl = await createVnpayPaymentLink(
-          { quoteId },
-          { appLanguage: i18n.language }
-        );
-        navigation.navigate("VnpayCheckout", {
-          checkoutUrl,
-          afterSuccess: "ticketDetail",
-          ticketForAfterSuccess: item,
-          vnpayUiContext: "repair_quote",
-        });
-      } catch (e: unknown) {
-        const msg = formatApiErrorForTenantAlert(e, t, "payment_link");
-        Alert.alert(t("tenant_payment.title"), msg, [{ text: t("common.close") }], { type: "error" });
-      } finally {
-        setPayingTicketId(null);
-      }
+
+      Alert.alert(
+        t("tenant_issue_payment.pick_method_title"),
+        t("tenant_issue_payment.pick_method_body_vnpay_only"),
+        [
+          {
+            text: t("tenant_issue_payment.pick_cancel"),
+            style: "cancel",
+            onPress: () => {},
+          },
+          {
+            text: t("tenant_issue_payment.pick_vnpay"),
+            onPress: () => {
+              void (async () => {
+                setPayingTicketId(tid);
+                try {
+                  const quotes = await getIssueQuotesByTicket(tid);
+                  const approved =
+                    quotes.find((q) => normalizeIssueStatus(q.status) === "APPROVED") ?? quotes[0];
+                  const quoteId = String(approved?.id ?? "").trim();
+                  if (!quoteId) {
+                    Alert.alert(
+                      t("tenant_payment.title"),
+                      t("tenant_ticket_list.pay_no_quote_body"),
+                      [{ text: t("common.close") }],
+                      { type: "error" },
+                    );
+                    return;
+                  }
+                  const checkoutUrl = await createVnpayPaymentLink(
+                    { quoteId },
+                    { appLanguage: i18n.language },
+                  );
+                  navigation.navigate("VnpayCheckout", {
+                    checkoutUrl,
+                    afterSuccess: "ticketDetail",
+                    ticketForAfterSuccess: item,
+                    vnpayUiContext: "repair_quote",
+                  });
+                } catch (e: unknown) {
+                  const msg = formatApiErrorForTenantAlert(e, t, "payment_link");
+                  Alert.alert(t("tenant_payment.title"), msg, [{ text: t("common.close") }], {
+                    type: "error",
+                  });
+                } finally {
+                  setPayingTicketId(null);
+                }
+              })();
+            },
+          },
+        ],
+        { type: "info" },
+      );
     },
-    [payingTicketId, i18n.language, navigation, t]
+    [payingTicketId, i18n.language, navigation, t],
   );
 
   const openCreateTicket = () => {

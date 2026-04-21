@@ -20,7 +20,15 @@ import {
   useTenantContext,
   useTenantHouseIotAlertsInfinite,
   useRefreshControlGate,
+  useTenantBusinessNotifications,
 } from "../../../../shared/hooks";
+import { useNotificationTransportStore } from "../../../../store/useNotificationTransportStore";
+import {
+  NOTIFICATION_READ_ALL_AVAILABLE,
+  NOTIFICATION_REALTIME_ENABLED,
+} from "../../../../shared/api/config";
+import { formatAppNotificationTitle } from "../../../../shared/utils/notificationDisplay";
+import { useAlertStore } from "../../../../store/useAlertStore";
 import {
   PullToRefreshControl,
   RefreshLogoInline,
@@ -46,10 +54,15 @@ import {
   toLocalYyyyMmDd,
   translateTenantAccessReason,
 } from "../../../../shared/utils";
-import type { IotAlertItem } from "../../../../shared/types/api";
+import type { AppNotificationFromApi, IotAlertItem } from "../../../../shared/types/api";
 import { dismissLatestIotHomeBannerForHouse } from "../../utils/dismissIotHomeBanner";
+import { canonicalDedupeId } from "../../../../shared/utils/notificationDedupe";
 
 const todayStr = () => toLocalYyyyMmDd(new Date());
+
+function canonicalBusinessKey(n: AppNotificationFromApi): string {
+  return canonicalDedupeId(n.dedupeKey, n.eventId) || n.id;
+}
 
 const normalizeAlertLevel = (level: string) => String(level ?? "").trim().toUpperCase();
 
@@ -61,10 +74,9 @@ type NotificationCardRowProps = {
   levelLabel: string;
   levelFg: ColorValue;
   levelBg: ColorValue;
-  onPress: () => void;
 };
 
-/** Một mục trong danh sách — dạng card (icon + nội dung + thời gian). */
+/** Một mục trong danh sách — dạng card (icon + nội dung + thời gian), chỉ xem. */
 const NotificationCardRow = memo(function NotificationCardRow({
   title,
   detail,
@@ -73,18 +85,11 @@ const NotificationCardRow = memo(function NotificationCardRow({
   levelLabel,
   levelFg,
   levelBg,
-  onPress,
 }: NotificationCardRowProps) {
   const metaLine = `${areaLabel} · ${levelLabel}`;
   return (
-    <Pressable
-      accessibilityRole="button"
-      onPress={onPress}
-      style={({ pressed }) => [
-        notificationStyles.itemCard,
-        { borderLeftWidth: 4, borderLeftColor: levelFg },
-        pressed && { opacity: 0.92 },
-      ]}
+    <View
+      style={[notificationStyles.itemCard, { borderLeftWidth: 4, borderLeftColor: levelFg }]}
     >
       <View style={[notificationStyles.iconWrapper, { backgroundColor: levelBg }]}>
         <Icons.notification size={22} color={levelFg} />
@@ -103,7 +108,7 @@ const NotificationCardRow = memo(function NotificationCardRow({
         ) : null}
         <Text style={notificationStyles.itemTime}>{timeStr}</Text>
       </View>
-    </Pressable>
+    </View>
   );
 });
 
@@ -131,14 +136,6 @@ const NotificationScreen = () => {
       if (!houseId) return;
       void dismissLatestIotHomeBannerForHouse(houseId);
     }, [houseId])
-  );
-
-  const openIotAlertDetail = useCallback(
-    (alertId: string) => {
-      if (!houseId) return;
-      navigation.navigate("IotAlertDetail", { houseId, alertId });
-    },
-    [houseId, navigation]
   );
 
   const PAGE_SIZE = CLIENT_LIST_PAGE_SIZE;
@@ -231,6 +228,10 @@ const NotificationScreen = () => {
 
   const accessBlock = useMemo(() => (house ? getTenantAccessBlock(house) : null), [house]);
 
+  const businessNotificationsEnabled = Boolean(houseId) && !accessBlock;
+  const biz = useTenantBusinessNotifications(businessNotificationsEnabled);
+  const realtimeUnavailable = useNotificationTransportStore((s) => s.realtimeUnavailable);
+
   const dateOptions = useMemo(() => {
     const base = Array.from({ length: 7 }, (_, i) => {
       const d = new Date();
@@ -254,8 +255,22 @@ const NotificationScreen = () => {
     });
   };
 
-  const initialLoading = isPending && historyAlerts.length === 0;
+  const bizListLoading =
+    businessNotificationsEnabled && biz.listQuery.isPending && biz.items.length === 0;
+
+  const iotInitialLoading = isPending && historyAlerts.length === 0;
+  const listLoading = iotInitialLoading || bizListLoading;
   const refreshing = isRefetching && !isFetchingNextPage;
+
+  const onPressMarkAllRead = useCallback(async () => {
+    const ok = await biz.markAllRead();
+    if (!ok) {
+      useAlertStore.getState().show(t("common.error"), t("notification.mark_read_failed"), [{ text: "OK" }], "error");
+    }
+  }, [biz, t]);
+
+  const showGlobalEmpty =
+    !listLoading && filtered2.length === 0 && biz.items.length === 0;
   const { scrollAtTop, onScrollForRefreshGate } = useRefreshControlGate();
 
   if (accessBlock) {
@@ -335,7 +350,10 @@ const NotificationScreen = () => {
           refreshControl={
             <PullToRefreshControl
               refreshing={refreshing}
-              onRefresh={() => refetch()}
+              onRefresh={() => {
+                void refetch();
+                void biz.refetchAll();
+              }}
               scrollAtTop={scrollAtTop}
             />
           }
@@ -360,6 +378,56 @@ const NotificationScreen = () => {
         scrollEventThrottle={16}
       >
         <>
+          {NOTIFICATION_REALTIME_ENABLED && realtimeUnavailable ? (
+            <View style={localStyles.systemHintBanner}>
+              <Text style={localStyles.systemHintText}>{t("notification.realtime_unavailable_hint")}</Text>
+            </View>
+          ) : null}
+
+          {biz.items.length > 0 ? (
+            <View style={localStyles.systemSection}>
+              <Text style={localStyles.systemSectionTitle}>{t("notification.section_system")}</Text>
+              {NOTIFICATION_READ_ALL_AVAILABLE && biz.resolvedUnreadCount > 0 ? (
+                <Pressable
+                  accessibilityRole="button"
+                  onPress={() => void onPressMarkAllRead()}
+                  style={({ pressed }) => [localStyles.readAllBtn, pressed && { opacity: 0.88 }]}
+                >
+                  <Text style={localStyles.readAllBtnText}>{t("notification.read_all")}</Text>
+                </Pressable>
+              ) : null}
+              {biz.items.map((n) => {
+                const title = formatAppNotificationTitle(n, i18n.language);
+                const ts = Date.parse(String(n.createdAt ?? n.timestamp ?? ""));
+                const timeStr = Number.isFinite(ts)
+                  ? formatTimeAgoI18n(new Date(ts), t, true)
+                  : "—";
+                return (
+                  <View
+                    key={canonicalBusinessKey(n)}
+                    style={[
+                      notificationStyles.itemCard,
+                      { borderLeftWidth: 4, borderLeftColor: brandPrimary },
+                    ]}
+                  >
+                    <View style={[notificationStyles.iconWrapper, { backgroundColor: brandTintBg }]}>
+                      <Icons.notification size={22} color={brandPrimary} />
+                    </View>
+                    <View style={notificationStyles.itemBody}>
+                      <Text style={notificationStyles.itemTitle} numberOfLines={2}>
+                        {title}
+                      </Text>
+                      <Text style={notificationStyles.itemMessage} numberOfLines={1}>
+                        {n.category} · {n.type}
+                      </Text>
+                      <Text style={notificationStyles.itemTime}>{timeStr}</Text>
+                    </View>
+                  </View>
+                );
+              })}
+            </View>
+          ) : null}
+
           <View style={notificationStyles.dateFilterCard}>
             <Text style={notificationStyles.dateFilterLabel}>{t("notification.filter_by_date")}</Text>
             <ScrollView
@@ -397,11 +465,11 @@ const NotificationScreen = () => {
             </ScrollView>
           </View>
 
-          {initialLoading ? (
+          {listLoading ? (
             <View style={[notificationStyles.loadingBlock, { position: "relative", minHeight: 120 }]}>
               <RefreshLogoOverlay visible mode="page" />
             </View>
-          ) : filtered2.length === 0 ? (
+          ) : showGlobalEmpty ? (
             <View style={notificationStyles.emptyStateWrap}>
               <View style={notificationStyles.emptyIconBubble}>
                 <Icons.notification size={32} color={neutral.slate400} />
@@ -409,6 +477,10 @@ const NotificationScreen = () => {
               <Text style={notificationStyles.emptyText}>{t("notification.empty")}</Text>
               <Text style={notificationStyles.emptyHint}>{t("notification.empty_hint")}</Text>
             </View>
+          ) : filtered2.length === 0 ? (
+            biz.items.length > 0 ? (
+              <Text style={localStyles.iotEmptyDay}>{t("notification.iot_empty_day")}</Text>
+            ) : null
           ) : (
             displayedAlerts.map((alert) => {
               const level = normalizeAlertLevel(String(alert.level));
@@ -424,7 +496,6 @@ const NotificationScreen = () => {
                   levelLabel={getLevelLabel(level)}
                   levelFg={fg}
                   levelBg={bg}
-                  onPress={() => openIotAlertDetail(alert.alertId)}
                 />
               );
             })
@@ -450,6 +521,52 @@ const NotificationScreen = () => {
     </View>
   );
 };
+
+const localStyles = StyleSheet.create({
+  systemHintBanner: {
+    marginHorizontal: 16,
+    marginBottom: 8,
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    backgroundColor: neutral.surface,
+    borderRadius: 10,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: neutral.border,
+  },
+  systemHintText: {
+    fontSize: 13,
+    color: neutral.textSecondary,
+    textAlign: "center",
+  },
+  systemSection: {
+    marginBottom: 8,
+  },
+  systemSectionTitle: {
+    fontSize: 15,
+    fontWeight: "700",
+    color: neutral.heading,
+    marginHorizontal: 16,
+    marginBottom: 8,
+  },
+  readAllBtn: {
+    alignSelf: "flex-end",
+    marginHorizontal: 16,
+    marginBottom: 8,
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+  },
+  readAllBtnText: {
+    fontSize: 14,
+    fontWeight: "600",
+    color: brandPrimary,
+  },
+  iotEmptyDay: {
+    marginHorizontal: 16,
+    marginBottom: 12,
+    fontSize: 14,
+    color: neutral.textSecondary,
+  },
+});
 
 const gateStyles = StyleSheet.create({
   container: {

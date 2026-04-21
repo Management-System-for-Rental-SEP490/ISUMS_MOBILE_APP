@@ -1,7 +1,16 @@
+import { isAxiosError } from "axios";
+
 type ApiErrorBody = {
   message?: string;
   errors?: Array<{ message?: string; field?: string; code?: string }>;
 };
+
+function isAxiosTimeoutError(error: unknown): boolean {
+  if (!isAxiosError(error)) return false;
+  return (
+    error.code === "ECONNABORTED" || /timeout/i.test(String(error.message ?? ""))
+  );
+}
 
 /** HTML / trang document do gateway hoặc server trả nhầm — không đưa lên UI. */
 function isLikelyHtmlOrDocumentBody(text: string): boolean {
@@ -152,3 +161,4 @@ export function formatApiErrorForTenantAlert(
 
   return out;
 }
+

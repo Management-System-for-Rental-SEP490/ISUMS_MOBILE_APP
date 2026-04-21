@@ -71,3 +71,110 @@ export function resolveLocalizedJsonStringFromI18n(
 ): string {
   return resolveLocalizedJsonString(raw, toAppLocaleCode(i18n.language));
 }
+
+/**
+ * BE Swagger/OpenAPI Dictionary: slot `additionalProp1`–`3` tương ứng vi / en / ja khi key chuẩn trống.
+ */
+const SWAGGER_TRANSLATION_SLOT: Record<AppLocaleCode, string> = {
+  vi: "additionalProp1",
+  en: "additionalProp2",
+  ja: "additionalProp3",
+};
+
+function pickLocaleOrSwaggerSlot(
+  translations: Record<string, string>,
+  localeKey: AppLocaleCode
+): string | null {
+  const canon = pickNonEmptyString(translations[localeKey]);
+  if (canon != null) return canon;
+
+  for (const [k, v] of Object.entries(translations)) {
+    if (k.toLowerCase() === localeKey) {
+      const s = pickNonEmptyString(v);
+      if (s != null) return s;
+    }
+  }
+
+  const slot = SWAGGER_TRANSLATION_SLOT[localeKey];
+  const fromSlot = pickNonEmptyString(translations[slot]);
+  if (fromSlot != null) return fromSlot;
+
+  const slotLc = slot.toLowerCase();
+  for (const [k, v] of Object.entries(translations)) {
+    if (k.toLowerCase() === slotLc) {
+      const s = pickNonEmptyString(v);
+      if (s != null) return s;
+    }
+  }
+  return null;
+}
+
+/**
+ * Gộp map đa ngôn ngữ từ BE: camelCase (`nameTranslations`) và/hoặc snake_case (`name_translations`).
+ * Chỉ giữ giá trị chuỗi (hoặc số → string) khác rỗng; key trùng thì giữ bản đã có.
+ */
+export function mergeTranslationMapsFromApi(
+  ...sources: (Record<string, unknown> | null | undefined)[]
+): Record<string, string> | undefined {
+  const out: Record<string, string> = {};
+  for (const src of sources) {
+    if (!src || typeof src !== "object" || Array.isArray(src)) continue;
+    for (const [k, v] of Object.entries(src)) {
+      const key = String(k ?? "").trim();
+      if (!key) continue;
+      let s = "";
+      if (typeof v === "string") s = v.trim();
+      else if (typeof v === "number" && Number.isFinite(v)) s = String(v);
+      else continue;
+      if (s === "") continue;
+      if (out[key] == null || out[key] === "") out[key] = s;
+    }
+  }
+  return Object.keys(out).length > 0 ? out : undefined;
+}
+
+/**
+ * API categories / tên hiển thị: BE trả `name` (mặc định tiếng Anh) + `nameTranslations` { vi, en, ja }.
+ * Luôn ưu tiên đúng key theo locale (`nameTranslations.vi` khi UI là vi, …); chỉ dùng `name` khi thiếu key đó trong map
+ * (tránh nhảy sang ngôn ngữ khác trong map trước khi dùng bản tiếng Anh canonical).
+ */
+export function resolveLocalizedApiField(
+  defaultText: string | null | undefined,
+  translations: Record<string, string> | null | undefined,
+  locale: AppLocaleCode
+): string {
+  if (translations && typeof translations === "object" && !Array.isArray(translations)) {
+    const primary = pickLocaleOrSwaggerSlot(translations, locale);
+    if (primary != null) return primary;
+
+    const canonical = pickNonEmptyString(String(defaultText ?? "").trim());
+    if (canonical != null) {
+      return canonical;
+    }
+
+    const order: AppLocaleCode[] = [];
+    for (const k of ["vi", "en", "ja"] as AppLocaleCode[]) {
+      if (k !== locale) order.push(k);
+    }
+    for (const k of order) {
+      const s = pickLocaleOrSwaggerSlot(translations, k);
+      if (s != null) return s;
+    }
+    for (const v of Object.values(translations)) {
+      const s = pickNonEmptyString(v);
+      if (s != null) return s;
+    }
+  }
+  return resolveLocalizedJsonString(defaultText, locale);
+}
+
+export function resolveLocalizedApiFieldFromI18n(
+  defaultText: string | null | undefined,
+  translations: Record<string, string> | null | undefined
+): string {
+  return resolveLocalizedApiField(
+    defaultText,
+    translations,
+    toAppLocaleCode(i18n.language)
+  );
+}

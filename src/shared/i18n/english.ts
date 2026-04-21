@@ -28,7 +28,8 @@ export default {
         "a11y_open_profile": "Open profile",
         "a11y_brand_go_home": "Go to home",
         "currency_vnd_unit": "VND",
-        "currency_not_available": "—"
+        "currency_not_available": "—",
+        "server_not_responding": "No response from the server"
     },
     "device_detail": {
         "title": "Device Details",
@@ -156,6 +157,14 @@ export default {
         "section_payment": "Payment",
         "pay_repair_btn": "Pay now",
         "payment_quote_hint": "Your invoice may still be syncing. You can open payment and select the repair charge when it appears.",
+        "pay_cash_btn": "Pay with cash",
+        "cash_modal_title": "Confirm cash payment",
+        "cash_amount_label": "Amount",
+        "cash_note_placeholder": "Note (optional)",
+        "cash_confirm_btn": "Confirm cash paid",
+        "cash_success_title": "Recorded",
+        "cash_success_body": "Your cash payment was submitted. The ticket will update when processing finishes.",
+        "cash_still_pending_hint": "Still processing. Pull to refresh or open the ticket again shortly.",
         "quote_total_label": "Total",
         "quote_items_label": "Items",
         "quote_price_label": "Price",
@@ -550,6 +559,7 @@ export default {
         "e_contract_status_READY": "Ready",
         "e_contract_status_IN_PROGRESS": "In progress",
         "e_contract_status_COMPLETED": "Completed",
+        "e_contract_status_PENDING_TERMINATION": "Pending termination",
         "e_contract_section_detail": "Details",
         "e_contract_validity_caption": "Lease period",
         "e_contract_house_caption": "Property",
@@ -745,6 +755,21 @@ export default {
         "primary_house_required_action":
             "Keep this property's invoices selected in your payment list before continuing."
     },
+    "tenant_issue_payment": {
+        "pick_method_title": "Choose payment method",
+        "pick_method_body": "Pay online (VNPay) or record cash paid at the counter.",
+        "pick_method_body_vnpay_only": "Pay online with VNPay.",
+        "pick_vnpay": "VNPay",
+        "pick_cash": "Cash",
+        "pick_cancel": "Close",
+        "cash_error_401": "Your session expired. Please sign in again.",
+        "cash_error_403": "You are not allowed to record a cash payment for this ticket.",
+        "cash_error_validate": "Invalid data. Check the amount and try again.",
+        "cash_error_conflict": "Ticket or payment state does not allow this action. Try again later.",
+        "cash_error_server": "The server is busy or returned an error. Please try again.",
+        "cash_error_timeout": "Request timed out. Check your connection and try again.",
+        "cash_error_generic": "Could not record the payment. Please try again."
+    },
     "tenant_access": {
         "house_not_owned_disclaimer": "This property is no longer on your access list.",
         "invoice_house_mismatch_banner":
@@ -934,6 +959,12 @@ export default {
         "yesterday": "Yesterday",
         "area_all": "Entire building",
         "pagination_end": "All alerts are shown",
+        "section_system": "System",
+        "realtime_unavailable_hint": "Live updates will turn on when the server is ready.",
+        "read_all": "Mark all as read",
+        "mark_read_failed": "Could not update read status. Try again later.",
+        "stream_forbidden": "No permission for the live notification channel. Sign in again or contact support.",
+        "iot_empty_day": "No IoT alerts for the selected day.",
         "type_ticket": "Maintenance ticket",
         "type_electric": "Electric alert",
         "type_water": "Water alert",
