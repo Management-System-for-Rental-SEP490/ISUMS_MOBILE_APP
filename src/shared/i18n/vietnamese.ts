@@ -28,7 +28,8 @@ export default {
         "a11y_open_profile": "Mở hồ sơ",
         "a11y_brand_go_home": "Về trang chủ",
         "currency_vnd_unit": "Đồng",
-        "currency_not_available": "—"
+        "currency_not_available": "—",
+        "server_not_responding": "Không nhận được phản hồi từ máy chủ"
     },
     "device_detail": {
         "title": "Chi tiết thiết bị",
@@ -156,6 +157,14 @@ export default {
         "section_payment": "Thanh toán",
         "pay_repair_btn": "Thanh toán ngay",
         "payment_quote_hint": "Hệ thống đang tạo hoặc đồng bộ hóa đơn. Bạn có thể mở màn thanh toán để chọn khoản cần trả.",
+        "pay_cash_btn": "Thanh toán tiền mặt",
+        "cash_modal_title": "Xác nhận thanh toán tiền mặt",
+        "cash_amount_label": "Số tiền",
+        "cash_note_placeholder": "Ghi chú (tuỳ chọn)",
+        "cash_confirm_btn": "Xác nhận đã nộp tiền mặt",
+        "cash_success_title": "Đã ghi nhận",
+        "cash_success_body": "Thanh toán tiền mặt đã được gửi. Trạng thái ticket sẽ cập nhật khi hệ thống xử lý xong.",
+        "cash_still_pending_hint": "Hệ thống vẫn đang xử lý. Kéo để làm mới hoặc vào lại ticket sau vài giây.",
         "quote_total_label": "Tổng",
         "quote_items_label": "Hạng mục",
         "quote_price_label": "Giá",
@@ -550,6 +559,7 @@ export default {
         "e_contract_status_READY": "Sẵn sàng",
         "e_contract_status_IN_PROGRESS": "Đang thực hiện",
         "e_contract_status_COMPLETED": "Hoàn tất",
+        "e_contract_status_PENDING_TERMINATION": "Chờ chấm dứt",
         "e_contract_section_detail": "Thông tin chi tiết",
         "e_contract_validity_caption": "Hiệu lực",
         "e_contract_house_caption": "Căn nhà",
@@ -746,6 +756,21 @@ export default {
         "primary_house_required_action":
             "Giữ các hóa đơn của căn đang chọn trong danh sách thanh toán trước khi tiếp tục."
     },
+    "tenant_issue_payment": {
+        "pick_method_title": "Chọn phương thức thanh toán",
+        "pick_method_body": "Thanh toán trực tuyến (VNPay) hoặc ghi nhận tiền mặt đã nộp tại quầy.",
+        "pick_method_body_vnpay_only": "Thanh toán trực tuyến qua VNPay.",
+        "pick_vnpay": "VNPay",
+        "pick_cash": "Tiền mặt",
+        "pick_cancel": "Đóng",
+        "cash_error_401": "Phiên đăng nhập hết hạn. Vui lòng đăng nhập lại.",
+        "cash_error_403": "Bạn không có quyền thực hiện thanh toán tiền mặt cho ticket này.",
+        "cash_error_validate": "Dữ liệu không hợp lệ. Kiểm tra số tiền và thử lại.",
+        "cash_error_conflict": "Trạng thái ticket hoặc thanh toán không cho phép thao tác này. Thử lại sau.",
+        "cash_error_server": "Máy chủ đang bận hoặc lỗi. Vui lòng thử lại.",
+        "cash_error_timeout": "Hết thời gian chờ. Kiểm tra mạng và thử lại.",
+        "cash_error_generic": "Không ghi nhận được thanh toán. Vui lòng thử lại."
+    },
     "tenant_access": {
         "house_not_owned_disclaimer": "Nhà không còn thuộc quyền sở hữu.",
         "invoice_house_mismatch_banner":
@@ -935,6 +960,12 @@ export default {
         "yesterday": "Hôm qua",
         "area_all": "Toàn nhà",
         "pagination_end": "Đã hiển thị hết",
+        "section_system": "Hệ thống",
+        "realtime_unavailable_hint": "Cập nhật tức thời sẽ bật khi máy chủ sẵn sàng.",
+        "read_all": "Đánh dấu đã đọc hết",
+        "mark_read_failed": "Không cập nhật trạng thái đọc. Thử lại sau.",
+        "stream_forbidden": "Không có quyền kênh thông báo trực tiếp. Đăng nhập lại hoặc liên hệ quản trị.",
+        "iot_empty_day": "Không có cảnh báo IoT cho ngày đã chọn.",
         "type_ticket": "Phiếu bảo trì",
         "type_electric": "Cảnh báo điện",
         "type_water": "Cảnh báo nước",

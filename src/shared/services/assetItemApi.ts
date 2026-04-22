@@ -3,11 +3,16 @@
  */
 import axiosClient from "../api/axiosClient";
 import { ASSETS_API_BASE, BACKEND_API_BASE} from "../api/config";
-import { resolveLocalizedJsonStringFromI18n } from "../utils/resolveLocalizedJsonString";
 import {
-  isAssetItemDisposedStatus,
+  mergeTranslationMapsFromApi,
+  resolveLocalizedApiFieldFromI18n,
+  resolveLocalizedJsonStringFromI18n,
+} from "../utils/resolveLocalizedJsonString";
+import {
+  isAssetItemHiddenFromTenantLists,
   normalizeAssetItemStatusFromApi,
   type ApiResponse,
+  type AssetCategoryEmbeddedFromApi,
   type AssetItemFromApi,
   type AssetItemImageFromApi,
   type AssetItemsApiResponse,
@@ -49,10 +54,101 @@ function pickActiveTagValueFromTags(
   return null;
 }
 
+function normalizeEmbeddedCategory(
+  c: AssetCategoryEmbeddedFromApi | undefined | null
+): AssetCategoryEmbeddedFromApi | undefined {
+  if (!c || typeof c !== "object") return undefined;
+  const r = c as AssetCategoryEmbeddedFromApi & {
+    name_translations?: Record<string, unknown>;
+    description_translations?: Record<string, unknown>;
+  };
+  const nameMap = mergeTranslationMapsFromApi(
+    r.nameTranslations as Record<string, unknown> | undefined,
+    r.name_translations
+  );
+  const descMap = mergeTranslationMapsFromApi(
+    r.descriptionTranslations as Record<string, unknown> | undefined,
+    r.description_translations
+  );
+  return {
+    ...c,
+    name: resolveLocalizedApiFieldFromI18n(r.name, nameMap),
+    description: resolveLocalizedApiFieldFromI18n(r.description, descMap),
+  };
+}
+
+function pickDisplayStringForResolve(
+  raw: AssetItemFromApi & {
+    displayName?: unknown;
+    translations?: Record<string, unknown> | null;
+  }
+): string | null | undefined {
+  const tr = raw.translations;
+  if (tr && typeof tr === "object" && !Array.isArray(tr)) {
+    const filtered: Record<string, string> = {};
+    for (const [k, v] of Object.entries(tr)) {
+      if (typeof v === "string" && v.trim() !== "") filtered[k] = v;
+    }
+    if (Object.keys(filtered).length > 0) return JSON.stringify(filtered);
+  }
+  const displayRaw = raw.displayName as unknown;
+  if (typeof displayRaw === "string" || displayRaw == null) {
+    return displayRaw as string | null | undefined;
+  }
+  if (typeof displayRaw === "object" && !Array.isArray(displayRaw)) {
+    return JSON.stringify(displayRaw);
+  }
+  return String(displayRaw);
+}
+
+/** `displayName` dạng object: `en` là bản tiếng Anh canonical khi BE tách map. */
+function canonicalEnglishDisplayNameFromDisplayNameField(displayRaw: unknown): string {
+  if (displayRaw == null) return "";
+  if (typeof displayRaw === "string") return displayRaw.trim();
+  if (typeof displayRaw === "object" && !Array.isArray(displayRaw)) {
+    const o = displayRaw as Record<string, unknown>;
+    const en = o.en;
+    if (typeof en === "string" && en.trim() !== "") return en.trim();
+    return "";
+  }
+  return String(displayRaw).trim();
+}
+
+function displayNameFieldToMap(displayRaw: unknown): Record<string, string> | undefined {
+  if (!displayRaw || typeof displayRaw !== "object" || Array.isArray(displayRaw)) return undefined;
+  const out: Record<string, string> = {};
+  for (const [k, v] of Object.entries(displayRaw as Record<string, unknown>)) {
+    if (typeof v === "string" && v.trim() !== "") out[k] = v.trim();
+  }
+  return Object.keys(out).length > 0 ? out : undefined;
+}
+
+/**
+ * Tên hiển thị thiết bị: ưu tiên `translations[locale]` (và key trong object `displayName`), `displayName` chuỗi/en làm tiếng Anh mặc định.
+ */
+function resolveAssetItemDisplayNameForUi(
+  raw: AssetItemFromApi & { displayName?: unknown; translations?: Record<string, unknown> | null }
+): string {
+  const trMap = mergeTranslationMapsFromApi(
+    raw.translations as Record<string, unknown> | undefined
+  );
+  const displayMap = displayNameFieldToMap(raw.displayName);
+  const merged = mergeTranslationMapsFromApi(trMap, displayMap);
+  const canonical = canonicalEnglishDisplayNameFromDisplayNameField(raw.displayName);
+
+  if (merged && Object.keys(merged).length > 0) {
+    return resolveLocalizedApiFieldFromI18n(canonical || null, merged);
+  }
+
+  const displayForResolve = pickDisplayStringForResolve(raw);
+  return resolveLocalizedJsonStringFromI18n(displayForResolve);
+}
+
 /**
  * Chuẩn hóa một item từ BE: đảm bảo nfcTag, qrTag có giá trị dù BE trả về camelCase hay snake_case.
  * API GET /api/assets/items/house/:houseId đã được cập nhật trả về đầy đủ nfcTag, qrTag;
  * nếu BE trả snake_case (nfc_tag, qr_tag) thì map sang camelCase để màn danh sách & chi tiết hiển thị đúng.
+ * Response có thể có `translations`, `category` embed — cùng contract Staff/BE.
  */
 function normalizeAssetItemFromResponse(
   raw: AssetItemFromApi & {
@@ -79,7 +175,8 @@ function normalizeAssetItemFromResponse(
     null;
   return {
     ...raw,
-    displayName: resolveLocalizedJsonStringFromI18n(raw.displayName),
+    displayName: resolveAssetItemDisplayNameForUi(raw),
+    category: normalizeEmbeddedCategory(raw.category),
     nfcTag: nfcStr !== "" ? nfcStr : null,
     qrTag: qrStr !== "" ? qrStr : null,
     status: normalizeAssetItemStatusFromApi(raw.status),
@@ -90,8 +187,8 @@ function normalizeAssetItemFromResponse(
   };
 }
 
-function filterOutDisposedItems(items: AssetItemFromApi[]): AssetItemFromApi[] {
-  return items.filter((i) => !isAssetItemDisposedStatus(i.status));
+function filterTenantVisibleAssetItems(items: AssetItemFromApi[]): AssetItemFromApi[] {
+  return items.filter((i) => !isAssetItemHiddenFromTenantLists(i.status));
 }
 
 /**
@@ -185,7 +282,7 @@ export const getAssetItems = async (
 
   const response = await axiosClient.get<unknown>(url);
   return assetItemsFromAxiosBody(response.data, (items) =>
-    filterOutDisposedItems(items.map(mapNormalizeAssetItemRow))
+    filterTenantVisibleAssetItems(items.map(mapNormalizeAssetItemRow))
   );
 };
 
@@ -202,7 +299,7 @@ export const getAssetItemsByHouseId = async (
     `${BACKEND_API_BASE}/assets/items/house/${encodeURIComponent(houseId)}`
   );
   return assetItemsFromAxiosBody(response.data, (items) =>
-    filterOutDisposedItems(items.map(mapNormalizeAssetItemRow))
+    filterTenantVisibleAssetItems(items.map(mapNormalizeAssetItemRow))
   );
 };
 
@@ -255,7 +352,7 @@ export const getAssetItemById = async (id: string): Promise<AssetItemFromApi | u
       functional_area_id?: string | null;
     };
     const normalized = normalizeAssetItemFromResponse(raw);
-    if (isAssetItemDisposedStatus(normalized.status)) return undefined;
+    if (isAssetItemHiddenFromTenantLists(normalized.status)) return undefined;
     return normalized;
   } catch {
     return undefined;
@@ -320,7 +417,7 @@ export const getAssetItemByTag = async (
         functional_area_id?: string | null;
       }
     );
-    if (isAssetItemDisposedStatus(normalized.status)) return undefined;
+    if (isAssetItemHiddenFromTenantLists(normalized.status)) return undefined;
     return normalized;
   } catch {
     try {
@@ -349,7 +446,7 @@ export const getAssetItemByTag = async (
           function_area_id?: string | null;
         }
       );
-      if (isAssetItemDisposedStatus(normalized.status)) return undefined;
+      if (isAssetItemHiddenFromTenantLists(normalized.status)) return undefined;
       return normalized;
     } catch {
       return undefined;

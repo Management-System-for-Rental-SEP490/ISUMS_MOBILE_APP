@@ -35,6 +35,7 @@ import ConsumptionScreen from "../features/tenant/screens/tenantConsumption/Cons
 import IotAlertDetailScreen from "../features/tenant/screens/tenantNotification/IotAlertDetailScreen";
 import { useSetupIotNotifications } from "../features/tenant/components/IotPushAlertOverlay";
 import { TenantIotAlertOverlay } from "../features/tenant/components/TenantIotAlertOverlay";
+import { useNotificationDeviceTokenLifecycle } from "../shared/hooks/useNotificationDeviceTokenLifecycle";
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
 
@@ -56,6 +57,9 @@ const Navigation = () => {
   const [isSyncingMainHouseOnLogin, setIsSyncingMainHouseOnLogin] = useState(false);
 
   useSetupIotNotifications();
+
+  /** Đăng ký / hủy FCM token nghiệp vụ khi tenant đăng nhập — tôn trọng EXPO_PUBLIC_NOTIFICATION_DEVICE_TOKEN_ENABLED. */
+  useNotificationDeviceTokenLifecycle(Boolean(isLoggedIn && role === "tenant"));
 
   // Kiểm tra xem User hiện tại đã xem Onboarding chưa
   const showOnboarding = isLoggedIn && user && !onboardedUsers.includes(user);

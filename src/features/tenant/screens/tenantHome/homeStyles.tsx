@@ -373,7 +373,7 @@ export const homeStyles = StyleSheet.create({
      */
     homeSiteFooter: {
         marginHorizontal: 16,
-        marginTop: 0,
+        marginTop: HOME_CARD_STACK_GAP * 2,
         marginBottom: HOME_CARD_STACK_GAP,
         paddingVertical: 16,
         paddingHorizontal: 14,
@@ -389,7 +389,7 @@ export const homeStyles = StyleSheet.create({
         justifyContent: "center",
         flexWrap: "wrap",
         gap: 8,
-        marginBottom: 10,
+        marginTop: 14,
         alignSelf: "stretch",
     },
     homeSiteFooterPill: {

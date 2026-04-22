@@ -2,10 +2,12 @@ import axios from "axios";
 import axiosClient from "../api/axiosClient";
 import { BACKEND_API_BASE, FALLBACK_BACKEND_URL } from "../api/config";
 import i18n from "../i18n";
+import { toAppLocaleCode } from "../utils/resolveLocalizedJsonString";
 import { useAuthStore } from "../../store/useAuthStore";
 import type {
   ApiResponse,
   IssueBannerFromApi,
+  IssueDetailFromApi,
   IssueQuoteFromApi,
   IssueTicketResponseFromApi,
   TenantTicketFromApi,
@@ -172,7 +174,7 @@ export const uploadTenantTicketImages = async (
       method: "POST",
       headers: {
         Authorization: `Bearer ${token}`,
-        "Accept-Language": i18n.language || "vi",
+        "Accept-Language": toAppLocaleCode(i18n.language),
       },
       body: formData,
     });
@@ -295,3 +297,23 @@ export const confirmIssueQuoteStatus = async (quoteId: string): Promise<void> =>
     throw new Error(msg);
   }
 };
+
+/**
+ * GET `/api/issues/{issueId}` — đồng bộ trạng thái issue sau thanh toán (khi BE triển khai).
+ * Trả `null` nếu 404 hoặc wrapper không có `data`.
+ */
+export const getIssueById = async (issueId: string): Promise<IssueDetailFromApi | null> => {
+  const id = String(issueId ?? "").trim();
+  if (!id) return null;
+  const url = `${BACKEND_API_BASE}/issues/${encodeURIComponent(id)}`;
+  try {
+    const response = await axiosClient.get<ApiResponse<IssueDetailFromApi>>(url);
+    if (response.data?.success && response.data.data && typeof response.data.data === "object") {
+      return response.data.data;
+    }
+    return null;
+  } catch {
+    return null;
+  }
+};
+

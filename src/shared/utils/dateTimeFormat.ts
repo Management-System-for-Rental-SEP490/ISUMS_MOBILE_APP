@@ -116,3 +116,41 @@ export function formatTenantContractDay(iso: string, locale: string): string {
   const pad = (n: number) => String(n).padStart(2, "0");
   return `${pad(d.getDate())}/${pad(d.getMonth() + 1)}/${d.getFullYear()}`;
 }
+
+const VN_OFFSET_PARTS: Intl.DateTimeFormatOptions = {
+  timeZone: "Asia/Ho_Chi_Minh",
+  year: "numeric",
+  month: "2-digit",
+  day: "2-digit",
+  hour: "2-digit",
+  minute: "2-digit",
+  second: "2-digit",
+  hour12: false,
+};
+
+/**
+ * Chuỗi `paidAt` gửi BE (ví dụ thanh toán tiền mặt ticket): giờ theo `Asia/Ho_Chi_Minh`, hậu tố `+07:00`, millis `.000`.
+ * Dùng thay vì format tay trong màn hình — tuân quy tắc ngày giờ tập trung.
+ */
+export function formatPaidAtVietnamIsoForApi(d: Date = new Date()): string {
+  try {
+    const parts = new Intl.DateTimeFormat("en-GB", VN_OFFSET_PARTS).formatToParts(d);
+    const map: Record<string, string> = {};
+    for (const p of parts) {
+      if (p.type !== "literal") map[p.type] = p.value;
+    }
+    const y = map.year;
+    const mo = map.month;
+    const day = map.day;
+    const h = map.hour;
+    const mi = map.minute;
+    const s = map.second;
+    if (y && mo && day && h != null && mi != null && s != null) {
+      return `${y}-${mo}-${day}T${h}:${mi}:${s}.000+07:00`;
+    }
+  } catch {
+    /* fall through */
+  }
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}.000+07:00`;
+}

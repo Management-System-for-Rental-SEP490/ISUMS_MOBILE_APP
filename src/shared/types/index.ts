@@ -210,6 +210,7 @@ export type {
   HousesApiResponse,
   FunctionalAreaFromApi,
   AssetCategoryFromApi,
+  AssetCategoryEmbeddedFromApi,
   AssetCategoriesApiResponse,
   AssetItemsParams,
   AssetItemFromApi,

@@ -1,5 +1,6 @@
 import axios, { isAxiosError } from "axios";
 import i18n from "../i18n";
+import { toAppLocaleCode } from "../utils/resolveLocalizedJsonString";
 import { useAuthStore } from "../../store/useAuthStore";
 import { refreshAccessToken, logoutKeycloak } from "../services/keycloakAuth";
 import { CustomAlert } from "../components/alert";
@@ -35,9 +36,8 @@ axiosClient.interceptors.request.use(
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
     }
-    // Ngôn ngữ hiện tại, mặc định 'vi' khi BE chưa hỗ trợ / không bắt được
-    // Khi BE có bảng đa ngôn ngữ, sẽ dựa vào header này để trả đúng dữ liệu
-    config.headers["Accept-Language"] = i18n.language || "vi";
+    // BE (Swagger): Accept-Language hỗ trợ vi | en | ja — không gửi mã dài (en-US) để tránh fallback sai.
+    config.headers["Accept-Language"] = toAppLocaleCode(i18n.language);
     return config;
   },
   (error) => Promise.reject(error)
@@ -147,6 +147,11 @@ axiosClient.interceptors.response.use(
       originalRequest._retriedWithFallback = true;
       originalRequest.url = url.replace(BACKEND_URL_PRIMARY, BACKEND_URL_FALLBACK);
       return axiosClient(originalRequest);
+    }
+
+    // Quá thời gian chờ phản hồi từ BE → thông báo thống nhất; promise reject → mutation/query không onSuccess (hoàn tác).
+    if (isAxiosTimeout(error)) {
+      return Promise.reject(new Error(i18n.t("common.server_not_responding")));
     }
 
     return Promise.reject(error);

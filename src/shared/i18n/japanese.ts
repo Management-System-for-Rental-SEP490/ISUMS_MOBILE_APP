@@ -28,7 +28,8 @@ export default {
         "a11y_open_profile": "プロフィールを開く",
         "a11y_brand_go_home": "ホームへ",
         "currency_vnd_unit": "VND",
-        "currency_not_available": "—"
+        "currency_not_available": "—",
+        "server_not_responding": "サーバーから応答がありません"
     },
     "device_detail": {
         "title": "デバイス詳細",
@@ -156,6 +157,14 @@ export default {
         "section_payment": "お支払い",
         "pay_repair_btn": "今すぐ支払う",
         "payment_quote_hint": "請求書の作成・同期中の場合があります。準備ができ次第、下の一覧から修理関連の請求を選んでください。",
+        "pay_cash_btn": "現金で支払う",
+        "cash_modal_title": "現金支払いの確認",
+        "cash_amount_label": "金額",
+        "cash_note_placeholder": "メモ（任意）",
+        "cash_confirm_btn": "現金支払いを確定",
+        "cash_success_title": "記録しました",
+        "cash_success_body": "現金支払いを送信しました。処理が完了するとチケットが更新されます。",
+        "cash_still_pending_hint": "処理中です。更新するか、しばらくしてから開き直してください。",
         "quote_total_label": "合計",
         "quote_items_label": "項目",
         "quote_price_label": "価格",
@@ -550,6 +559,7 @@ export default {
         "e_contract_status_READY": "準備完了",
         "e_contract_status_IN_PROGRESS": "進行中",
         "e_contract_status_COMPLETED": "完了",
+        "e_contract_status_PENDING_TERMINATION": "解約待ち",
         "e_contract_section_detail": "詳細",
         "e_contract_validity_caption": "有効期間",
         "e_contract_house_caption": "物件",
@@ -745,6 +755,21 @@ export default {
         "primary_house_required_action":
             "続行するには、選択中の物件の請求を一覧に残したままにしてください。"
     },
+    "tenant_issue_payment": {
+        "pick_method_title": "支払い方法を選択",
+        "pick_method_body": "オンライン（VNPay）か、窓口で現金を渡した記録かを選びます。",
+        "pick_method_body_vnpay_only": "VNPayでオンライン決済します。",
+        "pick_vnpay": "VNPay",
+        "pick_cash": "現金",
+        "pick_cancel": "閉じる",
+        "cash_error_401": "セッションの有効期限が切れました。再度ログインしてください。",
+        "cash_error_403": "このチケットに現金支払いを記録する権限がありません。",
+        "cash_error_validate": "入力内容が無効です。金額を確認して再度お試しください。",
+        "cash_error_conflict": "チケットまたは支払いの状態がこの操作を許可していません。しばらくしてから再試行してください。",
+        "cash_error_server": "サーバーが混雑しているかエラーです。しばらくしてからお試しください。",
+        "cash_error_timeout": "タイムアウトしました。通信を確認して再試行してください。",
+        "cash_error_generic": "支払いを記録できませんでした。もう一度お試しください。"
+    },
     "tenant_access": {
         "house_not_owned_disclaimer": "この物件はアクセス一覧に含まれていません。",
         "invoice_house_mismatch_banner":
@@ -934,6 +959,12 @@ export default {
         "yesterday": "昨日",
         "area_all": "建物全体",
         "pagination_end": "すべて表示しました",
+        "section_system": "システム",
+        "realtime_unavailable_hint": "サーバー準備完了後にリアルタイム更新が有効になります。",
+        "read_all": "すべて既読にする",
+        "mark_read_failed": "既読を更新できませんでした。後でもう一度お試しください。",
+        "stream_forbidden": "リアルタイム通知チャネルに権限がありません。再ログインするか管理者に連絡してください。",
+        "iot_empty_day": "選択した日にIoTアラートはありません。",
         "type_ticket": "保守チケット",
         "type_electric": "電気アラート",
         "type_water": "水道アラート",
