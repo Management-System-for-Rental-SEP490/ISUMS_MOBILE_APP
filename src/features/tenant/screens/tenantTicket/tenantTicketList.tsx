@@ -4,6 +4,7 @@ import { useFocusEffect, useNavigation } from "@react-navigation/native";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useTranslation } from "react-i18next";
+import { getTenantTicketTitleForUi } from "../../../../shared/utils/issueTicketLocalizedText";
 import { CustomAlert as Alert } from "../../../../shared/components/alert";
 import { IssueTicketResponseFromApi, RootStackParamList, TenantTicketFromApi } from "../../../../shared/types";
 import { useTenantContext, useRefreshControlGate, useTenantHouses } from "../../../../shared/hooks";
@@ -191,6 +192,7 @@ async function enrichTicketForList(item: TenantTicketFromApi): Promise<ListTicke
 
 const TenantTicketListScreen = () => {
   const { t, i18n } = useTranslation();
+  const appLang = i18n.language;
   const navigation = useNavigation<NavProp>();
   const { houseId } = useTenantContext();
   const { data: housesData } = useTenantHouses();
@@ -549,7 +551,7 @@ const TenantTicketListScreen = () => {
           )}
           <View style={styles.contentTextCol}>
             <Text style={styles.cardTitleFigma} numberOfLines={3}>
-              {item.title}
+              {getTenantTicketTitleForUi(item)}
             </Text>
           </View>
         </View>
@@ -714,7 +716,14 @@ const TenantTicketListScreen = () => {
               data={pagedItems}
               keyExtractor={(it) => it.id}
               renderItem={renderItem}
-              extraData={{ extrasById, payingTicketId, listFilter, currentPage, responseByTicketId }}
+              extraData={{
+                extrasById,
+                payingTicketId,
+                listFilter,
+                currentPage,
+                responseByTicketId,
+                appLang,
+              }}
               contentContainerStyle={[
                 styles.listContent,
                 { paddingBottom: listBottomPad },

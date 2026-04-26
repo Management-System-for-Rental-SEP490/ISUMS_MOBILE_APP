@@ -21,6 +21,7 @@ import {
   RootStackParamList,
 } from "../../../../shared/types";
 import { useTranslation } from "react-i18next";
+import { getIssueResponseContentForUi } from "../../../../shared/utils/issueTicketLocalizedText";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { NavigationProp, useFocusEffect } from "@react-navigation/native";
 import { useQueryClient } from "@tanstack/react-query";
@@ -178,6 +179,11 @@ function HomeQuestionTickerCard({ items, getZoneLabel, onOpen }: HomeQuestionTic
   const safeIdx = items.length === 0 ? 0 : idx % items.length;
   const item = items[safeIdx];
 
+  const tickerContent = useMemo(
+    () => (item ? getIssueResponseContentForUi(item) : ""),
+    [item, i18n.language]
+  );
+
   useEffect(() => {
     if (!item) return;
     opacity.setValue(0.72);
@@ -203,7 +209,7 @@ function HomeQuestionTickerCard({ items, getZoneLabel, onOpen }: HomeQuestionTic
           pressed && Platform.OS === "ios" ? { opacity: 0.92 } : null,
         ]}
         accessibilityRole="button"
-        accessibilityLabel={`${t("home.question_feedback_card_title")}. ${item.content ?? ""}. ${zone}. ${t("home.question_ticker_a11y")}`}
+        accessibilityLabel={`${t("home.question_feedback_card_title")}. ${tickerContent}. ${zone}. ${t("home.question_ticker_a11y")}`}
       >
         <View style={homeStyles.questionTickerIconCircle}>
           <Icons.brain color="#4F46E5" size={20} />
@@ -211,7 +217,7 @@ function HomeQuestionTickerCard({ items, getZoneLabel, onOpen }: HomeQuestionTic
         <View style={homeStyles.questionTickerBody}>
           <Animated.View style={{ opacity }}>
             <Text style={homeStyles.questionTickerText} numberOfLines={2} ellipsizeMode="tail">
-              {item.content || "—"}
+              {tickerContent.trim() || "—"}
             </Text>
             <Text style={homeStyles.questionTickerMeta} numberOfLines={1}>
               {zone} · {dateLine}

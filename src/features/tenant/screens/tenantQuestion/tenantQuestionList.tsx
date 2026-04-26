@@ -24,6 +24,7 @@ import {
   getTotalPages,
   slicePage,
 } from "../../../../shared/utils";
+import { getIssueResponseContentForUi } from "../../../../shared/utils/issueTicketLocalizedText";
 import {
   StackScreenTitleBadge,
   StackScreenTitleBarBalance,
@@ -170,7 +171,7 @@ const TenantQuestionListScreen = () => {
           </Text>
         </View>
         <Text style={styles.contentPreview} numberOfLines={4}>
-          {item.content || "—"}
+          {getIssueResponseContentForUi(item).trim() || "—"}
         </Text>
         <View style={styles.dateRow}>
           <Icons.clock size={14} color={neutral.textMuted} />
@@ -251,6 +252,7 @@ const TenantQuestionListScreen = () => {
             data={pagedItems}
             keyExtractor={(it) => it.id}
             renderItem={renderItem}
+            extraData={i18n.language}
             contentContainerStyle={[
               styles.listContent,
               { paddingBottom: listBottomPad },

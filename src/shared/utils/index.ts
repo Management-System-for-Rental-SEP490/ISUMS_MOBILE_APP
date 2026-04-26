@@ -79,3 +79,8 @@ export {
   categoryRequiresEntityIdForNavigation,
   isSystemOrBroadcastCategory,
 } from "./notificationEntityRules";
+export {
+  getIssueResponseContentForUi,
+  getTenantTicketDescriptionForUi,
+  getTenantTicketTitleForUi,
+} from "./issueTicketLocalizedText";

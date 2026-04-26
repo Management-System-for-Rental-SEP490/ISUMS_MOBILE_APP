@@ -705,8 +705,14 @@ export interface TenantTicketFromApi {
   type: string;
   status: IssueStatus;
   quoteStatus?: QuoteStatus | null;
+  /**
+   * BE có thể gửi chuỗi thường, JSON I18n, hoặc object { vi, en, ja }.
+   * Có thể kèm `titleTranslations` / `title_translations` (cùng contract asset).
+   */
   title: string;
   description: string;
+  titleTranslations?: Record<string, string> | null;
+  descriptionTranslations?: Record<string, string> | null;
   createdAt: string;
 }
 
@@ -749,7 +755,9 @@ export interface IssueTicketResponseFromApi {
   id: string;
   ticketId: string;
   actorId: string;
+  /** Chuỗi, JSON I18n, hoặc object; có thể kèm `contentTranslations` / `content_translations`. */
   content: string;
+  contentTranslations?: Record<string, string> | null;
   createdAt: string;
 }
 

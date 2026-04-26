@@ -34,7 +34,15 @@ import { getWorkSlotById } from "../../../../shared/services/scheduleApi";
 import Icons from "../../../../shared/theme/icon";
 import { brandPrimary, brandSecondary, neutral } from "../../../../shared/theme/color";
 import { tenantTicketDetailStyles as styles, tenantTicketListStyles as badge } from "./ticketStyles";
-import { formatTenantIssueDateTime, formatVndDisplay } from "../../../../shared/utils";
+import {
+  formatTenantIssueDateTime,
+  formatVndDisplay,
+} from "../../../../shared/utils";
+import {
+  getIssueResponseContentForUi,
+  getTenantTicketDescriptionForUi,
+  getTenantTicketTitleForUi,
+} from "../../../../shared/utils/issueTicketLocalizedText";
 import { formatApiErrorForTenantAlert } from "../../../../shared/utils/apiErrorMessage";
 import {
   StackScreenTitleBadge,
@@ -148,6 +156,19 @@ const TenantTicketDetailScreen = ({ navigation, route }: Props) => {
 
   const [questionResponse, setQuestionResponse] = useState<IssueTicketResponseFromApi | null>(null);
   const [questionResponseLoading, setQuestionResponseLoading] = useState(false);
+
+  const displayTicketTitle = useMemo(
+    () => getTenantTicketTitleForUi(ticket),
+    [ticket, i18n.language]
+  );
+  const displayTicketDescription = useMemo(
+    () => getTenantTicketDescriptionForUi(ticket),
+    [ticket, i18n.language]
+  );
+  const displayQuestionResponseContent = useMemo(
+    () => (questionResponse ? getIssueResponseContentForUi(questionResponse) : ""),
+    [questionResponse, i18n.language]
+  );
 
   const { data: invoiceQueryData, refetch: refetchTenantInvoices } = useTenantInvoices();
   const linkedRepairInvoice = useMemo(() => {
@@ -597,7 +618,9 @@ const TenantTicketDetailScreen = ({ navigation, route }: Props) => {
         {isQuestionTicket ? (
           <>
             <View style={styles.heroCard}>
-              <Text style={styles.heroTitle}>{ticket.title?.trim() ? ticket.title : "—"}</Text>
+              <Text style={styles.heroTitle}>
+                {displayTicketTitle.trim() ? displayTicketTitle : "—"}
+              </Text>
               <View style={styles.heroDateRow}>
                 <Icons.clock size={15} color={neutral.textMuted} />
                 <Text style={styles.heroDateText}>
@@ -611,7 +634,7 @@ const TenantTicketDetailScreen = ({ navigation, route }: Props) => {
               headerIcon={<Icons.helpOutline size={22} color={brandPrimary} />}
             >
               <Text style={styles.descriptionBody} selectable>
-                {ticket.description?.trim() ? ticket.description : "—"}
+                {displayTicketDescription.trim() ? displayTicketDescription : "—"}
               </Text>
             </TicketDetailSection>
 
@@ -627,7 +650,7 @@ const TenantTicketDetailScreen = ({ navigation, route }: Props) => {
               ) : questionResponse ? (
                 <>
                   <Text style={styles.descriptionBody} selectable>
-                    {questionResponse.content?.trim() ? questionResponse.content : "—"}
+                    {displayQuestionResponseContent.trim() ? displayQuestionResponseContent : "—"}
                   </Text>
                   <View style={[styles.heroDateRow, { marginTop: 12 }]}>
                     <Icons.clock size={15} color={neutral.textMuted} />
@@ -645,7 +668,7 @@ const TenantTicketDetailScreen = ({ navigation, route }: Props) => {
         ) : (
           <>
             <View style={styles.heroCard}>
-              <Text style={styles.heroTitle}>{ticket.title}</Text>
+              <Text style={styles.heroTitle}>{displayTicketTitle}</Text>
               <View style={styles.badgeRow}>
                 <View style={[badge.typeTag, typeTagBg(ticket.type), { marginBottom: 0 }]}>
                   <Text style={[badge.typeTagText, typeTagFg(ticket.type)]}>{typeLabel(ticket.type)}</Text>
@@ -753,7 +776,7 @@ const TenantTicketDetailScreen = ({ navigation, route }: Props) => {
               headerIcon={<Icons.subject size={22} color={brandPrimary} />}
             >
               <Text style={styles.descriptionBody} selectable>
-                {ticket.description?.trim() ? ticket.description : "—"}
+                {displayTicketDescription.trim() ? displayTicketDescription : "—"}
               </Text>
             </TicketDetailSection>
 
@@ -946,7 +969,7 @@ const TenantTicketDetailScreen = ({ navigation, route }: Props) => {
                 repairInvoicePaid
                   ? (repairPaymentContentLabel ??
                     t("tenant_ticket_detail.payment_content_repair_fallback", {
-                      title: ticket.title?.trim() ? ticket.title : "—",
+                      title: displayTicketTitle.trim() ? displayTicketTitle : "—",
                     }))
                   : undefined
               }
