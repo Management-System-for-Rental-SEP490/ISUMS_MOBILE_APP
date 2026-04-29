@@ -28,8 +28,13 @@ export type RootStackParamList = AuthStackParamList & {
   /**
    * Tạo ticket tenant (POST /issues/tickets).
    * `houseId` bắt buộc; có `presetAsset` khi vào từ chi tiết thiết bị, không có khi vào từ danh sách ticket (+ chọn thiết bị trong form).
+   * `presetTicketType`: mặc định REPAIR; QUESTION khi vào từ danh sách giải đáp thắc mắc.
    */
-  Ticket: { houseId: string; presetAsset?: { id: string; displayName: string } };
+  Ticket: {
+    houseId: string;
+    presetAsset?: { id: string; displayName: string };
+    presetTicketType?: "REPAIR" | "QUESTION";
+  };
   /** Danh sách ticket tenant đã gửi (từ hồ sơ / ứng dụng). */
   TenantTicketList: undefined;
   /** Chi tiết một ticket (dữ liệu từ danh sách + tên thiết bị fetch theo assetId). */

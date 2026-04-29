@@ -204,7 +204,8 @@ export default {
         "details_link": "Chi tiết",
         "empty": "Chưa có phản hồi nào.",
         "load_error": "Không tải được phản hồi. Vui lòng thử lại.",
-        "zone_unknown": "Chưa xác định khu"
+        "zone_unknown": "Chưa xác định khu",
+        "fab_create_question_a11y": "Tạo câu hỏi mới"
     },
     "tenant_question_detail": {
         "screen_title": "Chi tiết phản hồi",

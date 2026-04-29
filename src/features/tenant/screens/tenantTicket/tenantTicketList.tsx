@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { FlatList, Image, ScrollView, Text, TouchableOpacity, View } from "react-native";
-import { useFocusEffect, useNavigation } from "@react-navigation/native";
+import { useNavigation, useIsFocused } from "@react-navigation/native";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useTranslation } from "react-i18next";
@@ -8,6 +8,7 @@ import { getTenantTicketTitleForUi } from "../../../../shared/utils/issueTicketL
 import { CustomAlert as Alert } from "../../../../shared/components/alert";
 import { IssueTicketResponseFromApi, RootStackParamList, TenantTicketFromApi } from "../../../../shared/types";
 import { useTenantContext, useRefreshControlGate, useTenantHouses } from "../../../../shared/hooks";
+import { useTenantTicketListQuery } from "../../../../shared/hooks/useTenantIssueTickets";
 import {
   PullToRefreshControl,
   RefreshLogoInline,
@@ -15,8 +16,6 @@ import {
 } from "@shared/components/RefreshLogoOverlay";
 import {
   getIssueQuotesByTicket,
-  getIssueResponses,
-  getTenantTickets,
   getTenantTicketImages,
 } from "../../../../shared/services/issuesApi";
 import { createVnpayPaymentLink } from "../../../../shared/services/tenantPaymentApi";
@@ -146,6 +145,31 @@ function latestResponseByQuestionTicketId(
   return out;
 }
 
+/**
+ * Chạy `fn` song song với giới hạn số worker — tránh bão hàng chục/hàng trăm request (ảnh slot/quote)
+ * khi danh sách ticket dài, vẫn tải dần phần bổ sung sau khi màn đã hiển thị khung danh sách chính.
+ */
+async function mapPool<T, R>(items: T[], concurrency: number, fn: (item: T) => Promise<R>): Promise<R[]> {
+  if (items.length === 0) return [];
+  const limit = Math.max(1, Math.min(concurrency, items.length));
+  const results: R[] = new Array(items.length);
+  let index = 0;
+
+  async function worker() {
+    for (;;) {
+      const i = index++;
+      if (i >= items.length) break;
+      results[i] = await fn(items[i]);
+    }
+  }
+
+  await Promise.all(Array.from({ length: limit }, () => worker()));
+  return results;
+}
+
+/** Sau GET danh sách + responses: một request phụ ~mỗi ticket (thumb/quote/slot) — không bắn tất cả cùng lúc. */
+const TENANT_TICKET_LIST_ENRICH_CONCURRENCY = 6;
+
 async function enrichTicketForList(item: TenantTicketFromApi): Promise<ListTicketExtras> {
   const out: ListTicketExtras = {};
   const st = normalizeIssueStatus(item.status);
@@ -218,67 +242,83 @@ const TenantTicketListScreen = () => {
   const insets = useSafeAreaInsets();
   const listRef = useRef<FlatList<TenantTicketFromApi>>(null);
 
-  const [allItems, setAllItems] = useState<TenantTicketFromApi[]>([]);
+  const listFocused = useIsFocused();
+  const {
+    data: listBundle,
+    isPending,
+    isError,
+    refetch,
+    isRefetching,
+    dataUpdatedAt,
+  } = useTenantTicketListQuery({ focused: listFocused });
+
+  const sortedTickets = useMemo(() => {
+    if (!listBundle?.tickets?.length) return [];
+    return [...listBundle.tickets].sort(sortTicketsForDisplay);
+  }, [listBundle?.tickets]);
+
   const [extrasById, setExtrasById] = useState<Record<string, ListTicketExtras>>({});
   const [listFilter, setListFilter] = useState<TicketListFilter>("all");
   const [currentPage, setCurrentPage] = useState(1);
-  const [loading, setLoading] = useState(true);
-  const [refreshing, setRefreshing] = useState(false);
   const { scrollAtTop, onScrollForRefreshGate } = useRefreshControlGate();
-  const [error, setError] = useState<string | null>(null);
   /** Đang tạo link VNPay từ danh sách — khóa trùng tap. */
   const [payingTicketId, setPayingTicketId] = useState<string | null>(null);
-  /** Phản hồi staff cho ticket QUESTION (để biết đã trả lời + mở chi tiết hỏi đáp). */
-  const [responseByTicketId, setResponseByTicketId] = useState<
-    Record<string, IssueTicketResponseFromApi>
-  >({});
 
-  const load = useCallback(async (isRefresh = false) => {
-    if (isRefresh) setRefreshing(true);
-    else setLoading(true);
-    setError(null);
-    try {
-      const [data, responses] = await Promise.all([getTenantTickets(), getIssueResponses()]);
-      const sorted = [...data].sort(sortTicketsForDisplay);
-      setResponseByTicketId(latestResponseByQuestionTicketId(sorted, responses));
-      setAllItems(sorted);
-      setCurrentPage(1);
-      setExtrasById({});
-      void Promise.all(
-        sorted.map(async (item) => {
-          const ex = await enrichTicketForList(item);
-          return [item.id, ex] as const;
-        })
-      ).then((entries) => {
-        const map: Record<string, ListTicketExtras> = {};
-        for (const [id, ex] of entries) map[id] = ex;
-        setExtrasById(map);
-      });
-    } catch {
-      setError(t("tenant_ticket_list.load_error"));
-      setAllItems([]);
-      setExtrasById({});
-      setResponseByTicketId({});
-      setCurrentPage(1);
-    } finally {
-      setLoading(false);
-      setRefreshing(false);
-    }
-  }, [t]);
-
-  useFocusEffect(
-    useCallback(() => {
-      load(false);
-    }, [load])
+  const responseByTicketId = useMemo(
+    () =>
+      latestResponseByQuestionTicketId(
+        sortedTickets,
+        listBundle?.responses ?? []
+      ),
+    [sortedTickets, listBundle?.responses]
   );
+
+  /**
+   * Khi bundle từ BE đổi (lần đầu, kéo refresh, hoặc poll nhẹ 30s): enrich ảnh/quote/slot với pool giới hạn.
+   */
+  useEffect(() => {
+    if (!sortedTickets.length) {
+      setExtrasById({});
+      return;
+    }
+    let cancelled = false;
+    setExtrasById({});
+    void (async () => {
+      try {
+        const entries = await mapPool(
+          sortedTickets,
+          TENANT_TICKET_LIST_ENRICH_CONCURRENCY,
+          async (item): Promise<[string, ListTicketExtras]> => {
+            const ex = await enrichTicketForList(item);
+            return [item.id, ex];
+          }
+        );
+        if (cancelled) return;
+        const map: Record<string, ListTicketExtras> = {};
+        for (const [id, ex] of entries) {
+          map[id] = ex;
+        }
+        setExtrasById(map);
+      } catch {
+        /* enqueue lớp ngoài hiếm — từng ticket đã try/catch */
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [sortedTickets, dataUpdatedAt]);
+
+  const onManualRefresh = useCallback(() => {
+    void refetch();
+  }, [refetch]);
 
   useEffect(() => {
     setCurrentPage(1);
-  }, [listFilter]);
+  }, [sortedTickets.length, listFilter]);
 
   const filteredAll = useMemo(
-    () => allItems.filter((it) => ticketMatchesFilter(it, listFilter)),
-    [allItems, listFilter]
+    () => sortedTickets.filter((it) => ticketMatchesFilter(it, listFilter)),
+    [sortedTickets, listFilter]
   );
 
   const totalPages = useMemo(
@@ -515,6 +555,7 @@ const TenantTicketListScreen = () => {
           styles.card,
           waitingPay && styles.cardAwaitingPayment,
           awaitingQuoteConfirm && styles.cardAwaitingTenantQuote,
+          stNorm === "CREATED" && styles.cardBorderCreated,
         ]}
       >
         <TouchableOpacity
@@ -694,21 +735,21 @@ const TenantTicketListScreen = () => {
         </View>
       </StackScreenTitleHeaderStrip>
 
-      {loading && !refreshing ? (
+      {isPending && sortedTickets.length === 0 ? (
         <View style={[styles.centered, { flex: 1, position: "relative" }]}>
           <RefreshLogoOverlay visible mode="page" />
         </View>
-      ) : error ? (
+      ) : isError && sortedTickets.length === 0 ? (
         <View style={[styles.centered, { flex: 1 }]}>
-          <Text style={styles.errorText}>{error}</Text>
-          <TouchableOpacity style={styles.retryBtn} onPress={() => load(false)} activeOpacity={0.8}>
+          <Text style={styles.errorText}>{t("tenant_ticket_list.load_error")}</Text>
+          <TouchableOpacity style={styles.retryBtn} onPress={() => void refetch()} activeOpacity={0.8}>
             <Text style={styles.retryBtnText}>{t("common.try_again")}</Text>
           </TouchableOpacity>
         </View>
       ) : (
         <>
           <View style={{ flex: 1, position: "relative" }}>
-            <RefreshLogoOverlay visible={refreshing} />
+            <RefreshLogoOverlay visible={isRefetching} />
             <View style={styles.filterSectionWrap}>{renderFilterHeader()}</View>
             <FlatList
               ref={listRef}
@@ -733,8 +774,8 @@ const TenantTicketListScreen = () => {
               scrollEventThrottle={16}
               refreshControl={
                 <PullToRefreshControl
-                  refreshing={refreshing}
-                  onRefresh={() => load(true)}
+                  refreshing={isRefetching}
+                  onRefresh={onManualRefresh}
                   scrollAtTop={scrollAtTop}
                 />
               }

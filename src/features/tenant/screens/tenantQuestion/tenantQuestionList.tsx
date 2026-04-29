@@ -9,7 +9,7 @@ import {
   IssueTicketResponseFromApi,
 } from "../../../../shared/types";
 import { getIssueResponses, getTenantTickets } from "../../../../shared/services/issuesApi";
-import { useTenantHouses, useRefreshControlGate } from "../../../../shared/hooks";
+import { useTenantContext, useTenantHouses, useRefreshControlGate } from "../../../../shared/hooks";
 import {
   PullToRefreshControl,
   RefreshLogoOverlay,
@@ -35,6 +35,7 @@ import {
   stackScreenTitleRowStyle,
   stackScreenTitleSideSlotStyle,
 } from "../../../../shared/components/StackScreenTitleBadge";
+import { CustomAlert as Alert } from "../../../../shared/components/alert";
 
 type NavProp = NativeStackNavigationProp<RootStackParamList, "TenantQuestionList">;
 
@@ -78,6 +79,7 @@ const TenantQuestionListScreen = () => {
   }, [i18n.language]);
   const insets = useSafeAreaInsets();
   const listRef = useRef<FlatList<IssueTicketResponseFromApi>>(null);
+  const { houseId } = useTenantContext();
   const { data: housesData } = useTenantHouses();
   const tenantHouseList = housesData?.data ?? [];
 
@@ -161,6 +163,19 @@ const TenantQuestionListScreen = () => {
     [navigation, zoneLabelForTicket]
   );
 
+  /**
+   * Mở màn tạo ticket với loại QUESTION (hỏi đáp), dùng nhà đang chọn trong tenant context.
+   * Không có nhà → alert giống luồng tạo ticket từ danh sách ticket.
+   */
+  const onPressCreateQuestionTicket = useCallback(() => {
+    const hid = String(houseId ?? "").trim();
+    if (!hid) {
+      Alert.alert(t("ticket.validation_error_title"), t("ticket.house_missing"));
+      return;
+    }
+    navigation.navigate("Ticket", { houseId: hid, presetTicketType: "QUESTION" });
+  }, [houseId, navigation, t]);
+
   const renderItem = useCallback(
     ({ item }: { item: IssueTicketResponseFromApi }) => (
       <View style={styles.card}>
@@ -193,8 +208,9 @@ const TenantQuestionListScreen = () => {
     [locale, onPressDetail, t, zoneLabelForTicket]
   );
 
+  /** Đệm list để không chồng FAB (+) góc dưới — cùng logic `tenantTicketList`. */
   const listBottomPad =
-    Math.max(insets.bottom, 28) + 28 + (totalPages > 1 ? 10 : 0);
+    Math.max(insets.bottom, 24) + (totalPages > 1 ? 8 : 0) + 72;
 
   const showPageHeading = !(loading && !refreshing);
 
@@ -244,40 +260,51 @@ const TenantQuestionListScreen = () => {
           </TouchableOpacity>
         </View>
       ) : (
-        <View style={{ flex: 1, position: "relative" }}>
-          <RefreshLogoOverlay visible={refreshing} />
-          <FlatList
-            ref={listRef}
-            style={{ flex: 1 }}
-            data={pagedItems}
-            keyExtractor={(it) => it.id}
-            renderItem={renderItem}
-            extraData={i18n.language}
-            contentContainerStyle={[
-              styles.listContent,
-              { paddingBottom: listBottomPad },
-              allItems.length === 0 && styles.listEmptyGrow,
-            ]}
-            onScroll={onScrollForRefreshGate}
-            scrollEventThrottle={16}
-            refreshControl={
-              <PullToRefreshControl
-                refreshing={refreshing}
-                onRefresh={() => load(true)}
-                scrollAtTop={scrollAtTop}
-              />
-            }
-          ListEmptyComponent={<Text style={styles.empty}>{t("tenant_question_list.empty")}</Text>}
-            ListFooterComponent={
-              <PaginationBar
-                currentPage={currentPage}
-                totalPages={totalPages}
-                onPageChange={onPageChange}
-                style={{ paddingBottom: 10 }}
-              />
-            }
-          />
-        </View>
+        <>
+          <View style={{ flex: 1, position: "relative" }}>
+            <RefreshLogoOverlay visible={refreshing} />
+            <FlatList
+              ref={listRef}
+              style={{ flex: 1 }}
+              data={pagedItems}
+              keyExtractor={(it) => it.id}
+              renderItem={renderItem}
+              extraData={i18n.language}
+              contentContainerStyle={[
+                styles.listContent,
+                { paddingBottom: listBottomPad },
+                allItems.length === 0 && styles.listEmptyGrow,
+              ]}
+              onScroll={onScrollForRefreshGate}
+              scrollEventThrottle={16}
+              refreshControl={
+                <PullToRefreshControl
+                  refreshing={refreshing}
+                  onRefresh={() => load(true)}
+                  scrollAtTop={scrollAtTop}
+                />
+              }
+              ListEmptyComponent={<Text style={styles.empty}>{t("tenant_question_list.empty")}</Text>}
+              ListFooterComponent={
+                <PaginationBar
+                  currentPage={currentPage}
+                  totalPages={totalPages}
+                  onPageChange={onPageChange}
+                  style={{ paddingBottom: Math.max(insets.bottom, 8) }}
+                />
+              }
+            />
+          </View>
+          <TouchableOpacity
+            style={[styles.fab, { bottom: Math.max(insets.bottom, 12) + 8 }]}
+            onPress={onPressCreateQuestionTicket}
+            activeOpacity={0.88}
+            accessibilityRole="button"
+            accessibilityLabel={t("tenant_question_list.fab_create_question_a11y")}
+          >
+            <Icons.plus size={26} color={neutral.surface} />
+          </TouchableOpacity>
+        </>
       )}
     </View>
   );

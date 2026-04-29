@@ -204,7 +204,8 @@ export default {
         "details_link": "詳細",
         "empty": "返信はまだありません。",
         "load_error": "返信を読み込めませんでした。もう一度お試しください。",
-        "zone_unknown": "区画が未設定です"
+        "zone_unknown": "区画が未設定です",
+        "fab_create_question_a11y": "新しい質問を作成"
     },
     "tenant_question_detail": {
         "screen_title": "返信の詳細",

@@ -682,6 +682,11 @@ export const tenantTicketListStyles = StyleSheet.create({
     shadowRadius: 8,
     elevation: 2,
   },
+  /** CREATED — ticket mới tạo: viền đỏ nổi. */
+  cardBorderCreated: {
+    borderWidth: 2,
+    borderColor: BRAND_DANGER,
+  },
   /** Hàng meta: loại ticket (trái) + giờ & trạng thái chữ (phải). */
   metaHeaderRow: {
     flexDirection: "row",

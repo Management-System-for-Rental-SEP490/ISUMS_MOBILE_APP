@@ -204,7 +204,8 @@ export default {
         "details_link": "Details",
         "empty": "No replies yet.",
         "load_error": "Could not load replies. Please try again.",
-        "zone_unknown": "Zone unknown"
+        "zone_unknown": "Zone unknown",
+        "fab_create_question_a11y": "Create new question"
     },
     "tenant_question_detail": {
         "screen_title": "Reply details",

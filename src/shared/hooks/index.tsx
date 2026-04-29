@@ -12,4 +12,5 @@ export * from "./useKeyboardBottomInset";
 export * from "./useRefreshControlGate";
 export * from "./useAreasUsageDistribution";
 export * from "./useTenantBusinessNotifications";
+export * from "./useTenantIssueTickets";
 export * from "./useNotificationDeviceTokenLifecycle";
