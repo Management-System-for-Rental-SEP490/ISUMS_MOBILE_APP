@@ -36,6 +36,10 @@ import IotAlertDetailScreen from "../features/tenant/screens/tenantNotification/
 import { useSetupIotNotifications } from "../features/tenant/components/IotPushAlertOverlay";
 import { TenantIotAlertOverlay } from "../features/tenant/components/TenantIotAlertOverlay";
 import { useNotificationDeviceTokenLifecycle } from "../shared/hooks/useNotificationDeviceTokenLifecycle";
+import {
+  APP_BACKGROUND_SOFT_INVALIDATE_DELAY_MS,
+  isIssueTicketStaffOrTenantListQueryKey,
+} from "../shared/api/config";
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
 
@@ -89,6 +93,19 @@ const Navigation = () => {
     }
     wasLoggedInRef.current = isLoggedIn;
   }, [isLoggedIn, queryClient]);
+
+  /**
+   * Làm mới cache nền sau mở app (không refetch hai query danh sách ticket tenant — poll/tay riêng).
+   */
+  useEffect(() => {
+    if (!isReady || !isLoggedIn || role !== "tenant") return;
+    const id = setTimeout(() => {
+      void queryClient.invalidateQueries({
+        predicate: (q) => !isIssueTicketStaffOrTenantListQueryKey(q.queryKey as readonly unknown[]),
+      });
+    }, APP_BACKGROUND_SOFT_INVALIDATE_DELAY_MS);
+    return () => clearTimeout(id);
+  }, [isReady, isLoggedIn, role, queryClient]);
 
   // Tenant app: nếu có session cũ với role technical (persisted) → logout, thông báo, xóa Keycloak session
   useEffect(() => {

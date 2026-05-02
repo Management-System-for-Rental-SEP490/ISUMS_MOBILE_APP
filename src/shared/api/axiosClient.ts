@@ -4,11 +4,7 @@ import { toAppLocaleCode } from "../utils/resolveLocalizedJsonString";
 import { useAuthStore } from "../../store/useAuthStore";
 import { refreshAccessToken, logoutKeycloak } from "../services/keycloakAuth";
 import { CustomAlert } from "../components/alert";
-import {
-  DATA_LOAD_TIMEOUT_MS,
-  BACKEND_URL_PRIMARY,
-  BACKEND_URL_FALLBACK,
-} from "./config";
+import { DATA_LOAD_TIMEOUT_MS } from "./config";
 
 function isAxiosTimeout(error: unknown): boolean {
   if (!isAxiosError(error)) return false;
@@ -127,26 +123,6 @@ axiosClient.interceptors.response.use(
       } finally {
         isRefreshing = false;
       }
-    }
-
-    // Primary lỗi mạng / 5xx → thử fallback. Không retry 4xx (404/403…) để không che giấu URL sai.
-    // Hết timeout (DATA_LOAD_TIMEOUT_MS) → không fallback để tổng thời gian chờ không vượt giới hạn.
-    const url = originalRequest?.url ?? "";
-    const status = error.response?.status as number | undefined;
-    const retryable =
-      !error.response ||
-      status === undefined ||
-      status >= 500 ||
-      status === 408;
-    if (
-      !originalRequest._retriedWithFallback &&
-      url.startsWith(BACKEND_URL_PRIMARY) &&
-      retryable &&
-      !isAxiosTimeout(error)
-    ) {
-      originalRequest._retriedWithFallback = true;
-      originalRequest.url = url.replace(BACKEND_URL_PRIMARY, BACKEND_URL_FALLBACK);
-      return axiosClient(originalRequest);
     }
 
     // Quá thời gian chờ phản hồi từ BE → thông báo thống nhất; promise reject → mutation/query không onSuccess (hoàn tác).

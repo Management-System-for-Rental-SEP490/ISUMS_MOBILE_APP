@@ -8,6 +8,7 @@ import {
   getHouses,
   getTenantHouses,
 } from "../services/houseApi";
+import { QUERY_DEFAULT_STALE_TIME_MS } from "../api/config";
 
 /**
  * Hook dùng React Query để lấy danh sách nhà (houses) từ BE.
@@ -63,7 +64,7 @@ export const useHouseById = (houseId: string | null | undefined, enabled: boolea
     queryKey: [...HOUSES_KEYS.byId(id), i18n.language],
     queryFn: () => getHouseById(id),
     enabled: Boolean(id && enabled),
-    staleTime: 10 * 60 * 1000,
+    staleTime: QUERY_DEFAULT_STALE_TIME_MS,
   });
 };
 
@@ -86,7 +87,7 @@ export const useHouseNamesByIds = (houseIds: string[]) => {
       queryKey: [...HOUSES_KEYS.byId(id), i18n.language],
       queryFn: () => getHouseById(id),
       enabled: Boolean(id),
-      staleTime: 10 * 60 * 1000,
+      staleTime: QUERY_DEFAULT_STALE_TIME_MS,
     })),
   });
 

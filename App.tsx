@@ -12,14 +12,16 @@ import { useAuthStore } from "./src/store/useAuthStore";
 import { RefreshLogoOverlay } from "./src/shared/components/RefreshLogoOverlay";
 import { neutral } from "./src/shared/theme/color";
 import { GlobalAlert } from "./src/shared/components/alert";
+import { QUERY_DEFAULT_STALE_TIME_MS } from "./src/shared/api/config";
 
-// Tạo một instance của QueryClient
-// Đây là "bộ não" quản lý cache của React Query
+// Tạo một instance của QueryClient — quản lý cache React Query
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
-      retry: 2, // Thử lại 2 lần nếu request thất bại trước khi báo lỗi
-      staleTime: 1000 * 60 * 5, // Data được coi là "tươi" trong 5 phút (không fetch lại trừ khi cần thiết)
+      retry: 2,
+      staleTime: QUERY_DEFAULT_STALE_TIME_MS,
+      refetchOnWindowFocus: false,
+      refetchOnReconnect: true,
     },
   },
 });

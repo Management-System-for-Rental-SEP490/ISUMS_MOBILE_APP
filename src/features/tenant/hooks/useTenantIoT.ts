@@ -2,6 +2,7 @@
  * Hooks IoT tenant: WebSocket realtime + REST usage + điều khiển điện.
  */
 import { useCallback, useEffect, useRef, useState } from "react";
+import { APP_FOREGROUND_GET_POLL_MS } from "../../../shared/api/config";
 import { iotClient } from "../../../shared/services/iotClient";
 import type { TelemetryMessage } from "../../../shared/types";
 import iotCommandApi, {
@@ -232,7 +233,10 @@ export function useTenantUsage(params: {
 
   useEffect(() => {
     void load();
-  }, [load]);
+    if (!houseId) return;
+    const interval = setInterval(() => void load(), APP_FOREGROUND_GET_POLL_MS);
+    return () => clearInterval(interval);
+  }, [houseId, load]);
 
   const unit = metric === "electricity" ? "kWh" : "L";
 

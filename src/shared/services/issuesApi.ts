@@ -1,6 +1,6 @@
 import axios from "axios";
 import axiosClient from "../api/axiosClient";
-import { BACKEND_API_BASE, FALLBACK_BACKEND_URL, ISSUES_TENANT_LIST_TIMEOUT_MS } from "../api/config";
+import { BACKEND_API_BASE, ISSUES_TENANT_LIST_TIMEOUT_MS } from "../api/config";
 import i18n from "../i18n";
 import { toAppLocaleCode } from "../utils/resolveLocalizedJsonString";
 import { useAuthStore } from "../../store/useAuthStore";
@@ -49,7 +49,7 @@ function slimTenantTicketsForMemory(rows: TenantTicketFromApi[]): TenantTicketFr
  */
 export const getTenantTickets = async (): Promise<TenantTicketFromApi[]> => {
   const url = `${BACKEND_API_BASE}/issues/tickets/tenant`;
-  //const url = `${FALLBACK_BACKEND_URL}/issues/tickets/tenant`;
+  //const url = `${BACKEND_API_BASE}/issues/tickets/tenant`;
   const response = await axiosClient.get<ApiResponse<TenantTicketFromApi[]>>(url, {
     timeout: ISSUES_TENANT_LIST_TIMEOUT_MS,
   });
@@ -69,7 +69,7 @@ export const getTenantTicketById = async (
   const id = ticketId?.trim();
   if (!id) return null;
 
-  //const url = `${FALLBACK_BACKEND_URL}/issues/tickets/${encodeURIComponent(id)}`;
+  //const url = `${BACKEND_API_BASE}/issues/tickets/${encodeURIComponent(id)}`;
   const url = `${BACKEND_API_BASE}/issues/tickets/${encodeURIComponent(id)}`;
   const response = await axiosClient.get<ApiResponse<TenantTicketFromApi>>(url);
 
@@ -99,7 +99,7 @@ export const getIssueResponses = async (): Promise<IssueTicketResponseFromApi[]>
  * Dùng cho luồng quote + payment.
  */
 export const getIssueBanners = async (): Promise<IssueBannerFromApi[]> => {
-  //const url = `${FALLBACK_BACKEND_URL}/issues/banners`;
+  //const url = `${BACKEND_API_BASE}/issues/banners`;
   const url = `${BACKEND_API_BASE}/issues/banners`;
   const response = await axiosClient.get<ApiResponse<IssueBannerFromApi[]>>(url);
   if (response.data?.success && Array.isArray(response.data.data)) {
@@ -114,7 +114,7 @@ export const getIssueBanners = async (): Promise<IssueBannerFromApi[]> => {
 export const createTenantTicket = async (
   payload: CreateTenantTicketPayload
 ): Promise<TenantTicketFromApi> => {
-  //const url = `${FALLBACK_BACKEND_URL}/issues/tickets`;
+  //const url = `${BACKEND_API_BASE}/issues/tickets`;
   const url = `${BACKEND_API_BASE}/issues/tickets`;
   try {
     const response = await axiosClient.post<ApiResponse<TenantTicketFromApi>>(url, payload);
@@ -155,7 +155,7 @@ export const uploadTenantTicketImages = async (
 ): Promise<void> => {
   if (!ticketId || images.length === 0) return;
 
-  //const url = `${FALLBACK_BACKEND_URL}/issues/tickets/${encodeURIComponent(ticketId)}/images`;
+  //const url = `${BACKEND_API_BASE}/issues/tickets/${encodeURIComponent(ticketId)}/images`;
   const url = `${BACKEND_API_BASE}/issues/tickets/${encodeURIComponent(ticketId)}/images`;
   //const url = `${BACKEND_API_BASE}/issues/tickets/${encodeURIComponent(ticketId)}/images`;
   const formData = new FormData();
@@ -253,7 +253,7 @@ export const getTenantTicketImages = async (
 ): Promise<TenantTicketImageFromApi[]> => {
   if (!ticketId) return [];
 
-  //const url = `${FALLBACK_BACKEND_URL}/issues/tickets/${encodeURIComponent(ticketId)}/images`;
+  //const url = `${BACKEND_API_BASE}/issues/tickets/${encodeURIComponent(ticketId)}/images`;
   const url = `${BACKEND_API_BASE}/issues/tickets/${encodeURIComponent(ticketId)}/images`;
   const response = await axiosClient.get<ApiResponse<TenantTicketImageFromApi[]>>(url);
 
@@ -310,7 +310,7 @@ export const getIssueQuotesByTicket = async (
 export const confirmIssueQuoteStatus = async (quoteId: string): Promise<void> => {
   if (!quoteId?.trim()) return;
   const url = `${BACKEND_API_BASE}/issues/quotes/${encodeURIComponent(quoteId)}/status`;
- // const url = `${FALLBACK_BACKEND_URL}/issues/quotes/${encodeURIComponent(quoteId)}/status`;
+ // const url = `${BACKEND_API_BASE}/issues/quotes/${encodeURIComponent(quoteId)}/status`;
   // BE yêu cầu PUT để xác nhận.
   // Theo Postman bạn cung cấp: body phải gửi { status: "APPROVED" }.
   const response = await axiosClient.put<ApiResponse<unknown>>(url, { status: "APPROVED" });

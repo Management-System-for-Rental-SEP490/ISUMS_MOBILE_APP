@@ -2,7 +2,7 @@
  * API thiết bị (asset items) cho app người thuê — chỉ đọc (GET).
  */
 import axiosClient from "../api/axiosClient";
-import { ASSETS_API_BASE, BACKEND_API_BASE} from "../api/config";
+import { BACKEND_API_BASE } from "../api/config";
 import {
   mergeTranslationMapsFromApi,
   resolveLocalizedApiFieldFromI18n,

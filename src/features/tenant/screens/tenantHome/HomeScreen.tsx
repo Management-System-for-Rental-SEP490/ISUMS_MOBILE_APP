@@ -65,6 +65,7 @@ import {
 import { CustomAlert } from "../../../../shared/components/alert";
 import Icons from "../../../../shared/theme/icon";
 import { tenantFooterLinks } from "../../../../shared/constants/tenantFooterLinks";
+import { APP_FOREGROUND_GET_POLL_MS } from "../../../../shared/api/config";
 import { IotPushAlertOverlay } from "../../components/IotPushAlertOverlay";
 
 const EMPTY_TENANT_HOUSES: HouseFromApi[] = [];
@@ -461,6 +462,14 @@ const HomeScreen = ({ navigation }: HomeScreenProps) => {
       void loadQuestionTicker();
     }, [loadQuestionTicker])
   );
+
+  useEffect(() => {
+    if (!homeTabFocused || !hasAnyTenantHouse) return;
+    const id = setInterval(() => {
+      void loadQuestionTicker();
+    }, APP_FOREGROUND_GET_POLL_MS);
+    return () => clearInterval(id);
+  }, [homeTabFocused, hasAnyTenantHouse, loadQuestionTicker]);
 
   const zoneLabelForQuestionTicket = useCallback(
     (ticketId: string) => {

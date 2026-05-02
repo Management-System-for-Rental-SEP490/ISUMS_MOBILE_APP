@@ -1,5 +1,5 @@
 import axiosClient from "../api/axiosClient";
-import { ASSETS_API_BASE, BACKEND_API_BASE } from "../api/config";
+import { BACKEND_API_BASE } from "../api/config";
 import type { IAlert } from "../types/alert";
 
 export interface AlertListParams {
@@ -76,7 +76,7 @@ const alertApi = {
 
   resolveAll: (houseId: string): Promise<{ resolved: number }> => {
     return axiosClient
-      .put(`${ASSETS_API_BASE}/assets/houses/${houseId}/iot/alerts/resolve-all`)
+      .put(`${BACKEND_API_BASE}/assets/houses/${houseId}/iot/alerts/resolve-all`)
       .then((res) => res.data?.data ?? res.data);
   },
 };
