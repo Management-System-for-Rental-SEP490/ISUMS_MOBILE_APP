@@ -59,6 +59,9 @@ import {
 
 type NavProp = NativeStackNavigationProp<RootStackParamList, "TenantInvoiceList">;
 
+/** Tab danh sách: tách hóa đơn tiền nhà/cọc và phí sửa chữa để không bị lịch sử sửa chữa đẩy xuống (theo UX giống chip khu vực trên màn thống kê tiêu thụ). */
+type InvoiceListCategoryTab = "house" | "repair";
+
 type ListRow =
   | { kind: "section"; key: string; title: string }
   | { kind: "invoice"; key: string; item: TenantInvoiceFromApi; navigateToTicketDetail: boolean };
@@ -85,6 +88,8 @@ export default function TenantInvoiceListScreen() {
   );
 
   const [filterHouseId, setFilterHouseId] = useState<string | null>(null);
+  /** Tab đang xem — chỉ một nhóm hiển thị / chọn thanh toán mỗi lúc (đã có rule không gộp hai loại trong một lượt). */
+  const [categoryTab, setCategoryTab] = useState<InvoiceListCategoryTab>("house");
   const [invoicePage, setInvoicePage] = useState(1);
   const [selected, setSelected] = useState<Set<string>>(() => new Set());
   const [creatingLink, setCreatingLink] = useState(false);
@@ -223,26 +228,42 @@ export default function TenantInvoiceListScreen() {
   const showHouseOnCard =
     filterHouseId == null && (filterHouseOptions.length > 1 || hasOrphanHouseOnInvoices);
 
-  /** Mọi hóa đơn chưa trả (tiền nhà/cọc + phí sửa chữa): chọn nhiều / chọn tất cả / thanh toán gộp — không trộn hai loại trong một lượt. */
-  const payableList = useMemo(() => filterPayableInvoices(data), [data]);
+  /** Chỉ nhóm đang xem tab — trùng rule backend: không gộp hai loại trong một lượt thanh toán. */
+  const payableList = useMemo(() => {
+    const pool = categoryTab === "repair" ? issueInvoices : regularInvoices;
+    return filterPayableInvoices(pool);
+  }, [categoryTab, issueInvoices, regularInvoices]);
   const hasPayable = payableList.length > 0;
 
-  const totalPages = useMemo(() => getTotalPages(regularInvoices.length), [regularInvoices.length]);
+  const totalPages = useMemo(
+    () =>
+      getTotalPages(
+        categoryTab === "repair" ? issueInvoices.length : regularInvoices.length
+      ),
+    [categoryTab, issueInvoices.length, regularInvoices.length]
+  );
   const pagedRegular = useMemo(
     () => slicePage(regularInvoices, invoicePage),
     [regularInvoices, invoicePage]
   );
+  const pagedIssueInvoices = useMemo(
+    () => slicePage(issueInvoices, invoicePage),
+    [issueInvoices, invoicePage]
+  );
 
+  /**
+   * Ghép section Chưa trả / Đã trả cho đúng tab; phân trang độc lập giữa tiền nhà và phí sửa chữa.
+   */
   const listRows = useMemo((): ListRow[] => {
     const out: ListRow[] = [];
 
-    if (invoicePage === 1 && issueInvoices.length > 0) {
-      const unpaidIss = issueInvoices.filter((i) => isTenantInvoicePayable(i.status));
-      const paidIss = issueInvoices.filter((i) => !isTenantInvoicePayable(i.status));
+    if (categoryTab === "repair") {
+      const unpaidIss = pagedIssueInvoices.filter((i) => isTenantInvoicePayable(i.status));
+      const paidIss = pagedIssueInvoices.filter((i) => !isTenantInvoicePayable(i.status));
       if (unpaidIss.length) {
         out.push({
           kind: "section",
-          key: "section-issue-unpaid",
+          key: `section-repair-unpaid-${invoicePage}`,
           title: t("tenant_invoice.section_unpaid"),
         });
         unpaidIss.forEach((item) =>
@@ -252,13 +273,14 @@ export default function TenantInvoiceListScreen() {
       if (paidIss.length) {
         out.push({
           kind: "section",
-          key: "section-issue-paid",
+          key: `section-repair-paid-${invoicePage}`,
           title: t("tenant_invoice.section_paid"),
         });
         paidIss.forEach((item) =>
           out.push({ kind: "invoice", key: `iss-${item.id}`, item, navigateToTicketDetail: true })
         );
       }
+      return out;
     }
 
     const unpaid = pagedRegular.filter((i) => isTenantInvoicePayable(i.status));
@@ -266,7 +288,7 @@ export default function TenantInvoiceListScreen() {
     if (unpaid.length) {
       out.push({
         kind: "section",
-        key: `section-unpaid-${invoicePage}`,
+        key: `section-house-unpaid-${invoicePage}`,
         title: t("tenant_invoice.section_unpaid"),
       });
       unpaid.forEach((item) =>
@@ -276,7 +298,7 @@ export default function TenantInvoiceListScreen() {
     if (paid.length) {
       out.push({
         kind: "section",
-        key: `section-paid-${invoicePage}`,
+        key: `section-house-paid-${invoicePage}`,
         title: t("tenant_invoice.section_paid"),
       });
       paid.forEach((item) =>
@@ -284,13 +306,19 @@ export default function TenantInvoiceListScreen() {
       );
     }
     return out;
-  }, [issueInvoices, invoicePage, pagedRegular, t]);
+  }, [categoryTab, invoicePage, pagedIssueInvoices, pagedRegular, t]);
 
   useEffect(() => {
     setInvoicePage(1);
     setSelected(new Set());
     setLinkError(null);
   }, [filterHouseId]);
+
+  useEffect(() => {
+    setInvoicePage(1);
+    setSelected(new Set());
+    setLinkError(null);
+  }, [categoryTab]);
 
   useEffect(() => {
     setInvoicePage((p) => Math.min(Math.max(1, p), totalPages));
@@ -603,6 +631,51 @@ export default function TenantInvoiceListScreen() {
           <Text style={styles.filterCardTitle} numberOfLines={1}>
             {t("tenant_invoice.list_heading")}
           </Text>
+          <View style={[styles.filterByHouseWrap, { marginTop: 12 }]}>
+            <Text style={styles.filterByHouseLabel}>{t("tenant_invoice.list_category_section")}</Text>
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              style={styles.filterChipsScroll}
+              contentContainerStyle={styles.filterChipsContent}
+              keyboardShouldPersistTaps="handled"
+            >
+              <TouchableOpacity
+                style={[styles.filterSortChip, categoryTab === "house" && styles.filterSortChipActive]}
+                onPress={() => setCategoryTab("house")}
+                activeOpacity={0.85}
+                accessibilityRole="tab"
+                accessibilityState={{ selected: categoryTab === "house" }}
+              >
+                <Text
+                  style={[
+                    styles.filterSortChipText,
+                    categoryTab === "house" && styles.filterSortChipTextActive,
+                  ]}
+                  numberOfLines={1}
+                >
+                  {t("tenant_invoice.tab_house")}
+                </Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.filterSortChip, categoryTab === "repair" && styles.filterSortChipActive]}
+                onPress={() => setCategoryTab("repair")}
+                activeOpacity={0.85}
+                accessibilityRole="tab"
+                accessibilityState={{ selected: categoryTab === "repair" }}
+              >
+                <Text
+                  style={[
+                    styles.filterSortChipText,
+                    categoryTab === "repair" && styles.filterSortChipTextActive,
+                  ]}
+                  numberOfLines={1}
+                >
+                  {t("tenant_invoice.tab_repair")}
+                </Text>
+              </TouchableOpacity>
+            </ScrollView>
+          </View>
           {showMainHousePayFirstNote ? (
             <Text style={styles.mergedCardMandatoryLine}>
               {t("tenant_invoice.main_house_pay_first_required_note")}
@@ -697,8 +770,13 @@ export default function TenantInvoiceListScreen() {
       allSelected,
       toggleSelectAll,
       totalSelected,
+      categoryTab,
     ]
   );
+
+  const tabHasNoInvoices =
+    categoryTab === "repair" ? issueInvoices.length === 0 : regularInvoices.length === 0;
+
   /** Đệm dưới footer (đẩy khối tổng lên, tránh sát home indicator / gesture). */
   const multiFooterExtraBottom = 18;
   const multiFooterBottomInset = insets.bottom + multiFooterExtraBottom;
@@ -749,7 +827,7 @@ export default function TenantInvoiceListScreen() {
             contentInsetAdjustmentBehavior="automatic"
             contentContainerStyle={[
               styles.listContentMerged,
-              data.length === 0 ? styles.listEmptyGrow : undefined,
+              tabHasNoInvoices ? styles.listEmptyGrow : undefined,
               { paddingBottom: listBottomPad },
             ]}
             onScroll={onScrollForRefreshGate}
@@ -764,15 +842,23 @@ export default function TenantInvoiceListScreen() {
             ListEmptyComponent={
               showPageHeading ? (
                 <View style={styles.mergedCardEmpty}>
-                  <Text style={styles.emptyText}>{t("tenant_invoice.empty_list")}</Text>
+                  <Text style={styles.emptyText}>
+                    {categoryTab === "repair"
+                      ? t("tenant_invoice.empty_repair_tab")
+                      : t("tenant_invoice.empty_list")}
+                  </Text>
                 </View>
               ) : (
-                <Text style={styles.emptyText}>{t("tenant_invoice.empty_list")}</Text>
+                <Text style={styles.emptyText}>
+                  {categoryTab === "repair"
+                    ? t("tenant_invoice.empty_repair_tab")
+                    : t("tenant_invoice.empty_list")}
+                </Text>
               )
             }
-            extraData={{ invoicePage, selected, creatingLink }}
+            extraData={{ invoicePage, selected, creatingLink, categoryTab }}
             ListFooterComponent={
-              data.length > 0 ? (
+              !tabHasNoInvoices ? (
                 <View style={styles.mergedCardFooter}>
                   <PaginationBar
                     currentPage={invoicePage}
