@@ -194,6 +194,11 @@ const TicketScreen = () => {
       return;
     }
 
+    if (selectedImages.length === 0) {
+      Alert.alert(t("ticket.validation_error_title"), t("ticket.images_required"));
+      return;
+    }
+
     setSubmitting(true);
     try {
       const createdTicket = await createTenantTicket({
