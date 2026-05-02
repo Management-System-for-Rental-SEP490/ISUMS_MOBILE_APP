@@ -16,7 +16,7 @@ import {
   KeyboardAvoidingView,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { useNavigation, useRoute, RouteProp } from "@react-navigation/native";
+import { useNavigation, useRoute, RouteProp, useIsFocused } from "@react-navigation/native";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { useTranslation } from "react-i18next";
 import { useQueryClient } from "@tanstack/react-query";
@@ -105,6 +105,7 @@ const TenantHouseDescription = () => {
   const insets = useSafeAreaInsets();
   const navigation = useNavigation<TenantHouseNavProp>();
   const route = useRoute<TenantHouseRouteProp>();
+  const houseDescriptionFocused = useIsFocused();
   const queryClient = useQueryClient();
   const { houseId, setHouseId } = useAuthStore();
 
@@ -125,7 +126,9 @@ const TenantHouseDescription = () => {
 
   const { data: housesData, refetch: refetchHouses } = useTenantHouses();
   const tenantHouses: HouseFromApi[] = housesData?.data ?? [];
-  const { data: invoiceListRaw, isLoading: invoicesLoading, isFetched } = useTenantInvoices(true);
+  const { data: invoiceListRaw, isLoading: invoicesLoading, isFetched } = useTenantInvoices(true, {
+    focused: houseDescriptionFocused,
+  });
   const invoiceListForBanner = invoiceListRaw ?? [];
   const buildingIdStr = String(buildingId ?? "").trim();
   const showPaymentBanner = useMemo(() => {

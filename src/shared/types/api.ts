@@ -714,6 +714,19 @@ export interface TenantTicketFromApi {
   titleTranslations?: Record<string, string> | null;
   descriptionTranslations?: Record<string, string> | null;
   createdAt: string;
+  /**
+   * Slot ca làm việc — BE danh sách thường trả cùng ticket; dùng để hiển thị giờ trên card
+   * không cần GET `/schedules/work_slots/{id}`.
+   */
+  startTime?: string | null;
+  /** Kết thúc slot — cùng luồng với `startTime`. */
+  endTime?: string | null;
+  /**
+   * Báo giá kèm GET list — giữ `totalPrice`/`status` cho card; `items` có thể rỗng sau khi app thu gọn bộ nhớ.
+   */
+  quote?: IssueQuoteFromApi | null;
+  /** Ảnh đính kèm ticket — BE có thể trả ở danh sách; dùng tránh GET ảnh lặp. */
+  images?: Array<{ id: string; url: string; createdAt?: string | null }>;
 }
 
 // =========================================================

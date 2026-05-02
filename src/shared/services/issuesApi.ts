@@ -1,6 +1,6 @@
 import axios from "axios";
 import axiosClient from "../api/axiosClient";
-import { BACKEND_API_BASE, FALLBACK_BACKEND_URL } from "../api/config";
+import { BACKEND_API_BASE, FALLBACK_BACKEND_URL, ISSUES_TENANT_LIST_TIMEOUT_MS } from "../api/config";
 import i18n from "../i18n";
 import { toAppLocaleCode } from "../utils/resolveLocalizedJsonString";
 import { useAuthStore } from "../../store/useAuthStore";
@@ -24,14 +24,37 @@ export type CreateTenantTicketPayload = {
 };
 
 /**
+ * Thu gọn body sau GET danh sách: `quote.items` làm payload phình; list chỉ cần `totalPrice`/status ẩn trong card.
+ * Giữ tối đa một ảnh trong `images`. Màn chi tiết luôn tải lại đủ qua `getTenantTicketById`.
+ *
+ * @param rows - parse xong từ BE (có thể hàng trăm phần tử).
+ * @returns Bản shallow copy an toàn cho React Query cache.
+ */
+function slimTenantTicketsForMemory(rows: TenantTicketFromApi[]): TenantTicketFromApi[] {
+  if (!rows.length) return rows;
+  return rows.map((row) => {
+    const r = row as TenantTicketFromApi & { quote?: IssueQuoteFromApi | null };
+    const images =
+      Array.isArray(r.images) && r.images.length > 1 ? [r.images[0]] : r.images;
+    const quote =
+      r.quote != null && typeof r.quote === "object"
+        ? ({ ...r.quote, items: [] } satisfies IssueQuoteFromApi)
+        : r.quote ?? undefined;
+    return { ...r, images, quote } as TenantTicketFromApi;
+  });
+}
+
+/**
  * Danh sách ticket của tenant đang đăng nhập (GET /api/issues/tickets/tenant).
  */
 export const getTenantTickets = async (): Promise<TenantTicketFromApi[]> => {
   const url = `${BACKEND_API_BASE}/issues/tickets/tenant`;
   //const url = `${FALLBACK_BACKEND_URL}/issues/tickets/tenant`;
-  const response = await axiosClient.get<ApiResponse<TenantTicketFromApi[]>>(url);
+  const response = await axiosClient.get<ApiResponse<TenantTicketFromApi[]>>(url, {
+    timeout: ISSUES_TENANT_LIST_TIMEOUT_MS,
+  });
   if (response.data?.success && Array.isArray(response.data.data)) {
-    return response.data.data;
+    return slimTenantTicketsForMemory(response.data.data);
   }
   return [];
 };
@@ -62,7 +85,9 @@ export const getTenantTicketById = async (
  */
 export const getIssueResponses = async (): Promise<IssueTicketResponseFromApi[]> => {
   const url = `${BACKEND_API_BASE}/issues/responses`;
-  const response = await axiosClient.get<ApiResponse<IssueTicketResponseFromApi[]>>(url);
+  const response = await axiosClient.get<ApiResponse<IssueTicketResponseFromApi[]>>(url, {
+    timeout: ISSUES_TENANT_LIST_TIMEOUT_MS,
+  });
   if (response.data?.success && Array.isArray(response.data.data)) {
     return response.data.data;
   }

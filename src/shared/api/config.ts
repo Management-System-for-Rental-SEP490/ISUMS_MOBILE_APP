@@ -11,6 +11,13 @@ export const DATA_LOAD_TIMEOUT_MS = 6000 as const;
 /** Cùng giá trị với {@link DATA_LOAD_TIMEOUT_MS} — `axios` dùng làm `timeout` (hủy request nếu quá lâu). */
 export const API_REQUEST_TIMEOUT_MS = DATA_LOAD_TIMEOUT_MS;
 
+/**
+ * Timeout dài hơn cho GET danh sách issues không phân trang (ticket tenant + responses):
+ * payload lớn và nén (vd. zstd) → download + JSON.parse có thể vượt {@link DATA_LOAD_TIMEOUT_MS}.
+ * Chỉ truyền vào các request trong `issuesApi` tương ứng — không nâng timeout mặc định toàn app.
+ */
+export const ISSUES_TENANT_LIST_TIMEOUT_MS = 90_000 as const;
+
 const DEFAULT_PRIMARY = "https://api.isums.pro/api";
 const DEFAULT_FALLBACK = "https://unrestrictable-lan-syzygial.ngrok-free.dev/api";
 

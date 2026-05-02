@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useLayoutEffect, useMemo, useState } from "react";
 import { ScrollView, Text, TouchableOpacity, View } from "react-native";
+import { useIsFocused } from "@react-navigation/native";
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { useTranslation } from "react-i18next";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -20,7 +21,7 @@ import Icons from "../../../../shared/theme/icon";
 import { createVnpayPaymentLink } from "../../../../shared/services/tenantPaymentApi";
 import { neutral, tenantInvoicePaidBadgeFg } from "../../../../shared/theme/color";
 import { useAuthStore } from "../../../../store/useAuthStore";
-import { useHouseById, useTenantHouses, useTenantInvoices } from "../../../../shared/hooks";
+import { useHouseById, useTenantHouses, useTenantInvoiceDetailQuery, useTenantInvoices } from "../../../../shared/hooks";
 import {
   isHouseIdOutsideTenantAccess,
   shortHouseIdForDisplay,
@@ -38,7 +39,6 @@ import {
 import { tenantInvoiceStyles as styles } from "./tenantInvoiceStyles";
 import { RefreshLogoInline, RefreshLogoOverlay } from "@shared/components/RefreshLogoOverlay";
 import { InvoicePaymentFlowSection } from "./InvoicePaymentFlowSection";
-import { fetchTenantInvoiceDetail } from "../../../../shared/services/tenantInvoiceApi";
 import { getIssueBanners, getIssueQuotesByTicket } from "../../../../shared/services/issuesApi";
 import type { InvoiceIssueItemFromApi, IssueBannerFromApi, IssueQuoteFromApi } from "../../../../shared/types/api";
 
@@ -53,7 +53,13 @@ const EMPTY_TENANT_INVOICES: TenantInvoiceFromApi[] = [];
 export default function TenantInvoiceDetailScreen({ navigation, route }: Props) {
   const { t, i18n } = useTranslation();
   const insets = useSafeAreaInsets();
+  const isFocused = useIsFocused();
   const { invoice } = route.params;
+  const invIdFromRoute = String(invoice.id ?? "").trim();
+  const invoiceDetailQuery = useTenantInvoiceDetailQuery(invIdFromRoute, {
+    focused: isFocused,
+    enabled: Boolean(invIdFromRoute),
+  });
   const [detailInvoice, setDetailInvoice] = useState<Partial<TenantInvoiceFromApi>>({});
   const mergedInvoice = useMemo(
     () => ({ ...invoice, ...detailInvoice }),
@@ -66,7 +72,7 @@ export default function TenantInvoiceDetailScreen({ navigation, route }: Props) 
     }
   }, [mergedInvoice, navigation]);
   const { houseId: selectedHouseIdFromStore } = useAuthStore();
-  const { data: invoiceQueryData } = useTenantInvoices();
+  const { data: invoiceQueryData } = useTenantInvoices(true, { focused: isFocused });
   const { data: housesData } = useTenantHouses();
   const rawInvoiceData = invoiceQueryData ?? EMPTY_TENANT_INVOICES;
   const [creatingLink, setCreatingLink] = useState(false);
@@ -192,25 +198,30 @@ export default function TenantInvoiceDetailScreen({ navigation, route }: Props) 
   const [issueBannersCatalog, setIssueBannersCatalog] = useState<IssueBannerFromApi[]>([]);
 
   useEffect(() => {
+    const row = invoiceDetailQuery.data?.invoice;
+    if (row) setDetailInvoice(row);
+  }, [invoiceDetailQuery.data]);
+
+  useEffect(() => {
     let cancelled = false;
     const invId = String(invoice.id ?? "").trim();
     if (!invId) return;
+
+    const detail = invoiceDetailQuery.data;
+    if (!detail?.invoice) {
+      setIssueQuotesLoading(invoiceDetailQuery.isFetching);
+      if (invoiceDetailQuery.isFetched && !invoiceDetailQuery.isFetching && !detail) {
+        setIssueQuotes([]);
+        setIssueBannersCatalog([]);
+      }
+      return;
+    }
+
     setIssueQuotesLoading(true);
     void (async () => {
       try {
-        const detail = await fetchTenantInvoiceDetail(invId);
-        if (!cancelled && detail?.invoice) {
-          setDetailInvoice(detail.invoice);
-        }
-        const payments = detail?.payments ?? [];
-        const inv = detail?.invoice;
-        if (!inv) {
-          if (!cancelled) {
-            setIssueQuotes([]);
-            setIssueBannersCatalog([]);
-          }
-          return;
-        }
+        const payments = detail.payments ?? [];
+        const inv = detail.invoice;
 
         const shouldIssueFlow =
           isTenantInvoiceIssueType(inv) ||
@@ -287,7 +298,13 @@ export default function TenantInvoiceDetailScreen({ navigation, route }: Props) 
     return () => {
       cancelled = true;
     };
-  }, [invoice.id, invoice.issueTicketId]);
+  }, [
+    invoice.id,
+    invoice.issueTicketId,
+    invoiceDetailQuery.data,
+    invoiceDetailQuery.isFetched,
+    invoiceDetailQuery.isFetching,
+  ]);
 
   const issueQuoteForDisplay = useMemo(() => {
     if (!issueQuotes.length) return null;

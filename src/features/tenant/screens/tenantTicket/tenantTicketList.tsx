@@ -167,7 +167,7 @@ async function mapPool<T, R>(items: T[], concurrency: number, fn: (item: T) => P
   return results;
 }
 
-/** Sau GET danh sách + responses: một request phụ ~mỗi ticket (thumb/quote/slot) — không bắn tất cả cùng lúc. */
+/** Request phụ (thumb / quote / slot) — chỉ chạy cho ticket đang ở trang danh sách; không enqueue theo toàn bộ BE. */
 const TENANT_TICKET_LIST_ENRICH_CONCURRENCY = 6;
 
 async function enrichTicketForList(item: TenantTicketFromApi): Promise<ListTicketExtras> {
@@ -175,39 +175,63 @@ async function enrichTicketForList(item: TenantTicketFromApi): Promise<ListTicke
   const st = normalizeIssueStatus(item.status);
 
   try {
-    const imgs = await getTenantTicketImages(item.id);
-    const u = imgs[0]?.url?.trim();
-    if (u) out.thumbUrl = u;
+    const fromList = Array.isArray(item.images) ? item.images[0]?.url?.trim() : "";
+    if (fromList) {
+      out.thumbUrl = fromList;
+    } else {
+      const imgs = await getTenantTicketImages(item.id);
+      const u = imgs[0]?.url?.trim();
+      if (u) out.thumbUrl = u;
+    }
   } catch {
     /* bỏ qua ảnh nếu lỗi */
   }
 
   if (st === "WAITING_PAYMENT") {
-    try {
-      const quotes = await getIssueQuotesByTicket(item.id);
-      const approved =
-        quotes.find((q) => normalizeIssueStatus(q.status) === "APPROVED") ?? quotes[0];
-      const n = approved != null ? Number(approved.totalPrice) : NaN;
-      if (Number.isFinite(n)) out.quoteTotal = n;
-    } catch {
-      /* */
+    const q = item.quote;
+    if (
+      q != null &&
+      normalizeIssueStatus(String(q.status)) === "APPROVED" &&
+      Number.isFinite(Number(q.totalPrice))
+    ) {
+      out.quoteTotal = Number(q.totalPrice);
+    } else {
+      try {
+        const quotes = await getIssueQuotesByTicket(item.id);
+        const approved =
+          quotes.find((qItem) => normalizeIssueStatus(qItem.status) === "APPROVED") ?? quotes[0];
+        const n = approved != null ? Number(approved.totalPrice) : NaN;
+        if (Number.isFinite(n)) out.quoteTotal = n;
+      } catch {
+        /* */
+      }
     }
   }
 
-  if ((st === "IN_PROGRESS" || st === "SCHEDULED") && item.slotId && !nilSlotId(item.slotId)) {
-    try {
-      const res = await getWorkSlotById(String(item.slotId));
-      const slot = res?.success ? res.data : null;
-      if (slot?.startTime) {
-        const d = new Date(slot.startTime);
-        if (!Number.isNaN(d.getTime())) {
-          out.slotStartIso = String(slot.startTime);
-          out.slotTime = `${d.getHours()}:${pad2(d.getMinutes())}`;
-          out.slotIsToday = isSameLocalDay(d, new Date());
-        }
+  if (st === "IN_PROGRESS" || st === "SCHEDULED") {
+    const embedded = typeof item.startTime === "string" ? item.startTime.trim() : "";
+    if (embedded) {
+      const d = new Date(embedded);
+      if (!Number.isNaN(d.getTime())) {
+        out.slotStartIso = embedded;
+        out.slotTime = `${d.getHours()}:${pad2(d.getMinutes())}`;
+        out.slotIsToday = isSameLocalDay(d, new Date());
       }
-    } catch {
-      /* */
+    } else if (item.slotId && !nilSlotId(item.slotId)) {
+      try {
+        const res = await getWorkSlotById(String(item.slotId));
+        const slot = res?.success ? res.data : null;
+        if (slot?.startTime) {
+          const d = new Date(slot.startTime);
+          if (!Number.isNaN(d.getTime())) {
+            out.slotStartIso = String(slot.startTime);
+            out.slotTime = `${d.getHours()}:${pad2(d.getMinutes())}`;
+            out.slotIsToday = isSameLocalDay(d, new Date());
+          }
+        }
+      } catch {
+        /* */
+      }
     }
   }
 
@@ -273,41 +297,6 @@ const TenantTicketListScreen = () => {
     [sortedTickets, listBundle?.responses]
   );
 
-  /**
-   * Khi bundle từ BE đổi (lần đầu, kéo refresh, hoặc poll nhẹ 30s): enrich ảnh/quote/slot với pool giới hạn.
-   */
-  useEffect(() => {
-    if (!sortedTickets.length) {
-      setExtrasById({});
-      return;
-    }
-    let cancelled = false;
-    setExtrasById({});
-    void (async () => {
-      try {
-        const entries = await mapPool(
-          sortedTickets,
-          TENANT_TICKET_LIST_ENRICH_CONCURRENCY,
-          async (item): Promise<[string, ListTicketExtras]> => {
-            const ex = await enrichTicketForList(item);
-            return [item.id, ex];
-          }
-        );
-        if (cancelled) return;
-        const map: Record<string, ListTicketExtras> = {};
-        for (const [id, ex] of entries) {
-          map[id] = ex;
-        }
-        setExtrasById(map);
-      } catch {
-        /* enqueue lớp ngoài hiếm — từng ticket đã try/catch */
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, [sortedTickets, dataUpdatedAt]);
-
   const onManualRefresh = useCallback(() => {
     void refetch();
   }, [refetch]);
@@ -330,6 +319,63 @@ const TenantTicketListScreen = () => {
     () => slicePage(filteredAll, currentPage, PAGE_SIZE),
     [filteredAll, currentPage]
   );
+
+  /**
+   * Sau refetch BE: bỏ extras của ticket không còn trong danh sách (tránh leak map trong bộ nhớ).
+   */
+  useEffect(() => {
+    const valid = new Set(sortedTickets.map((x) => x.id));
+    if (valid.size === 0) {
+      setExtrasById({});
+      return;
+    }
+    setExtrasById((prev) => {
+      let touched = false;
+      const next: Record<string, ListTicketExtras> = { ...prev };
+      for (const k of Object.keys(next)) {
+        if (!valid.has(k)) {
+          delete next[k];
+          touched = true;
+        }
+      }
+      return touched ? next : prev;
+    });
+  }, [sortedTickets]);
+
+  /**
+   * Enrich chỉ ticket đang ở trang hiện tại (~PAGE_SIZE): tránh trăm request + JSON khổng lồ cùng lúc
+   * khi GET /issues/tickets/tenant trả toàn bộ lịch sử (crash / timeout).
+   * Đổi trang hoặc `dataUpdatedAt` (kéo refresh / poll) → tải bổ sung cho trang đang xem.
+   */
+  useEffect(() => {
+    if (!pagedItems.length) return;
+    let cancelled = false;
+    void (async () => {
+      try {
+        const entries = await mapPool(
+          pagedItems,
+          TENANT_TICKET_LIST_ENRICH_CONCURRENCY,
+          async (item): Promise<[string, ListTicketExtras]> => {
+            const ex = await enrichTicketForList(item);
+            return [item.id, ex];
+          }
+        );
+        if (cancelled) return;
+        setExtrasById((prev) => {
+          const next = { ...prev };
+          for (const [id, ex] of entries) {
+            next[id] = ex;
+          }
+          return next;
+        });
+      } catch {
+        /* enqueue lớp ngoài hiếm — từng ticket đã try/catch */
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [pagedItems, dataUpdatedAt]);
 
   const onPageChange = useCallback((page: number) => {
     setCurrentPage(page);

@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { FlatList, ListRenderItemInfo, ScrollView, Text, TouchableOpacity, View } from "react-native";
-import { useFocusEffect, useNavigation } from "@react-navigation/native";
+import { useFocusEffect, useIsFocused, useNavigation } from "@react-navigation/native";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { useTranslation } from "react-i18next";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -76,7 +76,10 @@ export default function TenantInvoiceListScreen() {
   const insets = useSafeAreaInsets();
   /** Căn đang chọn trong app (đổi nhà = đổi bộ hóa đơn bắt buộc / chặn truy cập theo căn này). */
   const { houseId: selectedHouseIdFromStore } = useAuthStore();
-  const { data: invoiceQueryData, isLoading, isRefetching, refetch, isError } = useTenantInvoices();
+  const invoiceListFocused = useIsFocused();
+  const { data: invoiceQueryData, isLoading, isRefetching, refetch, isError } = useTenantInvoices(true, {
+    focused: invoiceListFocused,
+  });
   const rawInvoiceData = invoiceQueryData ?? EMPTY_TENANT_INVOICES;
   const { data: housesData } = useTenantHouses();
   const { data: userProfile } = useUserProfile();

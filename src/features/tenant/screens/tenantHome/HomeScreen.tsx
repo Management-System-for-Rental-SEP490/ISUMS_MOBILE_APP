@@ -23,7 +23,7 @@ import {
 import { useTranslation } from "react-i18next";
 import { getIssueResponseContentForUi } from "../../../../shared/utils/issueTicketLocalizedText";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { NavigationProp, useFocusEffect } from "@react-navigation/native";
+import { NavigationProp, useFocusEffect, useIsFocused } from "@react-navigation/native";
 import { useQueryClient } from "@tanstack/react-query";
 import homeStyles, { HOME_CARD_STACK_GAP } from "./homeStyles";
 import {
@@ -249,6 +249,7 @@ const HomeScreen = ({ navigation }: HomeScreenProps) => {
   const queryClient = useQueryClient();
   const { houseId, setHouseId } = useAuthStore();
   const { t, i18n } = useTranslation();
+  const homeTabFocused = useIsFocused();
   const { width: windowWidth } = useWindowDimensions();
   const insets = useSafeAreaInsets();
   /** Home là màn `Main` trên root stack — dùng stack này; trước đây qua tab nên cần getParent. */
@@ -356,7 +357,7 @@ const HomeScreen = ({ navigation }: HomeScreenProps) => {
     data: invoiceListRaw,
     isLoading: invoicesLoading,
     refetch: refetchInvoices,
-  } = useTenantInvoices(invoiceQueryEnabled);
+  } = useTenantInvoices(invoiceQueryEnabled, { focused: homeTabFocused });
   const invoiceList = invoiceListRaw ?? EMPTY_TENANT_INVOICES;
 
   const accessBlock = useMemo(() => {
