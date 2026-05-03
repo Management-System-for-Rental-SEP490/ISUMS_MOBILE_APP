@@ -106,6 +106,15 @@ export function isTenantRepairInvoiceFlow(
 }
 
 /**
+ * Id ticket issue gắn hóa đơn repair — dùng gọi API báo giá khi cần `quoteId` cho VNPay mà BE không gửi sẵn trên invoice.
+ */
+export function resolveTenantInvoiceIssueTicketId(
+  inv: Pick<TenantInvoiceFromApi, "issueTicketId" | "issueId">
+): string {
+  return String(inv.issueTicketId ?? inv.issueId ?? "").trim();
+}
+
+/**
  * Còn hóa đơn tiền nhà/cọc chưa trả trên căn — **không** tính hóa đơn issue (`type`: ISSUE hoặc gắn ticket).
  * Dùng banner / nhắc thanh toán tiền nhà; **không** dùng để chặn vào nhà (chặn theo `accessStatus` từ my-access).
  */

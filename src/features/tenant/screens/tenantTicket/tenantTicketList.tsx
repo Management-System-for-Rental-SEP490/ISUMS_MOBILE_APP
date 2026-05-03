@@ -485,6 +485,7 @@ const TenantTicketListScreen = () => {
                     );
                     return;
                   }
+                  // Thanh toán ticket issue từ list: POST chỉ quoteId (báo giá), không invoiceIds.
                   const checkoutUrl = await createVnpayPaymentLink(
                     { quoteId },
                     { appLanguage: i18n.language },

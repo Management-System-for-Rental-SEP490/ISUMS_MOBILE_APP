@@ -44,6 +44,7 @@ import { formatApiErrorForTenantAlert } from "../../../../shared/utils/apiErrorM
 import { tenantInvoiceStyles as styles } from "./tenantInvoiceStyles";
 import { PaginationBar } from "../../../../shared/components/PaginationBar";
 import { CustomAlert as Alert } from "../../../../shared/components/alert";
+import { resolveVnpayQuoteIdForRepairInvoice } from "../../../../shared/services/tenantInvoiceApi";
 import { createVnpayPaymentLink } from "../../../../shared/services/tenantPaymentApi";
 import { useAuthStore } from "../../../../store/useAuthStore";
 import {
@@ -449,14 +450,39 @@ export default function TenantInvoiceListScreen() {
       );
       return;
     }
-    const vnpayUiContext = allRepair ? ("repair_fee_invoice" as const) : ("house_invoice" as const);
+    if (allRepair && ids.length > 1) {
+      Alert.alert(t("tenant_payment.title"), t("tenant_payment.repair_pay_one_at_a_time"));
+      return;
+    }
+
     setCreatingLink(true);
     setLinkError(null);
     try {
-      const checkoutUrl = await createVnpayPaymentLink(
-        { invoiceIds: ids },
-        { appLanguage: i18n.language }
-      );
+      let checkoutUrl: string;
+      let vnpayUiContext: "house_invoice" | "repair_quote";
+
+      if (allRepair && ids.length === 1) {
+        const inv = payableMapById.get(ids[0]!);
+        if (!inv) {
+          setLinkError(t("tenant_payment.link_error"));
+          return;
+        }
+        const quoteId = (await resolveVnpayQuoteIdForRepairInvoice(inv)) ?? "";
+        if (!quoteId) {
+          setLinkError(t("tenant_payment.missing_quote_for_issue_vnpay"));
+          return;
+        }
+        checkoutUrl = await createVnpayPaymentLink({ quoteId }, { appLanguage: i18n.language });
+        vnpayUiContext = "repair_quote";
+      } else {
+        /**
+         * Luồng **tiền nhà / cọc / hóa đơn không phải repair đơn lẻ**: giữ nguyên — chỉ `invoiceIds`, không resolve quote.
+         * (`noRepair` hoặc gộp nhiều id tiền nhà; nhánh `allRepair` nhiều hóa đơn đã chặn ở trên.)
+         */
+        checkoutUrl = await createVnpayPaymentLink({ invoiceIds: ids }, { appLanguage: i18n.language });
+        vnpayUiContext = "house_invoice";
+      }
+
       navigation.navigate("VnpayCheckout", {
         checkoutUrl,
         afterSuccess: "invoiceList",

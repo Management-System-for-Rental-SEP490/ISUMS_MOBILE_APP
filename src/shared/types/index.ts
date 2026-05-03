@@ -79,8 +79,9 @@ export type RootStackParamList = AuthStackParamList & {
   /** Hóa đơn sửa chữa / ticket: tổng quan + lịch sử lượt thanh toán. */
   TenantIssueInvoice: { invoice: TenantInvoiceFromApi };
   /**
-   * WebView VNPay — `checkoutUrl` từ POST tạo link (tiền nhà: `invoiceIds`, sửa chữa: `quoteId`).
-   * Sau redirect, app hiển thị màn kết quả trong app rồi `afterSuccess` thoát (không tải HTML `vnp_ReturnUrl`).
+   * WebView VNPay — `checkoutUrl` từ POST tạo link.
+   * Body tạo link phải khớp Swagger: **Invoice** → `invoiceIds` (tiền nhà/cọc); **Quote** → `quoteId` (sửa chữa / WAITING_PAYMENT).
+   * Sau redirect: màn kết quả in-app rồi `afterSuccess` (không tải HTML `vnp_ReturnUrl`).
    */
   VnpayCheckout: {
     checkoutUrl: string;
@@ -88,8 +89,10 @@ export type RootStackParamList = AuthStackParamList & {
     /** Khi `afterSuccess` = `ticketDetail` — dùng để reset stack về đúng ticket. */
     ticketForAfterSuccess?: TenantTicketFromApi;
     /**
-     * Tuỳ chọn — chỉnh copy màn xác nhận/kết quả (tiền nhà dùng `house_invoice`).
-     * `repair_quote`: thanh toán báo giá ticket; `repair_fee_invoice`: hóa đơn phí sửa chữa.
+     * Tuỳ chọn — copy màn kết quả (không đổi body POST).
+     * - `house_invoice`: ngữ cảnh **Invoice** (`invoiceIds` — tiền nhà/cọc).
+     * - `repair_quote`: ngữ cảnh **Quote** (`quoteId` — sửa chữa).
+     * - `repair_fee_invoice`: tùy chọn / tương thích; luồng sửa chữa hiện dùng `repair_quote` khi POST dùng `quoteId`.
      */
     vnpayUiContext?: "house_invoice" | "repair_quote" | "repair_fee_invoice";
   };

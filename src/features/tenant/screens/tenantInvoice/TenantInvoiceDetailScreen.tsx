@@ -18,6 +18,7 @@ import {
 import { formatTenantIssueDateTime, formatVndDisplay, logAllInvoicePaymentIdResolutions } from "../../../../shared/utils";
 import { formatApiErrorForTenantAlert } from "../../../../shared/utils/apiErrorMessage";
 import Icons from "../../../../shared/theme/icon";
+import { resolveVnpayQuoteIdForRepairInvoice } from "../../../../shared/services/tenantInvoiceApi";
 import { createVnpayPaymentLink } from "../../../../shared/services/tenantPaymentApi";
 import { neutral, tenantInvoicePaidBadgeFg } from "../../../../shared/theme/color";
 import { useAuthStore } from "../../../../store/useAuthStore";
@@ -349,23 +350,38 @@ export default function TenantInvoiceDetailScreen({ navigation, route }: Props) 
     if (creatingLink) return;
     const invId = String(mergedInvoice.id ?? "").trim();
     if (!invId) return;
-    /** Hóa đơn sửa chữa: chỉ một id; tiền nhà/cọc cùng căn có thể gộp với các hóa đơn bắt buộc khác. */
+    /**
+     * `selectedIds`: luồng **tiền nhà/cọc** (POST VNPay `invoiceIds`).
+     * Hóa đơn sửa chữa: một `invId`; tiền nhà/cọc cùng căn có thể gộp thêm hóa đơn bắt buộc.
+     */
     const selectedIds = isTenantRepairInvoiceFlow(mergedInvoice)
       ? [invId]
       : Array.from(new Set([invId, ...mandatorySelectedHouseInvoiceIds].filter(Boolean)));
     if (selectedIds.length === 0) return;
     setCreatingLink(true);
     try {
-      const checkoutUrl = await createVnpayPaymentLink(
-        { invoiceIds: selectedIds },
-        { appLanguage: i18n.language }
-      );
+      /** Chỉ hóa đơn repair/ISSUE mới resolve `quoteId`; tiền nhà (`!isRepair`) không gọi API này — vẫn `invoiceIds` như cũ. */
+      const isRepair = isTenantRepairInvoiceFlow(mergedInvoice);
+      const repairQuoteId = isRepair
+        ? (await resolveVnpayQuoteIdForRepairInvoice(mergedInvoice)) ?? ""
+        : "";
+      const useQuoteFlow = isRepair && Boolean(repairQuoteId);
+      if (isRepair && !repairQuoteId) {
+        CustomAlert.alert(
+          t("tenant_payment.title"),
+          t("tenant_payment.missing_quote_for_issue_vnpay"),
+          [{ text: t("common.close") }],
+          { type: "error" }
+        );
+        return;
+      }
+      const checkoutUrl = useQuoteFlow
+        ? await createVnpayPaymentLink({ quoteId: repairQuoteId }, { appLanguage: i18n.language })
+        : await createVnpayPaymentLink({ invoiceIds: selectedIds }, { appLanguage: i18n.language });
       navigation.navigate("VnpayCheckout", {
         checkoutUrl,
         afterSuccess: "invoiceList",
-        ...(isTenantRepairInvoiceFlow(mergedInvoice)
-          ? { vnpayUiContext: "repair_fee_invoice" as const }
-          : { vnpayUiContext: "house_invoice" as const }),
+        ...(useQuoteFlow ? { vnpayUiContext: "repair_quote" as const } : { vnpayUiContext: "house_invoice" as const }),
       });
     } catch (e: unknown) {
       const msg = formatApiErrorForTenantAlert(e, t, "payment_link");

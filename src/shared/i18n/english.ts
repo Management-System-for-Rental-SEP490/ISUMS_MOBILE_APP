@@ -706,6 +706,10 @@ export default {
         "pay_selected": "Pay selected invoices",
         "no_invoice": "No invoices pending payment.",
         "link_error": "Could not create the payment link. Please try again or contact support.",
+        "missing_quote_for_issue_vnpay":
+            "Could not resolve the repair quote for VNPay. Pull to refresh or try again later.",
+        "repair_pay_one_at_a_time":
+            "Repair invoices must be paid one at a time (quote-based). Deselect until only one repair invoice remains, then pay.",
         "return_success_title": "Payment verified",
         "return_confirming_title": "Confirming transaction",
         "return_confirming_body":
@@ -851,6 +855,9 @@ export default {
         "multi_mixed_types_title": "Can't pay these together",
         "multi_mixed_types_body":
             "One checkout can only include one kind of invoice: rent/deposit or repair fees. Deselect one group and try again.",
+        "repair_different_tickets_title": "One ticket at a time",
+        "repair_different_tickets_body":
+            "Repair fees are paid against a quote for one ticket. Deselect until only invoices for the same ticket remain, or pay one invoice at a time.",
         "multi_summary": "{{count}} selected · {{amount}}",
         "multi_footer_selected_label": "Selected",
         "footer_total_label": "TOTAL PAYMENT",

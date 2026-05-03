@@ -707,6 +707,10 @@ export default {
         "pay_selected": "Thanh toán các mục đã chọn",
         "no_invoice": "Chưa có hóa đơn nào cần thanh toán.",
         "link_error": "Không tạo được link thanh toán. Vui lòng thử lại hoặc liên hệ hỗ trợ.",
+        "missing_quote_for_issue_vnpay":
+            "Chưa lấy được báo giá để thanh toán VNPay. Kéo làm mới danh sách hoặc thử lại sau.",
+        "repair_pay_one_at_a_time":
+            "Phí sửa chữa phải thanh toán theo báo giá từng hóa đơn. Bỏ chọn bớt, chỉ chọn một hóa đơn phí sửa chữa rồi thanh toán.",
         "return_success_title": "Đã xác nhận thanh toán",
         "return_confirming_title": "Đang xác nhận giao dịch",
         "return_confirming_body":
@@ -852,6 +856,9 @@ export default {
         "multi_mixed_types_title": "Không thể gộp thanh toán",
         "multi_mixed_types_body":
             "Một lượt chỉ thanh toán gộp cùng loại: tiền nhà/cọc hoặc phí sửa chữa. Bỏ chọn một trong hai nhóm rồi thử lại.",
+        "repair_different_tickets_title": "Chọn một ticket",
+        "repair_different_tickets_body":
+            "Phí sửa chữa thanh toán theo báo giá (một ticket mỗi lượt). Bỏ bớt chọn để chỉ còn hóa đơn cùng một ticket, hoặc thanh toán từng hóa đơn.",
         "multi_summary": "Đã chọn {{count}} · {{amount}}",
         "multi_footer_selected_label": "Đã chọn",
         "footer_total_label": "TỔNG THANH TOÁN",

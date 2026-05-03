@@ -6,6 +6,17 @@ import type {
   InvoicePaymentAttemptFromApi,
   TenantInvoiceFromApi,
 } from "../types/api";
+import { getIssueQuotesByTicket, normalizeIssueQuoteRow } from "./issuesApi";
+import {
+  isTenantRepairInvoiceFlow,
+  resolveTenantInvoiceIssueTicketId,
+} from "../utils/tenantInvoice";
+
+function normalizeQuoteStatusForPayment(status: string | undefined): string {
+  return String(status ?? "")
+    .trim()
+    .toUpperCase();
+}
 
 type TenantInvoiceApiRow = {
   id: string;
@@ -168,4 +179,52 @@ export async function fetchTenantInvoices(): Promise<TenantInvoiceFromApi[]> {
   return body.data
     .map(mapTenantInvoiceRow)
     .filter((x) => x.id.length > 0);
+}
+
+/**
+ * Lấy `quoteId` cho Swagger **Quote** flow (`POST /api/payments/vnpay` — không dùng `invoiceIds` cho phí sửa chữa).
+ *
+ * **Mục đích:** Danh sách hóa đơn thường thiếu `quoteId`; chi tiết (`GET /api/payments/invoices/{id}`) mới đủ field — gọi bổ sung trước khi tạo link VNPay.
+ *
+ * **Thứ tự:** `invoice.quoteId` → GET chi tiết cùng `quoteId` → GET báo giá theo ticket (`issueTicketId` / `issueId`) lấy bản APPROVED hoặc mới nhất.
+ *
+ * @param inv - Hóa đơn đang thanh toán (đã map từ BE).
+ * @returns UUID báo giá hoặc `null` nếu không phải luồng repair hoặc không resolve được.
+ *
+ * **Tiền nhà / cọc:** `isTenantRepairInvoiceFlow` = false → trả `null` ngay, không GET thêm — không ảnh hưởng luồng `invoiceIds`.
+ */
+export async function resolveVnpayQuoteIdForRepairInvoice(
+  inv: TenantInvoiceFromApi
+): Promise<string | null> {
+  if (!isTenantRepairInvoiceFlow(inv)) return null;
+
+  const fromRow = (row: Pick<TenantInvoiceFromApi, "quoteId">) =>
+    String(row.quoteId ?? "").trim() || null;
+
+  let q = fromRow(inv);
+  if (q) return q;
+
+  try {
+    const detail = await fetchTenantInvoiceDetail(inv.id);
+    if (detail?.invoice) {
+      q = fromRow(detail.invoice);
+      if (q) return q;
+    }
+  } catch {
+    /* mạng / BE */
+  }
+
+  const ticketId = resolveTenantInvoiceIssueTicketId(inv);
+  if (!ticketId) return null;
+
+  try {
+    const quotes = await getIssueQuotesByTicket(ticketId);
+    const approved = quotes.find((x) => normalizeQuoteStatusForPayment(x.status) === "APPROVED");
+    const picked = approved ?? quotes[0] ?? null;
+    if (!picked) return null;
+    const n = normalizeIssueQuoteRow(picked);
+    return String(n.id ?? "").trim() || null;
+  } catch {
+    return null;
+  }
 }

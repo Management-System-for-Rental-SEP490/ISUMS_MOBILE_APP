@@ -112,16 +112,45 @@ export default function TenantVnpayCheckoutScreen({ navigation, route }: Props) 
     handledVnpayReturnUrlsRef.current = new Set();
   }, [checkoutUrl]);
 
+  useEffect(() => {
+    if (!__DEV__ || !checkoutUrl) return;
+    try {
+      const u = new URL(checkoutUrl);
+      console.log("[VNPAY] TenantVnpayCheckoutScreen open", {
+        vnpayUiContext: vnpayUiContext ?? null,
+        afterSuccess: afterSuccess ?? null,
+        ticketId: ticketForAfterSuccess?.id ? String(ticketForAfterSuccess.id) : null,
+        checkoutHost: u.host,
+      });
+    } catch {
+      console.log("[VNPAY] TenantVnpayCheckoutScreen open", {
+        vnpayUiContext: vnpayUiContext ?? null,
+        afterSuccess: afterSuccess ?? null,
+        checkoutUrlLen: checkoutUrl.length,
+      });
+    }
+  }, [checkoutUrl, vnpayUiContext, afterSuccess, ticketForAfterSuccess]);
+
   const processVnpayReturnIfNeeded = useCallback(
     async (url: string) => {
       if (!isLikelyVnpayReturnNavigation(url)) return;
       if (handledVnpayReturnUrlsRef.current.has(url)) return;
       handledVnpayReturnUrlsRef.current.add(url);
       const fields = parseVnpayReturnUrlForDisplay(url);
+      if (__DEV__) {
+        console.log("[VNPAY] return URL intercepted", {
+          vnp_ResponseCode: fields.responseCode ?? null,
+          vnp_TransactionNo: fields.transactionNo ?? null,
+          amountVnd: fields.amountVnd,
+        });
+      }
       setReturnUi({ kind: "confirming" });
       try {
         const payload = await validateVnpayReturnUrl(url);
         const ok = Boolean(payload.success);
+        if (__DEV__) {
+          console.log("[VNPAY] return BE verify result", { ok, successField: payload.success });
+        }
         if (ok) {
           await Promise.all([
             queryClient.invalidateQueries({ queryKey: TENANT_INVOICES_QUERY_KEY }),
@@ -134,8 +163,17 @@ export default function TenantVnpayCheckoutScreen({ navigation, route }: Props) 
         } else {
           setReturnUi({ kind: "failed", fields });
         }
-      } catch {
+      } catch (e) {
+        if (__DEV__) {
+          console.warn("[VNPAY] return validate threw", {
+            name: e instanceof Error ? e.name : typeof e,
+            message: e instanceof Error ? e.message : String(e),
+          });
+        }
         if (isVnpayReturnGatewaySuccess(url)) {
+          if (__DEV__) {
+            console.log("[VNPAY] gateway success + verify skipped → invalidate caches");
+          }
           await Promise.all([
             queryClient.invalidateQueries({ queryKey: TENANT_INVOICES_QUERY_KEY }),
             queryClient.invalidateQueries({ queryKey: HOUSES_KEYS.tenant }),
@@ -156,8 +194,16 @@ export default function TenantVnpayCheckoutScreen({ navigation, route }: Props) 
   const onReturnResultPrimary = useCallback(() => {
     if (!returnUi || returnUi.kind === "confirming") return;
     if (returnUi.kind === "failed") {
+      if (__DEV__) console.log("[VNPAY] user closed failed result");
       setReturnUi(null);
       return;
+    }
+    if (__DEV__) {
+      console.log("[VNPAY] user confirmed result → dispatchAfterVnpaySuccess", {
+        returnKind: returnUi.kind,
+        afterSuccess: afterSuccess ?? null,
+        ticketId: ticketForAfterSuccess?.id ? String(ticketForAfterSuccess.id) : null,
+      });
     }
     setReturnUi(null);
     setIsNavigatingAfterSuccess(true);

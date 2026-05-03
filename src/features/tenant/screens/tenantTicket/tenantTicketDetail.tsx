@@ -20,6 +20,7 @@ import type { IssueQuoteFromApi } from "../../../../shared/types/api";
 import { getAssetItemById } from "../../../../shared/services/assetItemApi";
 import {
   confirmIssueQuoteStatus,
+  normalizeIssueQuoteRow,
   type TenantTicketImageFromApi,
 } from "../../../../shared/services/issuesApi";
 import { useTenantInvoices } from "../../../../shared/hooks";
@@ -291,12 +292,27 @@ const TenantTicketDetailScreen = ({ navigation, route }: Props) => {
     return waiting ?? quotes[0] ?? null;
   }, [quotes]);
 
-  /** Báo giá đã duyệt — hiển thị kèm nút thanh toán (WAITING_PAYMENT). */
+  /**
+   * Báo giá dùng cho VNPay luồng `quoteId` (WAITING_PAYMENT).
+   * Ưu tiên GET `/quotes/ticket/...`; nếu thiếu `id` trên BE thì `normalizeIssueQuoteRow` đã xử lý trong service.
+   * Fallback: `ticket.quote` từ GET chi tiết ticket (khi danh sách quotes rỗng hoặc chưa fetch).
+   */
   const paymentQuote = useMemo(() => {
-    if (!quotes?.length) return null;
-    const approved = quotes.find((q) => normalizeIssueStatus(q.status) === "APPROVED");
-    return approved ?? quotes[0] ?? null;
-  }, [quotes]);
+    const fromList = (): IssueQuoteFromApi | null => {
+      if (!quotes?.length) return null;
+      const approved = quotes.find((q) => normalizeIssueStatus(q.status) === "APPROVED");
+      const picked = approved ?? quotes[0] ?? null;
+      return picked ? normalizeIssueQuoteRow(picked) : null;
+    };
+    const listed = fromList();
+    if (listed && String(listed.id ?? "").trim()) return listed;
+    const embedded = ticket?.quote;
+    if (embedded && typeof embedded === "object") {
+      const n = normalizeIssueQuoteRow(embedded);
+      if (String(n.id ?? "").trim()) return n;
+    }
+    return listed;
+  }, [quotes, ticket?.quote]);
 
   const formatMoney = useCallback(
     (v: number) => formatVndDisplay(v, locale, t),
@@ -371,7 +387,10 @@ const TenantTicketDetailScreen = ({ navigation, route }: Props) => {
     ticketDetailQuery,
   ]);
 
-  /** Ưu tiên `quoteId` (báo giá đã duyệt); không có thì hóa đơn sửa chữa / danh sách. */
+  /**
+   * Thanh toán sửa chữa ticket issue: nếu có báo giá → VNPay **`quoteId`** (không gửi `invoiceIds`).
+   * Không có `quoteId` hợp lệ → điều hướng hóa đơn / danh sách (luồng `invoiceIds` khi user thanh toán từ đó).
+   */
   const handlePayRepair = useCallback(async () => {
     if (payRepairLoading) return;
     const qid = String(paymentQuote?.id ?? "").trim();

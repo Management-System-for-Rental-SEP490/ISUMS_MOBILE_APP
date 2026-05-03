@@ -24,6 +24,25 @@ export type CreateTenantTicketPayload = {
 };
 
 /**
+ * Chuẩn hoá một bản ghi báo giá từ BE cho client.
+ *
+ * **Mục đích:** Một số endpoint trả UUID báo giá trong `quoteId` / `quote_id` mà không (hoặc rỗng) trường `id`.
+ * Khi đó `paymentQuote?.id` rỗng → app rơi sang thanh toán VNPay bằng `invoiceIds`; BE chỉ cập nhật ticket khi thanh toán luồng `quoteId` → ticket kẹt `WAITING_PAYMENT`.
+ *
+ * **Hành vi:** Gộp các ứng viên theo thứ tự `id` → `quoteId` → `quote_id`; nếu khớp `id` hiện tại thì trả nguyên bản, không thì trả shallow copy có `id` đã điền.
+ */
+export function normalizeIssueQuoteRow(row: IssueQuoteFromApi): IssueQuoteFromApi {
+  const ext = row as IssueQuoteFromApi & { quote_id?: string | null };
+  const merged =
+    String(row.id ?? "").trim() ||
+    String(row.quoteId ?? "").trim() ||
+    String(ext.quote_id ?? "").trim();
+  if (!merged) return row;
+  if (merged === String(row.id ?? "").trim()) return row;
+  return { ...row, id: merged };
+}
+
+/**
  * Thu gọn body sau GET danh sách: `quote.items` làm payload phình; list chỉ cần `totalPrice`/status ẩn trong card.
  * Giữ tối đa một ảnh trong `images`. Màn chi tiết luôn tải lại đủ qua `getTenantTicketById`.
  *
@@ -38,7 +57,7 @@ function slimTenantTicketsForMemory(rows: TenantTicketFromApi[]): TenantTicketFr
       Array.isArray(r.images) && r.images.length > 1 ? [r.images[0]] : r.images;
     const quote =
       r.quote != null && typeof r.quote === "object"
-        ? ({ ...r.quote, items: [] } satisfies IssueQuoteFromApi)
+        ? normalizeIssueQuoteRow({ ...r.quote, items: [] } satisfies IssueQuoteFromApi)
         : r.quote ?? undefined;
     return { ...r, images, quote } as TenantTicketFromApi;
   });
@@ -74,7 +93,11 @@ export const getTenantTicketById = async (
   const response = await axiosClient.get<ApiResponse<TenantTicketFromApi>>(url);
 
   if (response.data?.success && response.data.data && typeof response.data.data === "object") {
-    return response.data.data;
+    const d = response.data.data;
+    if (d.quote != null && typeof d.quote === "object") {
+      return { ...d, quote: normalizeIssueQuoteRow(d.quote) } as TenantTicketFromApi;
+    }
+    return d;
   }
 
   return null;
@@ -280,11 +303,13 @@ export const getIssueQuotesByTicket = async (
     return null;
   };
 
+  const mapNorm = (rows: IssueQuoteFromApi[]) => rows.map(normalizeIssueQuoteRow);
+
   const primary = `${BACKEND_API_BASE}/issues/quotes/ticket/${id}`;
   try {
     const response = await axiosClient.get<ApiResponse<IssueQuoteFromApi[]>>(primary);
     const rows = parseQuotes(response.data);
-    if (rows != null) return rows;
+    if (rows != null) return mapNorm(rows);
   } catch (e: unknown) {
     const status = (e as { response?: { status?: number } })?.response?.status;
     if (status !== 404) throw e;
@@ -294,7 +319,7 @@ export const getIssueQuotesByTicket = async (
   try {
     const response = await axiosClient.get<ApiResponse<IssueQuoteFromApi[]>>(alt);
     const rows = parseQuotes(response.data);
-    if (rows != null) return rows;
+    if (rows != null) return mapNorm(rows);
   } catch {
     /* im lặng — coi như không có báo giá */
   }

@@ -63,8 +63,13 @@ export interface TenantEContractFromApi {
 // =========================================================
 
 /**
- * Body tạo link thanh toán VNPay (tenant đã đăng nhập).
- * Chỉ một luồng: hoặc `invoiceIds` (tiền nhà/cọc), hoặc `quoteId` (báo giá sửa chữa — ticket `WAITING_PAYMENT`), không gửi cả hai.
+ * Body tạo link thanh toán VNPay (tenant đã đăng nhập) — `POST /api/payments/vnpay`.
+ *
+ * Swagger (hai luồng, chỉ một trong hai):
+ * - **Invoice:** `invoiceIds` — một hoặc nhiều hóa đơn **tiền thuê / cọc** (rental/deposit).
+ * - **Quote:** `quoteId` — báo giá sửa chữa đã duyệt; ticket thường ở trạng thái **WAITING_PAYMENT**.
+ *
+ * App: tiền nhà → luôn `invoiceIds`; phí sửa chữa / issue → luôn `quoteId` (không thay bằng `invoice.id`).
  */
 export type VnpayPaymentCreateRequest =
   | {
@@ -800,6 +805,8 @@ export interface IssueQuoteItemFromApi {
 /** Một quote cho một ticket (GET /api/issues/quotes/ticket/:ticketId) */
 export interface IssueQuoteFromApi {
   id: string;
+  /** Một số bản BE trả UUID báo giá ở đây thay vì `id` — app chuẩn hoá qua `normalizeIssueQuoteRow`. */
+  quoteId?: string | null;
   issueId: string;
   staffId?: string | null;
   assetId?: string | null;

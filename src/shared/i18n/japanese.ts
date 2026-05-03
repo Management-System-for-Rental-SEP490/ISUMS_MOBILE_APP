@@ -706,6 +706,10 @@ export default {
         "pay_selected": "選択した請求書を支払う",
         "no_invoice": "支払い待ちの請求書はありません。",
         "link_error": "決済リンクを作成できませんでした。再度お試しください。",
+        "missing_quote_for_issue_vnpay":
+            "VNPay 用の見積 ID を取得できませんでした。一覧を更新するか、しばらくしてから再度お試しください。",
+        "repair_pay_one_at_a_time":
+            "修繕料は見積に基づき、一度に一つの請求書のみお支払いください。選択を一つに減らしてからお試しください。",
         "return_success_title": "決済を確認しました",
         "return_confirming_title": "取引を確認しています",
         "return_confirming_body":
@@ -851,6 +855,9 @@ export default {
         "multi_mixed_types_title": "まとめて支払えません",
         "multi_mixed_types_body":
             "1回の決済では、家賃・敷金か修繕料のどちらか一方のみ選べます。どちらかのグループの選択を外してから再度お試しください。",
+        "repair_different_tickets_title": "1チケットずつ",
+        "repair_different_tickets_body":
+            "修繕料は見積に紐づくため、1回の決済は同一チケットの請求のみにしてください。別チケットの請求は選択を外すか、1件ずつお支払いください。",
         "multi_summary": "{{count}} 件選択 ・ {{amount}}",
         "multi_footer_selected_label": "選択",
         "footer_total_label": "お支払い合計",
