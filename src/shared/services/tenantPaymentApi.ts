@@ -211,10 +211,6 @@ export async function validateVnpayReturnUrl(
     }
   }
 
-  if (__DEV__) {
-    const st = (lastError as { response?: { status?: number } })?.response?.status;
-    console.warn("[VNPAY] validateVnpayReturnUrl exhausted", { lastHttpStatus: st });
-  }
   if (lastError) throw lastError;
   throw new Error("VNPAY_RETURN_VALIDATE_FAILED");
 }

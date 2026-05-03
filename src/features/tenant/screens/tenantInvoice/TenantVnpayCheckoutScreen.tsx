@@ -163,13 +163,7 @@ export default function TenantVnpayCheckoutScreen({ navigation, route }: Props) 
         } else {
           setReturnUi({ kind: "failed", fields });
         }
-      } catch (e) {
-        if (__DEV__) {
-          console.warn("[VNPAY] return validate threw", {
-            name: e instanceof Error ? e.name : typeof e,
-            message: e instanceof Error ? e.message : String(e),
-          });
-        }
+      } catch {
         if (isVnpayReturnGatewaySuccess(url)) {
           if (__DEV__) {
             console.log("[VNPAY] gateway success + verify skipped → invalidate caches");
