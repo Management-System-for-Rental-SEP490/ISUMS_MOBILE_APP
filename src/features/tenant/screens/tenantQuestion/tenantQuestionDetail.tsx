@@ -1,4 +1,4 @@
-import React, { useMemo } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { ScrollView, Text, TouchableOpacity, View } from "react-native";
 import { RouteProp, useNavigation, useRoute } from "@react-navigation/native";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
@@ -9,6 +9,8 @@ import { formatTenantIssueDateTime } from "../../../../shared/utils";
 import Icons from "../../../../shared/theme/icon";
 import { neutral } from "../../../../shared/theme/color";
 import { tenantQuestionDetailStyles as styles } from "./tenantQuestionStyles";
+import { getIssueResponseById } from "../../../../shared/services/issuesApi";
+import type { IssueTicketResponseFromApi } from "../../../../shared/types/api";
 import {
   StackScreenTitleBadge,
   StackScreenTitleBarBalance,
@@ -29,6 +31,8 @@ const TenantQuestionDetailScreen = () => {
   const { params } = useRoute<Route>();
   const insets = useSafeAreaInsets();
   const r = params.response;
+  const [localizedResponse, setLocalizedResponse] =
+    useState<IssueTicketResponseFromApi>(r);
   const zoneLabel = params.zoneLabel?.trim() || null;
 
   const locale = useMemo(() => {
@@ -37,6 +41,19 @@ const TenantQuestionDetailScreen = () => {
     if (lang.startsWith("ja")) return "ja-JP";
     return "vi-VN";
   }, [i18n.language]);
+
+  useEffect(() => {
+    let cancelled = false;
+    setLocalizedResponse(r);
+    void getIssueResponseById(r.id)
+      .then((next) => {
+        if (!cancelled && next) setLocalizedResponse(next);
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, [r, i18n.language]);
 
   return (
     <View style={styles.container}>
@@ -69,11 +86,11 @@ const TenantQuestionDetailScreen = () => {
         showsVerticalScrollIndicator={false}
       >
         <View style={styles.heroCard}>
-          <Text style={styles.heroTitle}>{r.content || "—"}</Text>
+          <Text style={styles.heroTitle}>{localizedResponse.content || "—"}</Text>
           <View style={styles.heroDateRow}>
             <Icons.clock size={15} color={neutral.textMuted} />
             <Text style={styles.heroDateText}>
-              {t("tenant_question_detail.sent_at")}: {formatTenantIssueDateTime(r.createdAt, locale)}
+              {t("tenant_question_detail.sent_at")}: {formatTenantIssueDateTime(localizedResponse.createdAt, locale)}
             </Text>
           </View>
         </View>
@@ -94,7 +111,7 @@ const TenantQuestionDetailScreen = () => {
           <View style={[styles.panelRow, styles.panelRowLast]}>
             <Text style={styles.fieldLabel}>{t("tenant_question_detail.field_content")}</Text>
             <Text style={styles.fieldValue} selectable>
-              {r.content ?? ""}
+              {localizedResponse.content ?? ""}
             </Text>
           </View>
         </View>

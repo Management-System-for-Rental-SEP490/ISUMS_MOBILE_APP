@@ -31,6 +31,9 @@ import KeycloakChangePasswordWebViewOverlay from "../shared/components/KeycloakC
 import NotificationScreen from "../features/tenant/screens/tenantNotification/NotificationScreen";
 import UserProfileScreen from "../features/screens/user/UserProfileScreen";
 import UserContractDetailScreen from "../features/screens/user/userContractDetail";
+import SettingsScreen from "../features/screens/settings/SettingsScreen";
+import NotificationPreferencesScreen from "../features/tenant/screens/notificationPreferences/NotificationPreferencesScreen";
+import VoiceCallHistoryScreen from "../features/tenant/screens/notificationPreferences/VoiceCallHistoryScreen";
 import ConsumptionScreen from "../features/tenant/screens/tenantConsumption/ConsumptionScreen";
 import IotAlertDetailScreen from "../features/tenant/screens/tenantNotification/IotAlertDetailScreen";
 import { useSetupIotNotifications } from "../features/tenant/components/IotPushAlertOverlay";
@@ -229,6 +232,17 @@ const Navigation = () => {
                 <Stack.Screen name="NotificationScreen" component={NotificationScreen} />
                 <Stack.Screen name="IotAlertDetail" component={IotAlertDetailScreen} />
                 <Stack.Screen name="ProfileScreen" component={UserProfileScreen} />
+                <Stack.Screen name="SettingsScreen" component={SettingsScreen} />
+                <Stack.Screen
+                  name="NotificationPreferencesScreen"
+                  component={NotificationPreferencesScreen}
+                  options={{ title: "Cài đặt thông báo" }}
+                />
+                <Stack.Screen
+                  name="VoiceCallHistoryScreen"
+                  component={VoiceCallHistoryScreen}
+                  options={{ title: "Lịch sử cuộc gọi" }}
+                />
                 <Stack.Screen name="UserContractDetail" component={UserContractDetailScreen} />
               </>
             )

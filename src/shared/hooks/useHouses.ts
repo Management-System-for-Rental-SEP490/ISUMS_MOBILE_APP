@@ -1,6 +1,7 @@
 import { useInfiniteQuery, useQueries, useQuery } from "@tanstack/react-query";
 import { useMemo } from "react";
 import { useTranslation } from "react-i18next";
+import { toAppLocaleCode } from "../utils/resolveLocalizedJsonString";
 import {
   getFunctionalAreasByHouseId,
   getHouseById,
@@ -34,9 +35,10 @@ export const HOUSE_IOT_ALERTS_KEYS = {
 
 export const useHouses = () => {
   const { i18n } = useTranslation();
+  const locale = toAppLocaleCode(i18n.language);
   return useQuery({
     // Cache key: mọi nơi dùng houses đều share chung "houses".
-    queryKey: [...HOUSES_KEYS.all, i18n.language],
+    queryKey: [...HOUSES_KEYS.all, locale],
     // Hàm gọi API thật sự (GET /api/houses).
     queryFn: getHouses,
   });
@@ -47,8 +49,9 @@ export const useHouses = () => {
  */
 export const useTenantHouses = () => {
   const { i18n } = useTranslation();
+  const locale = toAppLocaleCode(i18n.language);
   return useQuery({
-    queryKey: [...HOUSES_KEYS.tenant, i18n.language],
+    queryKey: [...HOUSES_KEYS.tenant, locale],
     queryFn: getTenantHouses,
   });
 };
@@ -58,9 +61,10 @@ export const useTenantHouses = () => {
  */
 export const useHouseById = (houseId: string | null | undefined, enabled: boolean) => {
   const { i18n } = useTranslation();
+  const locale = toAppLocaleCode(i18n.language);
   const id = String(houseId ?? "").trim();
   return useQuery({
-    queryKey: [...HOUSES_KEYS.byId(id), i18n.language],
+    queryKey: [...HOUSES_KEYS.byId(id), locale],
     queryFn: () => getHouseById(id),
     enabled: Boolean(id && enabled),
     staleTime: 10 * 60 * 1000,
@@ -72,6 +76,7 @@ export const useHouseById = (houseId: string | null | undefined, enabled: boolea
  */
 export const useHouseNamesByIds = (houseIds: string[]) => {
   const { i18n } = useTranslation();
+  const locale = toAppLocaleCode(i18n.language);
   const idsKey = houseIds.join("\u0001");
   const sortedIds = useMemo(
     () =>
@@ -83,7 +88,7 @@ export const useHouseNamesByIds = (houseIds: string[]) => {
 
   const queries = useQueries({
     queries: sortedIds.map((id) => ({
-      queryKey: [...HOUSES_KEYS.byId(id), i18n.language],
+      queryKey: [...HOUSES_KEYS.byId(id), locale],
       queryFn: () => getHouseById(id),
       enabled: Boolean(id),
       staleTime: 10 * 60 * 1000,
@@ -127,8 +132,9 @@ export const useHouseNamesByIds = (houseIds: string[]) => {
  */
 export const useFunctionalAreasByHouseId = (houseId: string) => {
   const { i18n } = useTranslation();
+  const locale = toAppLocaleCode(i18n.language);
   return useQuery({
-    queryKey: [...HOUSES_KEYS.functionalAreas(houseId), i18n.language],
+    queryKey: [...HOUSES_KEYS.functionalAreas(houseId), locale],
     queryFn: () => getFunctionalAreasByHouseId(houseId),
     enabled: Boolean(houseId),
   });

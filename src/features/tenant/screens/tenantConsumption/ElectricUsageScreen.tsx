@@ -8,6 +8,8 @@ import {
   useTenantContext,
   useAreasUsageDistribution,
   useRefreshControlGate,
+  useAssetItems,
+  asAssetItemArray,
 } from "../../../../shared/hooks";
 import {
   PullToRefreshControl,
@@ -20,6 +22,9 @@ import {
   useTenantUsage,
   usePowerControl,
 } from "../../hooks/useTenantIoT";
+import { useTenantForecast } from "../../hooks/useTenantForecast";
+import ForecastCard from "./ForecastCard";
+import HouseMasterPowerBtn from "./HouseMasterPowerBtn";
 import iotCommandApi, { type AreaPowerStateResponse } from "../../../../shared/services/iotCommandApi";
 import { DATA_LOAD_TIMEOUT_MS } from "../../../../shared/api/config";
 import {
@@ -433,16 +438,34 @@ const ElectricUsageScreen = ({ showHeader = true }: ElectricUsageScreenProps) =>
   const accessBlock = useMemo(() => (house ? getTenantAccessBlock(house) : null), [house]);
   const iotConnected = useTenantIoTConnection(thingId);
   const { scrollAtTop, onScrollForRefreshGate } = useRefreshControlGate();
+  const { data: assetItemsData } = useAssetItems({ houseId: houseId ?? undefined });
+  const assetItems = useMemo(
+    () => asAssetItemArray(assetItemsData?.data),
+    [assetItemsData?.data]
+  );
 
   const areasWithNode = useMemo(() => {
     const areas = Array.isArray(functionalAreas) ? functionalAreas : [];
     if (!iotNodes.length) return areas;
-    return areas.filter((a) =>
+    const nodeAssetIds = new Set(
+      iotNodes.map((n) => String(n.assetId ?? "").trim()).filter(Boolean)
+    );
+    const nodeAreaIds = new Set(
+      assetItems
+        .filter((item) => nodeAssetIds.has(String(item.id ?? "").trim()))
+        .map((item) => String(item.functionAreaId ?? "").trim())
+        .filter(Boolean)
+    );
+    if (nodeAreaIds.size > 0) {
+      return areas.filter((a) => nodeAreaIds.has(String(a.id ?? "").trim()));
+    }
+    const textMatched = areas.filter((a) =>
       iotNodes.some(
         (n) => n.areaName?.trim().toLowerCase() === a.name?.trim().toLowerCase()
       )
     );
-  }, [functionalAreas, iotNodes]);
+    return textMatched.length > 0 ? textMatched : areas;
+  }, [assetItems, functionalAreas, iotNodes]);
 
   const areaChips = useMemo(() => {
     const chips = [{ id: "all", label: t("consumption.area_all_house") }];
@@ -460,6 +483,14 @@ const ElectricUsageScreen = ({ showHeader = true }: ElectricUsageScreenProps) =>
     metric: "electricity",
     areaId: activeAreaId,
   });
+  const forecast = useTenantForecast({
+    houseId,
+    metric: "electricity",
+    areaId: activeAreaId,
+  });
+  const forecastScopeLabel = isHouseLevel
+    ? t("consumption.area_all_house")
+    : areaLabel || t("consumption.area_all_house");
   const distAreas = useMemo(
     () => areasWithNode.map((a) => ({ id: a.id, name: a.name })),
     [areasWithNode]
@@ -567,6 +598,7 @@ const ElectricUsageScreen = ({ showHeader = true }: ElectricUsageScreenProps) =>
       Promise.resolve().then(() => {
         areaDistribution.refetch();
       }),
+      forecast.refetch(),
     ];
     if (activeAreaId && houseId) {
       tasks.push(
@@ -575,7 +607,7 @@ const ElectricUsageScreen = ({ showHeader = true }: ElectricUsageScreenProps) =>
     }
     await Promise.all(tasks);
     setPullRefreshing(false);
-  }, [usage.refetch, areaDistribution.refetch, activeAreaId, houseId]);
+  }, [usage.refetch, areaDistribution.refetch, forecast.refetch, activeAreaId, houseId]);
 
   const f = power?.features;
 
@@ -706,6 +738,16 @@ const ElectricUsageScreen = ({ showHeader = true }: ElectricUsageScreenProps) =>
             unit={usage.unit}
             loading={usage.loading || isAreaLoading}
             accent={ACCENT}
+          />
+
+          <ForecastCard
+            data={forecast.data}
+            loading={forecast.loading}
+            error={forecast.error}
+            onRetry={forecast.refetch}
+            accent={ACCENT}
+            displayUnit="kWh"
+            scopeLabel={forecastScopeLabel}
           />
 
           {!isHouseLevel &&
@@ -920,7 +962,18 @@ const ElectricUsageScreen = ({ showHeader = true }: ElectricUsageScreenProps) =>
             </Card>
           ) : null}
 
-          {!isHouseLevel && powerState !== null && !isAreaLoading ? (
+          {isHouseLevel ? (
+            <HouseMasterPowerBtn
+              houseId={houseId}
+              areas={areasWithNode.map((a) => ({ id: a.id, name: a.name }))}
+              onAfterToggle={() => {
+                // Sau khi toggle tổng: refresh usage + distribution để UI phản ánh
+                // đúng tiêu thụ kế tiếp (post-cut → 0 flow, post-on → nhận telemetry lại).
+                usage.refetch();
+                areaDistribution.refetch();
+              }}
+            />
+          ) : powerState !== null && !isAreaLoading ? (
             <PowerBtn
               isPowered={isPowered}
               loading={powerCtrl.loading}

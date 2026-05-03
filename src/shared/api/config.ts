@@ -11,8 +11,7 @@ export const DATA_LOAD_TIMEOUT_MS = 6000 as const;
 /** Cùng giá trị với {@link DATA_LOAD_TIMEOUT_MS} — `axios` dùng làm `timeout` (hủy request nếu quá lâu). */
 export const API_REQUEST_TIMEOUT_MS = DATA_LOAD_TIMEOUT_MS;
 
-const DEFAULT_PRIMARY = "https://api.isums.pro/api";
-const DEFAULT_FALLBACK = "https://unrestrictable-lan-syzygial.ngrok-free.dev/api";
+const DEFAULT_PRIMARY = "https://api-dev.isums.pro/api";
 
 function readEnvTrimmed(envKey: string, fallback: string): string {
   const v =
@@ -27,26 +26,11 @@ export const PRIMARY_BACKEND_URL = readEnvTrimmed(
   DEFAULT_PRIMARY
 );
 
-export const FALLBACK_BACKEND_URL = readEnvTrimmed(
-  "EXPO_PUBLIC_BACKEND_API_FALLBACK",
-  DEFAULT_FALLBACK
-);
-
-/** Alias cho interceptor axios — trùng PRIMARY / FALLBACK. */
+export const FALLBACK_BACKEND_URL = PRIMARY_BACKEND_URL;
 export const BACKEND_URL_PRIMARY = PRIMARY_BACKEND_URL;
-export const BACKEND_URL_FALLBACK = FALLBACK_BACKEND_URL;
-
-/** Base cho users, houses, Keycloak-adjacent REST — luôn primary; axios lỗi mạng → retry FALLBACK. */
+export const BACKEND_URL_FALLBACK = PRIMARY_BACKEND_URL;
 export const BACKEND_API_BASE = PRIMARY_BACKEND_URL;
-
-/**
- * Base cho mọi route `/assets/*` (items, tags, categories, IoT trong asset module).
- * Mặc định = FALLBACK (ngrok). Khi merge lên primary: `EXPO_PUBLIC_ASSETS_API_BASE` = URL primary.
- */
-export const ASSETS_API_BASE = readEnvTrimmed(
-  "EXPO_PUBLIC_ASSETS_API_BASE",
-  BACKEND_API_BASE
-);
+export const ASSETS_API_BASE = PRIMARY_BACKEND_URL;
 
 const DEFAULT_IOT_WS =
   "wss://a98erfaotg.execute-api.ap-southeast-1.amazonaws.com/production/";

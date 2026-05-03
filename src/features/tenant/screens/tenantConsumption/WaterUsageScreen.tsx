@@ -6,6 +6,8 @@ import {
   useTenantContext,
   useAreasUsageDistribution,
   useRefreshControlGate,
+  useAssetItems,
+  asAssetItemArray,
 } from "../../../../shared/hooks";
 import {
   PullToRefreshControl,
@@ -17,6 +19,8 @@ import {
   useAreaTelemetry,
   useTenantUsage,
 } from "../../hooks/useTenantIoT";
+import { useTenantForecast } from "../../hooks/useTenantForecast";
+import ForecastCard from "./ForecastCard";
 import {
   waterAccent,
   waterTintBg,
@@ -271,16 +275,34 @@ const WaterUsageScreen = ({ showHeader = true }: WaterUsageScreenProps) => {
   const accessBlock = useMemo(() => (house ? getTenantAccessBlock(house) : null), [house]);
   const iotConnected = useTenantIoTConnection(thingId);
   const { scrollAtTop, onScrollForRefreshGate } = useRefreshControlGate();
+  const { data: assetItemsData } = useAssetItems({ houseId: houseId ?? undefined });
+  const assetItems = useMemo(
+    () => asAssetItemArray(assetItemsData?.data),
+    [assetItemsData?.data]
+  );
 
   const areasWithNode = useMemo(() => {
     const areas = Array.isArray(functionalAreas) ? functionalAreas : [];
     if (!iotNodes.length) return areas;
-    return areas.filter((a) =>
+    const nodeAssetIds = new Set(
+      iotNodes.map((n) => String(n.assetId ?? "").trim()).filter(Boolean)
+    );
+    const nodeAreaIds = new Set(
+      assetItems
+        .filter((item) => nodeAssetIds.has(String(item.id ?? "").trim()))
+        .map((item) => String(item.functionAreaId ?? "").trim())
+        .filter(Boolean)
+    );
+    if (nodeAreaIds.size > 0) {
+      return areas.filter((a) => nodeAreaIds.has(String(a.id ?? "").trim()));
+    }
+    const textMatched = areas.filter((a) =>
       iotNodes.some(
         (n) => n.areaName?.trim().toLowerCase() === a.name?.trim().toLowerCase()
       )
     );
-  }, [functionalAreas, iotNodes]);
+    return textMatched.length > 0 ? textMatched : areas;
+  }, [assetItems, functionalAreas, iotNodes]);
 
   const areaChips = useMemo(() => {
     const chips = [{ id: "all", label: t("consumption.area_all_house") }];
@@ -293,6 +315,14 @@ const WaterUsageScreen = ({ showHeader = true }: WaterUsageScreenProps) => {
   const activeAreaId = isHouseLevel ? null : selectedAreaId;
 
   const usage = useTenantUsage({ houseId, metric: "water", areaId: activeAreaId });
+  const forecast = useTenantForecast({
+    houseId,
+    metric: "water",
+    areaId: activeAreaId,
+  });
+  const forecastScopeLabel = isHouseLevel
+    ? t("consumption.area_all_house")
+    : areaChips.find((c) => c.id === selectedAreaId)?.label ?? t("consumption.area_all_house");
   const [isAreaLoading, setIsAreaLoading] = useState(false);
   const prevAreaRef = useRef("all");
   useEffect(() => {
@@ -327,9 +357,9 @@ const WaterUsageScreen = ({ showHeader = true }: WaterUsageScreenProps) => {
   const [pullRefreshing, setPullRefreshing] = useState(false);
   const onRefresh = useCallback(async () => {
     setPullRefreshing(true);
-    await Promise.all([usage.refetch(), areaDistribution.refetch()]);
+    await Promise.all([usage.refetch(), areaDistribution.refetch(), forecast.refetch()]);
     setPullRefreshing(false);
-  }, [usage.refetch, areaDistribution.refetch]);
+  }, [usage.refetch, areaDistribution.refetch, forecast.refetch]);
 
   const w = water?.features;
   const isFlowing = (w?.w_lpm ?? 0) > 0.1;
@@ -435,6 +465,16 @@ const WaterUsageScreen = ({ showHeader = true }: WaterUsageScreenProps) => {
             periodDay={t("consumption.period_day")}
             periodWeek={t("consumption.period_week")}
             periodMonth={t("consumption.period_month")}
+          />
+
+          <ForecastCard
+            data={forecast.data}
+            loading={forecast.loading}
+            error={forecast.error}
+            onRetry={forecast.refetch}
+            accent={ACCENT}
+            displayUnit={unit}
+            scopeLabel={forecastScopeLabel}
           />
 
           {!isHouseLevel &&

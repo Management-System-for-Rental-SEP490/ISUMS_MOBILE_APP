@@ -185,7 +185,7 @@ const TenantTicketDetailScreen = ({ navigation, route }: Props) => {
     const item = await getAssetItemById(ticket.assetId);
     setAssetName(item?.displayName?.trim() ? item.displayName : null);
     setAssetLoading(false);
-  }, [ticket.assetId, ticket?.type]);
+  }, [i18n.language, ticket.assetId, ticket?.type]);
 
   useEffect(() => {
     loadAsset();
@@ -249,7 +249,7 @@ const TenantTicketDetailScreen = ({ navigation, route }: Props) => {
     return () => {
       cancelled = true;
     };
-  }, [isQuestionTicket, ticket?.id]);
+  }, [i18n.language, isQuestionTicket, ticket?.id]);
 
   const activeQuote = useMemo(() => {
     if (!quotes?.length) return null;
@@ -318,7 +318,7 @@ const TenantTicketDetailScreen = ({ navigation, route }: Props) => {
     } finally {
       setTicketDetailLoading(false);
     }
-  }, [ticket?.id]);
+  }, [i18n.language, ticket?.id]);
 
   const pad2 = (n: number) => String(n).padStart(2, "0");
 
@@ -412,7 +412,7 @@ const TenantTicketDetailScreen = ({ navigation, route }: Props) => {
     } finally {
       setQuotesLoading(false);
     }
-  }, [ticket?.id, ticket.status, linkedRepairInvoice]);
+  }, [i18n.language, ticket?.id, ticket.status, linkedRepairInvoice]);
 
   useEffect(() => {
     loadQuotes();

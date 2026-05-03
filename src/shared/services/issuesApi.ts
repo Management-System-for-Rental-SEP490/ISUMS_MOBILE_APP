@@ -23,6 +23,53 @@ export type CreateTenantTicketPayload = {
   type: TenantTicketCreateType;
 };
 
+function pickLocalizedString(...values: Array<unknown>): string | undefined {
+  for (const value of values) {
+    if (typeof value !== "string") continue;
+    const text = value.trim();
+    if (text.length > 0) return text;
+  }
+  return undefined;
+}
+
+function normalizeTenantTicket(row: TenantTicketFromApi): TenantTicketFromApi {
+  return {
+    ...row,
+    title: pickLocalizedString(row.localizedTitle, row.title) ?? "",
+    description: pickLocalizedString(row.localizedDescription, row.description) ?? "",
+  };
+}
+
+function normalizeIssueResponse(
+  row: IssueTicketResponseFromApi
+): IssueTicketResponseFromApi {
+  return {
+    ...row,
+    content: pickLocalizedString(row.localizedContent, row.content) ?? "",
+  };
+}
+
+function normalizeIssueBanner(row: IssueBannerFromApi): IssueBannerFromApi {
+  return {
+    ...row,
+    name: pickLocalizedString(row.localizedName, row.name) ?? "",
+  };
+}
+
+function normalizeIssueQuote(row: IssueQuoteFromApi): IssueQuoteFromApi {
+  return {
+    ...row,
+    items: (row.items ?? []).map((item) => ({
+      ...item,
+      itemName: pickLocalizedString(item.localizedItemName, item.itemName) ?? "",
+      description:
+        pickLocalizedString(item.localizedDescription, item.description) ??
+        item.description ??
+        null,
+    })),
+  };
+}
+
 /**
  * Danh sách ticket của tenant đang đăng nhập (GET /api/issues/tickets/tenant).
  */
@@ -31,7 +78,7 @@ export const getTenantTickets = async (): Promise<TenantTicketFromApi[]> => {
   //const url = `${FALLBACK_BACKEND_URL}/issues/tickets/tenant`;
   const response = await axiosClient.get<ApiResponse<TenantTicketFromApi[]>>(url);
   if (response.data?.success && Array.isArray(response.data.data)) {
-    return response.data.data;
+    return response.data.data.map(normalizeTenantTicket);
   }
   return [];
 };
@@ -51,7 +98,7 @@ export const getTenantTicketById = async (
   const response = await axiosClient.get<ApiResponse<TenantTicketFromApi>>(url);
 
   if (response.data?.success && response.data.data && typeof response.data.data === "object") {
-    return response.data.data;
+    return normalizeTenantTicket(response.data.data);
   }
 
   return null;
@@ -64,9 +111,25 @@ export const getIssueResponses = async (): Promise<IssueTicketResponseFromApi[]>
   const url = `${BACKEND_API_BASE}/issues/responses`;
   const response = await axiosClient.get<ApiResponse<IssueTicketResponseFromApi[]>>(url);
   if (response.data?.success && Array.isArray(response.data.data)) {
-    return response.data.data;
+    return response.data.data.map(normalizeIssueResponse);
   }
   return [];
+};
+
+/**
+ * Chi tiết một phản hồi staff theo id (GET /api/issues/responses/{id}).
+ */
+export const getIssueResponseById = async (
+  responseId: string
+): Promise<IssueTicketResponseFromApi | null> => {
+  const id = String(responseId ?? "").trim();
+  if (!id) return null;
+  const url = `${BACKEND_API_BASE}/issues/responses/${encodeURIComponent(id)}`;
+  const response = await axiosClient.get<ApiResponse<IssueTicketResponseFromApi>>(url);
+  if (response.data?.success && response.data.data) {
+    return normalizeIssueResponse(response.data.data);
+  }
+  return null;
 };
 
 /**
@@ -78,7 +141,7 @@ export const getIssueBanners = async (): Promise<IssueBannerFromApi[]> => {
   const url = `${BACKEND_API_BASE}/issues/banners`;
   const response = await axiosClient.get<ApiResponse<IssueBannerFromApi[]>>(url);
   if (response.data?.success && Array.isArray(response.data.data)) {
-    return response.data.data;
+    return response.data.data.map(normalizeIssueBanner);
   }
   return [];
 };
@@ -251,7 +314,7 @@ export const getIssueQuotesByTicket = async (
   const id = encodeURIComponent(ticketId);
 
   const parseQuotes = (body: ApiResponse<IssueQuoteFromApi[]> | undefined): IssueQuoteFromApi[] | null => {
-    if (body?.success && Array.isArray(body.data)) return body.data;
+    if (body?.success && Array.isArray(body.data)) return body.data.map(normalizeIssueQuote);
     return null;
   };
 

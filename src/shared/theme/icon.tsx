@@ -101,6 +101,15 @@ const Icons = {
   shield: ({ size = 24, color = 'black' }: IconProps = {}) => (
     <FontAwesome5 name="shield-alt" size={size} color={color} />
   ),
+  settings: ({ size = 24, color = 'black' }: IconProps = {}) => (
+    <MaterialIcons name="settings" size={size} color={color} />
+  ),
+  language: ({ size = 24, color = 'black' }: IconProps = {}) => (
+    <MaterialIcons name="language" size={size} color={color} />
+  ),
+  check: ({ size = 24, color = 'black' }: IconProps = {}) => (
+    <MaterialIcons name="check" size={size} color={color} />
+  ),
   chevronForward: ({ size = 24, color = 'black' }: IconProps = {}) => (
     <Ionicons name="chevron-forward" size={size} color={color} />
   ),
@@ -143,6 +152,10 @@ const Icons = {
   /** Icon X để xóa nội dung (dùng cho nút clear ô tìm kiếm). */
   close: ({ size = 24, color = 'black' }: IconProps = {}) => (
     <AntDesign name="close" size={size} color={color} />
+  ),
+  /** Premium / nâng cấp gói — ô "Mua gói" trên Home + huy hiệu PREMIUM. */
+  premium: ({ size = 24, color = 'black' }: IconProps = {}) => (
+    <MaterialIcons name="workspace-premium" size={size} color={color} />
   ),
 };
 

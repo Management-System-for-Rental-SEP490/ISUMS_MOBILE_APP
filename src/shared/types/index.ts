@@ -96,8 +96,22 @@ export type RootStackParamList = AuthStackParamList & {
   IotAlertDetail: { houseId: string; alertId: string };
   /** Hồ sơ cá nhân (chuyển từ tab sang stack screen). */
   ProfileScreen: undefined;
+  /** Cài đặt ứng dụng: ngôn ngữ, tuỳ chọn tenant. */
+  SettingsScreen: undefined;
+  /** Cài đặt thông báo: kênh, voice consent, escalation, gói. */
+  NotificationPreferencesScreen: undefined;
+  /** Lịch sử cuộc gọi voice IoT đã nhận. */
+  VoiceCallHistoryScreen: undefined;
   /** Chi tiết hợp đồng điện tử (dữ liệu từ GET /api/econtracts/my). */
-  UserContractDetail: { contract: TenantEContractFromApi };
+  UserContractDetail: {
+    contract: TenantEContractFromApi;
+    /**
+     * Optional: pre-fill the relocation request modal with this house id.
+     * Set when navigating from BuildingDetail's "Đổi sang nhà này" CTA.
+     * UserContractDetail will auto-open the modal and pre-select the house.
+     */
+    relocationPrefillHouseId?: string;
+  };
 };
 
 export type IconProps = {

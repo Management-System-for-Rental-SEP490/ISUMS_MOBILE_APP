@@ -843,6 +843,112 @@ export const homeStyles = StyleSheet.create({
         color: neutral.textMuted,
         marginTop: 10,
     },
+    // ============================================================
+    // Marketplace section — "Nhà có thể chuyển sang"
+    // ============================================================
+    marketplaceSection: {
+        marginHorizontal: 16,
+        marginBottom: 16,
+        backgroundColor: neutral.surface,
+        borderRadius: 16,
+        paddingVertical: 16,
+        borderWidth: 1,
+        borderColor: neutral.border,
+    },
+    marketplaceHeader: {
+        flexDirection: "row",
+        alignItems: "center",
+        paddingHorizontal: 16,
+        marginBottom: 12,
+    },
+    marketplaceTitle: {
+        fontSize: 16,
+        fontWeight: "800",
+        color: neutral.text,
+    },
+    marketplaceSubtitle: {
+        fontSize: 12,
+        fontWeight: "600",
+        color: neutral.textMuted,
+        marginTop: 2,
+    },
+    marketplaceLoading: {
+        height: 80,
+        alignItems: "center",
+        justifyContent: "center",
+    },
+    marketplaceListContent: {
+        paddingHorizontal: 16,
+        gap: 12,
+    },
+    marketplaceCard: {
+        width: 220,
+        backgroundColor: neutral.surface,
+        borderRadius: 14,
+        borderWidth: 1,
+        borderColor: neutral.border,
+        padding: 14,
+        gap: 6,
+        shadowColor: neutral.black,
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.05,
+        shadowRadius: 6,
+        elevation: 2,
+    },
+    marketplaceCardPressed: {
+        opacity: 0.92,
+    },
+    marketplaceBadge: {
+        alignSelf: "flex-start",
+        paddingHorizontal: 8,
+        paddingVertical: 3,
+        borderRadius: 999,
+        borderWidth: 1,
+        marginBottom: 4,
+    },
+    marketplaceBadgeAvailable: {
+        backgroundColor: "#DCFCE7",
+        borderColor: "#16A34A",
+    },
+    marketplaceBadgeBookable: {
+        backgroundColor: "#FEF3C7",
+        borderColor: "#D97706",
+    },
+    marketplaceBadgeText: {
+        fontSize: 10,
+        fontWeight: "800",
+        letterSpacing: 0.3,
+        textTransform: "uppercase",
+    },
+    marketplaceBadgeTextAvailable: {
+        color: "#15803D",
+    },
+    marketplaceBadgeTextBookable: {
+        color: "#92400E",
+    },
+    marketplaceCardTitle: {
+        fontSize: 14,
+        fontWeight: "800",
+        color: neutral.text,
+    },
+    marketplaceCardAddress: {
+        fontSize: 12,
+        fontWeight: "600",
+        color: neutral.textMuted,
+        lineHeight: 17,
+    },
+    marketplaceCardHandover: {
+        fontSize: 11,
+        fontWeight: "700",
+        color: "#92400E",
+        marginTop: 4,
+    },
+    marketplaceCardAvailableNow: {
+        fontSize: 11,
+        fontWeight: "700",
+        color: "#15803D",
+        marginTop: 4,
+    },
 });
 
 export default homeStyles;

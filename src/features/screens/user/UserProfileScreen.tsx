@@ -322,6 +322,25 @@ const UserProfileScreen = () => {
           </TouchableOpacity>
         </View>
 
+        <View style={userProfileStyles.sectionContainer}>
+          <Text style={userProfileStyles.sectionTitle}>{t("profile.app_settings")}</Text>
+
+          <TouchableOpacity
+            style={userProfileStyles.menuItem}
+            onPress={() => navigation.navigate("SettingsScreen")}
+            activeOpacity={0.78}
+          >
+            <View style={userProfileStyles.menuIconAccent}>
+              <Icons.settings size={22} color={neutral.iconMuted} />
+            </View>
+            <View style={userProfileStyles.menuContent}>
+              <Text style={userProfileStyles.menuLabel}>{t("profile.settings")}</Text>
+              <Text style={userProfileStyles.menuDescription}>{t("profile.settings_desc")}</Text>
+            </View>
+            <Icons.chevronForward size={20} color={neutral.textOnDarkSoft} />
+          </TouchableOpacity>
+        </View>
+
         {role === "tenant" ? (
           <View style={userProfileStyles.sectionContainer}>
             <Text style={userProfileStyles.sectionTitle}>

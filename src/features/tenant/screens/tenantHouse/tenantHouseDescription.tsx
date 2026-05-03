@@ -51,6 +51,7 @@ import {
   asAssetItemArray,
   useAssetCategories,
   useFunctionalAreasByHouseId,
+  useHouseById,
 } from "../../../../shared/hooks";
 import { useAuthStore } from "../../../../store/useAuthStore";
 import {
@@ -71,6 +72,8 @@ import {
   parentScrollOffsetForDropdownField,
 } from "../../../../shared/utils";
 import { tenantHouseHasUnpaidRentExcludingIssue } from "../../../../shared/utils/tenantInvoice";
+import { getMyEContracts } from "../../../../shared/services/econtractApi";
+import type { TenantEContractFromApi } from "../../../../shared/types/api";
 
 type TenantHouseRouteProp = RouteProp<RootStackParamList, "BuildingDetail">;
 type TenantHouseNavProp = NativeStackNavigationProp<RootStackParamList, "BuildingDetail">;
@@ -121,16 +124,85 @@ const TenantHouseDescription = () => {
     contractDocuments,
     pendingInvoiceId,
     accessStatus: routeAccessStatus,
+    accessReason: routeAccessReason,
+    memberRole: routeMemberRole,
   } = route.params;
 
   const { data: housesData, refetch: refetchHouses } = useTenantHouses();
   const tenantHouses: HouseFromApi[] = housesData?.data ?? [];
+  const accessHouse = useMemo(
+    () => tenantHouses.find((h) => h.id === buildingId) ?? null,
+    [tenantHouses, buildingId]
+  );
+  const { data: houseByIdRes } = useHouseById(buildingId, Boolean(buildingId));
+  const detailHouse = houseByIdRes?.success ? houseByIdRes.data : null;
+  const currentHouse = useMemo((): HouseFromApi => {
+    const pick = (...values: Array<string | null | undefined>) => {
+      for (const value of values) {
+        const text = String(value ?? "").trim();
+        if (text.length > 0) return text;
+      }
+      return "";
+    };
+
+    return {
+      id: buildingId,
+      userRentalId: detailHouse?.userRentalId ?? accessHouse?.userRentalId ?? null,
+      regionId: detailHouse?.regionId ?? accessHouse?.regionId ?? null,
+      name: pick(detailHouse?.name, accessHouse?.name, buildingName),
+      address: pick(detailHouse?.address, accessHouse?.address, buildingAddress),
+      description: pick(detailHouse?.description, accessHouse?.description, description),
+      ward: pick(detailHouse?.ward, accessHouse?.ward, ward),
+      commune: pick(detailHouse?.commune, accessHouse?.commune, commune),
+      city: pick(detailHouse?.city, accessHouse?.city, city),
+      status: detailHouse?.status ?? accessHouse?.status ?? status,
+      functionalAreas:
+        detailHouse?.functionalAreas ??
+        accessHouse?.functionalAreas ??
+        routeFunctionalAreas ??
+        [],
+      contractDocuments:
+        accessHouse?.contractDocuments ??
+        detailHouse?.contractDocuments ??
+        contractDocuments,
+      hasUnpaidInvoice: accessHouse?.hasUnpaidInvoice ?? detailHouse?.hasUnpaidInvoice,
+      pendingInvoiceId:
+        accessHouse?.pendingInvoiceId ??
+        detailHouse?.pendingInvoiceId ??
+        pendingInvoiceId ??
+        null,
+      accessStatus: accessHouse?.accessStatus ?? detailHouse?.accessStatus ?? routeAccessStatus,
+      accessReason:
+        accessHouse?.accessReason ??
+        detailHouse?.accessReason ??
+        routeAccessReason ??
+        null,
+      memberRole: accessHouse?.memberRole ?? detailHouse?.memberRole ?? routeMemberRole,
+    };
+  }, [
+    accessHouse,
+    buildingAddress,
+    buildingId,
+    buildingName,
+    city,
+    commune,
+    contractDocuments,
+    description,
+    detailHouse,
+    pendingInvoiceId,
+    routeAccessReason,
+    routeAccessStatus,
+    routeFunctionalAreas,
+    routeMemberRole,
+    status,
+    ward,
+  ]);
   const { data: invoiceListRaw, isLoading: invoicesLoading, isFetched } = useTenantInvoices(true);
   const invoiceListForBanner = invoiceListRaw ?? [];
   const buildingIdStr = String(buildingId ?? "").trim();
   const showPaymentBanner = useMemo(() => {
     if (!buildingIdStr) return false;
-    const st = String(routeAccessStatus ?? "").trim().toUpperCase();
+    const st = String(currentHouse.accessStatus ?? "").trim().toUpperCase();
     if (st === "PENDING_FIRST_RENT") return true;
     if (isFetched && !invoicesLoading) {
       return tenantHouseHasUnpaidRentExcludingIssue(invoiceListForBanner, buildingIdStr);
@@ -138,7 +210,7 @@ const TenantHouseDescription = () => {
     return false;
   }, [
     buildingIdStr,
-    routeAccessStatus,
+    currentHouse.accessStatus,
     isFetched,
     invoicesLoading,
     invoiceListForBanner,
@@ -157,6 +229,38 @@ const TenantHouseDescription = () => {
 
   const [houseModalVisible, setHouseModalVisible] = useState(false);
   const [isSubmittingMainHouse, setIsSubmittingMainHouse] = useState(false);
+  // First COMPLETED contract on a house OTHER than the one being viewed.
+  // Used to gate the "Đổi sang nhà này" CTA — relocation only makes sense when
+  // the user has an active contract elsewhere they could move out of.
+  const [eligibleContractForRelocation, setEligibleContractForRelocation] =
+    useState<TenantEContractFromApi | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    if (!buildingId) {
+      setEligibleContractForRelocation(null);
+      return () => {
+        cancelled = true;
+      };
+    }
+    (async () => {
+      try {
+        const rows = await getMyEContracts();
+        if (cancelled) return;
+        const eligible = rows.find((c) => {
+          const status = String(c.status ?? "").toUpperCase();
+          if (status !== "COMPLETED") return false;
+          return String(c.houseId ?? "") !== String(buildingId ?? "");
+        });
+        setEligibleContractForRelocation(eligible ?? null);
+      } catch {
+        if (!cancelled) setEligibleContractForRelocation(null);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [buildingId]);
   const [pendingMainHouseId, setPendingMainHouseId] = useState<string | null>(null);
 
   const planScrollRef = useRef<ScrollView>(null);
@@ -252,32 +356,8 @@ const TenantHouseDescription = () => {
   );
 
   const houseForMerge = useMemo((): HouseFromApi | undefined => {
-    const full = tenantHouses.find((h) => h.id === buildingId);
-    if (full) return full;
-    return {
-      id: buildingId,
-      userRentalId: null,
-      name: buildingName,
-      address: buildingAddress,
-      description,
-      ward,
-      commune,
-      city,
-      status,
-      functionalAreas: routeFunctionalAreas ?? [],
-    };
-  }, [
-    tenantHouses,
-    buildingId,
-    buildingName,
-    buildingAddress,
-    description,
-    ward,
-    commune,
-    city,
-    status,
-    routeFunctionalAreas,
-  ]);
+    return currentHouse;
+  }, [currentHouse]);
 
   const { data: functionalAreasRes } = useFunctionalAreasByHouseId(buildingId);
 
@@ -636,21 +716,21 @@ const TenantHouseDescription = () => {
           automaticallyAdjustKeyboardInsets={Platform.OS === "ios"}
         >
         <View style={tenantHouseStyles.card}>
-          <Text style={tenantHouseStyles.houseName}>{buildingName}</Text>
+          <Text style={tenantHouseStyles.houseName}>{currentHouse.name}</Text>
           <View style={tenantHouseStyles.houseRow}>
             <Text style={tenantHouseStyles.houseLabel}>{t("home.house_info.address")}</Text>
             <ExpandableLongText
-              text={buildingAddress}
+              text={currentHouse.address}
               maxLength={DEFAULT_BE_SHORT_TEXT_MAX_CHARS}
               textStyle={tenantHouseStyles.houseValue}
               containerStyle={{ flex: 1 }}
             />
           </View>
-          {description ? (
+          {currentHouse.description ? (
             <View style={tenantHouseStyles.houseRow}>
               <Text style={tenantHouseStyles.houseLabel}>{t("home.house_info.description")}</Text>
               <ExpandableLongText
-                text={description}
+                text={currentHouse.description}
                 maxLength={DEFAULT_BE_SHORT_TEXT_MAX_CHARS}
                 textStyle={tenantHouseStyles.houseValue}
                 containerStyle={{ flex: 1 }}
@@ -663,13 +743,13 @@ const TenantHouseDescription = () => {
               style={[
                 tenantHouseStyles.houseValue,
                 {
-                  color: isTenantHouseStatusHighlighted(status)
+                  color: isTenantHouseStatusHighlighted(currentHouse.status)
                     ? brandPrimary
                     : neutral.textSecondary,
                 },
               ]}
             >
-              {formatHouseStatusForDisplay(status, t)}
+              {formatHouseStatusForDisplay(currentHouse.status, t)}
             </Text>
           </View>
 
@@ -711,6 +791,34 @@ const TenantHouseDescription = () => {
             ) : null}
           </View>
         </View>
+
+        {eligibleContractForRelocation ? (
+          <Pressable
+            onPress={() =>
+              navigation.navigate("UserContractDetail", {
+                contract: eligibleContractForRelocation,
+                relocationPrefillHouseId: buildingId,
+              })
+            }
+            style={({ pressed }) => [
+              tenantHouseStyles.relocateHereCard,
+              pressed && tenantHouseStyles.relocateHereCardPressed,
+            ]}
+          >
+            <View style={tenantHouseStyles.relocateHereIcon}>
+              <Icons.home size={20} color={neutral.surface} />
+            </View>
+            <View style={tenantHouseStyles.relocateHereTextCol}>
+              <Text style={tenantHouseStyles.relocateHereTitle}>
+                {t("home.house_detail.relocate_here_title")}
+              </Text>
+              <Text style={tenantHouseStyles.relocateHereSubtitle}>
+                {t("home.house_detail.relocate_here_subtitle")}
+              </Text>
+            </View>
+            <Icons.chevronForward size={20} color={neutral.surface} />
+          </Pressable>
+        ) : null}
 
         <View style={tenantHouseStyles.housePlanSectionWrap}>
           <View style={homeStyles.homeZoneCard}>

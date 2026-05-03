@@ -16,15 +16,31 @@ import type {
   TenantHouseAccessApiResponse,
 } from "../types/api";
 
+function localizeOptionalString(value: string | null | undefined): string | undefined {
+  if (value == null) return undefined;
+  return resolveLocalizedJsonStringFromI18n(value);
+}
+
+function localizeNullableString(value: string | null | undefined): string | null {
+  if (value == null) return null;
+  return resolveLocalizedJsonStringFromI18n(value);
+}
+
+function localizeFunctionalAreaFromApi(fa: FunctionalAreaFromApi): FunctionalAreaFromApi {
+  return {
+    ...fa,
+    name: resolveLocalizedJsonStringFromI18n(fa.name),
+    description: localizeNullableString(fa.description),
+  };
+}
+
 function localizeHouseFromApi(h: HouseFromApi): HouseFromApi {
   return {
     ...h,
     name: resolveLocalizedJsonStringFromI18n(h.name),
+    description: localizeOptionalString(h.description),
     functionalAreas: Array.isArray(h.functionalAreas)
-      ? h.functionalAreas.map((fa) => ({
-          ...fa,
-          name: resolveLocalizedJsonStringFromI18n(fa.name),
-        }))
+      ? h.functionalAreas.map(localizeFunctionalAreaFromApi)
       : h.functionalAreas,
   };
 }
@@ -108,10 +124,7 @@ export const getFunctionalAreasByHouseId = async (
   if (!body?.data || !Array.isArray(body.data)) return body;
   return {
     ...body,
-    data: body.data.map((fa) => ({
-      ...fa,
-      name: resolveLocalizedJsonStringFromI18n(fa.name),
-    })),
+    data: body.data.map(localizeFunctionalAreaFromApi),
   };
 };
 

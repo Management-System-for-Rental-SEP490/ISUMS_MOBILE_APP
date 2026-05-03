@@ -118,7 +118,7 @@ const TenantQuestionListScreen = () => {
       setLoading(false);
       setRefreshing(false);
     }
-  }, [t]);
+  }, [i18n.language, t]);
 
   useFocusEffect(
     useCallback(() => {

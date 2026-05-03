@@ -287,7 +287,7 @@ export default function TenantInvoiceDetailScreen({ navigation, route }: Props) 
     return () => {
       cancelled = true;
     };
-  }, [invoice.id, invoice.issueTicketId]);
+  }, [i18n.language, invoice.id, invoice.issueTicketId]);
 
   const issueQuoteForDisplay = useMemo(() => {
     if (!issueQuotes.length) return null;

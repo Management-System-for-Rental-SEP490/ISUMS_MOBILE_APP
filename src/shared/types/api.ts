@@ -23,15 +23,28 @@ export interface ApiResponse<T> {
 // User API
 // =========================================================
 
-/** Kiểu dữ liệu user profile trả về từ API (ví dụ: GET /api/users/me). */
+/** Kiểu dữ liệu user profile trả về từ API (ví dụ: GET /api/users/me).
+ *
+ * Match BE `com.isums.userservice.domains.dtos.UserDto` — keep the two in
+ * sync whenever the BE schema adds/removes fields. The VN CCCD block and
+ * foreign-tenant passport block are both surfaced here so contract flows
+ * (read-only for now on mobile) can auto-fill on repeat contracts.
+ */
 export interface UserProfileResponse {
   /** ID duy nhất của user trong hệ thống. */
   id: string;
+  /** Keycloak subject ID — null only on legacy rows that predate KC integration. */
+  keycloakId?: string | null;
   /** Tên hiển thị. */
   name: string;
   /** Email của user. */
   email: string;
-  /** Số CMND/CCCD. */
+  /**
+   * Số CMND/CCCD. On VN tenants this is the 12-digit CCCD; on FOREIGNER
+   * tenants the BE mirrors `passportNumber` here (the column is NOT NULL).
+   * FE should prefer `passportNumber` when present and treat this as a
+   * legacy fallback.
+   */
   identityNumber: string;
   /** Số điện thoại. */
   phoneNumber: string;
@@ -39,6 +52,36 @@ export interface UserProfileResponse {
   roles: string[];
   /** Nhà chính trên BE (GET /api/users/me). `null`/thiếu → tenant chưa gán; app gọi PUT /api/users/main-house. */
   mainHouseId?: string | null;
+  /** Ngôn ngữ đã lưu trên BE. Giá trị lạ/thiếu được app fallback về vi. */
+  language?: "vi" | "en" | "ja" | string | null;
+
+  // ── VN tenant / CCCD block ───────────────────────────────────────────────
+  /** CCCD issue date (ISO-8601 "YYYY-MM-DD"). Null until first contract fills it. */
+  dateOfIssue?: string | null;
+  /** CCCD issue place (nơi cấp). Null until first contract fills it. */
+  placeOfIssue?: string | null;
+  /** Permanent address (địa chỉ thường trú) — printed on CCCD, distinct from the rental address. */
+  permanentAddress?: string | null;
+
+  // ── Shared (VN + foreign) ────────────────────────────────────────────────
+  /** Date of birth (ISO-8601 "YYYY-MM-DD"). */
+  dateOfBirth?: string | null;
+  /** Gender code: "MALE" | "FEMALE" | "OTHER" (enum-like string from BE). */
+  gender?: string | null;
+
+  // ── Foreign tenant / passport block ──────────────────────────────────────
+  /** ICAO 9303 passport number (6–9 alphanumerics, upper-cased on BE). Null for VN tenants. */
+  passportNumber?: string | null;
+  /** Passport issue date (ISO-8601 "YYYY-MM-DD"). */
+  passportIssueDate?: string | null;
+  /** Passport expiry date (ISO-8601). BE validates this must outlive the contract endDate. */
+  passportExpiryDate?: string | null;
+  /** Nationality (free text or HCM-ESB country name). */
+  nationality?: string | null;
+  /** Visa type code (DN / LD / DL / ...). */
+  visaType?: string | null;
+  /** Visa expiry date (ISO-8601). BE validates this too. */
+  visaExpiryDate?: string | null;
 }
 
 // =========================================================
@@ -56,6 +99,63 @@ export interface TenantEContractFromApi {
   /** Có giá trị khi status thuộc PENDING_TENANT_REVIEW | READY | IN_PROGRESS | COMPLETED. */
   pdfUrl?: string | null;
   createdAt: string;
+}
+
+export type ContractRelocationRequestStatus =
+  | "REQUESTED"
+  | "QUOTED"
+  | "APPROVED"
+  | "REJECTED"
+  | "CONTRACT_CREATED"
+  | "ADDITIONAL_PAYMENT_PENDING"
+  | "REFUND_PENDING"
+  | "COMPLETED"
+  | "CANCELLED"
+  | string;
+
+export type ContractRelocationRequestKind =
+  | "PRE_HANDOVER_TENANT_REQUEST"
+  | "ACTIVE_LEASE_TENANT_UPGRADE"
+  | "LANDLORD_FAULT_UNINHABITABLE"
+  | string;
+
+export interface ContractRelocationRequestFromApi {
+  id: string;
+  oldContractId: string;
+  oldContractNumber?: string | null;
+  tenantId: string;
+  oldHouseId: string;
+  requestedHouseId: string;
+  approvedHouseId?: string | null;
+  newContractId?: string | null;
+  newContractNumber?: string | null;
+  status: ContractRelocationRequestStatus;
+  requestKind?: ContractRelocationRequestKind | null;
+  depositAmount?: number | null;
+  transferredDepositAmount?: number | null;
+  additionalDepositAmount?: number | null;
+  refundAmount?: number | null;
+  oldRentProratedAmount?: number | null;
+  oldUtilitiesAmount?: number | null;
+  oldDamageAmount?: number | null;
+  adminFeeAmount?: number | null;
+  refundableDepositAmount?: number | null;
+  totalAdditionalPaymentAmount?: number | null;
+  inspectionNote?: string | null;
+  managerNote?: string | null;
+  legalBasis?: string | null;
+  newRentAmount?: number | null;
+  newDepositAmount?: number | null;
+  newStartAt?: string | null;
+  newEndAt?: string | null;
+  newHandoverDate?: string | null;
+  desiredMoveDate?: string | null;
+  occupantCount?: number | null;
+  tenantReason?: string | null;
+  requestedAt: string;
+  reviewedAt?: string | null;
+  tenantAcceptedAt?: string | null;
+  completedAt?: string | null;
 }
 
 // =========================================================
@@ -271,8 +371,23 @@ export interface HouseFromApi {
   city?: string;
   /** Mô tả thêm về căn nhà. */
   description?: string;
+  /** Diện tích sử dụng (m²). */
+  areaM2?: number;
+  /** Số tầng. */
+  numberOfFloors?: number;
   /** Trạng thái nhà theo HouseStatus BE. */
   status?: HouseStatus;
+  /**
+   * Marketplace availability badge (FE-side only — set by `getMarketplaceHouses`).
+   * - `AVAILABLE`: house is empty, immediate handover.
+   * - `DEPOSIT_BOOKABLE`: still rented but contract ending within 30 days, no
+   *   renewal — tenant deposits early to reserve, waits until {@link availableFrom}.
+   */
+  availability?: "AVAILABLE" | "DEPOSIT_BOOKABLE";
+  /** Earliest physical handover date for DEPOSIT_BOOKABLE houses (ISO 8601). */
+  availableFrom?: string | null;
+  /** Current tenant's contract end date for DEPOSIT_BOOKABLE houses (ISO 8601). */
+  currentContractEndAt?: string | null;
   /** Danh sách khu vực chức năng trong nhà (phòng khách, bếp, phòng tắm...). */
   functionalAreas?: FunctionalAreaFromApi[];
   /** Ngày bàn giao / bắt đầu hiệu lực ở nhà (ISO 8601) — từ my-access. */
@@ -705,7 +820,9 @@ export interface TenantTicketFromApi {
   type: string;
   status: IssueStatus;
   quoteStatus?: QuoteStatus | null;
+  localizedTitle?: string | null;
   title: string;
+  localizedDescription?: string | null;
   description: string;
   createdAt: string;
 }
@@ -750,6 +867,7 @@ export interface IssueTicketResponseFromApi {
   ticketId: string;
   actorId: string;
   content: string;
+  localizedContent?: string | null;
   createdAt: string;
 }
 
@@ -757,6 +875,7 @@ export interface IssueTicketResponseFromApi {
 export interface IssueBannerFromApi {
   id: string;
   name: string;
+  localizedName?: string | null;
   currentPrice: number;
 }
 
@@ -768,7 +887,9 @@ export interface IssueBannerFromApi {
 export interface IssueQuoteItemFromApi {
   id: string;
   itemName: string;
+  localizedItemName?: string | null;
   description?: string | null;
+  localizedDescription?: string | null;
   price: number;
   /** Hạng mục chọn từ banner — BE có thể trả để tách với hạng mục ngoài banner. */
   bannerId?: string | null;
@@ -858,4 +979,83 @@ export interface AppNotificationsListResult {
   /** true khi BE trả 404/501 hoặc lỗi được nuốt để không crash. */
   fetchUnavailable?: boolean;
 }
+
+// =========================================================
+// IoT forecast (Prophet AI) — GET /api/assets/houses/{houseId}/iot/forecast
+// =========================================================
+
+/** Tier Prophet dispatch: ít dữ liệu fallback naive/run_rate/estimate; đủ dữ liệu dùng prophet weekly/monthly. */
+export type ForecastMethod =
+  | "naive_mtd"
+  | "run_rate"
+  | "estimate_b"
+  | "prophet_weekly"
+  | "prophet_monthly"
+  | string;
+
+/** Status khớp với method: NAIVE/RUN_RATE/ESTIMATE/MODEL_WEEKLY/MODEL_MONTHLY (+ NO_DATA/SKIPPED rare). */
+export type ForecastStatus =
+  | "NAIVE"
+  | "RUN_RATE"
+  | "ESTIMATE"
+  | "MODEL_WEEKLY"
+  | "MODEL_MONTHLY"
+  | "NO_DATA"
+  | string;
+
+/** Chiều xu hướng so với trung bình lịch sử. BE compute; null khi chưa đủ data. */
+export type ForecastTrend = "up" | "flat" | "down" | string | null;
+
+/** 1 điểm dự báo ngày từ Prophet — band tin cậy 80–90% tuỳ tier. */
+export interface ForecastDailyPoint {
+  /** ISO date "YYYY-MM-DD" */
+  ds: string;
+  yhat: number;
+  lower: number;
+  upper: number;
+}
+
+/** DTO 1 scope (nhà hoặc khu vực) từ BE Asset-Service. */
+export interface ForecastScopeDto {
+  metric: "electricity" | "water" | string;
+  /** "kwh" | "liters" — khác với UI unit ("kWh"/"L") nên cần map khi render. */
+  unit: string;
+  /** "house" | "area" */
+  scope: string;
+  areaId?: string | null;
+  areaName?: string | null;
+  usedSoFar: number;
+  forecastRemaining: number;
+  totalEstimate: number;
+  confidenceLower: number;
+  confidenceUpper: number;
+  daysLeft: number;
+  trend?: ForecastTrend;
+  /** Số ngày dữ liệu sau khi clean — quyết định tier. 0 = chưa đủ. */
+  trainingRows: number;
+  dailyForecast: ForecastDailyPoint[];
+  /** epoch ms khi BE compute forecast lần gần nhất. */
+  forecastedAt: number;
+  status: ForecastStatus;
+  /** Reason code nội bộ (TIER_NAIVE/MODEL_READY/NO_DAYS_LEFT…). */
+  reason?: string;
+  method: ForecastMethod;
+}
+
+/** Map area: key = areaId. */
+export interface ForecastMetricDto {
+  house: ForecastScopeDto | null;
+  areas: Record<string, ForecastScopeDto>;
+}
+
+export interface ForecastAllDto {
+  houseId: string;
+  /** "YYYY-MM" */
+  month: string;
+  electricity: ForecastMetricDto | null;
+  water: ForecastMetricDto | null;
+}
+
+export type ForecastScopeApiResponse = ApiResponse<ForecastScopeDto>;
+export type ForecastAllApiResponse = ApiResponse<ForecastAllDto>;
 

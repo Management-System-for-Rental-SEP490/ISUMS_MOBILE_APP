@@ -262,7 +262,7 @@ const TenantTicketListScreen = () => {
       setLoading(false);
       setRefreshing(false);
     }
-  }, [t]);
+  }, [i18n.language, t]);
 
   useFocusEffect(
     useCallback(() => {

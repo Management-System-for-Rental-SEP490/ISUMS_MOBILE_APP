@@ -77,6 +77,10 @@ export const brandTheme = {
   green: BRAND_GREEN,
   blue: BRAND_BLUE,
   blueGradientEnd: BRAND_BLUE_GRADIENT_END,
+
+  blueMutedBg: brandBlueMutedBg,
+  blueMutedBorder: brandBlueMutedBorder,
+
   gradient: brandGradient,
   gradientSolid: brandGradientSolid,
   primary: brandPrimary,

@@ -13,7 +13,16 @@ import {
   Linking,
   Animated,
 } from "react-native";
+import InAppPaymentWebView from "../../../../shared/components/InAppPaymentWebView";
 import { useAuthStore } from "../../../../store/useAuthStore";
+import {
+  createSubscriptionPaymentLink,
+  fetchPlans,
+  fetchSubscription,
+  planDisplayName,
+  type SubscriptionInfo,
+  type SubscriptionPlan,
+} from "../notificationPreferences/api";
 import Header, { type HomeHeaderInvoiceStrip } from "../../../../shared/components/header";
 import {
   HomeScreenProps,
@@ -23,7 +32,7 @@ import {
 import { useTranslation } from "react-i18next";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { NavigationProp, useFocusEffect } from "@react-navigation/native";
-import { useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import homeStyles, { HOME_CARD_STACK_GAP } from "./homeStyles";
 import {
   TENANT_INVOICES_QUERY_KEY,
@@ -33,6 +42,7 @@ import {
   useTenantContext,
   useTenantInvoices,
   useRefreshControlGate,
+  useHouseById,
 } from "../../../../shared/hooks";
 import {
   PullToRefreshControl,
@@ -55,6 +65,7 @@ import {
   translateTenantAccessReason,
 } from "../../../../shared/utils";
 import { getIssueResponses, getTenantTickets } from "../../../../shared/services/issuesApi";
+import { getMarketplaceHouses } from "../../../../shared/services/econtractApi";
 import { getHomeGreetingI18nKey } from "../../../../shared/utils/homeTimeGreeting";
 import {
   isTenantInvoiceDueUrgent,
@@ -108,6 +119,13 @@ function renderHomeUtilityIcon(cellKey: string, size: number) {
       return <Icons.brain color="#4F46E5" size={size} />;
     case "scan":
       return <Icons.scanLookup color={brandPrimary} size={size} />;
+    case "settings":
+      return <Icons.settings color={brandSecondary} size={size} />;
+    case "premium":
+      // Amber tone matches the FEF3C7 cell bg + #F59E0B ribbon in the
+      // premium modal — visual consistency between the Home tile and the
+      // PREMIUM upsell sheet so users recognise the surface immediately.
+      return <Icons.premium color="#B45309" size={size} />;
     default:
       return null;
   }
@@ -251,6 +269,45 @@ const HomeScreen = ({ navigation }: HomeScreenProps) => {
     [navigation]
   );
   const [houseModalVisible, setHouseModalVisible] = useState(false);
+  const [premiumModalOpen, setPremiumModalOpen] = useState(false);
+  const [premiumPlanLoading, setPremiumPlanLoading] = useState<string | null>(null);
+  const [premiumPlans, setPremiumPlans] = useState<SubscriptionPlan[]>([]);
+  const [premiumPlansLoading, setPremiumPlansLoading] = useState(false);
+  // In-app VNPay session — null when no payment is in flight. We render the
+  // overlay with a controlled URL so back-navigation, OTP retries, etc. all
+  // happen inside the app shell (no system browser, no exposed URL bar).
+  const [paymentWebViewUrl, setPaymentWebViewUrl] = useState<string | null>(null);
+  // Marketplace: nhà có thể chuyển sang (AVAILABLE + DEPOSIT_BOOKABLE).
+  // Hiện trên home để tenant duyệt, click → BuildingDetail.
+  const [marketplaceHouses, setMarketplaceHouses] = useState<HouseFromApi[]>([]);
+  const [marketplaceLoading, setMarketplaceLoading] = useState(false);
+
+  // PREMIUM subscription state for Home — drives the badge in the header
+  // strip + the "Mua gói"/"Gia hạn" cell label. Stale-while-revalidate so
+  // the user sees their last-known tier instantly on cold-open while the
+  // network call refreshes in the background.
+  // staleTime=0 + invalidate on focus = banner reflects tier within one
+  // RTT after the BE Kafka listener has processed the activation event.
+  const subscriptionQuery = useQuery<SubscriptionInfo>({
+    queryKey: ["notif", "subscription"],
+    queryFn: fetchSubscription,
+    refetchOnMount: "always",
+    staleTime: 0,
+  });
+  const isPremium = subscriptionQuery.data?.tier === "PREMIUM";
+  const premiumUntilLabel = useMemo(() => {
+    const u = subscriptionQuery.data?.premiumUntil;
+    if (!u) return null;
+    try {
+      const d = new Date(u);
+      const dd = String(d.getDate()).padStart(2, "0");
+      const mm = String(d.getMonth() + 1).padStart(2, "0");
+      const yy = d.getFullYear();
+      return `${dd}/${mm}/${yy}`;
+    } catch {
+      return null;
+    }
+  }, [subscriptionQuery.data?.premiumUntil]);
   const autoSetMainHouseRef = useRef<string>("");
   const [isSubmittingMainHouse, setIsSubmittingMainHouse] = useState(false);
   const [pendingMainHouseId, setPendingMainHouseId] = useState<string | null>(null);
@@ -343,6 +400,22 @@ const HomeScreen = ({ navigation }: HomeScreenProps) => {
     () => String(houseId ?? myHouse?.id ?? "").trim(),
     [houseId, myHouse?.id]
   );
+  const { data: homeHouseDetailRes } = useHouseById(effectiveHouseId, Boolean(effectiveHouseId));
+  const localizedHomeHouse = useMemo<HouseFromApi | null>(() => {
+    if (!myHouse) return null;
+    const detail = homeHouseDetailRes?.success ? homeHouseDetailRes.data : null;
+    if (!detail) return myHouse;
+    return {
+      ...myHouse,
+      ...detail,
+      accessStatus: myHouse.accessStatus ?? detail.accessStatus,
+      accessReason: myHouse.accessReason ?? detail.accessReason,
+      hasUnpaidInvoice: myHouse.hasUnpaidInvoice ?? detail.hasUnpaidInvoice,
+      pendingInvoiceId: myHouse.pendingInvoiceId ?? detail.pendingInvoiceId,
+      memberRole: myHouse.memberRole ?? detail.memberRole,
+      contractDocuments: myHouse.contractDocuments ?? detail.contractDocuments,
+    };
+  }, [homeHouseDetailRes, myHouse]);
   const hasAnyTenantHouse = tenantHouses.length > 0;
   /** Hóa đơn API trả về theo tenant — bật khi đã có danh sách căn (kể cả chưa chọn căn hiển thị). */
   const invoiceQueryEnabled = hasAnyTenantHouse && !loadingHouses;
@@ -433,8 +506,12 @@ const HomeScreen = ({ navigation }: HomeScreenProps) => {
       const name = String(h.name ?? "").trim();
       m.set(id, name.length ? name : id);
     }
+    if (localizedHomeHouse?.id) {
+      const name = String(localizedHomeHouse.name ?? "").trim();
+      if (name) m.set(localizedHomeHouse.id, name);
+    }
     return m;
-  }, [tenantHouses]);
+  }, [tenantHouses, localizedHomeHouse]);
 
   const loadQuestionTicker = useCallback(async () => {
     if (!hasAnyTenantHouse) return;
@@ -447,12 +524,43 @@ const HomeScreen = ({ navigation }: HomeScreenProps) => {
       setQuestionTickerItems([]);
       setQuestionHouseByTicketId({});
     }
-  }, [hasAnyTenantHouse]);
+  }, [hasAnyTenantHouse, i18n.language]);
 
   useFocusEffect(
     useCallback(() => {
       void loadQuestionTicker();
-    }, [loadQuestionTicker])
+      // Coming back from the VNPay WebView (or a deep-link payment return)
+      // we need fresh tier — invalidate so the badge in the header strip
+      // flips to PREMIUM as soon as the BE Kafka listener has processed
+      // the subscription-activated event.
+      queryClient.invalidateQueries({ queryKey: ["notif", "subscription"] });
+    }, [loadQuestionTicker, queryClient])
+  );
+
+  useEffect(() => {
+    void loadQuestionTicker();
+  }, [loadQuestionTicker]);
+
+  // Marketplace fetch: AVAILABLE + DEPOSIT_BOOKABLE houses for the home banner.
+  // Run on first mount and on focus so the list refreshes when tenant comes
+  // back from BuildingDetail / UserContractDetail. Failures degrade silently
+  // — empty list just hides the section.
+  const loadMarketplaceHouses = useCallback(async () => {
+    setMarketplaceLoading(true);
+    try {
+      const rows = await getMarketplaceHouses();
+      setMarketplaceHouses(rows);
+    } catch {
+      setMarketplaceHouses([]);
+    } finally {
+      setMarketplaceLoading(false);
+    }
+  }, []);
+
+  useFocusEffect(
+    useCallback(() => {
+      void loadMarketplaceHouses();
+    }, [loadMarketplaceHouses]),
   );
 
   const zoneLabelForQuestionTicket = useCallback(
@@ -581,25 +689,26 @@ const HomeScreen = ({ navigation }: HomeScreenProps) => {
   }, [rootNavigation]);
 
   const navigateToCurrentHouseDetail = useCallback(() => {
-    if (!myHouse) return;
+    const houseForDetail = localizedHomeHouse ?? myHouse;
+    if (!houseForDetail) return;
     rootNavigation.navigate("BuildingDetail", {
-      buildingId: myHouse.id,
-      buildingName: myHouse.name,
-      buildingAddress: myHouse.address,
-      description: myHouse.description,
-      ward: myHouse.ward,
-      commune: myHouse.commune,
-      city: myHouse.city,
-      status: myHouse.status,
-      functionalAreas: myHouse.functionalAreas ?? [],
-      contractDocuments: myHouse.contractDocuments,
-      hasUnpaidInvoice: myHouse.hasUnpaidInvoice,
-      pendingInvoiceId: myHouse.pendingInvoiceId ?? null,
-      accessStatus: myHouse.accessStatus,
-      accessReason: myHouse.accessReason ?? null,
-      memberRole: myHouse.memberRole,
+      buildingId: houseForDetail.id,
+      buildingName: houseForDetail.name,
+      buildingAddress: houseForDetail.address,
+      description: houseForDetail.description,
+      ward: houseForDetail.ward,
+      commune: houseForDetail.commune,
+      city: houseForDetail.city,
+      status: houseForDetail.status,
+      functionalAreas: houseForDetail.functionalAreas ?? [],
+      contractDocuments: houseForDetail.contractDocuments,
+      hasUnpaidInvoice: houseForDetail.hasUnpaidInvoice,
+      pendingInvoiceId: houseForDetail.pendingInvoiceId ?? null,
+      accessStatus: houseForDetail.accessStatus,
+      accessReason: houseForDetail.accessReason ?? null,
+      memberRole: houseForDetail.memberRole,
     });
-  }, [myHouse, rootNavigation]);
+  }, [localizedHomeHouse, myHouse, rootNavigation]);
 
   const homeInvoiceStrip = useMemo((): HomeHeaderInvoiceStrip => {
     if (!hasAnyTenantHouse) return { kind: "hidden" };
@@ -663,6 +772,14 @@ const HomeScreen = ({ navigation }: HomeScreenProps) => {
           rootNavigation.navigate("TenantInvoiceList");
         },
       },
+      {
+        key: "settings",
+        bg: "#E0F2FE",
+        label: t("home.utility_settings"),
+        onPress: () => {
+          rootNavigation.navigate("SettingsScreen");
+        },
+      },
     ];
     if (showFullHomeFeatures) {
       cells.push(
@@ -697,11 +814,50 @@ const HomeScreen = ({ navigation }: HomeScreenProps) => {
           onPress: () => {
             rootNavigation.navigate("Camera");
           },
+        },
+        {
+          key: "premium",
+          // Amber tone signals "premium / upsell" — different palette
+          // from the navigation cells so it stands out as a paid action.
+          // When already PREMIUM the cell pivots from "buy" → "renew/extend",
+          // keeping the same modal but with a softer label so it doesn't
+          // pressure an already-paying user.
+          bg: "#FEF3C7",
+          label: isPremium
+            ? t("home.utility_premium_renew", "Gia hạn")
+            : t("home.utility_premium", "Mua gói"),
+          onPress: async () => {
+            setPremiumModalOpen(true);
+            // Refresh on every open — landlord may have edited prices
+            // mid-session, and mobile state cache would otherwise show a
+            // stale figure that the BE then "corrects" at checkout (BE is
+            // source of truth on amount, so a stale display flashes one
+            // price and charges another). Cheap fetch, small payload.
+            if (premiumPlansLoading) return;
+            setPremiumPlansLoading(true);
+            try {
+              const plans = await fetchPlans();
+              setPremiumPlans(plans);
+              if (plans.length === 0) {
+                // eslint-disable-next-line no-console
+                console.warn("[Premium] BE returned 0 plans — empty catalogue?");
+              }
+            } catch (e: any) {
+              CustomAlert.alert(
+                t("common.error", "Lỗi"),
+                e?.message ?? t("home.premium_load_failed", "Không tải được danh sách gói."),
+                [{ text: t("common.close", "Đóng") }],
+                { type: "error" }
+              );
+            } finally {
+              setPremiumPlansLoading(false);
+            }
+          },
         }
       );
     }
     return cells;
-  }, [t, navigateToCurrentHouseDetail, rootNavigation, showFullHomeFeatures]);
+  }, [t, navigateToCurrentHouseDetail, rootNavigation, showFullHomeFeatures, isPremium, premiumPlans.length, premiumPlansLoading]);
 
   const formatUsageVal = useCallback((val: number, unit: string) => {
     const digits = unit === "kWh" ? 2 : 1;
@@ -721,6 +877,61 @@ const HomeScreen = ({ navigation }: HomeScreenProps) => {
 
     return (
       <View>
+        {/* PREMIUM tier banner — short pill that confirms the subscription
+            so the user sees the result of their purchase right on Home.
+            Tap → NotifPrefs (full subscription detail). Hidden on FREE so
+            the upsell is driven exclusively by the "Mua gói" cell below. */}
+        {isPremium ? (
+          <TouchableOpacity
+            activeOpacity={0.85}
+            onPress={() => rootNavigation.navigate("NotificationPreferencesScreen")}
+            style={{
+              flexDirection: "row",
+              alignItems: "center",
+              backgroundColor: "#FFFBEB",
+              borderWidth: 1,
+              borderColor: "#F59E0B",
+              borderRadius: 14,
+              paddingVertical: 10,
+              paddingHorizontal: 14,
+              marginHorizontal: 16,
+              marginTop: 12,
+              gap: 10,
+              shadowColor: "#F59E0B",
+              shadowOpacity: 0.12,
+              shadowRadius: 6,
+              shadowOffset: { width: 0, height: 2 },
+              elevation: 1,
+            }}
+            accessibilityRole="button"
+            accessibilityLabel={t(
+              "home.premium_badge_a11y",
+              "Bạn đang dùng gói PREMIUM. Bấm để xem chi tiết."
+            )}
+          >
+            <View
+              style={{
+                width: 32, height: 32, borderRadius: 16,
+                backgroundColor: "#F59E0B",
+                alignItems: "center", justifyContent: "center",
+              }}
+            >
+              <Icons.premium color="#fff" size={18} />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={{ fontSize: 13, fontWeight: "800", color: "#92400E" }}>
+                {t("home.premium_badge_title", "PREMIUM đang hoạt động")}
+              </Text>
+              {premiumUntilLabel ? (
+                <Text style={{ fontSize: 11, color: "#B45309", marginTop: 2 }}>
+                  {t("home.premium_badge_expires", "Hết hạn {{date}}", { date: premiumUntilLabel })}
+                </Text>
+              ) : null}
+            </View>
+            <Text style={{ fontSize: 18, color: "#F59E0B", fontWeight: "300" }}>›</Text>
+          </TouchableOpacity>
+        ) : null}
+
         {accessBlock && accessReminderLine ? (
           <View
             style={homeStyles.accessReminderBanner}
@@ -777,7 +988,7 @@ const HomeScreen = ({ navigation }: HomeScreenProps) => {
           </View>
         ) : null}
 
-        {myHouse ? (
+        {localizedHomeHouse ? (
           <Pressable
             style={({ pressed }) => [
               homeStyles.currentHouseSection,
@@ -786,7 +997,7 @@ const HomeScreen = ({ navigation }: HomeScreenProps) => {
             onPress={navigateToCurrentHouseDetail}
             android_ripple={{ color: "rgba(0,0,0,0.06)" }}
             accessibilityRole="button"
-            accessibilityLabel={`${t("home.staying_at_house_label")}, ${myHouse.name}`}
+            accessibilityLabel={`${t("home.staying_at_house_label")}, ${localizedHomeHouse.name}`}
           >
             <View style={homeStyles.currentHouseRow}>
               <View style={homeStyles.currentHouseTextBlock}>
@@ -794,7 +1005,7 @@ const HomeScreen = ({ navigation }: HomeScreenProps) => {
                   {t("home.staying_at_house_label")}
                 </Text>
                 <Text style={homeStyles.currentHouseName} numberOfLines={2}>
-                  {myHouse.name}
+                  {localizedHomeHouse.name}
                 </Text>
               </View>
               {tenantHouses.length > 1 ? (
@@ -1007,6 +1218,114 @@ const HomeScreen = ({ navigation }: HomeScreenProps) => {
               </View>
             ) : null}
 
+        {marketplaceHouses.length > 0 || marketplaceLoading ? (
+          <View style={homeStyles.marketplaceSection}>
+            <View style={homeStyles.marketplaceHeader}>
+              <View style={{ flex: 1 }}>
+                <Text style={homeStyles.marketplaceTitle}>
+                  {t("home.marketplace.title")}
+                </Text>
+                <Text style={homeStyles.marketplaceSubtitle}>
+                  {t("home.marketplace.subtitle")}
+                </Text>
+              </View>
+            </View>
+            {marketplaceLoading ? (
+              <View style={homeStyles.marketplaceLoading}>
+                <RefreshLogoInline logoPx={20} />
+              </View>
+            ) : (
+              <ScrollView
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                contentContainerStyle={homeStyles.marketplaceListContent}
+              >
+                {marketplaceHouses.slice(0, 10).map((mhouse) => {
+                  const isBookable = mhouse.availability === "DEPOSIT_BOOKABLE";
+                  const cityLine = [mhouse.ward, mhouse.commune, mhouse.city]
+                    .filter(Boolean)
+                    .join(" · ");
+                  return (
+                    <Pressable
+                      key={String(mhouse.id ?? "")}
+                      onPress={() => {
+                        rootNavigation.navigate("BuildingDetail", {
+                          buildingId: mhouse.id,
+                          buildingName: mhouse.name,
+                          buildingAddress: mhouse.address,
+                          description: mhouse.description,
+                          ward: mhouse.ward,
+                          commune: mhouse.commune,
+                          city: mhouse.city,
+                          status: mhouse.status,
+                        });
+                      }}
+                      style={({ pressed }) => [
+                        homeStyles.marketplaceCard,
+                        pressed && homeStyles.marketplaceCardPressed,
+                      ]}
+                    >
+                      <View
+                        style={[
+                          homeStyles.marketplaceBadge,
+                          isBookable
+                            ? homeStyles.marketplaceBadgeBookable
+                            : homeStyles.marketplaceBadgeAvailable,
+                        ]}
+                      >
+                        <Text
+                          style={[
+                            homeStyles.marketplaceBadgeText,
+                            isBookable
+                              ? homeStyles.marketplaceBadgeTextBookable
+                              : homeStyles.marketplaceBadgeTextAvailable,
+                          ]}
+                        >
+                          {isBookable
+                            ? t("home.marketplace.badge_bookable")
+                            : t("home.marketplace.badge_available")}
+                        </Text>
+                      </View>
+                      <Text
+                        style={homeStyles.marketplaceCardTitle}
+                        numberOfLines={1}
+                      >
+                        {mhouse.name || "—"}
+                      </Text>
+                      <Text
+                        style={homeStyles.marketplaceCardAddress}
+                        numberOfLines={2}
+                      >
+                        {mhouse.address || cityLine || "—"}
+                      </Text>
+                      {isBookable && mhouse.availableFrom ? (
+                        <Text
+                          style={homeStyles.marketplaceCardHandover}
+                          numberOfLines={1}
+                        >
+                          {t("home.marketplace.handover_from", {
+                            date: formatDayMonthNumeric(
+                              new Date(mhouse.availableFrom),
+                              i18n.language,
+                            ),
+                          })}
+                        </Text>
+                      ) : (
+                        <Text
+                          style={homeStyles.marketplaceCardAvailableNow}
+                          numberOfLines={1}
+                        >
+                          {t("home.marketplace.handover_now")}
+                        </Text>
+                      )}
+                    </Pressable>
+                  );
+                })}
+              </ScrollView>
+            )}
+          </View>
+        ) : null}
+
         <View
           style={homeStyles.homeSiteFooter}
           accessibilityLabel={t("home.footer.aria_label")}
@@ -1190,6 +1509,240 @@ const HomeScreen = ({ navigation }: HomeScreenProps) => {
         </TouchableWithoutFeedback>
       </Modal>
       <IotPushAlertOverlay />
+
+      {/* PREMIUM upgrade modal — bottom sheet style. Tier flip is driven
+          by VNPay IPN to BE; this modal just hands the user the signed
+          checkout URL via WebBrowser.openBrowserAsync. */}
+      <Modal
+        visible={premiumModalOpen}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setPremiumModalOpen(false)}
+      >
+        <TouchableWithoutFeedback onPress={() => setPremiumModalOpen(false)}>
+          <View
+            style={{
+              flex: 1,
+              backgroundColor: "rgba(0,0,0,0.55)",
+              justifyContent: "flex-end",
+            }}
+          >
+            <TouchableWithoutFeedback>
+              <View
+                style={{
+                  backgroundColor: "#fff",
+                  borderTopLeftRadius: 24,
+                  borderTopRightRadius: 24,
+                  paddingTop: 8,
+                  paddingHorizontal: 20,
+                  paddingBottom: 24,
+                  maxHeight: "85%",
+                }}
+              >
+                {/* Drag handle */}
+                <View style={{ alignSelf: "center", width: 44, height: 4, borderRadius: 2, backgroundColor: "#E5E7EB", marginBottom: 12 }} />
+
+                {/* Hero badge + title */}
+                <View style={{ alignItems: "center", marginBottom: 16 }}>
+                  <View style={{
+                    width: 56, height: 56, borderRadius: 28,
+                    backgroundColor: "#FEF3C7",
+                    borderWidth: 2, borderColor: "#F59E0B",
+                    alignItems: "center", justifyContent: "center",
+                    marginBottom: 10,
+                  }}>
+                    <Text style={{ fontSize: 28 }}>👑</Text>
+                  </View>
+                  <Text style={{ fontSize: 20, fontWeight: "800", color: "#1E2D28", textAlign: "center" }}>
+                    {t("home.premium_modal_title", "Nâng cấp PREMIUM")}
+                  </Text>
+                  <Text style={{ fontSize: 13, color: "#6B7280", textAlign: "center", marginTop: 4, paddingHorizontal: 8 }}>
+                    {t("home.premium_modal_desc", "Nhận cảnh báo IoT khẩn cấp qua cuộc gọi và SMS. Chọn gói phù hợp.")}
+                  </Text>
+                </View>
+
+                <ScrollView style={{ maxHeight: 420 }} showsVerticalScrollIndicator={false}>
+                {premiumPlansLoading ? (
+                  <View style={{ alignItems: "center", paddingVertical: 32 }}>
+                    <Text style={{ fontSize: 32 }}>⏳</Text>
+                    <Text style={{ color: "#6B7280", marginTop: 8 }}>
+                      {t("common.loading", "Đang tải...")}
+                    </Text>
+                  </View>
+                ) : premiumPlans.length === 0 ? (
+                  <View style={{ alignItems: "center", paddingVertical: 32, paddingHorizontal: 20 }}>
+                    <Text style={{ fontSize: 32 }}>📭</Text>
+                    <Text style={{ fontWeight: "600", color: "#1F2937", marginTop: 8 }}>
+                      {t("home.premium_empty_title", "Chưa có gói nào")}
+                    </Text>
+                    <Text style={{ color: "#6B7280", textAlign: "center", marginTop: 4, fontSize: 13 }}>
+                      {t("home.premium_empty_desc", "Vui lòng thử lại sau hoặc liên hệ quản trị viên.")}
+                    </Text>
+                  </View>
+                ) : premiumPlans.map((plan) => {
+                  const ref = premiumPlans.find((p) => p.durationDays === 30) ?? premiumPlans[0];
+                  const refPerDay = ref.priceVnd / Math.max(1, ref.durationDays);
+                  const planPerDay = plan.priceVnd / Math.max(1, plan.durationDays);
+                  const discountPct = Math.max(0, Math.round((1 - planPerDay / refPerDay) * 100));
+                  const isLoading = premiumPlanLoading === plan.id;
+                  return (
+                    <TouchableOpacity
+                      key={plan.id}
+                      disabled={premiumPlanLoading != null}
+                      activeOpacity={0.7}
+                      onPress={async () => {
+                        try {
+                          setPremiumPlanLoading(plan.id);
+                          const url = await createSubscriptionPaymentLink({ planId: plan.id });
+                          // Hand the signed URL to the in-app WebView so the
+                          // checkout stays inside the app shell — no system
+                          // browser, no URL bar exposing the gateway host.
+                          setPremiumModalOpen(false);
+                          setPaymentWebViewUrl(url);
+                        } catch (e: any) {
+                          CustomAlert.alert(
+                            t("common.error", "Lỗi"),
+                            e?.message ?? "Failed",
+                            [{ text: t("common.close", "Đóng") }],
+                            { type: "error" }
+                          );
+                        } finally {
+                          setPremiumPlanLoading(null);
+                        }
+                      }}
+                      style={{
+                        marginBottom: 10,
+                        borderRadius: 14,
+                        borderWidth: plan.isFeatured ? 2 : 1,
+                        borderColor: plan.isFeatured ? "#F59E0B" : "#E5E7EB",
+                        backgroundColor: plan.isFeatured ? "#FFFBEB" : "#fff",
+                        overflow: "hidden",
+                        opacity: premiumPlanLoading != null && !isLoading ? 0.4 : 1,
+                        shadowColor: "#000",
+                        shadowOpacity: 0.05,
+                        shadowRadius: 4,
+                        shadowOffset: { width: 0, height: 1 },
+                        elevation: 1,
+                      }}
+                    >
+                      {/* Featured ribbon */}
+                      {plan.isFeatured ? (
+                        <View style={{ backgroundColor: "#F59E0B", paddingVertical: 4, alignItems: "center" }}>
+                          <Text style={{ fontSize: 11, fontWeight: "700", color: "#fff", letterSpacing: 1 }}>
+                            ⭐ {t("home.premium_featured", "PHỔ BIẾN NHẤT")}
+                          </Text>
+                        </View>
+                      ) : null}
+
+                      <View style={{ flexDirection: "row", alignItems: "center", padding: 14 }}>
+                        {/* Left — name + duration + savings pill */}
+                        <View style={{ flex: 1 }}>
+                          <Text style={{ fontSize: 16, fontWeight: "700", color: "#1F2937" }}>
+                            {planDisplayName(plan, i18n.language)}
+                          </Text>
+                          <View style={{ flexDirection: "row", alignItems: "center", marginTop: 6, gap: 6 }}>
+                            <View style={{ paddingHorizontal: 8, paddingVertical: 2, borderRadius: 999, backgroundColor: "#F3F4F6" }}>
+                              <Text style={{ fontSize: 11, color: "#374151", fontWeight: "600" }}>
+                                {plan.durationDays} {t("home.premium_days", "ngày")}
+                              </Text>
+                            </View>
+                            {discountPct > 0 ? (
+                              <View style={{ paddingHorizontal: 8, paddingVertical: 2, borderRadius: 999, backgroundColor: "#D1FAE5" }}>
+                                <Text style={{ fontSize: 11, color: "#065F46", fontWeight: "700" }}>
+                                  -{discountPct}%
+                                </Text>
+                              </View>
+                            ) : null}
+                          </View>
+                        </View>
+
+                        {/* Right — price stack */}
+                        <View style={{ alignItems: "flex-end", marginLeft: 12 }}>
+                          <Text style={{ fontSize: 18, fontWeight: "800", color: "#92400E" }}>
+                            {plan.priceVnd.toLocaleString("vi-VN")}đ
+                          </Text>
+                          <Text style={{ fontSize: 11, color: "#9CA3AF", marginTop: 2 }}>
+                            {isLoading
+                              ? t("home.premium_processing", "Đang tạo link...")
+                              : `${Math.round(planPerDay).toLocaleString("vi-VN")}đ/${t("home.premium_day", "ngày")}`}
+                          </Text>
+                        </View>
+
+                        {/* Chevron — affordance that the row is tappable */}
+                        <Text style={{ fontSize: 22, color: "#D1D5DB", marginLeft: 8, fontWeight: "300" }}>›</Text>
+                      </View>
+                    </TouchableOpacity>
+                  );
+                })}
+                </ScrollView>
+
+                {/* Footer — legal small print + close button */}
+                <Text style={{
+                  fontSize: 11, color: "#9CA3AF", textAlign: "center",
+                  marginTop: 8, marginBottom: 12,
+                }}>
+                  {t("home.premium_legal", "Thanh toán qua VNPay. Gói tự kích hoạt sau khi giao dịch thành công.")}
+                </Text>
+                <TouchableOpacity
+                  onPress={() => setPremiumModalOpen(false)}
+                  style={{
+                    paddingVertical: 12,
+                    borderRadius: 12,
+                    backgroundColor: "#F3F4F6",
+                    alignItems: "center",
+                  }}
+                >
+                  <Text style={{ color: "#374151", fontWeight: "600" }}>
+                    {t("common.close", "Đóng")}
+                  </Text>
+                </TouchableOpacity>
+              </View>
+            </TouchableWithoutFeedback>
+          </View>
+        </TouchableWithoutFeedback>
+      </Modal>
+
+      {/* In-app VNPay checkout — keeps the gateway URL hidden behind a native
+          header. Tier flip lands via Kafka IPN to the BE, so on return we
+          just invalidate the subscription query and surface a toast. */}
+      <InAppPaymentWebView
+        visible={paymentWebViewUrl != null}
+        url={paymentWebViewUrl}
+        onClose={() => {
+          setPaymentWebViewUrl(null);
+          setPremiumPlanLoading(null);
+        }}
+        onPaymentResult={(result) => {
+          setPaymentWebViewUrl(null);
+          setPremiumPlanLoading(null);
+          // Invalidate regardless of success — IPN may land seconds later;
+          // refetch ensures the badge reflects PREMIUM as soon as the BE
+          // listener processes the Kafka event.
+          queryClient.invalidateQueries({ queryKey: ["notif", "subscription"] });
+          if (result.success) {
+            CustomAlert.alert(
+              t("payment.success_title", "Thanh toán thành công"),
+              t(
+                "payment.success_desc",
+                "Gói PREMIUM sẽ được kích hoạt trong vài giây. Cảm ơn bạn!"
+              ),
+              [{ text: t("common.close", "Đóng") }],
+              { type: "success" }
+            );
+          } else {
+            CustomAlert.alert(
+              t("payment.failed_title", "Thanh toán không thành công"),
+              t(
+                "payment.failed_desc_with_code",
+                "Giao dịch chưa hoàn tất (mã {{code}}). Bạn có thể thử lại.",
+                { code: result.responseCode ?? "?" }
+              ),
+              [{ text: t("common.close", "Đóng") }],
+              { type: "error" }
+            );
+          }
+        }}
+      />
     </View>
   );
 };

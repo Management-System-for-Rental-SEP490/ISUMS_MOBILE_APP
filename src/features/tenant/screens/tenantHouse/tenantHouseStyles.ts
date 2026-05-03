@@ -151,6 +151,51 @@ const tenantHouseStyles = StyleSheet.create({
     marginVertical: 14,
     paddingHorizontal: 8,
   },
+  // "Đổi sang nhà này" CTA — appears just below the main house-info card
+  // when the user has at least one COMPLETED contract on a different house.
+  relocateHereCard: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+    marginTop: 12,
+    backgroundColor: brandPrimary,
+    borderRadius: 14,
+    paddingVertical: 14,
+    paddingHorizontal: 16,
+    shadowColor: brandPrimary,
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.18,
+    shadowRadius: 10,
+    elevation: 4,
+  },
+  relocateHereCardPressed: {
+    opacity: 0.92,
+  },
+  relocateHereIcon: {
+    width: 38,
+    height: 38,
+    borderRadius: 12,
+    backgroundColor: "rgba(255,255,255,0.18)",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  relocateHereTextCol: {
+    flex: 1,
+    minWidth: 0,
+  },
+  relocateHereTitle: {
+    color: neutral.surface,
+    fontSize: 15,
+    fontWeight: "800",
+    lineHeight: 20,
+  },
+  relocateHereSubtitle: {
+    ...appTypography.caption,
+    color: "rgba(255,255,255,0.85)",
+    marginTop: 2,
+    fontSize: 12,
+    fontWeight: "600",
+  },
 });
 
 export default tenantHouseStyles;

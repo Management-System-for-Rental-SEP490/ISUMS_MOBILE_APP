@@ -3,6 +3,8 @@ import { BACKEND_API_BASE } from "../api/config";
 import type { ApiResponse, UserProfileResponse } from "../types/api";
 import { useAuthStore } from "../../store/useAuthStore";
 import { getTenantHouses } from "./houseApi";
+import i18n from "../i18n";
+import { AppLocaleCode, toAppLocaleCode } from "../utils/resolveLocalizedJsonString";
 
 /**
  * Lấy thông tin chi tiết user hiện tại (GET /api/users/me).
@@ -34,8 +36,36 @@ export const getUserProfile = async (): Promise<UserProfileResponse | null> => {
   }
 };
 
+/**
+ * Fields a tenant can self-update from the mobile profile screen. The VN
+ * CCCD block + foreign-tenant passport block are writable too — BE upserts
+ * whichever is present per the tenantType branch; passing blank/empty
+ * strings on the "wrong" block is a no-op.
+ *
+ * `roles` and `mainHouseId` are intentionally NOT in this payload — mobile
+ * uses dedicated endpoints (PUT /users/main-house, role grants are admin).
+ */
 export type UserProfileUpdatePayload = Partial<
-  Pick<UserProfileResponse, "name" | "phoneNumber" | "identityNumber">
+  Pick<
+    UserProfileResponse,
+    | "name"
+    | "phoneNumber"
+    | "identityNumber"
+    // VN block
+    | "dateOfIssue"
+    | "placeOfIssue"
+    | "permanentAddress"
+    // Shared
+    | "dateOfBirth"
+    | "gender"
+    // Foreign block
+    | "passportNumber"
+    | "passportIssueDate"
+    | "passportExpiryDate"
+    | "nationality"
+    | "visaType"
+    | "visaExpiryDate"
+  >
 >;
 
 /** Cập nhật hồ sơ user hiện tại (PUT /api/users/me). */
@@ -49,6 +79,24 @@ export const updateUserProfile = async (
   }
   throw new Error(
     (response.data as { message?: string } | undefined)?.message ?? "Cập nhật hồ sơ thất bại"
+  );
+};
+
+export type UpdateUserLanguagePayload = {
+  language: AppLocaleCode;
+};
+
+/** Cập nhật ngôn ngữ user hiện tại (PUT /api/users/language). */
+export const updateUserLanguage = async (
+  payload: UpdateUserLanguagePayload
+): Promise<void> => {
+  const language = toAppLocaleCode(payload.language);
+  const url = `${BACKEND_API_BASE}/users/language`;
+  const response = await axiosClient.put<ApiResponse<unknown>>(url, { language });
+  if (response.data?.success) return;
+  throw new Error(
+    (response.data as { message?: string } | undefined)?.message ??
+      "Cập nhật ngôn ngữ thất bại"
   );
 };
 
@@ -80,6 +128,11 @@ export const updateMainHouse = async (
 export async function ensureTenantMainHouseSynced(): Promise<void> {
   const profile = await getUserProfile();
   if (!profile) return;
+
+  const savedLanguage = toAppLocaleCode(profile.language ?? "vi");
+  if (toAppLocaleCode(i18n.language) !== savedLanguage) {
+    await i18n.changeLanguage(savedLanguage);
+  }
 
   const setHouseId = useAuthStore.getState().setHouseId;
   const rawMain = profile.mainHouseId;

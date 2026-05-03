@@ -2,8 +2,10 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   getUserProfile,
   updateMainHouse,
+  updateUserLanguage,
   updateUserProfile,
 } from "../services/userApi";
+import type { AppLocaleCode } from "../utils/resolveLocalizedJsonString";
 import { UserProfileResponse } from "../types/api";
 import { useAuthStore } from "../../store/useAuthStore";
 
@@ -35,6 +37,17 @@ export const useUpdateUserMutation = () => {
     },
     onError: (error) => {
       console.error("Update profile failed:", error);
+    },
+  });
+};
+
+/** Hook cập nhật ngôn ngữ user hiện tại. */
+export const useUpdateUserLanguageMutation = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (language: AppLocaleCode) => updateUserLanguage({ language }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: USER_KEYS.profile() });
     },
   });
 };

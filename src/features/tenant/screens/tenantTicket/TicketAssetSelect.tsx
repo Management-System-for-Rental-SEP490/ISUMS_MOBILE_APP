@@ -34,7 +34,7 @@ function normalizeName(item: AssetItemFromApi, unnamedLabel: string): string {
 }
 
 export function TicketAssetSelect({ houseId, value, onChange }: Props) {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const insets = useSafeAreaInsets();
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
@@ -56,7 +56,7 @@ export function TicketAssetSelect({ houseId, value, onChange }: Props) {
     } finally {
       setLoading(false);
     }
-  }, [houseId]);
+  }, [houseId, i18n.language]);
 
   useEffect(() => {
     if (!open) return;
