@@ -938,6 +938,7 @@ export default {
         "multi_confirm_pay": "Pay selected",
         "status_UNPAID": "Unpaid",
         "status_PAID": "Paid",
+        "status_TRANSFERRED": "House transfer",
         "status_PENDING": "Pending",
         "status_OVERDUE": "Overdue",
         "status_WAITING_PAYMENT": "Awaiting payment",

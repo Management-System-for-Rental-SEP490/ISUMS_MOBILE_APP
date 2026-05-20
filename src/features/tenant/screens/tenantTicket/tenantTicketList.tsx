@@ -9,17 +9,13 @@ import { IssueTicketResponseFromApi, RootStackParamList, TenantTicketFromApi } f
 import { useTenantContext, useRefreshControlGate, useTenantHouses } from "../../../../shared/hooks";
 import {
   PullToRefreshControl,
-  RefreshLogoInline,
   RefreshLogoOverlay,
 } from "@shared/components/RefreshLogoOverlay";
 import {
-  getIssueQuotesByTicket,
   getIssueResponses,
   getTenantTickets,
-  getTenantTicketImages,
+  getTenantTicketThumbUrl,
 } from "../../../../shared/services/issuesApi";
-import { createVnpayPaymentLink } from "../../../../shared/services/tenantPaymentApi";
-import { getWorkSlotById } from "../../../../shared/services/scheduleApi";
 import Icons from "../../../../shared/theme/icon";
 import { BRAND_DANGER, brandPrimary, brandSecondary, neutral } from "../../../../shared/theme/color";
 import { tenantTicketListStyles as styles } from "./ticketStyles";
@@ -27,11 +23,9 @@ import { PaginationBar } from "../../../../shared/components/PaginationBar";
 import {
   CLIENT_LIST_PAGE_SIZE,
   formatTenantIssueDateTime,
-  formatVndDisplay,
   getTotalPages,
   slicePage,
 } from "../../../../shared/utils";
-import { formatApiErrorForTenantAlert } from "../../../../shared/utils/apiErrorMessage";
 import {
   StackScreenTitleBadge,
   StackScreenTitleHeaderStrip,
@@ -44,33 +38,10 @@ import {
 
 type NavProp = NativeStackNavigationProp<RootStackParamList, "TenantTicketList">;
 
+/** Metro / Xcode: lọc theo `[TenantTicketList:API]`. */
+const perfNow = () => (typeof performance !== "undefined" ? performance.now() : Date.now());
+
 type TicketListFilter = "all" | "in_progress" | "sent" | "question" | "payment" | "completed";
-
-type ListTicketExtras = {
-  thumbUrl?: string;
-  quoteTotal?: number;
-  slotTime?: string;
-  slotIsToday?: boolean;
-  /** ISO bắt đầu slot — format ngày theo locale ở UI. */
-  slotStartIso?: string;
-};
-
-function pad2(n: number): string {
-  return String(n).padStart(2, "0");
-}
-
-function nilSlotId(v: string | null | undefined): boolean {
-  const s = String(v ?? "").trim();
-  return !s || s === "00000000-0000-0000-0000-000000000000";
-}
-
-function isSameLocalDay(a: Date, b: Date): boolean {
-  return (
-    a.getFullYear() === b.getFullYear() &&
-    a.getMonth() === b.getMonth() &&
-    a.getDate() === b.getDate()
-  );
-}
 
 function sortByCreatedDesc(a: TenantTicketFromApi, b: TenantTicketFromApi) {
   const ta = new Date(a.createdAt).getTime();
@@ -86,7 +57,11 @@ function normalizeIssueStatus(status: string | undefined): string {
     .toUpperCase();
 }
 
-/** Ưu tiên hiển thị: chờ thanh toán → chờ tenant duyệt báo giá → còn lại theo ngày. */
+/**
+ * Ưu tiên hiển thị: chờ tenant duyệt báo giá / chờ thanh toán lên trước,
+ * còn lại sắp theo ngày tạo mới nhất. Thông tin status có sẵn từ API chính
+ * nên không cần call thêm.
+ */
 function ticketActionPriority(status: string | undefined): number {
   const s = normalizeIssueStatus(status);
   if (s === "WAITING_PAYMENT") return 2;
@@ -145,50 +120,6 @@ function latestResponseByQuestionTicketId(
   return out;
 }
 
-async function enrichTicketForList(item: TenantTicketFromApi): Promise<ListTicketExtras> {
-  const out: ListTicketExtras = {};
-  const st = normalizeIssueStatus(item.status);
-
-  try {
-    const imgs = await getTenantTicketImages(item.id);
-    const u = imgs[0]?.url?.trim();
-    if (u) out.thumbUrl = u;
-  } catch {
-    /* bỏ qua ảnh nếu lỗi */
-  }
-
-  if (st === "WAITING_PAYMENT") {
-    try {
-      const quotes = await getIssueQuotesByTicket(item.id);
-      const approved =
-        quotes.find((q) => normalizeIssueStatus(q.status) === "APPROVED") ?? quotes[0];
-      const n = approved != null ? Number(approved.totalPrice) : NaN;
-      if (Number.isFinite(n)) out.quoteTotal = n;
-    } catch {
-      /* */
-    }
-  }
-
-  if ((st === "IN_PROGRESS" || st === "SCHEDULED") && item.slotId && !nilSlotId(item.slotId)) {
-    try {
-      const res = await getWorkSlotById(String(item.slotId));
-      const slot = res?.success ? res.data : null;
-      if (slot?.startTime) {
-        const d = new Date(slot.startTime);
-        if (!Number.isNaN(d.getTime())) {
-          out.slotStartIso = String(slot.startTime);
-          out.slotTime = `${d.getHours()}:${pad2(d.getMinutes())}`;
-          out.slotIsToday = isSameLocalDay(d, new Date());
-        }
-      }
-    } catch {
-      /* */
-    }
-  }
-
-  return out;
-}
-
 const TenantTicketListScreen = () => {
   const { t, i18n } = useTranslation();
   const navigation = useNavigation<NavProp>();
@@ -217,15 +148,12 @@ const TenantTicketListScreen = () => {
   const listRef = useRef<FlatList<TenantTicketFromApi>>(null);
 
   const [allItems, setAllItems] = useState<TenantTicketFromApi[]>([]);
-  const [extrasById, setExtrasById] = useState<Record<string, ListTicketExtras>>({});
   const [listFilter, setListFilter] = useState<TicketListFilter>("all");
   const [currentPage, setCurrentPage] = useState(1);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const { scrollAtTop, onScrollForRefreshGate } = useRefreshControlGate();
   const [error, setError] = useState<string | null>(null);
-  /** Đang tạo link VNPay từ danh sách — khóa trùng tap. */
-  const [payingTicketId, setPayingTicketId] = useState<string | null>(null);
   /** Phản hồi staff cho ticket QUESTION (để biết đã trả lời + mở chi tiết hỏi đáp). */
   const [responseByTicketId, setResponseByTicketId] = useState<
     Record<string, IssueTicketResponseFromApi>
@@ -235,27 +163,36 @@ const TenantTicketListScreen = () => {
     if (isRefresh) setRefreshing(true);
     else setLoading(true);
     setError(null);
+    const t0 = __DEV__ ? perfNow() : 0;
+    if (__DEV__) {
+      console.log(
+        "[TenantTicketList:API] load bắt đầu — Promise.all song song: GET /issues/tickets/tenant + GET /issues/responses " +
+          `(lý do: ${isRefresh ? "kéo refresh" : "focus màn"})`
+      );
+      console.log(
+        "[TenantTicketList:API] ghi chú: useTenantHouses() có thể đã / đang gọi GET /houses/my-access (React Query, tách luồng load())"
+      );
+    }
     try {
       const [data, responses] = await Promise.all([getTenantTickets(), getIssueResponses()]);
+      if (__DEV__) {
+        const ms = perfNow() - t0;
+        console.log(
+          `[TenantTicketList:API] load xong ${ms.toFixed(0)}ms — tickets=${data.length}, issueResponses=${responses.length}`
+        );
+      }
       const sorted = [...data].sort(sortTicketsForDisplay);
       setResponseByTicketId(latestResponseByQuestionTicketId(sorted, responses));
       setAllItems(sorted);
       setCurrentPage(1);
-      setExtrasById({});
-      void Promise.all(
-        sorted.map(async (item) => {
-          const ex = await enrichTicketForList(item);
-          return [item.id, ex] as const;
-        })
-      ).then((entries) => {
-        const map: Record<string, ListTicketExtras> = {};
-        for (const [id, ex] of entries) map[id] = ex;
-        setExtrasById(map);
-      });
     } catch {
+      if (__DEV__) {
+        console.warn(
+          `[TenantTicketList:API] load lỗi sau ${(perfNow() - t0).toFixed(0)}ms — GET /issues/tickets/tenant + /issues/responses`
+        );
+      }
       setError(t("tenant_ticket_list.load_error"));
       setAllItems([]);
-      setExtrasById({});
       setResponseByTicketId({});
       setCurrentPage(1);
     } finally {
@@ -293,11 +230,6 @@ const TenantTicketListScreen = () => {
     setCurrentPage(page);
     listRef.current?.scrollToOffset({ offset: 0, animated: true });
   }, []);
-
-  const formatMoney = useCallback(
-    (v: number) => formatVndDisplay(v, locale, t),
-    [locale, t]
-  );
 
   const statusLabel = (status: string) => {
     const normalized = normalizeIssueStatus(status);
@@ -340,11 +272,16 @@ const TenantTicketListScreen = () => {
   };
 
   const onPressDetail = (item: TenantTicketFromApi) => {
+    if (__DEV__) {
+      console.log(`[TenantTicketList:API] mở chi tiết ticketId=${item.id}`);
+    }
     navigation.navigate("TenantTicketDetail", { ticket: item });
   };
 
   const zoneLabelForTicket = useCallback(
     (item: TenantTicketFromApi) => {
+      const embedName = String(item.house?.name ?? "").trim();
+      if (embedName) return embedName;
       const hid = String(item.houseId ?? "").trim();
       if (!hid) return t("tenant_question_list.zone_unknown");
       return houseNameById.get(hid) ?? t("tenant_question_list.zone_unknown");
@@ -362,67 +299,6 @@ const TenantTicketListScreen = () => {
       });
     },
     [navigation, responseByTicketId, zoneLabelForTicket]
-  );
-
-  const handlePayFromList = useCallback(
-    (item: TenantTicketFromApi) => {
-      const tid = String(item.id ?? "").trim();
-      if (!tid || payingTicketId != null) return;
-
-      Alert.alert(
-        t("tenant_issue_payment.pick_method_title"),
-        t("tenant_issue_payment.pick_method_body_vnpay_only"),
-        [
-          {
-            text: t("tenant_issue_payment.pick_cancel"),
-            style: "cancel",
-            onPress: () => {},
-          },
-          {
-            text: t("tenant_issue_payment.pick_vnpay"),
-            onPress: () => {
-              void (async () => {
-                setPayingTicketId(tid);
-                try {
-                  const quotes = await getIssueQuotesByTicket(tid);
-                  const approved =
-                    quotes.find((q) => normalizeIssueStatus(q.status) === "APPROVED") ?? quotes[0];
-                  const quoteId = String(approved?.id ?? "").trim();
-                  if (!quoteId) {
-                    Alert.alert(
-                      t("tenant_payment.title"),
-                      t("tenant_ticket_list.pay_no_quote_body"),
-                      [{ text: t("common.close") }],
-                      { type: "error" },
-                    );
-                    return;
-                  }
-                  const checkoutUrl = await createVnpayPaymentLink(
-                    { quoteId },
-                    { appLanguage: i18n.language },
-                  );
-                  navigation.navigate("VnpayCheckout", {
-                    checkoutUrl,
-                    afterSuccess: "ticketDetail",
-                    ticketForAfterSuccess: item,
-                    vnpayUiContext: "repair_quote",
-                  });
-                } catch (e: unknown) {
-                  const msg = formatApiErrorForTenantAlert(e, t, "payment_link");
-                  Alert.alert(t("tenant_payment.title"), msg, [{ text: t("common.close") }], {
-                    type: "error",
-                  });
-                } finally {
-                  setPayingTicketId(null);
-                }
-              })();
-            },
-          },
-        ],
-        { type: "info" },
-      );
-    },
-    [payingTicketId, i18n.language, navigation, t],
   );
 
   const openCreateTicket = () => {
@@ -498,11 +374,9 @@ const TenantTicketListScreen = () => {
     const stNorm = normalizeIssueStatus(item.status);
     const waitingPay = stNorm === "WAITING_PAYMENT";
     const awaitingQuoteConfirm = stNorm === "WAITING_TENANT_APPROVAL_QUOTE";
-    const ex = extrasById[item.id] ?? {};
-    const progress = showProgressInset(item);
+    const thumbUrl = getTenantTicketThumbUrl(item);
     const contactSoon = showContactSoonInset(item);
 
-    const payingThis = payingTicketId != null && payingTicketId === item.id;
     const isQuestionTicket = String(item.type || "").toUpperCase() === "QUESTION";
     const questionAnswer = isQuestionTicket ? responseByTicketId[item.id] : undefined;
     const showViewAnswerBtn = questionAnswer != null;
@@ -542,8 +416,8 @@ const TenantTicketListScreen = () => {
         </View>
 
         <View style={styles.contentRowThumb}>
-          {ex.thumbUrl ? (
-            <Image source={{ uri: ex.thumbUrl }} style={styles.thumbImage} resizeMode="cover" />
+          {thumbUrl ? (
+            <Image source={{ uri: thumbUrl }} style={styles.thumbImage} resizeMode="cover" />
           ) : (
             <View style={styles.thumbSpacer} accessible={false} />
           )}
@@ -560,60 +434,6 @@ const TenantTicketListScreen = () => {
             <View style={styles.progressInsetTextCol}>
               <Text style={styles.progressInsetTitleQuoteApprove}>
                 {t("tenant_ticket_list.quote_approve_inset_line")}
-              </Text>
-            </View>
-          </View>
-        ) : null}
-
-        {waitingPay ? (
-          <>
-            <View style={styles.dividerThin} />
-            <View style={styles.costEstimateRow}>
-              <Text style={styles.costEstimateLabel}>
-                {t("tenant_ticket_list.estimated_cost_prefix")}{" "}
-                <Text style={styles.costEstimateAmount}>
-                  {ex.quoteTotal != null ? formatMoney(ex.quoteTotal) : "—"}
-                </Text>
-              </Text>
-            </View>
-          </>
-        ) : null}
-
-        {progress ? (
-          <View style={styles.progressInset}>
-            <Icons.build size={20} color={brandSecondary} />
-            <View style={styles.progressInsetTextCol}>
-              <Text style={styles.progressInsetTitle}>
-                {t(
-                  stNorm === "IN_PROGRESS"
-                    ? "tenant_ticket_list.progress_technician_line_in_progress"
-                    : "tenant_ticket_list.progress_technician_line_scheduled"
-                )}
-              </Text>
-              <Text style={styles.progressInsetSub}>
-                {!ex.slotTime
-                  ? t("tenant_ticket_list.progress_time_pending")
-                  : ex.slotStartIso
-                    ? (() => {
-                        const sd = new Date(ex.slotStartIso);
-                        if (Number.isNaN(sd.getTime())) {
-                          return ex.slotIsToday
-                            ? t("tenant_ticket_list.progress_expected_today", { time: ex.slotTime })
-                            : t("tenant_ticket_list.progress_expected_time", { time: ex.slotTime });
-                        }
-                        const dateStr = sd.toLocaleDateString(locale, {
-                          day: "2-digit",
-                          month: "2-digit",
-                          year: "numeric",
-                        });
-                        return t("tenant_ticket_list.progress_expected_datetime", {
-                          date: dateStr,
-                          time: ex.slotTime,
-                        });
-                      })()
-                    : ex.slotIsToday
-                      ? t("tenant_ticket_list.progress_expected_today", { time: ex.slotTime })
-                      : t("tenant_ticket_list.progress_expected_time", { time: ex.slotTime })}
               </Text>
             </View>
           </View>
@@ -643,27 +463,6 @@ const TenantTicketListScreen = () => {
           </TouchableOpacity>
         ) : null}
 
-        {waitingPay ? (
-          <TouchableOpacity
-            style={[
-              styles.payBtnFull,
-              showViewAnswerBtn && { marginTop: 10 },
-              (payingThis || payingTicketId != null) && { opacity: 0.72 },
-            ]}
-            onPress={() => void handlePayFromList(item)}
-            disabled={payingTicketId != null}
-            activeOpacity={0.88}
-            accessibilityRole="button"
-            accessibilityLabel={t("tenant_ticket_list.pay_btn")}
-          >
-            {payingThis ? (
-              <RefreshLogoInline logoPx={18} />
-            ) : (
-              <Icons.wallet size={20} color={neutral.surface} />
-            )}
-            <Text style={styles.payBtnFullText}>{t("tenant_ticket_list.pay_btn")}</Text>
-          </TouchableOpacity>
-        ) : null}
       </View>
     );
   };
@@ -714,7 +513,7 @@ const TenantTicketListScreen = () => {
               data={pagedItems}
               keyExtractor={(it) => it.id}
               renderItem={renderItem}
-              extraData={{ extrasById, payingTicketId, listFilter, currentPage, responseByTicketId }}
+              extraData={{ listFilter, currentPage, responseByTicketId }}
               contentContainerStyle={[
                 styles.listContent,
                 { paddingBottom: listBottomPad },

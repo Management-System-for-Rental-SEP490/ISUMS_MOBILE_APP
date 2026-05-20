@@ -938,6 +938,7 @@ export default {
         "multi_confirm_pay": "選択した請求を支払う",
         "status_UNPAID": "未払い",
         "status_PAID": "支払済み",
+        "status_TRANSFERRED": "住居変更",
         "status_PENDING": "保留中",
         "status_OVERDUE": "期限超過",
         "status_WAITING_PAYMENT": "支払待ち",

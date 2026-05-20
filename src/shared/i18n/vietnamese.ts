@@ -939,6 +939,7 @@ export default {
         "multi_confirm_pay": "Thanh toán đã chọn",
         "status_UNPAID": "Chưa thanh toán",
         "status_PAID": "Đã thanh toán",
+        "status_TRANSFERRED": "Đổi nhà",
         "status_PENDING": "Đang xử lý",
         "status_OVERDUE": "Quá hạn",
         "status_WAITING_PAYMENT": "Chờ thanh toán",

@@ -5,6 +5,7 @@ import {
   Image,
   Modal,
   Pressable,
+  RefreshControl,
   ScrollView,
   Text,
   TouchableOpacity,
@@ -14,23 +15,20 @@ import {
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useTranslation } from "react-i18next";
-import { IssueTicketResponseFromApi, RootStackParamList } from "../../../../shared/types";
+import { RootStackParamList } from "../../../../shared/types";
 import { CustomAlert as Alert } from "../../../../shared/components/alert";
 import type { IssueQuoteFromApi } from "../../../../shared/types/api";
-import { getAssetItemById } from "../../../../shared/services/assetItemApi";
 import {
   confirmIssueQuoteStatus,
-  getIssueQuotesByTicket,
-  getIssueResponses,
+  getTenantTicketAssetDisplayName,
   getTenantTicketById,
-  getTenantTicketImages,
+  getTenantTicketEmbeddedQuotes,
   type TenantTicketImageFromApi,
 } from "../../../../shared/services/issuesApi";
 import { useTenantInvoices } from "../../../../shared/hooks";
 import { isTenantInvoicePayable, isTenantTicketIssueInvoice } from "../../../../shared/utils/tenantInvoice";
 import { InvoicePaymentFlowSection } from "../tenantInvoice/InvoicePaymentFlowSection";
 import { createVnpayPaymentLink } from "../../../../shared/services/tenantPaymentApi";
-import { getWorkSlotById } from "../../../../shared/services/scheduleApi";
 import Icons from "../../../../shared/theme/icon";
 import { brandPrimary, brandSecondary, neutral } from "../../../../shared/theme/color";
 import { tenantTicketDetailStyles as styles, tenantTicketListStyles as badge } from "./ticketStyles";
@@ -47,6 +45,9 @@ import {
   stackScreenTitleSideSlotStyle,
 } from "../../../../shared/components/StackScreenTitleBadge";
 import { RefreshLogoInline } from "@shared/components/RefreshLogoOverlay";
+
+/** Metro / Xcode: lọc theo `[TenantTicketDetail:API]`. */
+const perfNow = () => (typeof performance !== "undefined" ? performance.now() : Date.now());
 
 type Props = NativeStackScreenProps<RootStackParamList, "TenantTicketDetail">;
 
@@ -95,28 +96,17 @@ function quoteAwaitingTenantConfirm(q: { status?: string | null }): boolean {
   return st === "WAITING_TENANT_APPROVAL" || st === "WAITING_TENANT_APPROVAL_QUOTE";
 }
 
-function pickLatestResponseForTicket(
-  responses: IssueTicketResponseFromApi[],
-  ticketId: string
-): IssueTicketResponseFromApi | null {
-  const list = responses.filter((r) => r.ticketId === ticketId);
-  if (!list.length) return null;
-  return list.reduce((best, r) => {
-    const tb = new Date(best.createdAt).getTime();
-    const tr = new Date(r.createdAt).getTime();
-    return tr > tb ? r : best;
-  });
-}
-
 const TenantTicketDetailScreen = ({ navigation, route }: Props) => {
   const { t, i18n } = useTranslation();
   const insets = useSafeAreaInsets();
-  const initialTicket = route.params.ticket;
-  const [ticket, setTicket] = useState(initialTicket);
-  /** Chờ lần đầu `getTenantTicketById` — tránh hiển thị UUID (ví dụ `assignedStaffId`) trước khi BE trả đủ tên/SĐT. */
+  const [ticket, setTicket] = useState(route.params.ticket);
+  /**
+   * Luồng chi tiết chỉ dùng GET /issues/tickets/:id (embed ảnh, asset, slot start/end, staff, quote, latestTicketResponse).
+   * `true` đến khi lần đầu (hoặc kéo refresh) hoàn tất — không gọi thêm asset/images/work_slot/quotes/responses.
+   */
   const [ticketDetailLoading, setTicketDetailLoading] = useState(true);
-  const [predictedHandlingTime, setPredictedHandlingTime] = useState<string | null>(null);
-  const [workSlotLoading, setWorkSlotLoading] = useState(false);
+  const [detailRefreshing, setDetailRefreshing] = useState(false);
+  const hasLoadedOnceRef = useRef(false);
 
   const locale = useMemo(() => {
     const lang = String(i18n.language || "").toLowerCase();
@@ -125,18 +115,12 @@ const TenantTicketDetailScreen = ({ navigation, route }: Props) => {
     return "vi-VN";
   }, [i18n.language]);
 
-  const [assetName, setAssetName] = useState<string | null>(null);
-  const [assetLoading, setAssetLoading] = useState(true);
-  const [ticketImages, setTicketImages] = useState<TenantTicketImageFromApi[]>([]);
-  const [imagesLoading, setImagesLoading] = useState(false);
   /** Index ảnh đang xem fullscreen; null = đóng modal. */
   const [activeImageIndex, setActiveImageIndex] = useState<number | null>(null);
   const imageModalListRef = useRef<FlatList<TenantTicketImageFromApi>>(null);
   const { width: windowWidth } = useWindowDimensions();
   const imageModalPageWidth = Math.max(0, windowWidth - 32);
 
-  const [quotesLoading, setQuotesLoading] = useState(false);
-  const [quotes, setQuotes] = useState<IssueQuoteFromApi[]>([]);
   const [confirmQuoteLoading, setConfirmQuoteLoading] = useState(false);
   const [confirmQuoteError, setConfirmQuoteError] = useState<string | null>(null);
   const [payRepairLoading, setPayRepairLoading] = useState(false);
@@ -146,8 +130,16 @@ const TenantTicketDetailScreen = ({ navigation, route }: Props) => {
     [ticket?.type]
   );
 
-  const [questionResponse, setQuestionResponse] = useState<IssueTicketResponseFromApi | null>(null);
-  const [questionResponseLoading, setQuestionResponseLoading] = useState(false);
+  const ticketImagesList = useMemo(() => ticket.images ?? [], [ticket.images]);
+
+  const assetName = useMemo(
+    () => getTenantTicketAssetDisplayName(ticket),
+    [ticket]
+  );
+
+  const quotes = useMemo(() => getTenantTicketEmbeddedQuotes(ticket), [ticket]);
+
+  const questionResponse = ticket.latestTicketResponse ?? null;
 
   const { data: invoiceQueryData, refetch: refetchTenantInvoices } = useTenantInvoices();
   const linkedRepairInvoice = useMemo(() => {
@@ -166,90 +158,102 @@ const TenantTicketDetailScreen = ({ navigation, route }: Props) => {
 
   useFocusEffect(
     useCallback(() => {
-      void refetchTenantInvoices();
+      if (__DEV__) {
+        console.log(
+          "[TenantTicketDetail:API] focus — refetch useTenantInvoices (GET hóa đơn tenant, React Query) — song song với refreshTicket nếu cùng lúc mount"
+        );
+      }
+      const t0 = __DEV__ ? perfNow() : 0;
+      void refetchTenantInvoices().finally(() => {
+        if (__DEV__) {
+          console.log(`[TenantTicketDetail:API] refetchTenantInvoices xong ${(perfNow() - t0).toFixed(0)}ms`);
+        }
+      });
     }, [refetchTenantInvoices])
   );
 
-  const loadAsset = useCallback(async () => {
-    if (String(ticket?.type ?? "").toUpperCase() === "QUESTION") {
-      setAssetName(null);
-      setAssetLoading(false);
-      return;
-    }
-    if (!ticket.assetId) {
-      setAssetName(null);
-      setAssetLoading(false);
-      return;
-    }
-    setAssetLoading(true);
-    const item = await getAssetItemById(ticket.assetId);
-    setAssetName(item?.displayName?.trim() ? item.displayName : null);
-    setAssetLoading(false);
-  }, [i18n.language, ticket.assetId, ticket?.type]);
+  const pad2 = (n: number) => String(n).padStart(2, "0");
 
-  useEffect(() => {
-    loadAsset();
-  }, [loadAsset]);
+  /** Format khung giờ từ `startTime` / `endTime` embed GET ticket (không gọi work_slots). */
+  const formatSlotRange = useCallback((startIso: string, endIso: string) => {
+    const sd = new Date(startIso);
+    const ed = new Date(endIso);
+    if (Number.isNaN(sd.getTime()) || Number.isNaN(ed.getTime())) return null;
+    const startTime = `${sd.getHours()}:${pad2(sd.getMinutes())}`;
+    const endTime = `${ed.getHours()}:${pad2(ed.getMinutes())}`;
+    const dateStr = `${pad2(sd.getDate())}/${pad2(sd.getMonth() + 1)}/${sd.getFullYear()}`;
+    return `${startTime} - ${endTime}, ${dateStr}`;
+  }, []);
 
-  const loadImages = useCallback(async () => {
-    if (String(ticket?.type ?? "").toUpperCase() === "QUESTION") {
-      setTicketImages([]);
-      setImagesLoading(false);
+  const predictedHandlingTime = useMemo(() => {
+    if (String(ticket?.type ?? "").toUpperCase() === "QUESTION") return null;
+    const startIso = String(ticket.startTime ?? "").trim();
+    const endIso = String(ticket.endTime ?? "").trim();
+    if (!startIso || !endIso) return null;
+    return formatSlotRange(startIso, endIso);
+  }, [ticket?.type, ticket.startTime, ticket.endTime, formatSlotRange]);
+
+  /**
+   * Một request GET ticket by id cập nhật toàn bộ embed (ảnh, asset, slot, staff, quote, latestTicketResponse).
+   * Lần đầu dùng `ticketDetailLoading`; kéo refresh dùng `detailRefreshing`.
+   */
+  const refreshTicket = useCallback(async () => {
+    const id = String(ticket?.id ?? "").trim();
+    if (!id) {
+      setTicketDetailLoading(false);
+      setDetailRefreshing(false);
       return;
     }
-    if (!ticket?.id) {
-      setTicketImages([]);
-      return;
+    const phase = hasLoadedOnceRef.current ? "refresh" : "first_open";
+    if (hasLoadedOnceRef.current) {
+      setDetailRefreshing(true);
+    } else {
+      setTicketDetailLoading(true);
     }
-    setImagesLoading(true);
+    const t0 = __DEV__ ? perfNow() : 0;
+    if (__DEV__) {
+      console.log(
+        `[TenantTicketDetail:API] refreshTicket phase=${phase} ticketId=${id} — GET /issues/tickets/:id (embed ảnh/slot/quote/…) — không gọi images/asset/work_slots/quotes/responses riêng`
+      );
+    }
     try {
-      const imgs = await getTenantTicketImages(ticket.id);
-      setTicketImages(imgs);
-    } catch (e) {
-      console.error("[TenantTicketDetailScreen] loadImages failed", e);
-      setTicketImages([]);
+      const updated = await getTenantTicketById(id);
+      if (updated) setTicket(updated);
+      if (__DEV__) {
+        const ms = perfNow() - t0;
+        const hasQuote = Boolean(updated?.quote?.id);
+        const hasImages = Array.isArray(updated?.images) ? updated!.images!.length : 0;
+        const hasSlotTimes = Boolean(
+          String(updated?.startTime ?? "").trim() && String(updated?.endTime ?? "").trim()
+        );
+        console.log(
+          `[TenantTicketDetail:API] getTenantTicketById xong ${ms.toFixed(0)}ms — images=${hasImages} startEnd=${hasSlotTimes} quote=${hasQuote} latestResponse=${Boolean(updated?.latestTicketResponse?.id)}`
+        );
+      }
+    } catch {
+      if (__DEV__) {
+        console.warn(`[TenantTicketDetail:API] getTenantTicketById lỗi sau ${(perfNow() - t0).toFixed(0)}ms`);
+      }
+      /* giữ ticket cũ nếu refresh lỗi */
     } finally {
-      setImagesLoading(false);
+      setTicketDetailLoading(false);
+      setDetailRefreshing(false);
+      hasLoadedOnceRef.current = true;
     }
-  }, [ticket?.id, ticket?.type]);
+  }, [ticket?.id, i18n.language]);
 
   useEffect(() => {
-    loadImages();
-  }, [loadImages]);
+    void refreshTicket();
+  }, [refreshTicket]);
 
   useEffect(() => {
-    if (activeImageIndex == null || ticketImages.length === 0) return;
-    const index = Math.min(Math.max(0, activeImageIndex), ticketImages.length - 1);
+    if (activeImageIndex == null || ticketImagesList.length === 0) return;
+    const index = Math.min(Math.max(0, activeImageIndex), ticketImagesList.length - 1);
     const timer = setTimeout(() => {
       imageModalListRef.current?.scrollToIndex({ index, animated: false });
     }, 0);
     return () => clearTimeout(timer);
-  }, [activeImageIndex, ticketImages]);
-
-  useEffect(() => {
-    if (!isQuestionTicket || !ticket?.id) {
-      setQuestionResponse(null);
-      setQuestionResponseLoading(false);
-      return;
-    }
-    let cancelled = false;
-    const tid = String(ticket.id).trim();
-    setQuestionResponseLoading(true);
-    void getIssueResponses()
-      .then((responses) => {
-        if (cancelled) return;
-        setQuestionResponse(pickLatestResponseForTicket(responses, tid));
-      })
-      .catch(() => {
-        if (!cancelled) setQuestionResponse(null);
-      })
-      .finally(() => {
-        if (!cancelled) setQuestionResponseLoading(false);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [i18n.language, isQuestionTicket, ticket?.id]);
+  }, [activeImageIndex, ticketImagesList]);
 
   const activeQuote = useMemo(() => {
     if (!quotes?.length) return null;
@@ -305,119 +309,6 @@ const TenantTicketDetailScreen = ({ navigation, route }: Props) => {
     return `${heading}\n${itemsLine}${totalSuffix}`;
   }, [quoteForPaidRepairDisplay, t, formatMoney]);
 
-  const refreshTicket = useCallback(async () => {
-    try {
-      if (!ticket?.id) {
-        setTicketDetailLoading(false);
-        return;
-      }
-      const updated = await getTenantTicketById(ticket.id);
-      if (updated) setTicket(updated);
-    } catch {
-      // giữ ticket cũ nếu refresh lỗi
-    } finally {
-      setTicketDetailLoading(false);
-    }
-  }, [i18n.language, ticket?.id]);
-
-  const pad2 = (n: number) => String(n).padStart(2, "0");
-
-  // Format đúng yêu cầu: "9:45 - 10:45, 27/03/2026"
-  const formatSlotRange = useCallback(
-    (startIso: string, endIso: string) => {
-      const sd = new Date(startIso);
-      const ed = new Date(endIso);
-      if (Number.isNaN(sd.getTime()) || Number.isNaN(ed.getTime())) return null;
-
-      const startTime = `${sd.getHours()}:${pad2(sd.getMinutes())}`;
-      const endTime = `${ed.getHours()}:${pad2(ed.getMinutes())}`;
-      const dateStr = `${pad2(sd.getDate())}/${pad2(sd.getMonth() + 1)}/${sd.getFullYear()}`;
-
-      return `${startTime} - ${endTime}, ${dateStr}`;
-    },
-    [locale]
-  );
-
-  useEffect(() => {
-    refreshTicket();
-  }, [refreshTicket]);
-
-  useEffect(() => {
-    let cancelled = false;
-
-    const run = async () => {
-      setPredictedHandlingTime(null);
-      setWorkSlotLoading(false);
-
-      if (String(ticket?.type ?? "").toUpperCase() === "QUESTION") return;
-
-      // Không có slot thì không thể suy ra startTime.
-      if (nilUuid(ticket.slotId)) return;
-
-      setWorkSlotLoading(true);
-      try {
-        const res = await getWorkSlotById(String(ticket.slotId));
-        const slot = res?.data;
-        if (!cancelled && slot?.startTime && slot?.endTime) {
-          setPredictedHandlingTime(formatSlotRange(slot.startTime, slot.endTime));
-        } else if (!cancelled) {
-          setPredictedHandlingTime(null);
-        }
-      } catch (e) {
-        if (!cancelled) {
-          console.error("[TenantTicketDetail] load predicted handling time failed", e);
-        }
-      } finally {
-        if (!cancelled) setWorkSlotLoading(false);
-      }
-    };
-
-    run();
-    return () => {
-      cancelled = true;
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [ticket.slotId, ticket?.type, locale]);
-
-  const loadQuotes = useCallback(async () => {
-    if (!ticket?.id) {
-      setQuotes([]);
-      return;
-    }
-
-    const tid = String(ticket.id).trim();
-    const st = normalizeIssueStatus(ticket.status);
-    const hasLinkedRepairForTicket =
-      linkedRepairInvoice != null &&
-      String(linkedRepairInvoice.issueTicketId ?? "").trim() === tid;
-
-    const shouldFetch =
-      ticketNeedsTenantQuoteConfirm(ticket.status) ||
-      st === "WAITING_PAYMENT" ||
-      hasLinkedRepairForTicket;
-
-    if (!shouldFetch) {
-      setQuotes([]);
-      return;
-    }
-
-    setConfirmQuoteError(null);
-    setQuotesLoading(true);
-    try {
-      const res = await getIssueQuotesByTicket(ticket.id);
-      setQuotes(res);
-    } catch (e) {
-      console.error("[TenantTicketDetail] loadQuotes failed", e);
-      setQuotes([]);
-    } finally {
-      setQuotesLoading(false);
-    }
-  }, [i18n.language, ticket?.id, ticket.status, linkedRepairInvoice]);
-
-  useEffect(() => {
-    loadQuotes();
-  }, [loadQuotes]);
-
   const handleConfirmQuote = useCallback(async () => {
     if (!activeQuote?.id) return;
     if (confirmQuoteLoading) return;
@@ -427,7 +318,6 @@ const TenantTicketDetailScreen = ({ navigation, route }: Props) => {
     try {
       await confirmIssueQuoteStatus(activeQuote.id);
       await refreshTicket();
-      await loadQuotes();
       navigation.navigate("TenantTicketList");
       Alert.alert(
         t("tenant_ticket_detail.confirm_quote_success_title"),
@@ -441,7 +331,7 @@ const TenantTicketDetailScreen = ({ navigation, route }: Props) => {
     } finally {
       setConfirmQuoteLoading(false);
     }
-  }, [activeQuote?.id, confirmQuoteLoading, loadQuotes, navigation, refreshTicket, t]);
+  }, [activeQuote?.id, confirmQuoteLoading, navigation, refreshTicket, t]);
 
   /** Ưu tiên `quoteId` (báo giá đã duyệt); không có thì hóa đơn sửa chữa / danh sách. */
   const handlePayRepair = useCallback(async () => {
@@ -551,15 +441,24 @@ const TenantTicketDetailScreen = ({ navigation, route }: Props) => {
     return badge.typeDefaultText;
   };
 
+  const detailBusy = ticketDetailLoading || detailRefreshing;
+
   const nilUuid = (v: string | null | undefined) =>
     v == null || String(v).trim() === "";
 
   const sv = statusVisual(ticket.status);
-  const staffAssigned = !nilUuid(ticket.assignedStaffId);
-  const staffNameTrim = String(ticket.staffName ?? "").trim();
-  const staffPhoneTrim = String(ticket.staffPhone ?? "").trim();
-  const staffNamePending = staffAssigned && ticketDetailLoading && !staffNameTrim;
-  const staffPhonePending = staffAssigned && ticketDetailLoading && !staffPhoneTrim;
+  const staffParty = ticket.assignedStaff as
+    | { id?: string; name?: string; phoneNumber?: string; phone?: string }
+    | null
+    | undefined;
+  const staffAssigned =
+    !nilUuid(ticket.assignedStaffId) || Boolean(String(staffParty?.id ?? "").trim());
+  const staffNameTrim = String(ticket.staffName ?? staffParty?.name ?? "").trim();
+  const staffPhoneTrim = String(
+    ticket.staffPhone ?? staffParty?.phoneNumber ?? staffParty?.phone ?? ""
+  ).trim();
+  const staffNamePending = staffAssigned && detailBusy && !staffNameTrim;
+  const staffPhonePending = staffAssigned && detailBusy && !staffPhoneTrim;
 
   return (
     <View style={styles.container}>
@@ -593,6 +492,14 @@ const TenantTicketDetailScreen = ({ navigation, route }: Props) => {
           },
         ]}
         showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl
+            refreshing={detailRefreshing}
+            onRefresh={() => void refreshTicket()}
+            tintColor={brandPrimary}
+            colors={[brandPrimary]}
+          />
+        }
       >
         {isQuestionTicket ? (
           <>
@@ -619,7 +526,7 @@ const TenantTicketDetailScreen = ({ navigation, route }: Props) => {
               title={t("tenant_ticket_detail.section_answer")}
               headerIcon={<Icons.subject size={22} color={brandPrimary} />}
             >
-              {questionResponseLoading ? (
+              {detailBusy ? (
                 <View style={styles.assetLoadingRow}>
                   <RefreshLogoInline logoPx={18} />
                   <Text style={styles.fieldValueMuted}>{t("common.loading")}</Text>
@@ -681,7 +588,7 @@ const TenantTicketDetailScreen = ({ navigation, route }: Props) => {
             >
               <View style={styles.detailFieldRow}>
                 <Text style={styles.fieldLabel}>{t("tenant_ticket_detail.field_device")}</Text>
-                {assetLoading ? (
+                {detailBusy ? (
                   <View style={styles.assetLoadingRow}>
                     <RefreshLogoInline logoPx={18} />
                     <Text style={styles.fieldValueMuted}>{t("tenant_ticket_detail.asset_loading")}</Text>
@@ -732,7 +639,7 @@ const TenantTicketDetailScreen = ({ navigation, route }: Props) => {
                   <Text style={styles.fieldValueMuted} selectable>
                     {t("tenant_ticket_detail.no_slot")}
                   </Text>
-                ) : workSlotLoading ? (
+                ) : detailBusy ? (
                   <View style={styles.assetLoadingRow}>
                     <RefreshLogoInline logoPx={18} />
                     <Text style={styles.fieldValueMuted}>{t("common.loading")}</Text>
@@ -761,20 +668,20 @@ const TenantTicketDetailScreen = ({ navigation, route }: Props) => {
               title={t("ticket.images_label")}
               headerIcon={<Icons.photoLibrary size={22} color={brandPrimary} />}
             >
-              {imagesLoading ? (
+              {detailBusy ? (
                 <View style={styles.assetLoadingRow}>
                   <RefreshLogoInline logoPx={18} />
                   <Text style={styles.fieldValueMuted}>{t("common.loading")}</Text>
                 </View>
-              ) : ticketImages.length > 0 ? (
-                ticketImages.length === 1 ? (
+              ) : ticketImagesList.length > 0 ? (
+                ticketImagesList.length === 1 ? (
                   <TouchableOpacity
                     style={styles.ticketImageThumbFull}
                     activeOpacity={0.85}
                     onPress={() => setActiveImageIndex(0)}
                   >
                     <Image
-                      source={{ uri: ticketImages[0]!.url }}
+                      source={{ uri: ticketImagesList[0]!.url }}
                       style={styles.ticketImage}
                       resizeMode="cover"
                     />
@@ -786,7 +693,7 @@ const TenantTicketDetailScreen = ({ navigation, route }: Props) => {
                     style={styles.ticketImagesScroll}
                     contentContainerStyle={styles.ticketImagesStrip}
                   >
-                    {ticketImages.map((img, index) => (
+                    {ticketImagesList.map((img, index) => (
                       <TouchableOpacity
                         key={img.id}
                         style={[styles.ticketImageThumb, styles.ticketImageThumbHorizontal]}
@@ -813,7 +720,7 @@ const TenantTicketDetailScreen = ({ navigation, route }: Props) => {
                 {t("tenant_ticket_detail.quote_awaiting_tenant_intro")}
               </Text>
             ) : null}
-            {quotesLoading ? (
+            {detailBusy ? (
               <View style={styles.assetLoadingRow}>
                 <RefreshLogoInline logoPx={18} />
                 <Text style={styles.fieldValueMuted}>{t("common.loading")}</Text>
@@ -875,7 +782,7 @@ const TenantTicketDetailScreen = ({ navigation, route }: Props) => {
             title={t("tenant_ticket_detail.section_payment")}
             headerIcon={<Icons.invoice size={22} color={brandPrimary} />}
           >
-            {quotesLoading ? (
+            {detailBusy ? (
               <View style={styles.assetLoadingRow}>
                 <RefreshLogoInline logoPx={18} />
                 <Text style={styles.fieldValueMuted}>{t("common.loading")}</Text>
@@ -987,10 +894,10 @@ const TenantTicketDetailScreen = ({ navigation, route }: Props) => {
             >
               <Text style={styles.imageModalCloseText}>×</Text>
             </TouchableOpacity>
-            {activeImageIndex !== null && ticketImages.length > 0 ? (
+            {activeImageIndex !== null && ticketImagesList.length > 0 ? (
               <FlatList
                 ref={imageModalListRef}
-                data={ticketImages}
+                data={ticketImagesList}
                 horizontal
                 pagingEnabled
                 showsHorizontalScrollIndicator={false}

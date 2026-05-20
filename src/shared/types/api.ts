@@ -794,10 +794,61 @@ export type QuoteStatus =
 /** Alias giữ tương thích ngược cho các chỗ cũ đang dùng tên TenantTicketStatus. */
 export type TenantTicketStatus = IssueStatus;
 
-/** Một ticket do tenant gửi (danh sách / chi tiết sau này). */
+/** Ảnh đính kèm ticket — embed trong GET /issues/tickets/tenant hoặc GET .../images. */
+export interface TenantTicketImageFromApi {
+  id: string;
+  url: string;
+  createdAt?: string | null;
+}
+
+/** User embed (tenant / staff) trong payload ticket. */
+export interface IssueTicketPartyFromApi {
+  id: string;
+  name?: string | null;
+  email?: string | null;
+  identityNumber?: string | null;
+  isEnabled?: boolean;
+  keycloakId?: string | null;
+  phoneNumber?: string | null;
+  roles?: string[];
+}
+
+/** Nhà embed trong ticket tenant (subset GET /houses). */
+export interface TenantTicketHouseEmbedFromApi {
+  id: string;
+  userRentalId?: string | null;
+  name?: string | null;
+  address?: string | null;
+  ward?: string | null;
+  commune?: string | null;
+  city?: string | null;
+  description?: string | null;
+  status?: string | null;
+  regionId?: string | null;
+}
+
+/** Thiết bị embed trong ticket tenant (subset GET /asset/items). */
+export interface TenantTicketAssetEmbedFromApi {
+  id: string;
+  houseId?: string | null;
+  displayName?: string | null;
+  serialNumber?: string | null;
+  nfcId?: string | null;
+  conditionPercent?: number | null;
+  status?: string | null;
+  category?: {
+    id: string;
+    name?: string | null;
+    compensationPercent?: number | null;
+    description?: string | null;
+  } | null;
+}
+
+/** Một ticket do tenant gửi (GET /issues/tickets/tenant và GET /issues/tickets/:id). */
 export interface TenantTicketFromApi {
   id: string;
   tenantId: string;
+  tenantPhone?: string | null;
   houseId: string;
   assetId: string;
   assignedStaffId: string | null;
@@ -806,17 +857,14 @@ export interface TenantTicketFromApi {
    * Thiếu trường → UI coi là tiêu chuẩn.
    */
   priority?: string | null;
-  /**
-   * Tên nhân viên phụ trách (BE có thể trả ở endpoint ticket-by-id).
-   * Nếu endpoint danh sách không có, có thể null/undefined.
-   */
+  /** Tên nhân viên phụ trách (flat hoặc suy từ `assignedStaff`). */
   staffName?: string | null;
-  /**
-   * Số điện thoại nhân viên phụ trách (BE có thể trả ở endpoint ticket-by-id).
-   * Nếu endpoint danh sách không có, có thể null/undefined.
-   */
+  /** SĐT nhân viên phụ trách (flat hoặc suy từ `assignedStaff.phoneNumber`). */
   staffPhone?: string | null;
   slotId: string | null;
+  /** Khung giờ ca làm (embed từ work slot — GET /issues/tickets/tenant). */
+  startTime?: string | null;
+  endTime?: string | null;
   type: string;
   status: IssueStatus;
   quoteStatus?: QuoteStatus | null;
@@ -825,6 +873,18 @@ export interface TenantTicketFromApi {
   localizedDescription?: string | null;
   description: string;
   createdAt: string;
+  images?: TenantTicketImageFromApi[];
+  tenant?: IssueTicketPartyFromApi | null;
+  assignedStaff?: IssueTicketPartyFromApi | null;
+  house?: TenantTicketHouseEmbedFromApi | null;
+  asset?: TenantTicketAssetEmbedFromApi | null;
+  /** Báo giá mới nhất embed — tránh GET /issues/quotes/ticket/:id khi đã có. */
+  quote?: IssueQuoteFromApi | null;
+  /**
+   * Phản hồi staff mới nhất cho ticket QUESTION — BE nhúng trong GET ticket by id
+   * (thay gọi GET /issues/responses trên màn chi tiết).
+   */
+  latestTicketResponse?: IssueTicketResponseFromApi | null;
 }
 
 // =========================================================
@@ -897,7 +957,7 @@ export interface IssueQuoteItemFromApi {
   cost?: number | null;
 }
 
-/** Một quote cho một ticket (GET /api/issues/quotes/ticket/:ticketId) */
+/** Một quote cho một ticket (GET /api/issues/quotes/ticket/:ticketId hoặc embed ticket). */
 export interface IssueQuoteFromApi {
   id: string;
   issueId: string;
@@ -905,6 +965,7 @@ export interface IssueQuoteFromApi {
   assetId?: string | null;
   tenantId?: string | null;
   totalPrice: number;
+  isTenantFault?: boolean | null;
   status: QuoteStatus | string;
   items: IssueQuoteItemFromApi[];
   createdAt?: string | null;
