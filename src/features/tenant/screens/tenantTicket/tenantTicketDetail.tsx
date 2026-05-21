@@ -20,9 +20,9 @@ import { CustomAlert as Alert } from "../../../../shared/components/alert";
 import type { IssueQuoteFromApi } from "../../../../shared/types/api";
 import {
   confirmIssueQuoteStatus,
+  getIssueQuotesByTicket,
   getTenantTicketAssetDisplayName,
   getTenantTicketById,
-  getTenantTicketEmbeddedQuotes,
   type TenantTicketImageFromApi,
 } from "../../../../shared/services/issuesApi";
 import { useTenantInvoices } from "../../../../shared/hooks";
@@ -58,17 +58,33 @@ function TicketDetailSection({
   title,
   headerIcon,
   children,
+  onHeaderPress,
+  headerRight,
 }: {
   title: string;
   headerIcon: React.ReactNode;
   children: React.ReactNode;
+  /** Khi cung cấp, toàn bộ hàng header trở thành vùng nhấn (dùng cho mục báo giá có thể thu/mở). */
+  onHeaderPress?: () => void;
+  /** Slot bên phải tiêu đề, ví dụ mũi tên chevron cho mục có thể thu/mở. */
+  headerRight?: React.ReactNode;
 }) {
+  const headerContent = (
+    <View style={styles.detailCardHeaderRow}>
+      {headerIcon}
+      <Text style={styles.detailCardHeaderLabel}>{title}</Text>
+      {headerRight}
+    </View>
+  );
   return (
     <View style={styles.detailCard}>
-      <View style={styles.detailCardHeaderRow}>
-        {headerIcon}
-        <Text style={styles.detailCardHeaderLabel}>{title}</Text>
-      </View>
+      {onHeaderPress ? (
+        <TouchableOpacity onPress={onHeaderPress} activeOpacity={0.7}>
+          {headerContent}
+        </TouchableOpacity>
+      ) : (
+        headerContent
+      )}
       {children}
     </View>
   );
@@ -125,6 +141,16 @@ const TenantTicketDetailScreen = ({ navigation, route }: Props) => {
   const [confirmQuoteError, setConfirmQuoteError] = useState<string | null>(null);
   const [payRepairLoading, setPayRepairLoading] = useState(false);
 
+  /**
+   * Trạng thái mục báo giá có thể thu/mở.
+   * Báo giá được fetch theo yêu cầu khi người dùng bấm mở lần đầu — BE không embed trong GET ticket by id.
+   * fetchedQuotes: null = chưa fetch; [] = fetch xong nhưng không có báo giá; [...] = có dữ liệu.
+   */
+  const [quoteExpanded, setQuoteExpanded] = useState(false);
+  const [quoteFetchLoading, setQuoteFetchLoading] = useState(false);
+  const [quoteFetchError, setQuoteFetchError] = useState<string | null>(null);
+  const [fetchedQuotes, setFetchedQuotes] = useState<IssueQuoteFromApi[] | null>(null);
+
   const isQuestionTicket = useMemo(
     () => String(ticket?.type ?? "").toUpperCase() === "QUESTION",
     [ticket?.type]
@@ -136,8 +162,6 @@ const TenantTicketDetailScreen = ({ navigation, route }: Props) => {
     () => getTenantTicketAssetDisplayName(ticket),
     [ticket]
   );
-
-  const quotes = useMemo(() => getTenantTicketEmbeddedQuotes(ticket), [ticket]);
 
   const questionResponse = ticket.latestTicketResponse ?? null;
 
@@ -207,6 +231,9 @@ const TenantTicketDetailScreen = ({ navigation, route }: Props) => {
     const phase = hasLoadedOnceRef.current ? "refresh" : "first_open";
     if (hasLoadedOnceRef.current) {
       setDetailRefreshing(true);
+      // Khi kéo refresh: đóng mục báo giá + xóa cache để lần mở tiếp sẽ fetch lại
+      setQuoteExpanded(false);
+      setFetchedQuotes(null);
     } else {
       setTicketDetailLoading(true);
     }
@@ -255,18 +282,37 @@ const TenantTicketDetailScreen = ({ navigation, route }: Props) => {
     return () => clearTimeout(timer);
   }, [activeImageIndex, ticketImagesList]);
 
-  const activeQuote = useMemo(() => {
-    if (!quotes?.length) return null;
-    const waiting = quotes.find((q) => quoteAwaitingTenantConfirm(q));
-    return waiting ?? quotes[0] ?? null;
-  }, [quotes]);
+  /**
+   * Báo giá cần tenant duyệt (từ fetchedQuotes).
+   * Ưu tiên quote đang ở trạng thái WAITING_TENANT_APPROVAL*; nếu không có thì lấy quote đầu tiên.
+   */
+  const activeQuoteFromFetch = useMemo(() => {
+    if (!fetchedQuotes?.length) return null;
+    const waiting = fetchedQuotes.find((q) => quoteAwaitingTenantConfirm(q));
+    return waiting ?? fetchedQuotes[0] ?? null;
+  }, [fetchedQuotes]);
 
-  /** Báo giá đã duyệt — hiển thị kèm nút thanh toán (WAITING_PAYMENT). */
-  const paymentQuote = useMemo(() => {
-    if (!quotes?.length) return null;
-    const approved = quotes.find((q) => normalizeIssueStatus(q.status) === "APPROVED");
-    return approved ?? quotes[0] ?? null;
-  }, [quotes]);
+  /**
+   * Báo giá đã duyệt (APPROVED) dùng cho luồng thanh toán — từ fetchedQuotes.
+   */
+  const paymentQuoteFromFetch = useMemo(() => {
+    if (!fetchedQuotes?.length) return null;
+    const approved = fetchedQuotes.find((q) => normalizeIssueStatus(q.status) === "APPROVED");
+    return approved ?? fetchedQuotes[0] ?? null;
+  }, [fetchedQuotes]);
+
+  /**
+   * Quote hiển thị trong mục thu/mở — chọn theo trạng thái ticket:
+   * - Đang chờ duyệt → activeQuoteFromFetch
+   * - Đang chờ thanh toán → paymentQuoteFromFetch
+   * - Trạng thái khác (DONE, CLOSED…) → quote đầu tiên để xem thông tin
+   */
+  const quoteToDisplay = useMemo(() => {
+    if (!fetchedQuotes?.length) return null;
+    if (ticketNeedsTenantQuoteConfirm(ticket.status)) return activeQuoteFromFetch ?? fetchedQuotes[0] ?? null;
+    if (normalizeIssueStatus(ticket.status) === "WAITING_PAYMENT") return paymentQuoteFromFetch ?? fetchedQuotes[0] ?? null;
+    return fetchedQuotes[0] ?? null;
+  }, [fetchedQuotes, ticket.status, activeQuoteFromFetch, paymentQuoteFromFetch]);
 
   const formatMoney = useCallback(
     (v: number) => formatVndDisplay(v, locale, t),
@@ -274,21 +320,23 @@ const TenantTicketDetailScreen = ({ navigation, route }: Props) => {
   );
 
   /**
-   * Báo giá dùng cho khối «đã thanh toán» — ưu tiên APPROVED; không có thì quote mới nhất theo `createdAt`.
+   * Báo giá dùng cho khối «đã thanh toán» — từ fetchedQuotes.
+   * Ưu tiên APPROVED; không có thì quote mới nhất theo createdAt.
+   * Trả null nếu chưa fetch (phần invoice sẽ dùng fallback title từ ticket).
    */
   const quoteForPaidRepairDisplay = useMemo(() => {
-    if (!quotes?.length) return null;
-    const approved = quotes.find((q) => normalizeIssueStatus(q.status) === "APPROVED");
+    if (!fetchedQuotes?.length) return null;
+    const approved = fetchedQuotes.find((q) => normalizeIssueStatus(q.status) === "APPROVED");
     if (approved) return approved;
     return (
-      [...quotes].sort((a, b) => {
+      [...fetchedQuotes].sort((a, b) => {
         const ta = new Date(a.createdAt ?? 0).getTime();
         const tb = new Date(b.createdAt ?? 0).getTime();
         if (tb !== ta) return tb - ta;
         return String(a.id).localeCompare(String(b.id));
       })[0] ?? null
     );
-  }, [quotes]);
+  }, [fetchedQuotes]);
 
   /** Nội dung thanh toán: theo API báo giá ticket (không dùng tiêu đề hóa đơn — tránh nhầm tiền thuê). */
   const repairPaymentContentLabel = useMemo(() => {
@@ -309,14 +357,18 @@ const TenantTicketDetailScreen = ({ navigation, route }: Props) => {
     return `${heading}\n${itemsLine}${totalSuffix}`;
   }, [quoteForPaidRepairDisplay, t, formatMoney]);
 
+  /**
+   * Xác nhận báo giá — dùng quoteId lấy từ fetchedQuotes (activeQuoteFromFetch).
+   * Sau khi xác nhận thành công: refresh ticket, điều hướng về danh sách, hiện alert.
+   */
   const handleConfirmQuote = useCallback(async () => {
-    if (!activeQuote?.id) return;
+    if (!activeQuoteFromFetch?.id) return;
     if (confirmQuoteLoading) return;
 
     setConfirmQuoteError(null);
     setConfirmQuoteLoading(true);
     try {
-      await confirmIssueQuoteStatus(activeQuote.id);
+      await confirmIssueQuoteStatus(activeQuoteFromFetch.id);
       await refreshTicket();
       navigation.navigate("TenantTicketList");
       Alert.alert(
@@ -331,12 +383,16 @@ const TenantTicketDetailScreen = ({ navigation, route }: Props) => {
     } finally {
       setConfirmQuoteLoading(false);
     }
-  }, [activeQuote?.id, confirmQuoteLoading, navigation, refreshTicket, t]);
+  }, [activeQuoteFromFetch?.id, confirmQuoteLoading, navigation, refreshTicket, t]);
 
-  /** Ưu tiên `quoteId` (báo giá đã duyệt); không có thì hóa đơn sửa chữa / danh sách. */
+  /**
+   * Thanh toán báo giá sửa chữa.
+   * Ưu tiên quoteId từ fetchedQuotes (paymentQuoteFromFetch) để tạo link VNPay.
+   * Không có quoteId → fallback hóa đơn sửa chữa hoặc danh sách hóa đơn.
+   */
   const handlePayRepair = useCallback(async () => {
     if (payRepairLoading) return;
-    const qid = String(paymentQuote?.id ?? "").trim();
+    const qid = String(paymentQuoteFromFetch?.id ?? "").trim();
     if (qid) {
       setPayRepairLoading(true);
       try {
@@ -365,13 +421,45 @@ const TenantTicketDetailScreen = ({ navigation, route }: Props) => {
     navigation.navigate("TenantInvoiceList", { issueTicketId: ticket.id });
   }, [
     payRepairLoading,
-    paymentQuote?.id,
+    paymentQuoteFromFetch?.id,
     i18n.language,
     navigation,
     ticket,
     linkedRepairInvoice,
     t,
   ]);
+
+  /**
+   * Fetch danh sách báo giá theo ticketId từ API (GET /issues/quotes/ticket/:id).
+   * Được gọi khi người dùng mở mục báo giá lần đầu, hoặc nhấn "Thử lại" sau lỗi.
+   */
+  const fetchQuotes = useCallback(async () => {
+    const id = String(ticket?.id ?? "").trim();
+    if (!id || quoteFetchLoading) return;
+    setQuoteFetchLoading(true);
+    setQuoteFetchError(null);
+    try {
+      const rows = await getIssueQuotesByTicket(id);
+      setFetchedQuotes(rows);
+    } catch {
+      setQuoteFetchError(t("tenant_ticket_detail.quote_fetch_error"));
+    } finally {
+      setQuoteFetchLoading(false);
+    }
+  }, [ticket?.id, quoteFetchLoading, t]);
+
+  /**
+   * Toggle mục báo giá có thể thu/mở.
+   * Lần đầu mở: gọi fetchQuotes() để lấy dữ liệu từ API.
+   * Mở lại sau khi đã fetch: dùng cache (fetchedQuotes không reset).
+   */
+  const handleToggleQuoteSection = useCallback(() => {
+    const willOpen = !quoteExpanded;
+    setQuoteExpanded(willOpen);
+    if (!willOpen) return;
+    if (fetchedQuotes !== null) return;
+    void fetchQuotes();
+  }, [quoteExpanded, fetchedQuotes, fetchQuotes]);
 
   const statusLabel = (status: string) => {
     const normalized = normalizeIssueStatus(status);
@@ -710,134 +798,124 @@ const TenantTicketDetailScreen = ({ navigation, route }: Props) => {
               )}
             </TicketDetailSection>
 
-            {ticketNeedsTenantQuoteConfirm(ticket.status) && (
-          <TicketDetailSection
-            title={t("tenant_ticket_detail.section_quote")}
-            headerIcon={<Icons.invoice size={22} color={brandPrimary} />}
-          >
-            {normalizeIssueStatus(ticket.status) === "WAITING_TENANT_APPROVAL_QUOTE" ? (
-              <Text style={styles.quoteAwaitingTenantIntro}>
-                {t("tenant_ticket_detail.quote_awaiting_tenant_intro")}
-              </Text>
-            ) : null}
-            {detailBusy ? (
-              <View style={styles.assetLoadingRow}>
-                <RefreshLogoInline logoPx={18} />
-                <Text style={styles.fieldValueMuted}>{t("common.loading")}</Text>
-              </View>
-            ) : activeQuote?.id ? (
-              <>
-                {Array.isArray(activeQuote.items) && activeQuote.items.length > 0 ? (
-                  <>
-                    {activeQuote.items.map((it) => (
-                      <View key={it.id} style={styles.paymentLineRow}>
-                        <Text style={styles.paymentLineName} numberOfLines={2}>
-                          {it.itemName}
-                        </Text>
-                        <Text style={styles.paymentLinePrice}>{formatMoney(it.price)}</Text>
-                      </View>
-                    ))}
-                    <View style={styles.paymentDivider} />
-                    <View style={styles.paymentTotalRow}>
-                      <Text style={styles.paymentTotalLabel}>
-                        {t("tenant_ticket_detail.quote_total_label")}
-                      </Text>
-                      <Text style={styles.paymentTotalValue}>{formatMoney(activeQuote.totalPrice)}</Text>
-                    </View>
-                  </>
-                ) : (
-                  <Text style={styles.fieldValueMuted}>{t("common.no_data")}</Text>
-                )}
-
-                {!!confirmQuoteError && (
-                  <Text style={styles.fieldValueMuted}>{confirmQuoteError}</Text>
-                )}
-
-                <TouchableOpacity
-                  style={[
-                    styles.confirmQuoteBtn,
-                    (confirmQuoteLoading || !activeQuote?.id) && { opacity: 0.72 },
-                  ]}
-                  onPress={handleConfirmQuote}
-                  disabled={confirmQuoteLoading || !activeQuote?.id}
-                  activeOpacity={0.8}
-                >
-                  {confirmQuoteLoading ? (
-                    <RefreshLogoInline logoPx={18} />
-                  ) : (
-                    <Text style={styles.confirmQuoteBtnText}>
-                      {t("tenant_ticket_detail.confirm_quote_btn")}
-                    </Text>
-                  )}
-                </TouchableOpacity>
-              </>
-            ) : (
-              <Text style={styles.fieldValueMuted}>{t("common.no_data")}</Text>
-            )}
-          </TicketDetailSection>
-        )}
-
-        {normalizeIssueStatus(ticket.status) === "WAITING_PAYMENT" && (
-          <TicketDetailSection
-            title={t("tenant_ticket_detail.section_payment")}
-            headerIcon={<Icons.invoice size={22} color={brandPrimary} />}
-          >
-            {detailBusy ? (
-              <View style={styles.assetLoadingRow}>
-                <RefreshLogoInline logoPx={18} />
-                <Text style={styles.fieldValueMuted}>{t("common.loading")}</Text>
-              </View>
-            ) : paymentQuote?.items?.length ? (
-              <>
-                {paymentQuote.items.map((it) => (
-                  <View key={it.id} style={styles.paymentLineRow}>
-                    <Text style={styles.paymentLineName} numberOfLines={2}>
-                      {it.itemName}
-                    </Text>
-                    <Text style={styles.paymentLinePrice}>{formatMoney(it.price)}</Text>
+            {/* Mục báo giá có thể thu/mở — fetch theo yêu cầu khi người dùng bấm mở lần đầu */}
+            {!["CREATED", "CANCELLED"].includes(normalizeIssueStatus(ticket.status)) && (
+              <TicketDetailSection
+                title={t("tenant_ticket_detail.section_quote")}
+                headerIcon={<Icons.invoice size={22} color={brandPrimary} />}
+                onHeaderPress={handleToggleQuoteSection}
+                headerRight={
+                  <View style={{ transform: [{ rotate: quoteExpanded ? "180deg" : "0deg" }] }}>
+                    <Icons.chevronDown size={18} color={neutral.textMuted} />
                   </View>
-                ))}
-                <View style={styles.paymentDivider} />
-                <View style={styles.paymentTotalRow}>
-                  <Text style={styles.paymentTotalLabel}>
-                    {t("tenant_ticket_detail.quote_total_label")}
-                  </Text>
-                  <Text style={styles.paymentTotalValue}>{formatMoney(paymentQuote.totalPrice)}</Text>
-                </View>
-                <TouchableOpacity
-                  style={[styles.payNowBtn, payRepairLoading && { opacity: 0.72 }]}
-                  onPress={() => void handlePayRepair()}
-                  activeOpacity={0.8}
-                  disabled={payRepairLoading}
-                >
-                  {payRepairLoading ? (
-                    <RefreshLogoInline logoPx={18} />
-                  ) : (
-                    <Icons.wallet size={22} color={neutral.surface} />
-                  )}
-                  <Text style={styles.payNowBtnText}>{t("tenant_ticket_detail.pay_repair_btn")}</Text>
-                </TouchableOpacity>
-              </>
-            ) : (
-              <>
-                <Text style={styles.fieldValueMuted}>{t("tenant_ticket_detail.payment_quote_hint")}</Text>
-                <TouchableOpacity
-                  style={[styles.payNowBtn, payRepairLoading && { opacity: 0.72 }]}
-                  onPress={() => void handlePayRepair()}
-                  activeOpacity={0.8}
-                  disabled={payRepairLoading}
-                >
-                  {payRepairLoading ? (
-                    <RefreshLogoInline logoPx={18} />
-                  ) : (
-                    <Icons.wallet size={22} color={neutral.surface} />
-                  )}
-                  <Text style={styles.payNowBtnText}>{t("tenant_ticket_detail.pay_repair_btn")}</Text>
-                </TouchableOpacity>
-              </>
+                }
+              >
+                {quoteExpanded && (
+                  <View style={{ marginTop: 8 }}>
+                    {quoteFetchLoading ? (
+                      <View style={styles.assetLoadingRow}>
+                        <RefreshLogoInline logoPx={18} />
+                        <Text style={styles.fieldValueMuted}>{t("common.loading")}</Text>
+                      </View>
+                    ) : quoteFetchError ? (
+                      <>
+                        <Text style={styles.fieldValueMuted}>{quoteFetchError}</Text>
+                        <TouchableOpacity
+                          style={[styles.confirmQuoteBtn, quoteFetchLoading && { opacity: 0.72 }]}
+                          onPress={() => void fetchQuotes()}
+                          disabled={quoteFetchLoading}
+                          activeOpacity={0.8}
+                        >
+                          <Text style={styles.confirmQuoteBtnText}>{t("common.try_again")}</Text>
+                        </TouchableOpacity>
+                      </>
+                    ) : fetchedQuotes !== null ? (
+                      fetchedQuotes.length === 0 ? (
+                        <Text style={styles.fieldValueMuted}>{t("common.no_data")}</Text>
+                      ) : (
+                        <>
+                          {normalizeIssueStatus(ticket.status) === "WAITING_TENANT_APPROVAL_QUOTE" ? (
+                            <Text style={styles.quoteAwaitingTenantIntro}>
+                              {t("tenant_ticket_detail.quote_awaiting_tenant_intro")}
+                            </Text>
+                          ) : null}
+
+                          {/* Danh sách hạng mục báo giá */}
+                          {quoteToDisplay && Array.isArray(quoteToDisplay.items) && quoteToDisplay.items.length > 0 ? (
+                            <>
+                              {quoteToDisplay.items.map((it) => (
+                                <View key={it.id} style={styles.paymentLineRow}>
+                                  <Text style={styles.paymentLineName} numberOfLines={2}>
+                                    {it.itemName}
+                                  </Text>
+                                  <Text style={styles.paymentLinePrice}>{formatMoney(it.price)}</Text>
+                                </View>
+                              ))}
+                              <View style={styles.paymentDivider} />
+                              <View style={styles.paymentTotalRow}>
+                                <Text style={styles.paymentTotalLabel}>
+                                  {t("tenant_ticket_detail.quote_total_label")}
+                                </Text>
+                                <Text style={styles.paymentTotalValue}>
+                                  {formatMoney(quoteToDisplay.totalPrice)}
+                                </Text>
+                              </View>
+                            </>
+                          ) : (
+                            <Text style={styles.fieldValueMuted}>{t("common.no_data")}</Text>
+                          )}
+
+                          {/* Nút xác nhận báo giá — khi ticket đang chờ tenant duyệt */}
+                          {ticketNeedsTenantQuoteConfirm(ticket.status) && activeQuoteFromFetch?.id ? (
+                            <>
+                              {!!confirmQuoteError && (
+                                <Text style={styles.fieldValueMuted}>{confirmQuoteError}</Text>
+                              )}
+                              <TouchableOpacity
+                                style={[
+                                  styles.confirmQuoteBtn,
+                                  (confirmQuoteLoading || !activeQuoteFromFetch?.id) && { opacity: 0.72 },
+                                ]}
+                                onPress={handleConfirmQuote}
+                                disabled={confirmQuoteLoading || !activeQuoteFromFetch?.id}
+                                activeOpacity={0.8}
+                              >
+                                {confirmQuoteLoading ? (
+                                  <RefreshLogoInline logoPx={18} />
+                                ) : (
+                                  <Text style={styles.confirmQuoteBtnText}>
+                                    {t("tenant_ticket_detail.confirm_quote_btn")}
+                                  </Text>
+                                )}
+                              </TouchableOpacity>
+                            </>
+                          ) : null}
+
+                          {/* Nút thanh toán — khi ticket đang chờ thanh toán */}
+                          {normalizeIssueStatus(ticket.status) === "WAITING_PAYMENT" ? (
+                            <TouchableOpacity
+                              style={[styles.payNowBtn, payRepairLoading && { opacity: 0.72 }]}
+                              onPress={() => void handlePayRepair()}
+                              activeOpacity={0.8}
+                              disabled={payRepairLoading}
+                            >
+                              {payRepairLoading ? (
+                                <RefreshLogoInline logoPx={18} />
+                              ) : (
+                                <Icons.wallet size={22} color={neutral.surface} />
+                              )}
+                              <Text style={styles.payNowBtnText}>
+                                {t("tenant_ticket_detail.pay_repair_btn")}
+                              </Text>
+                            </TouchableOpacity>
+                          ) : null}
+                        </>
+                      )
+                    ) : null}
+                  </View>
+                )}
+              </TicketDetailSection>
             )}
-          </TicketDetailSection>
-        )}
 
         {linkedRepairInvoice ? (
           <TicketDetailSection

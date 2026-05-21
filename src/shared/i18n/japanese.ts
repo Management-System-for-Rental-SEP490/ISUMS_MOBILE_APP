@@ -172,6 +172,7 @@ export default {
         "confirm_quote_btn": "承認",
         "confirm_quote_loading": "承認中…",
         "confirm_quote_error": "見積の承認に失敗しました。もう一度お試しください。",
+        "quote_fetch_error": "見積を読み込めませんでした。もう一度お試しください。",
         "confirm_quote_success_title": "承認に成功しました",
         "confirm_quote_success_message": "見積を正常に承認しました。",
         "field_device": "デバイス",

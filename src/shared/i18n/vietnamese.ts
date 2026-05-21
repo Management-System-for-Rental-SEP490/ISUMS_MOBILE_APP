@@ -172,6 +172,7 @@ export default {
         "confirm_quote_btn": "Xác nhận",
         "confirm_quote_loading": "Đang xác nhận...",
         "confirm_quote_error": "Xác nhận báo giá thất bại. Vui lòng thử lại.",
+        "quote_fetch_error": "Không tải được báo giá. Vui lòng thử lại.",
         "confirm_quote_success_title": "Xác nhận thành công",
         "confirm_quote_success_message": "Bạn đã xác nhận báo giá thành công.",
         "field_device": "Thiết bị",

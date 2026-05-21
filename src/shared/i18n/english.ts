@@ -172,6 +172,7 @@ export default {
         "confirm_quote_btn": "Confirm",
         "confirm_quote_loading": "Confirming…",
         "confirm_quote_error": "Could not confirm quote. Please try again.",
+        "quote_fetch_error": "Could not load quote. Please try again.",
         "confirm_quote_success_title": "Confirmed",
         "confirm_quote_success_message": "You have confirmed the quote successfully.",
         "field_device": "Device",
