@@ -564,6 +564,7 @@ export default {
         "e_contract_status_IN_PROGRESS": "In progress",
         "e_contract_status_COMPLETED": "Completed",
         "e_contract_status_PENDING_TERMINATION": "Pending termination",
+        "e_contract_status_REPLACED_AFTER_DEPOSIT": "Replaced after deposit",
         "e_contract_section_detail": "Details",
         "e_contract_validity_caption": "Lease period",
         "e_contract_house_caption": "Property",
