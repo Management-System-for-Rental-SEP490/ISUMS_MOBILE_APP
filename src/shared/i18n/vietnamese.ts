@@ -745,6 +745,9 @@ export default {
                 "Tài khoản bị hạn chế do chưa thanh toán tiền cọc hoặc tiền thuê. Vui lòng thanh toán trong mục Hóa đơn."
         },
         "house_detail": {
+            "area_subtitle": "Chọn khu vực để xem thiết bị của khu vực đó",
+            "images_label": "Ảnh căn nhà",
+            "devices_dropdown_summary": "Danh mục thiết bị",
             "set_main_house": "Đặt làm nhà chính",
             "main_house_saved": "Đã cập nhật nhà chính thành căn này.",
             "main_house_current_label": "Nhà chính",
@@ -872,8 +875,9 @@ export default {
         "main_house_pay_first_required_note": "Thanh toán nhà chính trước là bắt buộc.",
         "secondary_house_first_rent_activation_note":
             "Cần thanh toán tiền nhà tháng đầu để kích hoạt app đầy đủ chức năng của app.",
-        "chip_all": "Tất cả căn",
+        "chip_all": "Tất cả",
         "filter_by_house": "Theo căn nhà",
+        "filter_by_status": "Theo trạng thái",
         "empty_list": "Chưa có hóa đơn. Danh sách sẽ hiện khi API hóa đơn được nối.",
         "load_error": "Không tải được hóa đơn. Kiểm tra kết nối và thử lại.",
         "view_detail": "Chi tiết",
@@ -888,7 +892,8 @@ export default {
         "detail_menu_a11y": "Tuỳ chọn thêm",
         "fee_breakdown_title": "Chi tiết khoản phí",
         "issue_quote_section_title": "Báo giá chi tiết (ticket sửa chữa)",
-        "issue_quote_empty": "Chưa tải được báo giá. Mở ticket để xem đầy đủ.",
+        "issue_quote_empty": "Mở ticket để xem báo giá và chi tiết đầy đủ.",
+        "view_ticket_detail_btn": "Xem chi tiết ticket",
         "issue_quote_total_hint":
             "Tổng các hạng mục theo báo giá đã duyệt; tổng hóa đơn có thể gồm thêm phí/phạt.",
         "issue_quote_ticket_quote": "Ticket báo giá",

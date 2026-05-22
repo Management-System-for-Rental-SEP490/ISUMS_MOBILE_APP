@@ -225,14 +225,21 @@ export function isTenantInvoiceDueUrgent(
 }
 
 /** Sắp xếp theo căn (houseId), trong cùng căn: chưa thanh toán trước, rồi theo hạn. */
+/**
+ * Sắp xếp hóa đơn để hiển thị:
+ * 1. Chưa thanh toán lên đầu (toàn cục, không phân biệt nhà).
+ * 2. Trong cùng nhóm trạng thái: sort theo houseId.
+ * 3. Trong cùng nhà: sort theo dueDate tăng dần (hạn sớm nhất lên trước).
+ * 4. Cuối cùng: sort theo id để đảm bảo thứ tự ổn định.
+ */
 export function sortTenantInvoicesForDisplay(items: TenantInvoiceFromApi[]): TenantInvoiceFromApi[] {
   return [...items].sort((a, b) => {
-    const ha = String(a.houseId ?? "");
-    const hb = String(b.houseId ?? "");
-    if (ha !== hb) return ha.localeCompare(hb);
     const ap = isTenantInvoicePayable(a.status) ? 0 : 1;
     const bp = isTenantInvoicePayable(b.status) ? 0 : 1;
     if (ap !== bp) return ap - bp;
+    const ha = String(a.houseId ?? "");
+    const hb = String(b.houseId ?? "");
+    if (ha !== hb) return ha.localeCompare(hb);
     const da = a.dueDate ? new Date(a.dueDate).getTime() : 0;
     const db = b.dueDate ? new Date(b.dueDate).getTime() : 0;
     if (da !== db) return da - db;

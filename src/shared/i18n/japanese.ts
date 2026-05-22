@@ -744,6 +744,9 @@ export default {
                 "敷金または家賃が未払いのため利用が制限されています。請求一覧からお支払いください。"
         },
         "house_detail": {
+            "area_subtitle": "エリアを選ぶと、そのゾーンの設備を表示します",
+            "images_label": "物件の写真",
+            "devices_dropdown_summary": "設備カテゴリ",
             "set_main_house": "メインの家に設定",
             "main_house_saved": "この物件をメインの家に設定しました。",
             "main_house_current_label": "メインの家",
@@ -871,8 +874,9 @@ export default {
         "main_house_pay_first_required_note": "メイン物件のお支払いを先に完了する必要があります。",
         "secondary_house_first_rent_activation_note":
             "初月家賃をお支払いいただくと、アプリの全機能をご利用いただけます。",
-        "chip_all": "すべての物件",
+        "chip_all": "すべて",
         "filter_by_house": "物件で絞り込む",
+        "filter_by_status": "ステータスで絞り込む",
         "empty_list": "請求書はまだありません。API連携後に表示されます。",
         "load_error": "読み込みに失敗しました。接続を確認して再試行してください。",
         "view_detail": "詳細",
@@ -887,7 +891,8 @@ export default {
         "detail_menu_a11y": "その他",
         "fee_breakdown_title": "料金内訳",
         "issue_quote_section_title": "修繕見積もり（チケット）",
-        "issue_quote_empty": "見積もりを読み込めませんでした。チケットで詳細を確認してください。",
+        "issue_quote_empty": "チケットを開いて見積もりと詳細を確認してください。",
+        "view_ticket_detail_btn": "チケット詳細を見る",
         "issue_quote_total_hint":
             "承認済み見積の内訳の合計です。請求総額には手数料・違約金が含まれる場合があります。",
         "issue_quote_ticket_quote": "見積チケット",

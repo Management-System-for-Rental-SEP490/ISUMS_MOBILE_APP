@@ -12,6 +12,7 @@ import {
   useWindowDimensions,
   Linking,
   Animated,
+  InteractionManager,
 } from "react-native";
 import InAppPaymentWebView from "../../../../shared/components/InAppPaymentWebView";
 import { useAuthStore } from "../../../../store/useAuthStore";
@@ -526,21 +527,6 @@ const HomeScreen = ({ navigation }: HomeScreenProps) => {
     }
   }, [hasAnyTenantHouse, i18n.language]);
 
-  useFocusEffect(
-    useCallback(() => {
-      void loadQuestionTicker();
-      // Coming back from the VNPay WebView (or a deep-link payment return)
-      // we need fresh tier — invalidate so the badge in the header strip
-      // flips to PREMIUM as soon as the BE Kafka listener has processed
-      // the subscription-activated event.
-      queryClient.invalidateQueries({ queryKey: ["notif", "subscription"] });
-    }, [loadQuestionTicker, queryClient])
-  );
-
-  useEffect(() => {
-    void loadQuestionTicker();
-  }, [loadQuestionTicker]);
-
   // Marketplace fetch: AVAILABLE + DEPOSIT_BOOKABLE houses for the home banner.
   // Run on first mount and on focus so the list refreshes when tenant comes
   // back from BuildingDetail / UserContractDetail. Failures degrade silently
@@ -557,10 +543,29 @@ const HomeScreen = ({ navigation }: HomeScreenProps) => {
     }
   }, []);
 
+  /**
+   * useFocusEffect duy nhất xử lý cả mount và focus-back:
+   * - Subscription invalidate: chạy ngay (không defer) để badge header cập nhật tier nhanh nhất.
+   * - Question ticker + Marketplace: defer qua InteractionManager — không cạnh tranh băng thông
+   *   với các query chính (useUserProfile, useTenantHouses, useTenantInvoices…) khi first paint.
+   *   useEffect riêng cho loadQuestionTicker đã bị gỡ vì useFocusEffect đã bao phủ cả mount.
+   */
   useFocusEffect(
     useCallback(() => {
-      void loadMarketplaceHouses();
-    }, [loadMarketplaceHouses]),
+      // Coming back from the VNPay WebView (or a deep-link payment return)
+      // we need fresh tier — invalidate so the badge in the header strip
+      // flips to PREMIUM as soon as the BE Kafka listener has processed
+      // the subscription-activated event.
+      queryClient.invalidateQueries({ queryKey: ["notif", "subscription"] });
+
+      // Defer non-critical fetches after UI interactions settle — first paint
+      // của Home không cần ticker hay marketplace để hiển thị.
+      const task = InteractionManager.runAfterInteractions(() => {
+        void loadQuestionTicker();
+        void loadMarketplaceHouses();
+      });
+      return () => task.cancel();
+    }, [loadQuestionTicker, loadMarketplaceHouses, queryClient])
   );
 
   const zoneLabelForQuestionTicket = useCallback(
@@ -582,18 +587,16 @@ const HomeScreen = ({ navigation }: HomeScreenProps) => {
     [rootNavigation, zoneLabelForQuestionTicket]
   );
 
-  /** Hóa đơn cần thanh toán trên toàn bộ căn tenant đang có (dải header + tổng mở). */
-  const headerPayableInvoices = useMemo(() => {
-    const ids = new Set(
-      tenantHouses.map((h) => String(h.id ?? "").trim()).filter((id) => id.length > 0)
-    );
-    return invoiceList.filter((inv) => {
-      if (!isTenantInvoicePayable(inv.status)) return false;
-      const hid = String(inv.houseId ?? "").trim();
-      if (hid.length === 0) return true;
-      return ids.size === 0 || ids.has(hid);
-    });
-  }, [invoiceList, tenantHouses]);
+  /**
+   * Hóa đơn cần thanh toán dùng cho dải header — đồng bộ với trang danh sách hóa đơn.
+   * Không lọc theo căn (tenantHouses) vì danh sách hóa đơn cũng hiển thị toàn bộ;
+   * lọc houseId trước đây gây mâu thuẫn: hóa đơn UNPAID có houseId không nằm trong
+   * my-access vẫn xuất hiện trên list nhưng Home đếm = 0 → "Không có hóa đơn cần thanh toán".
+   */
+  const headerPayableInvoices = useMemo(
+    () => invoiceList.filter((inv) => isTenantInvoicePayable(inv.status)),
+    [invoiceList]
+  );
 
   const headerPayableCount = useMemo(
     () => headerPayableInvoices.length + TENANT_HOME_HEADER_PAYABLE_TICKET_PLACEHOLDER,

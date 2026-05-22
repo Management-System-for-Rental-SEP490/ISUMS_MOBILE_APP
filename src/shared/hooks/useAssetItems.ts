@@ -19,6 +19,8 @@ import type {
 export type UseAssetItemsParams = {
   houseId?: string;
   categoryId?: string | null;
+  /** `false` = không gọi API (vd. lazy-load khi mở dropdown trên màn chi tiết nhà). */
+  enabled?: boolean;
 };
 
 /**
@@ -45,7 +47,7 @@ export const IOT_DEVICE_KEYS = {
  */
 export const useAssetItems = (params: UseAssetItemsParams = {}) => {
   const { i18n } = useTranslation();
-  const { houseId, categoryId } = params;
+  const { houseId, categoryId, enabled = true } = params;
 
   const queryKey = houseId
     ? ([...ASSET_ITEM_KEYS.byHouse(houseId, categoryId), i18n.language] as const)
@@ -53,6 +55,7 @@ export const useAssetItems = (params: UseAssetItemsParams = {}) => {
 
   return useQuery<AssetItemsApiResponse, unknown, AssetItemsApiResponse>({
     queryKey,
+    enabled: enabled && (houseId ? Boolean(houseId) : true),
     queryFn: async () => {
       if (houseId) {
         const res = await getAssetItemsByHouseId(houseId);

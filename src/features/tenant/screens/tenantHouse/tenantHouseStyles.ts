@@ -28,6 +28,24 @@ const tenantHouseStyles = StyleSheet.create({
     shadowRadius: 4,
     elevation: 3,
   },
+  houseImagesScroll: {
+    marginBottom: 12,
+  },
+  houseImagesContent: {
+    gap: 10,
+    paddingRight: 4,
+  },
+  houseImageThumb: {
+    width: 280,
+    height: 168,
+    borderRadius: 10,
+    backgroundColor: neutral.border,
+  },
+  houseImagesLabel: {
+    ...appTypography.labelRow,
+    color: neutral.textSecondary,
+    marginBottom: 8,
+  },
   houseName: {
     ...appTypography.cardTitle,
     color: neutral.text,

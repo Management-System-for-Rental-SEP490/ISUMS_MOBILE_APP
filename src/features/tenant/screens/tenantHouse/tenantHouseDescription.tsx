@@ -14,6 +14,8 @@ import {
   Platform,
   Keyboard,
   KeyboardAvoidingView,
+  Image,
+  ActivityIndicator,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useNavigation, useRoute, RouteProp } from "@react-navigation/native";
@@ -24,7 +26,7 @@ import * as WebBrowser from "expo-web-browser";
 import Icons from "../../../../shared/theme/icon";
 import { CustomAlert as Alert } from "../../../../shared/components/alert";
 import { RootStackParamList } from "../../../../shared/types";
-import type { HouseFromApi } from "../../../../shared/types/api";
+import type { HouseFromApi, UserProfileResponse } from "../../../../shared/types/api";
 import tenantHouseStyles from "./tenantHouseStyles";
 import { RefreshLogoInline } from "@shared/components/RefreshLogoOverlay";
 import homeStyles from "../tenantHome/homeStyles";
@@ -41,39 +43,29 @@ import {
 import { brandPrimary, brandSecondary, neutral } from "../../../../shared/theme/color";
 import { ExpandableLongText } from "../../../../shared/components/ExpandableLongText";
 import { DEFAULT_BE_SHORT_TEXT_MAX_CHARS, formatHouseStatusForDisplay } from "../../../../shared/utils";
+import { toAppLocaleCode } from "../../../../shared/utils/resolveLocalizedJsonString";
 import {
-  TENANT_INVOICES_QUERY_KEY,
-  useTenantHouses,
-  useTenantInvoices,
+  HOUSES_KEYS,
   useUpdateMainHouseMutation,
-  useUserProfile,
   useAssetItems,
   asAssetItemArray,
-  useAssetCategories,
-  useFunctionalAreasByHouseId,
   useHouseById,
+  USER_KEYS,
 } from "../../../../shared/hooks";
+import type { HousesApiResponse } from "../../../../shared/types/api";
 import { useAuthStore } from "../../../../store/useAuthStore";
 import {
   DropdownBox,
   type DropdownBoxSection,
 } from "../../../../shared/components/dropdownBox";
 import { FloorPlanView } from "../../houseStructure";
-import type {
-  AssetCategoryFromApi,
-  AssetItemFromApi,
-  FunctionalAreaFromApi,
-} from "../../../../shared/types/api";
+import type { AssetItemFromApi, FunctionalAreaFromApi } from "../../../../shared/types/api";
 import { normalizeAssetItemStatusFromApi } from "../../../../shared/types/api";
 import {
   DROPDOWN_SEARCH_TOP_INSET_PX,
   isFieldObscuredByKeyboard,
-  mergeFunctionalAreasForHouse,
   parentScrollOffsetForDropdownField,
 } from "../../../../shared/utils";
-import { tenantHouseHasUnpaidRentExcludingIssue } from "../../../../shared/utils/tenantInvoice";
-import { getMyEContracts } from "../../../../shared/services/econtractApi";
-import type { TenantEContractFromApi } from "../../../../shared/types/api";
 
 type TenantHouseRouteProp = RouteProp<RootStackParamList, "BuildingDetail">;
 type TenantHouseNavProp = NativeStackNavigationProp<RootStackParamList, "BuildingDetail">;
@@ -103,13 +95,23 @@ const isTenantHouseStatusHighlighted = (status?: string) => {
   return u === "AVAILABLE" || u === "RENTED";
 };
 
+/** Tên danh mục từ object `category` embed trong GET items/house (không cần GET /categories). */
+function assetCategoryDisplayName(item: AssetItemFromApi): string {
+  const embedded = item.category?.name;
+  if (embedded != null && String(embedded).trim().length > 0) {
+    return String(embedded).trim();
+  }
+  return String(item.categoryId ?? "").trim();
+}
+
 const TenantHouseDescription = () => {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const insets = useSafeAreaInsets();
   const navigation = useNavigation<TenantHouseNavProp>();
   const route = useRoute<TenantHouseRouteProp>();
   const queryClient = useQueryClient();
   const { houseId, setHouseId } = useAuthStore();
+  const locale = toAppLocaleCode(i18n.language);
 
   const {
     buildingId,
@@ -121,21 +123,21 @@ const TenantHouseDescription = () => {
     city,
     status,
     functionalAreas: routeFunctionalAreas,
-    contractDocuments,
+    contractDocuments: routeContractDocuments,
     pendingInvoiceId,
     accessStatus: routeAccessStatus,
     accessReason: routeAccessReason,
     memberRole: routeMemberRole,
+    hasUnpaidInvoice: routeHasUnpaidInvoice,
   } = route.params;
 
-  const { data: housesData, refetch: refetchHouses } = useTenantHouses();
-  const tenantHouses: HouseFromApi[] = housesData?.data ?? [];
-  const accessHouse = useMemo(
-    () => tenantHouses.find((h) => h.id === buildingId) ?? null,
-    [tenantHouses, buildingId]
+  /** Duy nhất request khi vào màn: GET /api/houses/{id} (đã gồm functionalAreas, images, …). */
+  const { data: houseByIdRes, isLoading: houseDetailLoading } = useHouseById(
+    buildingId,
+    Boolean(buildingId)
   );
-  const { data: houseByIdRes } = useHouseById(buildingId, Boolean(buildingId));
   const detailHouse = houseByIdRes?.success ? houseByIdRes.data : null;
+
   const currentHouse = useMemo((): HouseFromApi => {
     const pick = (...values: Array<string | null | undefined>) => {
       for (const value of values) {
@@ -147,121 +149,85 @@ const TenantHouseDescription = () => {
 
     return {
       id: buildingId,
-      userRentalId: detailHouse?.userRentalId ?? accessHouse?.userRentalId ?? null,
-      regionId: detailHouse?.regionId ?? accessHouse?.regionId ?? null,
-      name: pick(detailHouse?.name, accessHouse?.name, buildingName),
-      address: pick(detailHouse?.address, accessHouse?.address, buildingAddress),
-      description: pick(detailHouse?.description, accessHouse?.description, description),
-      ward: pick(detailHouse?.ward, accessHouse?.ward, ward),
-      commune: pick(detailHouse?.commune, accessHouse?.commune, commune),
-      city: pick(detailHouse?.city, accessHouse?.city, city),
-      status: detailHouse?.status ?? accessHouse?.status ?? status,
-      functionalAreas:
-        detailHouse?.functionalAreas ??
-        accessHouse?.functionalAreas ??
-        routeFunctionalAreas ??
-        [],
-      contractDocuments:
-        accessHouse?.contractDocuments ??
-        detailHouse?.contractDocuments ??
-        contractDocuments,
-      hasUnpaidInvoice: accessHouse?.hasUnpaidInvoice ?? detailHouse?.hasUnpaidInvoice,
-      pendingInvoiceId:
-        accessHouse?.pendingInvoiceId ??
-        detailHouse?.pendingInvoiceId ??
-        pendingInvoiceId ??
-        null,
-      accessStatus: accessHouse?.accessStatus ?? detailHouse?.accessStatus ?? routeAccessStatus,
-      accessReason:
-        accessHouse?.accessReason ??
-        detailHouse?.accessReason ??
-        routeAccessReason ??
-        null,
-      memberRole: accessHouse?.memberRole ?? detailHouse?.memberRole ?? routeMemberRole,
+      userRentalId: detailHouse?.userRentalId ?? null,
+      regionId: detailHouse?.regionId ?? null,
+      name: pick(detailHouse?.name, buildingName),
+      address: pick(detailHouse?.address, buildingAddress),
+      description: pick(detailHouse?.description, description),
+      ward: pick(detailHouse?.ward, ward),
+      commune: pick(detailHouse?.commune, commune),
+      city: pick(detailHouse?.city, city),
+      status: detailHouse?.status ?? status,
+      functionalAreas: detailHouse?.functionalAreas ?? routeFunctionalAreas ?? [],
+      contractDocuments: detailHouse?.contractDocuments ?? routeContractDocuments,
+      hasUnpaidInvoice: detailHouse?.hasUnpaidInvoice ?? routeHasUnpaidInvoice,
+      pendingInvoiceId: detailHouse?.pendingInvoiceId ?? pendingInvoiceId ?? null,
+      accessStatus: detailHouse?.accessStatus ?? routeAccessStatus,
+      accessReason: detailHouse?.accessReason ?? routeAccessReason ?? null,
+      memberRole: detailHouse?.memberRole ?? routeMemberRole,
+      images: detailHouse?.images,
+      paymentRestricted: detailHouse?.paymentRestricted,
     };
   }, [
-    accessHouse,
     buildingAddress,
     buildingId,
     buildingName,
     city,
     commune,
-    contractDocuments,
     description,
     detailHouse,
     pendingInvoiceId,
     routeAccessReason,
     routeAccessStatus,
+    routeContractDocuments,
     routeFunctionalAreas,
+    routeHasUnpaidInvoice,
     routeMemberRole,
     status,
     ward,
   ]);
-  const { data: invoiceListRaw, isLoading: invoicesLoading, isFetched } = useTenantInvoices(true);
-  const invoiceListForBanner = invoiceListRaw ?? [];
-  const buildingIdStr = String(buildingId ?? "").trim();
+
+  const houseImages = useMemo(
+    () =>
+      (currentHouse.images ?? [])
+        .map((img) => ({ id: img.id, url: String(img.url ?? "").trim() }))
+        .filter((img) => img.url.length > 0),
+    [currentHouse.images]
+  );
+
   const showPaymentBanner = useMemo(() => {
-    if (!buildingIdStr) return false;
     const st = String(currentHouse.accessStatus ?? "").trim().toUpperCase();
     if (st === "PENDING_FIRST_RENT") return true;
-    if (isFetched && !invoicesLoading) {
-      return tenantHouseHasUnpaidRentExcludingIssue(invoiceListForBanner, buildingIdStr);
-    }
+    if (currentHouse.hasUnpaidInvoice === true) return true;
+    if (currentHouse.paymentRestricted === true) return true;
     return false;
-  }, [
-    buildingIdStr,
-    currentHouse.accessStatus,
-    isFetched,
-    invoicesLoading,
-    invoiceListForBanner,
-  ]);
-  const { data: userProfile, isPending: profilePending } = useUserProfile();
-  const profileMainHouseId = String(userProfile?.mainHouseId ?? "").trim();
-  const hasPersistedMainHouse = useMemo(
-    () =>
-      profileMainHouseId.length > 0 &&
-      tenantHouses.some((h) => h.id === profileMainHouseId),
-    [profileMainHouseId, tenantHouses]
-  );
+  }, [currentHouse.accessStatus, currentHouse.hasUnpaidInvoice, currentHouse.paymentRestricted]);
+
+  const profileMainHouseId = useMemo(() => {
+    const cached = queryClient.getQueryData<UserProfileResponse | null>(
+      USER_KEYS.profile()
+    );
+    return String(cached?.mainHouseId ?? "").trim();
+  }, [queryClient]);
 
   const updateMainHouseMutation = useUpdateMainHouseMutation();
   const mutateMainHouseAsync = updateMainHouseMutation.mutateAsync;
 
   const [houseModalVisible, setHouseModalVisible] = useState(false);
+  const [modalTenantHouses, setModalTenantHouses] = useState<HouseFromApi[]>([]);
   const [isSubmittingMainHouse, setIsSubmittingMainHouse] = useState(false);
-  // First COMPLETED contract on a house OTHER than the one being viewed.
-  // Used to gate the "Đổi sang nhà này" CTA — relocation only makes sense when
-  // the user has an active contract elsewhere they could move out of.
-  const [eligibleContractForRelocation, setEligibleContractForRelocation] =
-    useState<TenantEContractFromApi | null>(null);
+  const [pendingMainHouseId, setPendingMainHouseId] = useState<string | null>(null);
+  /** Chỉ bật GET /assets/items/house/{id} sau khi user mở dropdown thiết bị lần đầu. */
+  const [assetsFetchEnabled, setAssetsFetchEnabled] = useState(false);
 
   useEffect(() => {
-    let cancelled = false;
-    if (!buildingId) {
-      setEligibleContractForRelocation(null);
-      return () => {
-        cancelled = true;
-      };
-    }
-    (async () => {
-      try {
-        const rows = await getMyEContracts();
-        if (cancelled) return;
-        const eligible = rows.find((c) => {
-          const status = String(c.status ?? "").toUpperCase();
-          if (status !== "COMPLETED") return false;
-          return String(c.houseId ?? "") !== String(buildingId ?? "");
-        });
-        setEligibleContractForRelocation(eligible ?? null);
-      } catch {
-        if (!cancelled) setEligibleContractForRelocation(null);
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, [buildingId]);
-  const [pendingMainHouseId, setPendingMainHouseId] = useState<string | null>(null);
+    if (!houseModalVisible) return;
+    const cached = queryClient.getQueryData<HousesApiResponse>([
+      ...HOUSES_KEYS.tenant,
+      locale,
+    ]);
+    setModalTenantHouses(cached?.data ?? []);
+  }, [houseModalVisible, locale, queryClient]);
 
   const planScrollRef = useRef<ScrollView>(null);
   const deviceCategoryFilterYRef = useRef(0);
@@ -346,24 +312,21 @@ const TenantHouseDescription = () => {
 
   const onDeviceDropdownExpandedChange = useCallback(
     (open: boolean) => {
+      if (open && !assetsFetchEnabled) {
+        setAssetsFetchEnabled(true);
+      }
       if (!open) {
         setKeyboardExtraBottom(0);
         return;
       }
       scrollDeviceDropdownOpenIntoView();
     },
-    [scrollDeviceDropdownOpenIntoView]
+    [assetsFetchEnabled, scrollDeviceDropdownOpenIntoView]
   );
 
-  const houseForMerge = useMemo((): HouseFromApi | undefined => {
-    return currentHouse;
-  }, [currentHouse]);
-
-  const { data: functionalAreasRes } = useFunctionalAreasByHouseId(buildingId);
-
   const effectiveFunctionalAreas = useMemo((): FunctionalAreaFromApi[] => {
-    return mergeFunctionalAreasForHouse(houseForMerge, functionalAreasRes?.data);
-  }, [houseForMerge, functionalAreasRes?.data]);
+    return currentHouse.functionalAreas ?? [];
+  }, [currentHouse.functionalAreas]);
 
   const floorOptions = useMemo(() => {
     const fk = (a: FunctionalAreaFromApi) => String(a.floorNo ?? "").trim() || "1";
@@ -389,15 +352,12 @@ const TenantHouseDescription = () => {
   const {
     data: itemsData,
     isLoading: loadingItems,
-  } = useAssetItems({ houseId: buildingId });
+  } = useAssetItems({ houseId: buildingId, enabled: assetsFetchEnabled });
 
   const devices: AssetItemFromApi[] = useMemo(
     () => asAssetItemArray(itemsData?.data).filter((item) => item.houseId === buildingId),
     [itemsData?.data, buildingId]
   );
-
-  const { data: categoriesData } = useAssetCategories();
-  const categories: AssetCategoryFromApi[] = categoriesData?.data ?? [];
 
   const rawItemsByArea = useMemo(() => {
     if (selectedFunctionAreaId == null) return devices;
@@ -433,33 +393,26 @@ const TenantHouseDescription = () => {
         categoryName: string;
         items: AssetItemFromApi[];
       }[] = [];
-      for (const cat of categories) {
-        const groupItems = map.get(cat.id);
-        if (groupItems?.length) {
-          const sorted = [...groupItems].sort((a, b) =>
-            (a.displayName ?? "").localeCompare(b.displayName ?? "", undefined, {
-              sensitivity: "base",
-            })
-          );
-          result.push({ categoryId: cat.id, categoryName: cat.name, items: sorted });
-          map.delete(cat.id);
-        }
-      }
       for (const [categoryId, groupItems] of map) {
         const sorted = [...groupItems].sort((a, b) =>
           (a.displayName ?? "").localeCompare(b.displayName ?? "", undefined, {
             sensitivity: "base",
           })
         );
+        const sample = sorted[0];
         result.push({
           categoryId,
-          categoryName: t("staff_building_detail.category_other"),
+          categoryName: sample
+            ? assetCategoryDisplayName(sample)
+            : t("staff_building_detail.category_other"),
           items: sorted,
         });
       }
-      return result;
+      return result.sort((a, b) =>
+        a.categoryName.localeCompare(b.categoryName, undefined, { sensitivity: "base" })
+      );
     },
-    [categories, t]
+    [t]
   );
 
   const devicesByCategoryAll = useMemo(
@@ -525,13 +478,31 @@ const TenantHouseDescription = () => {
   }, [filteredDeviceRows, t]);
 
   const deviceDropdownSections = useMemo((): DropdownBoxSection[] | null => {
+    if (!assetsFetchEnabled) {
+      return [
+        {
+          id: "category",
+          title: t("dropdown_box.section_category"),
+          itemLayout: "chips",
+          items: [],
+          selectedId: selectedCategoryId,
+          showAllOption: true,
+        },
+      ];
+    }
     if (!categoryFilterSection) return null;
     return deviceFilterSection
       ? [categoryFilterSection, deviceFilterSection]
       : [categoryFilterSection];
-  }, [categoryFilterSection, deviceFilterSection]);
+  }, [
+    assetsFetchEnabled,
+    categoryFilterSection,
+    deviceFilterSection,
+    selectedCategoryId,
+    t,
+  ]);
 
-  const categoryFilterSummary = t("dropdown_box.compact_search_label");
+  const categoryFilterSummary = t("home.house_detail.devices_dropdown_summary");
 
   const handleCategoryDropdownSelect = useCallback(
     (_sectionId: string, itemId: string | null) => {
@@ -564,8 +535,17 @@ const TenantHouseDescription = () => {
 
   const isCurrentMainOnServer =
     profileMainHouseId.length > 0 && profileMainHouseId === buildingId;
-  const showSetMainButton =
-    !profilePending && tenantHouses.length > 0 && !isCurrentMainOnServer;
+  const showSetMainButton = !isCurrentMainOnServer;
+
+  const cachedTenantHousesForSwitch = useMemo(() => {
+    const cached = queryClient.getQueryData<HousesApiResponse>([
+      ...HOUSES_KEYS.tenant,
+      locale,
+    ]);
+    return cached?.data ?? [];
+  }, [houseModalVisible, locale, queryClient]);
+
+  const showSwitchHouseButton = cachedTenantHousesForSwitch.length > 1;
 
   const openPaymentForHouse = useCallback(() => {
     navigation.navigate("TenantInvoiceList");
@@ -595,13 +575,17 @@ const TenantHouseDescription = () => {
   const handlePickHouse = useCallback(
     async (selectedHouseId: string) => {
       if (!selectedHouseId || isSubmittingMainHouse) return;
-      const nextHouse = tenantHouses.find((h) => h.id === selectedHouseId);
+      const nextHouse = modalTenantHouses.find((h) => h.id === selectedHouseId);
       if (!nextHouse) return;
+
+      const hasPersistedMainHouse =
+        profileMainHouseId.length > 0 &&
+        modalTenantHouses.some((h) => h.id === profileMainHouseId);
 
       if (hasPersistedMainHouse) {
         setHouseId(selectedHouseId);
         setHouseModalVisible(false);
-        await queryClient.invalidateQueries({ queryKey: TENANT_INVOICES_QUERY_KEY });
+        setAssetsFetchEnabled(false);
         navigation.replace("BuildingDetail", houseFromApiToBuildingDetail(nextHouse));
         return;
       }
@@ -611,8 +595,7 @@ const TenantHouseDescription = () => {
         await mutateMainHouseAsync({ houseId: selectedHouseId });
         setHouseId(selectedHouseId);
         setHouseModalVisible(false);
-        await queryClient.invalidateQueries({ queryKey: TENANT_INVOICES_QUERY_KEY });
-        await refetchHouses();
+        setAssetsFetchEnabled(false);
         navigation.replace("BuildingDetail", houseFromApiToBuildingDetail(nextHouse));
       } catch {
         Alert.alert(
@@ -627,15 +610,13 @@ const TenantHouseDescription = () => {
       }
     },
     [
-      hasPersistedMainHouse,
       isSubmittingMainHouse,
+      modalTenantHouses,
       mutateMainHouseAsync,
       navigation,
-      queryClient,
-      refetchHouses,
+      profileMainHouseId,
       setHouseId,
       t,
-      tenantHouses,
     ]
   );
 
@@ -668,6 +649,34 @@ const TenantHouseDescription = () => {
     mutateMainHouseAsync,
     t,
   ]);
+
+  if (houseDetailLoading && !detailHouse) {
+    return (
+      <View style={[tenantHouseStyles.container, { justifyContent: "center", alignItems: "center" }]}>
+        <StackScreenTitleHeaderStrip>
+          <View style={stackScreenTitleRowStyle}>
+            <View style={stackScreenTitleSideSlotStyle}>
+              <TouchableOpacity
+                style={stackScreenTitleBackBtnOnBrand}
+                onPress={() => navigation.goBack()}
+                activeOpacity={0.7}
+              >
+                <Icons.chevronBack size={22} color={stackScreenTitleOnBrandIconColor} />
+              </TouchableOpacity>
+            </View>
+            <View style={stackScreenTitleCenterSlotStyle}>
+              <StackScreenTitleBadge numberOfLines={1}>
+                {t("home.house_detail_screen_title")}
+              </StackScreenTitleBadge>
+            </View>
+            <StackScreenTitleBarBalance />
+          </View>
+        </StackScreenTitleHeaderStrip>
+        <ActivityIndicator size="large" color={brandPrimary} />
+        <Text style={{ marginTop: 12, color: neutral.textSecondary }}>{t("common.loading")}</Text>
+      </View>
+    );
+  }
 
   return (
     <View style={tenantHouseStyles.container}>
@@ -716,6 +725,28 @@ const TenantHouseDescription = () => {
           automaticallyAdjustKeyboardInsets={Platform.OS === "ios"}
         >
         <View style={tenantHouseStyles.card}>
+          {houseImages.length > 0 ? (
+            <>
+              <Text style={tenantHouseStyles.houseImagesLabel}>
+                {t("home.house_detail.images_label")}
+              </Text>
+              <ScrollView
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                style={tenantHouseStyles.houseImagesScroll}
+                contentContainerStyle={tenantHouseStyles.houseImagesContent}
+              >
+                {houseImages.map((img) => (
+                  <Image
+                    key={img.id}
+                    source={{ uri: img.url }}
+                    style={tenantHouseStyles.houseImageThumb}
+                    resizeMode="cover"
+                  />
+                ))}
+              </ScrollView>
+            </>
+          ) : null}
           <Text style={tenantHouseStyles.houseName}>{currentHouse.name}</Text>
           <View style={tenantHouseStyles.houseRow}>
             <Text style={tenantHouseStyles.houseLabel}>{t("home.house_info.address")}</Text>
@@ -754,7 +785,7 @@ const TenantHouseDescription = () => {
           </View>
 
           <View style={tenantHouseStyles.actionsRow}>
-            {tenantHouses.length > 1 ? (
+            {showSwitchHouseButton ? (
               <TouchableOpacity
                 style={[homeStyles.switchHouseButton, { flex: 1 }]}
                 onPress={() => setHouseModalVisible(true)}
@@ -792,65 +823,16 @@ const TenantHouseDescription = () => {
           </View>
         </View>
 
-        {eligibleContractForRelocation ? (
-          <Pressable
-            onPress={() =>
-              navigation.navigate("UserContractDetail", {
-                contract: eligibleContractForRelocation,
-                relocationPrefillHouseId: buildingId,
-              })
-            }
-            style={({ pressed }) => [
-              tenantHouseStyles.relocateHereCard,
-              pressed && tenantHouseStyles.relocateHereCardPressed,
-            ]}
-          >
-            <View style={tenantHouseStyles.relocateHereIcon}>
-              <Icons.home size={20} color={neutral.surface} />
-            </View>
-            <View style={tenantHouseStyles.relocateHereTextCol}>
-              <Text style={tenantHouseStyles.relocateHereTitle}>
-                {t("home.house_detail.relocate_here_title")}
-              </Text>
-              <Text style={tenantHouseStyles.relocateHereSubtitle}>
-                {t("home.house_detail.relocate_here_subtitle")}
-              </Text>
-            </View>
-            <Icons.chevronForward size={20} color={neutral.surface} />
-          </Pressable>
-        ) : null}
-
         <View style={tenantHouseStyles.housePlanSectionWrap}>
           <View style={homeStyles.homeZoneCard}>
-            {deviceDropdownSections ? (
-              <View
-                ref={deviceCategoryFilterMeasureRef}
-                onLayout={(e) => {
-                  deviceCategoryFilterYRef.current = e.nativeEvent.layout.y;
-                }}
-              >
-                <DropdownBox
-                  sections={deviceDropdownSections}
-                  summary={categoryFilterSummary}
-                  onSelect={handleHouseDropdownSelect}
-                  style={{ marginTop: 0, marginHorizontal: 0, marginBottom: 14 }}
-                  keyboardVerticalOffset={insets.top + 56}
-                  onSearchInputFocus={scrollDeviceCategoryFilterIntoView}
-                  onSearchChange={setDeviceSearchQuery}
-                  searchAutoFocus={false}
-                  expandSignal={dropdownExpandSignal}
-                  onExpandedChange={onDeviceDropdownExpandedChange}
-                  triggerAccent
-                />
-              </View>
-            ) : null}
-
             <View style={homeStyles.areaSectionTopRow}>
               <View style={homeStyles.areaSectionTitles}>
                 <Text style={homeStyles.areaSectionTitle}>
                   {t("home.device_list.by_area_title")}
                 </Text>
-                <Text style={homeStyles.areaSectionSubtitle}>{t("home.area_subtitle")}</Text>
+                <Text style={homeStyles.areaSectionSubtitle}>
+                  {t("home.house_detail.area_subtitle")}
+                </Text>
               </View>
               <ScrollView
                 horizontal
@@ -896,19 +878,46 @@ const TenantHouseDescription = () => {
                 accentColor={brandPrimary}
                 containerStyle={homeStyles.floorPlanInCard}
               />
-            ) : loadingItems ? (
+            ) : null}
+
+            {deviceDropdownSections ? (
+              <View
+                ref={deviceCategoryFilterMeasureRef}
+                onLayout={(e) => {
+                  deviceCategoryFilterYRef.current = e.nativeEvent.layout.y;
+                }}
+              >
+                <DropdownBox
+                  sections={deviceDropdownSections}
+                  summary={categoryFilterSummary}
+                  onSelect={handleHouseDropdownSelect}
+                  style={{ marginTop: 14, marginHorizontal: 0, marginBottom: 0 }}
+                  keyboardVerticalOffset={insets.top + 56}
+                  onSearchInputFocus={scrollDeviceCategoryFilterIntoView}
+                  onSearchChange={setDeviceSearchQuery}
+                  searchAutoFocus={false}
+                  defaultExpanded={false}
+                  expandSignal={dropdownExpandSignal}
+                  onExpandedChange={onDeviceDropdownExpandedChange}
+                  triggerAccent
+                />
+              </View>
+            ) : null}
+
+            {assetsFetchEnabled && loadingItems ? (
               <View style={{ marginVertical: 20, alignItems: "center" }}>
                 <RefreshLogoInline logoPx={22} showLabel />
               </View>
             ) : null}
 
-            {!loadingItems && devices.length === 0 ? (
+            {assetsFetchEnabled && !loadingItems && devices.length === 0 ? (
               <Text style={tenantHouseStyles.housePlanEmptyText}>
                 {t("staff_building_detail.no_devices")}
               </Text>
             ) : null}
 
-            {!loadingItems &&
+            {assetsFetchEnabled &&
+            !loadingItems &&
             devices.length > 0 &&
             filteredDeviceRows.length === 0 ? (
               <Text style={tenantHouseStyles.housePlanEmptyText}>
@@ -935,17 +944,17 @@ const TenantHouseDescription = () => {
           </View>
         ) : null}
 
-        {contractDocuments && contractDocuments.length > 0 ? (
+        {currentHouse.contractDocuments && currentHouse.contractDocuments.length > 0 ? (
           <View style={[tenantHouseStyles.card, { marginTop: 16 }]}>
             <Text style={tenantHouseStyles.contractsSectionTitle}>
               {t("home.house_detail.contracts_title")}
             </Text>
-            {(contractDocuments ?? []).map((doc, index) => (
+            {(currentHouse.contractDocuments ?? []).map((doc, index) => (
               <TouchableOpacity
                 key={doc.id ?? doc.pdfUrl ?? String(index)}
                 style={[
                   tenantHouseStyles.contractLinkRow,
-                  index === (contractDocuments?.length ?? 0) - 1
+                  index === (currentHouse.contractDocuments?.length ?? 0) - 1
                     ? tenantHouseStyles.contractLinkRowLast
                     : null,
                 ]}
@@ -978,7 +987,7 @@ const TenantHouseDescription = () => {
               <View style={homeStyles.modalContent}>
                 <Text style={homeStyles.modalTitle}>{t("home.select_main_house")}</Text>
                 <FlatList
-                  data={tenantHouses}
+                  data={modalTenantHouses}
                   keyExtractor={(item) => item.id}
                   renderItem={({ item }) => (
                     <TouchableOpacity

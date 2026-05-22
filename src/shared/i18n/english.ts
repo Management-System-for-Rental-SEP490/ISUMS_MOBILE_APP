@@ -744,6 +744,9 @@ export default {
                 "Access is limited due to unpaid deposit or rent. Please pay in the Invoices section."
         },
         "house_detail": {
+            "area_subtitle": "Select an area to view devices in that zone",
+            "images_label": "House photos",
+            "devices_dropdown_summary": "Device categories",
             "set_main_house": "Set as main house",
             "main_house_saved": "Main house has been updated to this property.",
             "main_house_current_label": "Main house",
@@ -871,8 +874,9 @@ export default {
         "main_house_pay_first_required_note": "Paying the main property first is required.",
         "secondary_house_first_rent_activation_note":
             "Pay first-month rent to unlock the app's full features.",
-        "chip_all": "All properties",
+        "chip_all": "All",
         "filter_by_house": "By property",
+        "filter_by_status": "By status",
         "empty_list": "No invoices yet. They will appear here when the billing API is connected.",
         "load_error": "Could not load invoices. Check your connection and try again.",
         "view_detail": "Details",
@@ -887,7 +891,8 @@ export default {
         "detail_menu_a11y": "More options",
         "fee_breakdown_title": "Fee breakdown",
         "issue_quote_section_title": "Repair quote details (ticket)",
-        "issue_quote_empty": "Could not load quote data. Open the ticket for full details.",
+        "issue_quote_empty": "Open the ticket to view the quote and full details.",
+        "view_ticket_detail_btn": "View ticket details",
         "issue_quote_total_hint":
             "Sum of approved quote line items; the invoice total may include fees or penalties.",
         "issue_quote_ticket_quote": "Quote ticket",

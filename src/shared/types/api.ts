@@ -404,6 +404,17 @@ export interface HouseFromApi {
   memberRole?: TenantHouseMemberRole;
   /** Tài liệu hợp đồng (PDF…) — khi BE trả về. */
   contractDocuments?: TenantContractDocumentFromApi[];
+  /** Ảnh căn nhà — GET /api/houses/{id}. */
+  images?: HouseImageFromApi[];
+  /** BE: hạn chế thanh toán / truy cập khi chưa thanh toán cọc hoặc tiền thuê. */
+  paymentRestricted?: boolean;
+}
+
+/** Ảnh đính kèm căn nhà từ GET /api/houses/{id}. */
+export interface HouseImageFromApi {
+  id: string;
+  url: string;
+  createdAt?: string;
 }
 
 /** Response body của API GET /api/houses. */

@@ -47,7 +47,7 @@ const navStyles = StyleSheet.create({
 });
 
 const Navigation = () => {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const isLoggedIn = useAuthStore((state) => state.isLoggedIn);
   const user = useAuthStore((state) => state.user);
   const role = useAuthStore((state) => state.role);
@@ -126,7 +126,9 @@ const Navigation = () => {
       let cancelled = false;
       setIsSyncingMainHouseOnLogin(true);
       useAuthStore.getState().setHouseId(null);
-      void ensureTenantMainHouseSynced().finally(() => {
+      // Truyền queryClient để seed cache ngay sau khi sync — HomeScreen mount
+      // sẽ thấy cache fresh và không gọi lại /users/me + /houses/my-access.
+      void ensureTenantMainHouseSynced(queryClient).finally(() => {
         if (!cancelled) setIsSyncingMainHouseOnLogin(false);
       });
       return () => { cancelled = true; };
