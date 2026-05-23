@@ -229,6 +229,23 @@ const TenantHouseDescription = () => {
     setModalTenantHouses(cached?.data ?? []);
   }, [houseModalVisible, locale, queryClient]);
 
+  const isCurrentMainOnServer =
+    profileMainHouseId.length > 0 && profileMainHouseId === buildingId;
+
+  const cachedTenantHousesForSwitch = useMemo(() => {
+    const cached = queryClient.getQueryData<HousesApiResponse>([
+      ...HOUSES_KEYS.tenant,
+      locale,
+    ]);
+    return cached?.data ?? [];
+  }, [houseModalVisible, locale, queryClient]);
+
+  const showSwitchHouseButton = cachedTenantHousesForSwitch.length > 1;
+
+  // Nút "Đặt làm nhà chính" chỉ xuất hiện khi account có 2+ nhà
+  // và nhà đang xem chưa phải nhà chính.
+  const showSetMainButton = showSwitchHouseButton && !isCurrentMainOnServer;
+
   const planScrollRef = useRef<ScrollView>(null);
   const deviceCategoryFilterYRef = useRef(0);
   const deviceCategoryFilterMeasureRef = useRef<View>(null);
@@ -533,20 +550,6 @@ const TenantHouseDescription = () => {
     [handleCategoryDropdownSelect, handleDeviceDropdownSelect]
   );
 
-  const isCurrentMainOnServer =
-    profileMainHouseId.length > 0 && profileMainHouseId === buildingId;
-  const showSetMainButton = !isCurrentMainOnServer;
-
-  const cachedTenantHousesForSwitch = useMemo(() => {
-    const cached = queryClient.getQueryData<HousesApiResponse>([
-      ...HOUSES_KEYS.tenant,
-      locale,
-    ]);
-    return cached?.data ?? [];
-  }, [houseModalVisible, locale, queryClient]);
-
-  const showSwitchHouseButton = cachedTenantHousesForSwitch.length > 1;
-
   const openPaymentForHouse = useCallback(() => {
     navigation.navigate("TenantInvoiceList");
   }, [navigation]);
@@ -798,13 +801,7 @@ const TenantHouseDescription = () => {
               </TouchableOpacity>
             ) : null}
 
-            {isCurrentMainOnServer ? (
-              <View style={[tenantHouseStyles.mainHouseBadge, tenantHouseStyles.mainHouseBadgeOnly]}>
-                <Text style={tenantHouseStyles.mainHouseBadgeText}>
-                  {t("home.house_detail.main_house_current_label")}
-                </Text>
-              </View>
-            ) : showSetMainButton ? (
+            {showSetMainButton ? (
               <TouchableOpacity
                 style={tenantHouseStyles.setMainButton}
                 onPress={handleSetMainHouseThis}
@@ -872,9 +869,14 @@ const TenantHouseDescription = () => {
                 selectedFloor={deviceFloor}
                 selectedAreaId={selectedFunctionAreaId ?? "all"}
                 functionalAreas={effectiveFunctionalAreas}
-                onSelectArea={(id) =>
-                  setSelectedFunctionAreaId((prev) => (prev === id ? null : id))
-                }
+                onSelectArea={(id) => {
+                  const next = selectedFunctionAreaId === id ? null : id;
+                  setSelectedFunctionAreaId(next);
+                  if (next !== null) {
+                    setAssetsFetchEnabled(true);
+                    setDropdownExpandSignal((s) => s + 1);
+                  }
+                }}
                 accentColor={brandPrimary}
                 containerStyle={homeStyles.floorPlanInCard}
               />

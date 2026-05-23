@@ -43,9 +43,9 @@ export const homeStyles = StyleSheet.create({
     },
     /** Thẻ khu vực + sơ đồ (màn chi tiết nhà). */
     homeZoneCard: {
-        paddingHorizontal: 14,
-        paddingTop: 14,
-        paddingBottom: 16,
+        paddingHorizontal: 16,
+        paddingTop: 16,
+        paddingBottom: 18,
         ...tenantSoftCard,
     },
     areaSectionTopRow: {
@@ -53,20 +53,20 @@ export const homeStyles = StyleSheet.create({
         alignItems: "flex-start",
         justifyContent: "space-between",
         gap: 12,
-        marginBottom: 6,
+        marginBottom: 10,
     },
     areaSectionTitles: {
         flex: 1,
         minWidth: 0,
     },
     areaSectionTitle: {
-        fontSize: 20,
+        fontSize: 18,
         fontWeight: "700",
         color: neutral.heading,
         letterSpacing: -0.3,
     },
     areaSectionSubtitle: {
-        marginTop: 4,
+        marginTop: 3,
         fontSize: 13,
         lineHeight: 18,
         color: neutral.textSecondary,
@@ -74,12 +74,12 @@ export const homeStyles = StyleSheet.create({
     },
     floorChipsRow: {
         flexShrink: 0,
-        maxWidth: "48%",
+        maxWidth: "50%",
     },
     floorPlanInCard: {
         alignItems: "center",
-        marginTop: 4,
-        marginBottom: 0,
+        marginTop: 8,
+        marginBottom: 4,
     },
     loadingContainer: {
         flex: 1,
@@ -546,8 +546,7 @@ export const homeStyles = StyleSheet.create({
         fontSize: 15,
         lineHeight: 22,
     },
-    
-    // Styles cho Modal chọn nhà
+    // Modal chọn nhà
     modalOverlay: {
         flex: 1,
         backgroundColor: 'rgba(0,0,0,0.5)',
@@ -597,9 +596,9 @@ export const homeStyles = StyleSheet.create({
         backgroundColor: neutral.border,
     },
     switchHouseButton: {
-        paddingHorizontal: 16, 
-        paddingVertical: 8, 
-        backgroundColor: brandTintBg, 
+        paddingHorizontal: 16,
+        paddingVertical: 8,
+        backgroundColor: brandTintBg,
         borderRadius: 10,
     },
     switchHouseText: {
@@ -635,13 +634,13 @@ export const homeStyles = StyleSheet.create({
     },
     currentHouseName: {
         fontSize: 16,
-        fontWeight: "800",
+        fontWeight: '800',
         color: neutral.heading,
         letterSpacing: -0.3,
     },
     switchHousePill: {
-        flexDirection: "row",
-        alignItems: "center",
+        flexDirection: 'row',
+        alignItems: 'center',
         gap: 3,
         paddingHorizontal: 12,
         paddingVertical: 8,
@@ -651,7 +650,7 @@ export const homeStyles = StyleSheet.create({
     },
     switchHousePillText: {
         fontSize: 13,
-        fontWeight: "700",
+        fontWeight: '700',
         color: brandSecondary,
     },
     /** Khối “Quick actions” — cùng SOFT_CARD; marginTop gán ở Home (0 nếu đã có thẻ nhà). */

@@ -155,10 +155,8 @@ const SettingsScreen = () => {
           </View>
         </View>
 
-        {/* Notifications section — links into the IoT alert preference
-            screens (multi-channel routing, voice consent, escalation). */}
-        <Text style={styles.sectionTitle}>
-          {t("settings.notifications_section", "Thông báo")}
+        <Text style={[styles.sectionTitle, styles.sectionTitleSpaced]}>
+          {t("settings.notifications_section")}
         </Text>
         <View style={styles.card}>
           <TouchableOpacity
@@ -172,13 +170,10 @@ const SettingsScreen = () => {
             </View>
             <View style={styles.menuTextCol}>
               <Text style={styles.menuTitle}>
-                {t("settings.notifications_prefs_title", "Cài đặt thông báo")}
+                {t("settings.notifications_prefs_title")}
               </Text>
               <Text style={styles.menuDesc}>
-                {t(
-                  "settings.notifications_prefs_desc",
-                  "Kênh nhận, gói đăng ký, voice consent, escalation"
-                )}
+                {t("settings.notifications_prefs_desc")}
               </Text>
             </View>
             <Icons.chevronForward size={20} color={neutral.textMuted} />
@@ -197,13 +192,10 @@ const SettingsScreen = () => {
             </View>
             <View style={styles.menuTextCol}>
               <Text style={styles.menuTitle}>
-                {t("settings.voice_history_title", "Lịch sử cuộc gọi")}
+                {t("settings.voice_history_title")}
               </Text>
               <Text style={styles.menuDesc}>
-                {t(
-                  "settings.voice_history_desc",
-                  "Cuộc gọi cảnh báo IoT đã nhận"
-                )}
+                {t("settings.voice_history_desc")}
               </Text>
             </View>
             <Icons.chevronForward size={20} color={neutral.textMuted} />
@@ -234,6 +226,9 @@ const styles = StyleSheet.create({
     marginBottom: 10,
     marginLeft: 10,
     textTransform: "uppercase",
+  },
+  sectionTitleSpaced: {
+    marginTop: 24,
   },
   card: {
     backgroundColor: neutral.surface,

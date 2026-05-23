@@ -635,7 +635,12 @@ export default {
         "language_en": "English",
         "language_ja": "日本語",
         "language_current": "使用中",
-        "language_update_error": "言語を保存できませんでした。もう一度お試しください。"
+        "language_update_error": "言語を保存できませんでした。もう一度お試しください。",
+        "notifications_section": "通知",
+        "notifications_prefs_title": "通知設定",
+        "notifications_prefs_desc": "受信チャンネル、プラン、音声同意、エスカレーション",
+        "voice_history_title": "通話履歴",
+        "voice_history_desc": "受信したIoT警告の通話"
     },
     "home": {
         "welcome_role": "あなたは{{role}}です",

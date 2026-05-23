@@ -12,7 +12,7 @@ import Navigation from './src/navigation/navigation';
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
-      retry: 2, // Thử lại 2 lần nếu request thất bại trước khi báo lỗi
+      retry: 1, // Thử lại 1 lần nếu request thất bại (giảm từ 2 → tránh chờ 3x timeout khi network kém)
       staleTime: 1000 * 60 * 5, // Data được coi là "tươi" trong 5 phút (không fetch lại trừ khi cần thiết)
     },
   },

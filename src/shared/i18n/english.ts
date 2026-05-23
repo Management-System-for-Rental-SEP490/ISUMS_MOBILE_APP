@@ -635,7 +635,12 @@ export default {
         "language_en": "English",
         "language_ja": "日本語",
         "language_current": "Current",
-        "language_update_error": "Could not save the language. Please try again."
+        "language_update_error": "Could not save the language. Please try again.",
+        "notifications_section": "Notifications",
+        "notifications_prefs_title": "Notification settings",
+        "notifications_prefs_desc": "Channels, subscription plan, voice consent, escalation",
+        "voice_history_title": "Call history",
+        "voice_history_desc": "Received IoT alert calls"
     },
     "home": {
         "welcome_role": "You are a {{role}}",

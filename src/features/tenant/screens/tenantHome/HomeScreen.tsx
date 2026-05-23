@@ -66,7 +66,6 @@ import {
   translateTenantAccessReason,
 } from "../../../../shared/utils";
 import { getIssueResponses, getTenantTickets } from "../../../../shared/services/issuesApi";
-import { getMarketplaceHouses } from "../../../../shared/services/econtractApi";
 import { getHomeGreetingI18nKey } from "../../../../shared/utils/homeTimeGreeting";
 import {
   isTenantInvoiceDueUrgent,
@@ -278,22 +277,18 @@ const HomeScreen = ({ navigation }: HomeScreenProps) => {
   // overlay with a controlled URL so back-navigation, OTP retries, etc. all
   // happen inside the app shell (no system browser, no exposed URL bar).
   const [paymentWebViewUrl, setPaymentWebViewUrl] = useState<string | null>(null);
-  // Marketplace: nhà có thể chuyển sang (AVAILABLE + DEPOSIT_BOOKABLE).
-  // Hiện trên home để tenant duyệt, click → BuildingDetail.
-  const [marketplaceHouses, setMarketplaceHouses] = useState<HouseFromApi[]>([]);
-  const [marketplaceLoading, setMarketplaceLoading] = useState(false);
 
   // PREMIUM subscription state for Home — drives the badge in the header
   // strip + the "Mua gói"/"Gia hạn" cell label. Stale-while-revalidate so
   // the user sees their last-known tier instantly on cold-open while the
   // network call refreshes in the background.
-  // staleTime=0 + invalidate on focus = banner reflects tier within one
-  // RTT after the BE Kafka listener has processed the activation event.
+  // useFocusEffect bên dưới đã invalidate query này mỗi lần Home focus →
+  // không cần refetchOnMount:"always" (tránh double-fetch khi mount).
+  // staleTime 2 phút: tab-switch nhanh dùng cache, vẫn fresh sau mỗi lần focus.
   const subscriptionQuery = useQuery<SubscriptionInfo>({
     queryKey: ["notif", "subscription"],
     queryFn: fetchSubscription,
-    refetchOnMount: "always",
-    staleTime: 0,
+    staleTime: 1000 * 60 * 2,
   });
   const isPremium = subscriptionQuery.data?.tier === "PREMIUM";
   const premiumUntilLabel = useMemo(() => {
@@ -528,20 +523,6 @@ const HomeScreen = ({ navigation }: HomeScreenProps) => {
   }, [hasAnyTenantHouse, i18n.language]);
 
   // Marketplace fetch: AVAILABLE + DEPOSIT_BOOKABLE houses for the home banner.
-  // Run on first mount and on focus so the list refreshes when tenant comes
-  // back from BuildingDetail / UserContractDetail. Failures degrade silently
-  // — empty list just hides the section.
-  const loadMarketplaceHouses = useCallback(async () => {
-    setMarketplaceLoading(true);
-    try {
-      const rows = await getMarketplaceHouses();
-      setMarketplaceHouses(rows);
-    } catch {
-      setMarketplaceHouses([]);
-    } finally {
-      setMarketplaceLoading(false);
-    }
-  }, []);
 
   /**
    * useFocusEffect duy nhất xử lý cả mount và focus-back:
@@ -558,14 +539,11 @@ const HomeScreen = ({ navigation }: HomeScreenProps) => {
       // the subscription-activated event.
       queryClient.invalidateQueries({ queryKey: ["notif", "subscription"] });
 
-      // Defer non-critical fetches after UI interactions settle — first paint
-      // của Home không cần ticker hay marketplace để hiển thị.
       const task = InteractionManager.runAfterInteractions(() => {
         void loadQuestionTicker();
-        void loadMarketplaceHouses();
       });
       return () => task.cancel();
-    }, [loadQuestionTicker, loadMarketplaceHouses, queryClient])
+    }, [loadQuestionTicker, queryClient])
   );
 
   const zoneLabelForQuestionTicket = useCallback(
@@ -629,6 +607,7 @@ const HomeScreen = ({ navigation }: HomeScreenProps) => {
     waterUsage.refetch,
     loadQuestionTicker,
   ]);
+
 
   const handleSelectMainHouse = useCallback(
     async (selectedHouseId: string) => {
@@ -1221,113 +1200,6 @@ const HomeScreen = ({ navigation }: HomeScreenProps) => {
               </View>
             ) : null}
 
-        {marketplaceHouses.length > 0 || marketplaceLoading ? (
-          <View style={homeStyles.marketplaceSection}>
-            <View style={homeStyles.marketplaceHeader}>
-              <View style={{ flex: 1 }}>
-                <Text style={homeStyles.marketplaceTitle}>
-                  {t("home.marketplace.title")}
-                </Text>
-                <Text style={homeStyles.marketplaceSubtitle}>
-                  {t("home.marketplace.subtitle")}
-                </Text>
-              </View>
-            </View>
-            {marketplaceLoading ? (
-              <View style={homeStyles.marketplaceLoading}>
-                <RefreshLogoInline logoPx={20} />
-              </View>
-            ) : (
-              <ScrollView
-                horizontal
-                showsHorizontalScrollIndicator={false}
-                contentContainerStyle={homeStyles.marketplaceListContent}
-              >
-                {marketplaceHouses.slice(0, 10).map((mhouse) => {
-                  const isBookable = mhouse.availability === "DEPOSIT_BOOKABLE";
-                  const cityLine = [mhouse.ward, mhouse.commune, mhouse.city]
-                    .filter(Boolean)
-                    .join(" · ");
-                  return (
-                    <Pressable
-                      key={String(mhouse.id ?? "")}
-                      onPress={() => {
-                        rootNavigation.navigate("BuildingDetail", {
-                          buildingId: mhouse.id,
-                          buildingName: mhouse.name,
-                          buildingAddress: mhouse.address,
-                          description: mhouse.description,
-                          ward: mhouse.ward,
-                          commune: mhouse.commune,
-                          city: mhouse.city,
-                          status: mhouse.status,
-                        });
-                      }}
-                      style={({ pressed }) => [
-                        homeStyles.marketplaceCard,
-                        pressed && homeStyles.marketplaceCardPressed,
-                      ]}
-                    >
-                      <View
-                        style={[
-                          homeStyles.marketplaceBadge,
-                          isBookable
-                            ? homeStyles.marketplaceBadgeBookable
-                            : homeStyles.marketplaceBadgeAvailable,
-                        ]}
-                      >
-                        <Text
-                          style={[
-                            homeStyles.marketplaceBadgeText,
-                            isBookable
-                              ? homeStyles.marketplaceBadgeTextBookable
-                              : homeStyles.marketplaceBadgeTextAvailable,
-                          ]}
-                        >
-                          {isBookable
-                            ? t("home.marketplace.badge_bookable")
-                            : t("home.marketplace.badge_available")}
-                        </Text>
-                      </View>
-                      <Text
-                        style={homeStyles.marketplaceCardTitle}
-                        numberOfLines={1}
-                      >
-                        {mhouse.name || "—"}
-                      </Text>
-                      <Text
-                        style={homeStyles.marketplaceCardAddress}
-                        numberOfLines={2}
-                      >
-                        {mhouse.address || cityLine || "—"}
-                      </Text>
-                      {isBookable && mhouse.availableFrom ? (
-                        <Text
-                          style={homeStyles.marketplaceCardHandover}
-                          numberOfLines={1}
-                        >
-                          {t("home.marketplace.handover_from", {
-                            date: formatDayMonthNumeric(
-                              new Date(mhouse.availableFrom),
-                              i18n.language,
-                            ),
-                          })}
-                        </Text>
-                      ) : (
-                        <Text
-                          style={homeStyles.marketplaceCardAvailableNow}
-                          numberOfLines={1}
-                        >
-                          {t("home.marketplace.handover_now")}
-                        </Text>
-                      )}
-                    </Pressable>
-                  );
-                })}
-              </ScrollView>
-            )}
-          </View>
-        ) : null}
 
         <View
           style={homeStyles.homeSiteFooter}
@@ -1511,6 +1383,7 @@ const HomeScreen = ({ navigation }: HomeScreenProps) => {
           </View>
         </TouchableWithoutFeedback>
       </Modal>
+
       <IotPushAlertOverlay />
 
       {/* PREMIUM upgrade modal — bottom sheet style. Tier flip is driven
@@ -1538,7 +1411,7 @@ const HomeScreen = ({ navigation }: HomeScreenProps) => {
                   borderTopRightRadius: 24,
                   paddingTop: 8,
                   paddingHorizontal: 20,
-                  paddingBottom: 24,
+                  paddingBottom: 24 + insets.bottom,
                   maxHeight: "85%",
                 }}
               >

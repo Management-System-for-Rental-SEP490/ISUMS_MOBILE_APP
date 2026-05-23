@@ -1,7 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
-  Alert,
   ScrollView,
   StyleSheet,
   Switch,
@@ -12,8 +11,21 @@ import {
 import { useTranslation } from "react-i18next";
 import { useFocusEffect } from "@react-navigation/native";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { brandPrimary, brandTintBg, neutral } from "@shared/theme/color";
+import MaterialIcons from "@expo/vector-icons/MaterialIcons";
+import { useNavigation } from "@react-navigation/native";
+import { brandPrimary, brandSecondary, brandTintBg, neutral } from "@shared/theme/color";
 import { appTypography } from "@shared/utils/typography";
+import Icons from "@shared/theme/icon";
+import {
+  StackScreenTitleBadge,
+  StackScreenTitleBarBalance,
+  StackScreenTitleHeaderStrip,
+  stackScreenTitleBackBtnOnBrand,
+  stackScreenTitleCenterSlotStyle,
+  stackScreenTitleOnBrandIconColor,
+  stackScreenTitleRowStyle,
+  stackScreenTitleSideSlotStyle,
+} from "@shared/components/StackScreenTitleBadge";
 import {
   fetchPreferences,
   updatePreferences,
@@ -52,6 +64,7 @@ const LANGUAGES: { value: NotificationPreferences["language"]; label: string }[]
 
 export default function NotificationPreferencesScreen() {
   const { t } = useTranslation();
+  const navigation = useNavigation();
   const qc = useQueryClient();
 
   const prefsQ = useQuery({
@@ -96,19 +109,38 @@ export default function NotificationPreferencesScreen() {
     onSuccess: (fresh) => {
       setDraft(fresh);
       qc.invalidateQueries({ queryKey: ["notif", "prefs"] });
-      Alert.alert(t("notif.prefs.saved", "Saved"));
+      CustomAlert.alert(
+        t("notif.prefs.saved", "Đã lưu cài đặt"),
+        undefined,
+        [{ text: t("common.close", "Đóng") }],
+        { type: "success" }
+      );
     },
-    onError: (err: any) => Alert.alert("Error", err?.message ?? "Failed"),
+    onError: (err: any) =>
+      CustomAlert.alert(
+        t("common.error", "Lỗi"),
+        err?.message ?? t("common.unknown_error", "Đã xảy ra lỗi, vui lòng thử lại."),
+        [{ text: t("common.close", "Đóng") }],
+        { type: "error" }
+      ),
   });
 
   const testMut = useMutation({
     mutationFn: () => fireTestVoice(),
     onSuccess: () =>
-      Alert.alert(
-        t("notif.prefs.testTitle", "Test call"),
-        t("notif.prefs.testQueued", "Your phone will ring shortly.")
+      CustomAlert.alert(
+        t("notif.prefs.testTitle", "Cuộc gọi thử"),
+        t("notif.prefs.testQueued", "Điện thoại của bạn sẽ đổ chuông trong giây lát."),
+        [{ text: t("common.close", "Đóng") }],
+        { type: "success" }
       ),
-    onError: (err: any) => Alert.alert("Error", err?.message ?? "Failed"),
+    onError: (err: any) =>
+      CustomAlert.alert(
+        t("common.error", "Lỗi"),
+        err?.message ?? t("common.unknown_error", "Đã xảy ra lỗi, vui lòng thử lại."),
+        [{ text: t("common.close", "Đóng") }],
+        { type: "error" }
+      ),
   });
 
   // Self-serve upgrade — Payment-Service returns the signed VNPay URL as a
@@ -125,7 +157,13 @@ export default function NotificationPreferencesScreen() {
     onSuccess: (url) => {
       setPaymentWebViewUrl(url);
     },
-    onError: (err: any) => Alert.alert("Error", err?.message ?? "Failed"),
+    onError: (err: any) =>
+      CustomAlert.alert(
+        t("common.error", "Lỗi"),
+        err?.message ?? t("common.unknown_error", "Đã xảy ra lỗi, vui lòng thử lại."),
+        [{ text: t("common.close", "Đóng") }],
+        { type: "error" }
+      ),
   });
 
   const set = <K extends keyof NotificationPreferences>(
@@ -175,245 +213,290 @@ export default function NotificationPreferencesScreen() {
   }
 
   return (
-    <ScrollView contentContainerStyle={styles.container}>
-      {/* Subscription card — full status panel.
-          PREMIUM: tier badge + expiry + days-left + voice/sms quota bars + renew CTA.
-          FREE: tier badge + value pitch + upgrade CTA. */}
-      <SubscriptionCard
-        sub={subQ.data}
-        upgradePending={upgradeMut.isPending}
-        onUpgrade={() => upgradeMut.mutate(1)}
-      />
-
-      {/* Language */}
-      <View style={styles.card}>
-        <Text style={styles.h3}>{t("notif.prefs.language", "Language")}</Text>
-        <View style={styles.langRow}>
-          {LANGUAGES.map((l) => (
+    <View style={styles.screen}>
+      <StackScreenTitleHeaderStrip>
+        <View style={stackScreenTitleRowStyle}>
+          <View style={stackScreenTitleSideSlotStyle}>
             <TouchableOpacity
-              key={l.value}
-              onPress={() => set("language", l.value)}
-              style={[
-                styles.langChip,
-                draft.language === l.value && styles.langChipActive,
-              ]}
+              style={stackScreenTitleBackBtnOnBrand}
+              onPress={() => navigation.goBack()}
+              activeOpacity={0.75}
             >
-              <Text
-                style={[
-                  styles.langChipText,
-                  draft.language === l.value && styles.langChipTextActive,
-                ]}
-              >
-                {l.label}
-              </Text>
+              <Icons.chevronBack size={22} color={stackScreenTitleOnBrandIconColor} />
             </TouchableOpacity>
-          ))}
+          </View>
+          <View style={stackScreenTitleCenterSlotStyle}>
+            <StackScreenTitleBadge numberOfLines={1}>
+              {t("settings.notifications_prefs_title")}
+            </StackScreenTitleBadge>
+          </View>
+          <StackScreenTitleBarBalance />
         </View>
-      </View>
+      </StackScreenTitleHeaderStrip>
 
-      {/* Channels */}
-      <View style={styles.card}>
-        <Text style={styles.h3}>{t("notif.prefs.channels", "Channels")}</Text>
-        <ChannelRow
-          label={t("notif.prefs.email", "Email")}
-          desc={t("notif.prefs.emailDesc", "Email digests + alerts")}
-          value={draft.emailEnabled}
-          onChange={(v) => set("emailEnabled", v)}
+      <ScrollView
+        style={styles.scroll}
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
+      >
+        {/* Subscription card — full status panel.
+            PREMIUM: tier badge + expiry + days-left + voice/sms quota bars + renew CTA.
+            FREE: tier badge + value pitch + upgrade CTA. */}
+        <SubscriptionCard
+          sub={subQ.data}
+          upgradePending={upgradeMut.isPending}
+          onUpgrade={() => upgradeMut.mutate(1)}
         />
-        <ChannelRow
-          label={t("notif.prefs.push", "Push")}
-          desc={t("notif.prefs.pushDesc", "Realtime in-app notifications")}
-          value={draft.pushEnabled}
-          onChange={(v) => set("pushEnabled", v)}
-        />
-        <ChannelRow
-          label={t("notif.prefs.sms", "SMS")}
-          desc={t(
-            "notif.prefs.smsDesc",
-            "Text messages for CRITICAL/WARNING events"
-          )}
-          value={draft.smsEnabled}
-          onChange={(v) => set("smsEnabled", v)}
-          disabled={!isPremium}
-          hint={!isPremium ? t("notif.prefs.premiumOnly", "PREMIUM only") : undefined}
-        />
-        <ChannelRow
-          label={t("notif.prefs.voice", "Cuộc gọi tự động")}
-          desc={t(
-            "notif.prefs.voiceDesc",
-            "Bật để chúng tôi gọi điện đọc cảnh báo IoT khẩn cấp bằng giọng nói (gas, cháy, mất điện, rò nước). Tắt bất kỳ lúc nào."
-          )}
-          value={draft.voiceEnabled}
-          onChange={onVoiceToggle}
-          disabled={!isPremium || saveMut.isPending}
-          hint={
-            !isPremium
-              ? t("notif.prefs.premiumOnly", "Chỉ dành cho PREMIUM")
-              : undefined
-          }
-        />
-      </View>
 
-      {/* Escalation target picker — pin a manager (or auto-resolve via region) */}
-      {draft.escalationEnabled && (
+        {/* Language */}
+        <Text style={[styles.sectionTitle, styles.sectionTitleSpaced]}>
+          {t("notif.prefs.language", "Language")}
+        </Text>
         <View style={styles.card}>
-          <Text style={styles.h3}>
-            {t("notif.prefs.escalationTarget", "Escalation target")}
-          </Text>
-          <Text style={styles.hint}>
-            {t(
-              "notif.prefs.escalationTargetHint",
-              "Leave 'Auto' to use your region manager. Or pin a specific manager below."
-            )}
-          </Text>
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            contentContainerStyle={{ paddingVertical: 8, gap: 8 }}
-          >
-            <TouchableOpacity
-              onPress={() => set("escalationTargetUserId", null)}
-              style={[
-                styles.langChip,
-                !draft.escalationTargetUserId && styles.langChipActive,
-              ]}
-            >
-              <Text
-                style={[
-                  styles.langChipText,
-                  !draft.escalationTargetUserId && styles.langChipTextActive,
-                ]}
-              >
-                {t("notif.prefs.escalationAuto", "Auto (region manager)")}
-              </Text>
-            </TouchableOpacity>
-            {(managersQ.data ?? []).map((m) => (
+          <View style={styles.langRow}>
+            {LANGUAGES.map((l) => (
               <TouchableOpacity
-                key={m.id}
-                onPress={() => set("escalationTargetUserId", m.id)}
+                key={l.value}
+                onPress={() => set("language", l.value)}
                 style={[
                   styles.langChip,
-                  draft.escalationTargetUserId === m.id && styles.langChipActive,
+                  draft.language === l.value && styles.langChipActive,
                 ]}
               >
                 <Text
                   style={[
                     styles.langChipText,
-                    draft.escalationTargetUserId === m.id && styles.langChipTextActive,
+                    draft.language === l.value && styles.langChipTextActive,
                   ]}
                 >
-                  {m.name}
+                  {l.label}
                 </Text>
               </TouchableOpacity>
             ))}
-          </ScrollView>
+          </View>
         </View>
-      )}
 
-      {/* Test voice — voice toggle ON already implies the user agreed to receive
-          calls (toggle = consent under our PDPL flow). */}
-      {isPremium && draft.voiceEnabled && (
-        <View style={styles.card}>
-          <Text style={styles.h3}>{t("notif.prefs.testVoice", "Test call")}</Text>
-          <Text style={styles.hint}>
-            {t(
-              "notif.prefs.testVoiceHint",
-              "One test call per day. Counts against monthly quota."
-            )}
-          </Text>
-          <TouchableOpacity
-            style={[styles.btn, styles.btnSecondary]}
-            disabled={testMut.isPending}
-            onPress={() => testMut.mutate()}
-          >
-            <Text style={styles.btnSecondaryText}>
-              {testMut.isPending
-                ? t("notif.prefs.testing", "Calling...")
-                : t("notif.prefs.fireTest", "Call me now")}
-            </Text>
-          </TouchableOpacity>
-        </View>
-      )}
-
-      {/* Save */}
-      <TouchableOpacity
-        style={[styles.btn, styles.btnPrimary, styles.saveBtn]}
-        disabled={saveMut.isPending}
-        onPress={submit}
-      >
-        <Text style={styles.btnPrimaryText}>
-          {saveMut.isPending
-            ? t("common.saving", "Saving...")
-            : t("common.save", "Save")}
+        {/* Channels */}
+        <Text style={[styles.sectionTitle, styles.sectionTitleSpaced]}>
+          {t("notif.prefs.channels", "Channels")}
         </Text>
-      </TouchableOpacity>
+        <View style={styles.card}>
+          <ChannelRow
+            icon={<Icons.mail size={20} color={brandPrimary} />}
+            label={t("notif.prefs.email", "Email")}
+            desc={t("notif.prefs.emailDesc", "Email digests and alerts")}
+            value={draft.emailEnabled}
+            onChange={(v) => set("emailEnabled", v)}
+          />
+          <ChannelRow
+            icon={<Icons.notification size={20} color={brandPrimary} />}
+            label={t("notif.prefs.push", "In-app push")}
+            desc={t("notif.prefs.pushDesc", "Realtime notifications when the app is open")}
+            value={draft.pushEnabled}
+            onChange={(v) => set("pushEnabled", v)}
+          />
+          <ChannelRow
+            icon={<MaterialIcons name="sms" size={20} color={brandPrimary} />}
+            label={t("notif.prefs.sms", "SMS")}
+            desc={t("notif.prefs.smsDesc", "Text messages for CRITICAL/WARNING events")}
+            value={draft.smsEnabled}
+            onChange={(v) => set("smsEnabled", v)}
+            disabled={!isPremium}
+            hint={!isPremium ? t("notif.prefs.premiumOnly", "PREMIUM only") : undefined}
+          />
+          <ChannelRow
+            icon={<Icons.call size={20} color={brandPrimary} />}
+            label={t("notif.prefs.voice", "Voice call")}
+            desc={t(
+              "notif.prefs.voiceDesc",
+              "Phone call reading the alert in your language"
+            )}
+            value={draft.voiceEnabled}
+            onChange={onVoiceToggle}
+            disabled={!isPremium || saveMut.isPending}
+            hint={
+              !isPremium
+                ? t("notif.prefs.premiumOnly", "PREMIUM only")
+                : undefined
+            }
+            isLast
+          />
+        </View>
 
-      {/* In-app VNPay checkout — same UX surface as Home's "Mua gói" sheet:
-          gateway URL stays hidden behind a native header. */}
-      <InAppPaymentWebView
-        visible={paymentWebViewUrl != null}
-        url={paymentWebViewUrl}
-        onClose={() => setPaymentWebViewUrl(null)}
-        onPaymentResult={(result) => {
-          setPaymentWebViewUrl(null);
-          qc.invalidateQueries({ queryKey: ["notif", "subscription"] });
-          if (result.success) {
-            CustomAlert.alert(
-              t("payment.success_title", "Thanh toán thành công"),
-              t(
-                "payment.success_desc",
-                "Gói PREMIUM sẽ được kích hoạt trong vài giây. Cảm ơn bạn!"
-              ),
-              [{ text: t("common.close", "Đóng") }],
-              { type: "success" }
-            );
-          } else {
-            CustomAlert.alert(
-              t("payment.failed_title", "Thanh toán không thành công"),
-              t(
-                "payment.failed_desc_with_code",
-                "Giao dịch chưa hoàn tất (mã {{code}}). Bạn có thể thử lại.",
-                { code: result.responseCode ?? "?" }
-              ),
-              [{ text: t("common.close", "Đóng") }],
-              { type: "error" }
-            );
-          }
-        }}
-      />
-    </ScrollView>
+        {/* Escalation target picker — pin a manager (or auto-resolve via region) */}
+        {draft.escalationEnabled && (
+          <>
+            <Text style={[styles.sectionTitle, styles.sectionTitleSpaced]}>
+              {t("notif.prefs.escalationTarget", "Escalation target")}
+            </Text>
+            <View style={styles.card}>
+              <Text style={styles.cardDesc}>
+                {t(
+                  "notif.prefs.escalationTargetHint",
+                  "Leave 'Auto' to use your region manager. Or pin a specific manager below."
+                )}
+              </Text>
+              <ScrollView
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                contentContainerStyle={styles.chipScroll}
+              >
+                <TouchableOpacity
+                  onPress={() => set("escalationTargetUserId", null)}
+                  style={[
+                    styles.langChip,
+                    !draft.escalationTargetUserId && styles.langChipActive,
+                  ]}
+                >
+                  <Text
+                    style={[
+                      styles.langChipText,
+                      !draft.escalationTargetUserId && styles.langChipTextActive,
+                    ]}
+                  >
+                    {t("notif.prefs.escalationAuto", "Auto")}
+                  </Text>
+                </TouchableOpacity>
+                {(managersQ.data ?? []).map((m) => (
+                  <TouchableOpacity
+                    key={m.id}
+                    onPress={() => set("escalationTargetUserId", m.id)}
+                    style={[
+                      styles.langChip,
+                      draft.escalationTargetUserId === m.id && styles.langChipActive,
+                    ]}
+                  >
+                    <Text
+                      style={[
+                        styles.langChipText,
+                        draft.escalationTargetUserId === m.id && styles.langChipTextActive,
+                      ]}
+                    >
+                      {m.name}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </ScrollView>
+            </View>
+          </>
+        )}
+
+        {/* Test voice — voice toggle ON already implies the user agreed to receive
+            calls (toggle = consent under our PDPL flow). */}
+        {isPremium && draft.voiceEnabled && (
+          <>
+            <Text style={[styles.sectionTitle, styles.sectionTitleSpaced]}>
+              {t("notif.prefs.testVoice", "Test call")}
+            </Text>
+            <View style={styles.card}>
+              <Text style={styles.cardDesc}>
+                {t(
+                  "notif.prefs.testVoiceHint",
+                  "One test call per day. Counts against monthly quota."
+                )}
+              </Text>
+              <TouchableOpacity
+                style={styles.btnSecondary}
+                disabled={testMut.isPending}
+                onPress={() => testMut.mutate()}
+              >
+                <Text style={styles.btnSecondaryText}>
+                  {testMut.isPending
+                    ? t("notif.prefs.testing", "Calling...")
+                    : t("notif.prefs.fireTest", "Call me now")}
+                </Text>
+              </TouchableOpacity>
+            </View>
+          </>
+        )}
+
+        {/* Save */}
+        <TouchableOpacity
+          style={styles.saveBtn}
+          disabled={saveMut.isPending}
+          onPress={submit}
+        >
+          <Text style={styles.saveBtnText}>
+            {saveMut.isPending
+              ? t("common.saving", "Saving...")
+              : t("common.save", "Save")}
+          </Text>
+        </TouchableOpacity>
+
+        {/* In-app VNPay checkout — same UX surface as Home's "Mua gói" sheet:
+            gateway URL stays hidden behind a native header. */}
+        <InAppPaymentWebView
+          visible={paymentWebViewUrl != null}
+          url={paymentWebViewUrl}
+          onClose={() => setPaymentWebViewUrl(null)}
+          onPaymentResult={(result) => {
+            setPaymentWebViewUrl(null);
+            qc.invalidateQueries({ queryKey: ["notif", "subscription"] });
+            if (result.success) {
+              CustomAlert.alert(
+                t("payment.success_title", "Thanh toán thành công"),
+                t(
+                  "payment.success_desc",
+                  "Gói PREMIUM sẽ được kích hoạt trong vài giây. Cảm ơn bạn!"
+                ),
+                [{ text: t("common.close", "Đóng") }],
+                { type: "success" }
+              );
+            } else {
+              CustomAlert.alert(
+                t("payment.failed_title", "Thanh toán không thành công"),
+                t(
+                  "payment.failed_desc_with_code",
+                  "Giao dịch chưa hoàn tất (mã {{code}}). Bạn có thể thử lại.",
+                  { code: result.responseCode ?? "?" }
+                ),
+                [{ text: t("common.close", "Đóng") }],
+                { type: "error" }
+              );
+            }
+          }}
+        />
+      </ScrollView>
+    </View>
   );
 }
 
 // ── Helpers ────────────────────────────────────────────────────────
 
 function ChannelRow({
+  icon,
   label,
   desc,
   value,
   onChange,
   disabled,
   hint,
+  isLast,
 }: {
+  icon: React.ReactNode;
   label: string;
   desc: string;
   value: boolean;
   onChange: (v: boolean) => void;
   disabled?: boolean;
   hint?: string;
+  isLast?: boolean;
 }) {
   return (
-    <View style={styles.channelRow}>
+    <View style={[styles.channelRow, isLast && styles.channelRowLast]}>
+      <View style={styles.channelIconWrap}>{icon}</View>
       <View style={styles.channelLabelCol}>
-        <Text style={styles.label}>{label}</Text>
-        <Text style={styles.hint}>{desc}</Text>
-        {hint && <Text style={styles.hintLocked}>🔒 {hint}</Text>}
+        <Text style={[styles.channelLabel, disabled && styles.channelLabelDisabled]}>
+          {label}
+        </Text>
+        <Text style={styles.channelDesc}>{desc}</Text>
+        {hint && <Text style={styles.hintLocked}>{hint}</Text>}
       </View>
       <Switch
         value={value}
         onValueChange={onChange}
         disabled={disabled}
-        trackColor={{ false: "#d1d5db", true: brandPrimary }}
+        trackColor={{ false: neutral.border, true: brandPrimary }}
       />
     </View>
   );
@@ -421,9 +504,9 @@ function ChannelRow({
 
 function SubLine({ label, value }: { label: string; value: string }) {
   return (
-    <View style={styles.row}>
-      <Text style={styles.label}>{label}</Text>
-      <Text style={styles.value}>{value}</Text>
+    <View style={styles.subRow}>
+      <Text style={styles.subLabel}>{label}</Text>
+      <Text style={styles.subValue}>{value}</Text>
     </View>
   );
 }
@@ -482,46 +565,46 @@ function SubscriptionCard({
           </View>
           <View style={{ flex: 1 }}>
             <Text style={subCardStyles.premiumTitle}>
-              {t("notif.prefs.premium_active_title", "PREMIUM đang hoạt động")}
+              {t("notif.prefs.premium_active_title", "PREMIUM active")}
             </Text>
             {untilStr ? (
               <Text style={subCardStyles.premiumSubtitle}>
-                {t("notif.prefs.premium_until", "Hết hạn {{date}}", { date: untilStr })}
+                {t("notif.prefs.premium_until", "Expires {{date}}", { date: untilStr })}
               </Text>
             ) : null}
           </View>
           {daysLeft != null ? (
             <View style={subCardStyles.daysLeftPill}>
               <Text style={subCardStyles.daysLeftText}>
-                {t("notif.prefs.premium_days_left", "Còn {{n}} ngày", { n: daysLeft })}
+                {t("notif.prefs.premium_days_left", "{{n}} days left", { n: daysLeft })}
               </Text>
             </View>
           ) : null}
         </View>
 
         <QuotaBar
-          label={t("notif.prefs.voiceQuota", "Cuộc gọi tháng này")}
+          label={t("notif.prefs.voiceQuota", "Voice this month")}
           used={sub?.voiceUsedThisMonth ?? 0}
           total={sub?.voiceQuotaMonthly ?? 0}
-          color="#7C3AED"
+          color={brandPrimary}
         />
         <QuotaBar
-          label={t("notif.prefs.smsQuota", "SMS tháng này")}
+          label={t("notif.prefs.smsQuota", "SMS this month")}
           used={sub?.smsUsedThisMonth ?? 0}
           total={sub?.smsQuotaMonthly ?? 0}
-          color="#2563EB"
+          color={brandSecondary}
         />
 
         <TouchableOpacity
-          style={[styles.btn, subCardStyles.renewBtn, { marginTop: 14 }]}
+          style={[subCardStyles.renewBtn, { marginTop: 14 }]}
           onPress={onUpgrade}
           disabled={upgradePending}
           accessibilityRole="button"
         >
           <Text style={subCardStyles.renewBtnText}>
             {upgradePending
-              ? t("notif.prefs.upgrading", "Đang xử lý...")
-              : t("notif.prefs.renewBtn", "Gia hạn thêm 1 tháng (19.000đ)")}
+              ? t("notif.prefs.upgrading", "Processing...")
+              : t("notif.prefs.renewBtn", "Extend by 1 month (19,000 VND)")}
           </Text>
         </TouchableOpacity>
       </View>
@@ -530,28 +613,30 @@ function SubscriptionCard({
 
   return (
     <View style={styles.card}>
-      <View style={styles.row}>
-        <Text style={styles.h3}>
-          {t("notif.prefs.subscription", "Gói đăng ký")}
+      <View style={styles.subRow}>
+        <Text style={styles.cardTitle}>
+          {t("notif.prefs.subscription", "Subscription")}
         </Text>
-        <Text style={styles.tierBadge}>FREE</Text>
+        <View style={styles.tierBadge}>
+          <Text style={styles.tierBadgeText}>FREE</Text>
+        </View>
       </View>
-      <Text style={styles.hint}>
+      <Text style={styles.cardDesc}>
         {t(
           "notif.prefs.upgradeHint",
-          "Nâng cấp PREMIUM để nhận cuộc gọi và SMS khi có cảnh báo IoT khẩn cấp (ngập, mất điện, gas rò rỉ...)."
+          "Upgrade to PREMIUM to receive voice calls and SMS for urgent IoT alerts."
         )}
       </Text>
       <TouchableOpacity
-        style={[styles.btn, styles.btnPrimary, { marginTop: 12 }]}
+        style={[styles.saveBtn, { marginTop: 12 }]}
         onPress={onUpgrade}
         disabled={upgradePending}
         accessibilityRole="button"
       >
-        <Text style={styles.btnPrimaryText}>
+        <Text style={styles.saveBtnText}>
           {upgradePending
-            ? t("notif.prefs.upgrading", "Đang xử lý...")
-            : t("notif.prefs.upgradeBtn", "Mua gói PREMIUM (19.000đ/tháng)")}
+            ? t("notif.prefs.upgrading", "Processing...")
+            : t("notif.prefs.upgradeBtn", "Buy PREMIUM (19,000 VND/month)")}
         </Text>
       </TouchableOpacity>
     </View>
@@ -573,29 +658,15 @@ function QuotaBar({
   const ratio = Math.min(1, Math.max(0, used / safeTotal));
   const remaining = Math.max(0, total - used);
   return (
-    <View style={{ marginTop: 12 }}>
-      <View style={{ flexDirection: "row", justifyContent: "space-between", marginBottom: 4 }}>
-        <Text style={{ fontSize: 12, color: neutral.text, fontWeight: "600" }}>{label}</Text>
-        <Text style={{ fontSize: 12, color: neutral.textSecondary }}>
-          {used}/{total} · còn {remaining}
+    <View style={styles.quotaBar}>
+      <View style={styles.quotaBarHeader}>
+        <Text style={styles.quotaLabel}>{label}</Text>
+        <Text style={styles.quotaValue}>
+          {used}/{total} · {remaining} left
         </Text>
       </View>
-      <View
-        style={{
-          height: 6,
-          borderRadius: 999,
-          backgroundColor: "#F3F4F6",
-          overflow: "hidden",
-        }}
-      >
-        <View
-          style={{
-            width: `${ratio * 100}%`,
-            height: 6,
-            backgroundColor: color,
-            borderRadius: 999,
-          }}
-        />
+      <View style={styles.quotaTrack}>
+        <View style={[styles.quotaFill, { width: `${ratio * 100}%`, backgroundColor: color }]} />
       </View>
     </View>
   );
@@ -613,9 +684,9 @@ const subCardStyles = StyleSheet.create({
     gap: 12,
   },
   premiumCrownCircle: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
     backgroundColor: "#FEF3C7",
     borderWidth: 1,
     borderColor: "#F59E0B",
@@ -623,12 +694,12 @@ const subCardStyles = StyleSheet.create({
     justifyContent: "center",
   },
   premiumTitle: {
-    fontSize: 15,
+    ...appTypography.itemTitle,
     fontWeight: "800",
     color: "#92400E",
   },
   premiumSubtitle: {
-    fontSize: 12,
+    ...appTypography.caption,
     color: "#B45309",
     marginTop: 2,
   },
@@ -639,91 +710,219 @@ const subCardStyles = StyleSheet.create({
     backgroundColor: "#F59E0B",
   },
   daysLeftText: {
+    ...appTypography.captionStrong,
     color: "#fff",
-    fontSize: 11,
-    fontWeight: "700",
   },
   renewBtn: {
+    paddingVertical: 12,
+    borderRadius: 12,
+    borderCurve: "continuous",
+    alignItems: "center",
     backgroundColor: "#FEF3C7",
     borderWidth: 1,
     borderColor: "#F59E0B",
   },
   renewBtnText: {
+    ...appTypography.buttonLabel,
     color: "#92400E",
-    fontWeight: "700",
   },
 });
 
 const styles = StyleSheet.create({
-  container: { padding: 16, paddingBottom: 64 },
-  center: { flex: 1, alignItems: "center", justifyContent: "center" },
-  card: {
-    backgroundColor: "#fff",
-    borderRadius: 16,
-    padding: 16,
-    marginBottom: 14,
-    borderWidth: 1,
-    borderColor: brandTintBg,
-    shadowColor: "#000",
-    shadowOpacity: 0.04,
-    shadowRadius: 8,
-    elevation: 1,
+  screen: {
+    flex: 1,
+    backgroundColor: neutral.canvasMuted,
   },
-  // Theme map: titleSmall → sectionHeading (16/700), bodyMedium → body (14/400),
-  // bodySmall → secondary (13/400). Color tokens: ink → text, muted → textMuted.
-  h3: { ...appTypography.sectionHeading, color: neutral.text, marginBottom: 10 },
-  row: {
+  scroll: {
+    flex: 1,
+  },
+  scrollContent: {
+    paddingHorizontal: 20,
+    paddingTop: 20,
+    paddingBottom: 96,
+  },
+  center: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  sectionTitle: {
+    ...appTypography.captionStrong,
+    color: neutral.textSecondary,
+    marginBottom: 10,
+    marginLeft: 10,
+    textTransform: "uppercase",
+    letterSpacing: 0.5,
+  },
+  sectionTitleSpaced: {
+    marginTop: 24,
+  },
+  card: {
+    backgroundColor: neutral.surface,
+    borderRadius: 12,
+    borderCurve: "continuous",
+    padding: 16,
+    shadowColor: neutral.slate900,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 10,
+    elevation: 3,
+  },
+  cardTitle: {
+    ...appTypography.itemTitle,
+    color: neutral.textBody,
+    fontWeight: "700",
+  },
+  cardDesc: {
+    ...appTypography.secondary,
+    color: neutral.textMuted,
+    marginTop: 4,
+    lineHeight: 18,
+  },
+  subRow: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    paddingVertical: 6,
+    marginBottom: 6,
   },
-  label: { ...appTypography.body, color: neutral.text },
-  value: { ...appTypography.body, color: neutral.text, fontWeight: "600" },
-  hint: { ...appTypography.secondary, color: neutral.textMuted, marginTop: 4 },
-  hintLocked: { ...appTypography.secondary, color: "#92400E", marginTop: 2 },
+  subLabel: {
+    ...appTypography.body,
+    color: neutral.textBody,
+  },
+  subValue: {
+    ...appTypography.body,
+    color: neutral.textBody,
+    fontWeight: "600",
+  },
   tierBadge: {
     paddingHorizontal: 10,
     paddingVertical: 4,
     borderRadius: 999,
-    fontSize: 12,
-    fontWeight: "700",
-    backgroundColor: "#F3F4F6",
-    color: "#374151",
-    overflow: "hidden",
+    backgroundColor: neutral.background,
   },
-  tierPremium: { backgroundColor: "#FEF3C7", color: "#92400E" },
+  tierBadgeText: {
+    ...appTypography.captionStrong,
+    color: neutral.textSecondary,
+  },
   channelRow: {
     flexDirection: "row",
     alignItems: "center",
     paddingVertical: 10,
     borderBottomWidth: 1,
-    borderBottomColor: "#F3F4F6",
+    borderBottomColor: neutral.borderMuted,
   },
-  channelLabelCol: { flex: 1, paddingRight: 12 },
-  langRow: { flexDirection: "row", gap: 8 },
+  channelRowLast: {
+    borderBottomWidth: 0,
+  },
+  channelIconWrap: {
+    width: 44,
+    height: 44,
+    borderRadius: 12,
+    borderCurve: "continuous",
+    backgroundColor: brandTintBg,
+    alignItems: "center",
+    justifyContent: "center",
+    marginRight: 12,
+  },
+  channelLabelCol: {
+    flex: 1,
+    paddingRight: 12,
+    minWidth: 0,
+  },
+  channelLabel: {
+    ...appTypography.itemTitle,
+    color: neutral.textBody,
+    fontWeight: "700",
+  },
+  channelLabelDisabled: {
+    color: neutral.textMuted,
+  },
+  channelDesc: {
+    ...appTypography.secondary,
+    color: neutral.textMuted,
+    marginTop: 2,
+  },
+  hintLocked: {
+    ...appTypography.caption,
+    color: "#B45309",
+    marginTop: 2,
+  },
+  langRow: {
+    flexDirection: "row",
+    gap: 8,
+  },
   langChip: {
     paddingVertical: 8,
     paddingHorizontal: 14,
     borderRadius: 999,
     borderWidth: 1,
-    borderColor: brandTintBg,
-    backgroundColor: "#fff",
+    borderColor: neutral.border,
+    backgroundColor: neutral.surface,
   },
-  langChipActive: { backgroundColor: brandTintBg, borderColor: brandPrimary },
-  langChipText: { color: neutral.text },
-  langChipTextActive: { color: brandPrimary, fontWeight: "700" },
-  btn: {
-    paddingVertical: 12,
-    borderRadius: 12,
-    alignItems: "center",
+  langChipActive: {
+    backgroundColor: brandTintBg,
+    borderColor: brandPrimary,
+  },
+  langChipText: {
+    ...appTypography.secondary,
+    color: neutral.textBody,
+  },
+  langChipTextActive: {
+    color: brandPrimary,
+    fontWeight: "700",
+  },
+  chipScroll: {
+    paddingVertical: 8,
+    gap: 8,
+  },
+  quotaBar: {
     marginTop: 12,
   },
-  btnPrimary: { backgroundColor: brandPrimary },
-  btnPrimaryText: { color: "#fff", fontWeight: "700" },
-  btnSecondary: { backgroundColor: brandTintBg },
-  btnSecondaryText: { color: brandPrimary, fontWeight: "700" },
-  btnDanger: { backgroundColor: "#FEE2E2" },
-  btnDangerText: { color: "#B91C1C", fontWeight: "700" },
-  saveBtn: { marginTop: 18 },
+  quotaBarHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    marginBottom: 4,
+  },
+  quotaLabel: {
+    ...appTypography.captionStrong,
+    color: neutral.textBody,
+  },
+  quotaValue: {
+    ...appTypography.caption,
+    color: neutral.textSecondary,
+  },
+  quotaTrack: {
+    height: 6,
+    borderRadius: 999,
+    backgroundColor: neutral.background,
+    overflow: "hidden",
+  },
+  quotaFill: {
+    height: 6,
+    borderRadius: 999,
+  },
+  saveBtn: {
+    paddingVertical: 14,
+    borderRadius: 12,
+    borderCurve: "continuous",
+    alignItems: "center",
+    marginTop: 24,
+    backgroundColor: brandPrimary,
+  },
+  saveBtnText: {
+    ...appTypography.buttonLabel,
+    color: neutral.surface,
+  },
+  btnSecondary: {
+    paddingVertical: 12,
+    borderRadius: 12,
+    borderCurve: "continuous",
+    alignItems: "center",
+    marginTop: 12,
+    backgroundColor: brandTintBg,
+  },
+  btnSecondaryText: {
+    ...appTypography.buttonLabel,
+    color: brandPrimary,
+  },
 });

@@ -17,6 +17,7 @@ import { HeaderVariant, RootStackParamList } from "../types";
 import { NavigationProp, useNavigation } from "@react-navigation/native";
 import Icons from "../theme/icon";
 import { RefreshLogoInline } from "@shared/components/RefreshLogoOverlay";
+import { useNotificationBadgeCount } from "../hooks/useNotificationBadgeCount";
 
 const LOGO_ASSET = require("../../../assets/logob.png");
 const LOGO_RING_PADDING = 3;
@@ -72,6 +73,7 @@ const Header = ({
   const { t } = useTranslation();
   const insets = useSafeAreaInsets();
   const navigation = useNavigation<NavigationProp<RootStackParamList>>();
+  const unreadCount = useNotificationBadgeCount();
   const screenWidth = Dimensions.get("window").width;
   const isSmallScreen = screenWidth < 375;
   const logoOuter = isSmallScreen ? 40 : 48;
@@ -212,7 +214,16 @@ const Header = ({
                           onPress={() => (navigation as any).navigate("NotificationScreen")}
                           android_ripple={{ color: headerOnBrand.ripple, radius: 18 }}
                         >
-                          <Icons.notification color={headerOnBrand.fg} size={22} />
+                          <View style={headerStyles.notifIconWrap}>
+                            <Icons.notification color={headerOnBrand.fg} size={22} />
+                            {unreadCount > 0 ? (
+                              <View style={headerStyles.notifBadge}>
+                                <Text style={headerStyles.notifBadgeText}>
+                                  {unreadCount > 99 ? "99+" : unreadCount}
+                                </Text>
+                              </View>
+                            ) : null}
+                          </View>
                         </Pressable>
                       ) : null}
                     </View>
@@ -233,7 +244,16 @@ const Header = ({
                 onPress={() => (navigation as any).navigate("NotificationScreen")}
                 android_ripple={{ color: headerOnBrand.ripple, radius: 18 }}
               >
-                <Icons.notification color={headerOnBrand.fg} size={22} />
+                <View style={headerStyles.notifIconWrap}>
+                  <Icons.notification color={headerOnBrand.fg} size={22} />
+                  {unreadCount > 0 ? (
+                    <View style={headerStyles.notifBadge}>
+                      <Text style={headerStyles.notifBadgeText}>
+                        {unreadCount > 99 ? "99+" : unreadCount}
+                      </Text>
+                    </View>
+                  ) : null}
+                </View>
               </Pressable>
             ) : null}
           </View>
@@ -297,7 +317,16 @@ const Header = ({
                 onPress={() => (navigation as any).navigate("NotificationScreen")}
                 android_ripple={{ color: headerOnBrand.ripple, radius: 20 }}
               >
-                <Icons.notification color={headerOnBrand.fg} size={26} />
+                <View style={headerStyles.notifIconWrap}>
+                  <Icons.notification color={headerOnBrand.fg} size={26} />
+                  {unreadCount > 0 ? (
+                    <View style={headerStyles.notifBadge}>
+                      <Text style={headerStyles.notifBadgeText}>
+                        {unreadCount > 99 ? "99+" : unreadCount}
+                      </Text>
+                    </View>
+                  ) : null}
+                </View>
               </Pressable>
             ) : null}
           </View>

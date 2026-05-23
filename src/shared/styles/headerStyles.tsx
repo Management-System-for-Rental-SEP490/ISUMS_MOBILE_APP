@@ -270,6 +270,33 @@ const headerStyles = StyleSheet.create({
     justifyContent: "center",
     flexShrink: 0,
   },
+  /** Wrapper bọc icon chuông + badge — position relative để badge absolute neo đúng góc. */
+  notifIconWrap: {
+    position: "relative",
+  },
+  /** Chấm đỏ / số chưa đọc — neo góc trên-phải icon chuông. */
+  notifBadge: {
+    position: "absolute",
+    top: -5,
+    right: -6,
+    minWidth: 18,
+    height: 18,
+    borderRadius: 9,
+    backgroundColor: "#EF4444",
+    alignItems: "center",
+    justifyContent: "center",
+    paddingHorizontal: 4,
+    borderWidth: 1.5,
+    borderColor: "transparent",
+  },
+  notifBadgeText: {
+    color: "#FFFFFF",
+    fontSize: 10,
+    fontWeight: "800",
+    lineHeight: 13,
+    letterSpacing: -0.3,
+    includeFontPadding: false,
+  },
 });
 
 export default headerStyles;

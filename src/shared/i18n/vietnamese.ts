@@ -635,7 +635,12 @@ export default {
         "language_en": "English",
         "language_ja": "日本語",
         "language_current": "Đang sử dụng",
-        "language_update_error": "Không lưu được ngôn ngữ. Vui lòng thử lại."
+        "language_update_error": "Không lưu được ngôn ngữ. Vui lòng thử lại.",
+        "notifications_section": "Thông báo",
+        "notifications_prefs_title": "Cài đặt thông báo",
+        "notifications_prefs_desc": "Kênh nhận, gói đăng ký, voice consent, escalation",
+        "voice_history_title": "Lịch sử cuộc gọi",
+        "voice_history_desc": "Cuộc gọi cảnh báo IoT đã nhận"
     },
     "home": {
         "welcome_role": "Bạn đang là {{role}}",
