@@ -50,6 +50,7 @@ import {
   useAssetItems,
   asAssetItemArray,
   useHouseById,
+  useTenantInvoices,
   USER_KEYS,
 } from "../../../../shared/hooks";
 import type { HousesApiResponse } from "../../../../shared/types/api";
