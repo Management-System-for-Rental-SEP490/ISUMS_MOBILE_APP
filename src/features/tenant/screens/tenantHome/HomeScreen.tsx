@@ -383,16 +383,6 @@ const HomeScreen = ({ navigation }: HomeScreenProps) => {
   const { house: myHouse, houseId: contextHouseId, thingId } = useTenantContext();
   const hasTenantHouse = Boolean(myHouse);
 
-  const iotConnected = useTenantIoTConnection(thingId);
-  const electricUsage = useTenantUsage({
-    houseId: contextHouseId,
-    metric: "electricity",
-  });
-  const waterUsage = useTenantUsage({
-    houseId: contextHouseId,
-    metric: "water",
-  });
-
   const accessReasonText = useMemo(
     () => translateTenantAccessReason(myHouse?.accessReason, myHouse?.accessStatus, t),
     [myHouse?.accessReason, myHouse?.accessStatus, t]
@@ -498,6 +488,17 @@ const HomeScreen = ({ navigation }: HomeScreenProps) => {
    * vẫn mở hết thao tác nhanh dù đã hiện banner.
    */
   const showFullHomeFeatures = !accessBlock && !showRentPaymentBanner;
+  const runtimeThingId = showFullHomeFeatures ? thingId : "";
+  const runtimeHouseId = showFullHomeFeatures ? contextHouseId : null;
+  const iotConnected = useTenantIoTConnection(runtimeThingId);
+  const electricUsage = useTenantUsage({
+    houseId: runtimeHouseId,
+    metric: "electricity",
+  });
+  const waterUsage = useTenantUsage({
+    houseId: runtimeHouseId,
+    metric: "water",
+  });
 
   const [questionTickerItems, setQuestionTickerItems] = useState<IssueTicketResponseFromApi[]>([]);
   const [questionHouseByTicketId, setQuestionHouseByTicketId] = useState<Record<string, string>>(
@@ -720,6 +721,7 @@ const HomeScreen = ({ navigation }: HomeScreenProps) => {
       pendingInvoiceId: houseForDetail.pendingInvoiceId ?? null,
       accessStatus: houseForDetail.accessStatus,
       accessReason: houseForDetail.accessReason ?? null,
+      handoverDate: houseForDetail.handoverDate,
       memberRole: houseForDetail.memberRole,
     });
   }, [localizedHomeHouse, myHouse, rootNavigation]);

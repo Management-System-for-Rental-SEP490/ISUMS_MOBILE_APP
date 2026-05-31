@@ -38,6 +38,7 @@ import {
   useIotPreferences,
 } from "../../../../../shared/hooks/usePreferences";
 import { calculateCostFromTariff } from "../../../../../shared/utils/evnTariff";
+import { getTenantAccessBlock } from "../../../../../shared/utils";
 import { useWaterTariff } from "../../../../../shared/hooks/useTariff";
 import type { ForecastDailyPoint } from "../../../../../shared/types/api";
 
@@ -64,17 +65,22 @@ export default function WaterUsageScreenV2({
 
   const tenant = useTenantContext();
   const { houseId, thingId, functionalAreas } = tenant;
+  const accessBlock = useMemo(
+    () => (tenant.house ? getTenantAccessBlock(tenant.house) : null),
+    [tenant.house],
+  );
+  const runtimeHouseId = accessBlock ? null : houseId;
   const [selectedAreaId, setSelectedAreaId] = useState<string | null>(null);
 
   const connected = useTenantIoTConnection(thingId);
   const telemetry = useAreaTelemetry(thingId, selectedAreaId);
   const usage = useTenantUsage({
-    houseId,
+    houseId: runtimeHouseId,
     metric: "water",
     areaId: selectedAreaId,
   });
   const forecast = useTenantForecast({
-    houseId,
+    houseId: runtimeHouseId,
     metric: "water",
     areaId: selectedAreaId,
   });

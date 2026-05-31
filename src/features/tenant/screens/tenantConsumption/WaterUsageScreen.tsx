@@ -273,9 +273,13 @@ const WaterUsageScreen = ({ showHeader = true }: WaterUsageScreenProps) => {
   const { t, i18n } = useTranslation();
   const { houseId, functionalAreas, thingId, iotNodes, house } = useTenantContext();
   const accessBlock = useMemo(() => (house ? getTenantAccessBlock(house) : null), [house]);
+  const runtimeHouseId = accessBlock ? null : houseId;
   const iotConnected = useTenantIoTConnection(thingId);
   const { scrollAtTop, onScrollForRefreshGate } = useRefreshControlGate();
-  const { data: assetItemsData } = useAssetItems({ houseId: houseId ?? undefined });
+  const { data: assetItemsData } = useAssetItems({
+    houseId: runtimeHouseId ?? undefined,
+    enabled: !accessBlock && Boolean(runtimeHouseId),
+  });
   const assetItems = useMemo(
     () => asAssetItemArray(assetItemsData?.data),
     [assetItemsData?.data]
@@ -314,9 +318,9 @@ const WaterUsageScreen = ({ showHeader = true }: WaterUsageScreenProps) => {
   const isHouseLevel = selectedAreaId === "all";
   const activeAreaId = isHouseLevel ? null : selectedAreaId;
 
-  const usage = useTenantUsage({ houseId, metric: "water", areaId: activeAreaId });
+  const usage = useTenantUsage({ houseId: runtimeHouseId, metric: "water", areaId: activeAreaId });
   const forecast = useTenantForecast({
-    houseId,
+    houseId: runtimeHouseId,
     metric: "water",
     areaId: activeAreaId,
   });
@@ -338,7 +342,7 @@ const WaterUsageScreen = ({ showHeader = true }: WaterUsageScreenProps) => {
     [areasWithNode]
   );
   const areaDistribution = useAreasUsageDistribution({
-    houseId,
+    houseId: runtimeHouseId,
     metric: "water",
     areas: distAreas,
   });

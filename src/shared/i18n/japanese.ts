@@ -279,7 +279,7 @@ export default {
         "device_not_in_your_house": "このデバイスは現在選択されている家にありません。家を切り替えるか、現在の家のデバイスをスキャンしてください。",
         "rescan": "再スキャン",
         "nfc_handover_blocked_title": "まだ引き渡し前です",
-        "nfc_handover_blocked_body": "契約上の引き渡し日に達していません。QRコードのみスキャンできます。引き渡し後にNFCが利用できます。"
+        "nfc_handover_blocked_body": "契約上の引き渡し日に達していません。デバイスのスキャンは引き渡し後に利用できます。"
     },
     "billing": {
         "title": "請求ダッシュボード",

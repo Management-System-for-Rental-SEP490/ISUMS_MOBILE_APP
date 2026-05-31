@@ -7,6 +7,7 @@ import { useMemo } from "react";
 import { useAuthStore } from "../../store/useAuthStore";
 import { useTenantHouses, useFunctionalAreasByHouseId } from "./useHouses";
 import { useIotDevicesByHouseId } from "./useAssetItems";
+import { getTenantAccessBlock } from "../utils/tenantAccess";
 import type {
   FunctionalAreaFromApi,
   HouseFromApi,
@@ -52,19 +53,25 @@ export function useTenantContext(): TenantContextValue {
   }, [tenantHouses, authHouseId]);
 
   const houseId = house?.id ?? null;
+  const accessBlock = useMemo(() => getTenantAccessBlock(house), [house]);
+  const canLoadHouseRuntimeData = Boolean(houseId) && !accessBlock;
 
   const { data: iotData, isLoading: thingLoading } = useIotDevicesByHouseId(
-    houseId ?? ""
+    canLoadHouseRuntimeData ? houseId ?? "" : ""
   );
 
-  const { data: areasData } = useFunctionalAreasByHouseId(houseId ?? "");
+  const { data: areasData } = useFunctionalAreasByHouseId(
+    houseId ?? "",
+    canLoadHouseRuntimeData
+  );
 
   const thingId = useMemo<string>(() => {
+    if (!canLoadHouseRuntimeData) return "";
     const ctrl = iotData?.data;
     const name = ctrl?.thingName?.trim();
     if (name) return name;
     return TENANT_IOT_THING_ID;
-  }, [iotData]);
+  }, [canLoadHouseRuntimeData, iotData]);
 
   const iotNodes = useMemo<IotNodeDeviceFromApi[]>(
     () => iotData?.data?.devices ?? [],

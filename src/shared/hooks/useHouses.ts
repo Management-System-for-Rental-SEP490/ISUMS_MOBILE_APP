@@ -134,13 +134,13 @@ export const useHouseNamesByIds = (houseIds: string[]) => {
  * Khu vực chức năng theo houseId (GET /api/houses/functionalAreas/{houseId}).
  * Tenant dùng khi response nhà không nhúng đủ `functionalAreas`.
  */
-export const useFunctionalAreasByHouseId = (houseId: string) => {
+export const useFunctionalAreasByHouseId = (houseId: string, enabled = true) => {
   const { i18n } = useTranslation();
   const locale = toAppLocaleCode(i18n.language);
   return useQuery({
     queryKey: [...HOUSES_KEYS.functionalAreas(houseId), locale],
     queryFn: () => getFunctionalAreasByHouseId(houseId),
-    enabled: Boolean(houseId),
+    enabled: Boolean(houseId) && enabled,
   });
 };
 

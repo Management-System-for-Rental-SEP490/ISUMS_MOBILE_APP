@@ -279,7 +279,7 @@ export default {
         "device_not_in_your_house": "This device is not in the currently selected house. Please switch house or scan a device in the current house.",
         "rescan": "Rescan",
         "nfc_handover_blocked_title": "Handover not yet available",
-        "nfc_handover_blocked_body": "Your lease handover date has not been reached yet. You can scan QR codes only; NFC scanning will be available after handover."
+        "nfc_handover_blocked_body": "Your lease handover date has not been reached yet. Device scanning will be available after handover."
     },
     "billing": {
         "title": "Billing Dashboard",

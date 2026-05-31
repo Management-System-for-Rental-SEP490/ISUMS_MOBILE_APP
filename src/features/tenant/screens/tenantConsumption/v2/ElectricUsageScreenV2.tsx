@@ -42,6 +42,7 @@ import {
   useIotPreferences,
 } from "../../../../../shared/hooks/usePreferences";
 import { calculateCostFromTariff } from "../../../../../shared/utils/evnTariff";
+import { getTenantAccessBlock } from "../../../../../shared/utils";
 import { useElectricTariff } from "../../../../../shared/hooks/useTariff";
 import { carbonImpactFromKwh } from "../../../../../shared/utils/carbon";
 import type { ForecastDailyPoint } from "../../../../../shared/types/api";
@@ -72,22 +73,27 @@ export default function ElectricUsageScreenV2({
 
   const tenant = useTenantContext();
   const { houseId, thingId, functionalAreas } = tenant;
+  const accessBlock = useMemo(
+    () => (tenant.house ? getTenantAccessBlock(tenant.house) : null),
+    [tenant.house],
+  );
+  const runtimeHouseId = accessBlock ? null : houseId;
   const [selectedAreaId, setSelectedAreaId] = useState<string | null>(null);
   const [period, setPeriod] = useState<Period>("day");
 
   const connected = useTenantIoTConnection(thingId);
   const telemetry = useAreaTelemetry(thingId, selectedAreaId);
   const usage = useTenantUsage({
-    houseId,
+    houseId: runtimeHouseId,
     metric: "electricity",
     areaId: selectedAreaId,
   });
   const forecast = useTenantForecast({
-    houseId,
+    houseId: runtimeHouseId,
     metric: "electricity",
     areaId: selectedAreaId,
   });
-  const power = usePowerControl(houseId);
+  const power = usePowerControl(runtimeHouseId);
 
   const periodValue =
     period === "day"

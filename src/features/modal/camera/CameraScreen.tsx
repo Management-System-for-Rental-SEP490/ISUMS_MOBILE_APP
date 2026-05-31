@@ -203,6 +203,15 @@ const CameraScreen = () => {
   // Luồng Tenant: quét NFC/QR → mở trang chi tiết thiết bị (TenantItemDetail) nếu thiết bị thuộc nhà mình
   const handleTagScanned = async (tagValue: string, type: "NFC" | "QR_CODE") => {
     console.log(`Scanned ${type}:`, tagValue);
+    if (handoverBlocked) {
+      setScanned(false);
+      Alert.alert(
+        t("camera.nfc_handover_blocked_title"),
+        t("camera.nfc_handover_blocked_body"),
+        [{ text: t("common.close") }]
+      );
+      return;
+    }
     try {
       const assetItem = await getAssetItemByNfcId(tagValue);
 

@@ -40,7 +40,13 @@ import {
 } from "../../../../shared/components/StackScreenTitleBadge";
 import { brandPrimary, brandSecondary, neutral } from "../../../../shared/theme/color";
 import { ExpandableLongText } from "../../../../shared/components/ExpandableLongText";
-import { DEFAULT_BE_SHORT_TEXT_MAX_CHARS, formatHouseStatusForDisplay } from "../../../../shared/utils";
+import {
+  DEFAULT_BE_SHORT_TEXT_MAX_CHARS,
+  formatDayMonthNumeric,
+  formatHouseStatusForDisplay,
+  getTenantAccessBlock,
+  translateTenantAccessReason,
+} from "../../../../shared/utils";
 import {
   TENANT_INVOICES_QUERY_KEY,
   useTenantHouses,
@@ -94,6 +100,7 @@ function houseFromApiToBuildingDetail(h: HouseFromApi): RootStackParamList["Buil
     pendingInvoiceId: h.pendingInvoiceId ?? null,
     accessStatus: h.accessStatus,
     accessReason: h.accessReason ?? null,
+    handoverDate: h.handoverDate,
     memberRole: h.memberRole,
   };
 }
@@ -104,7 +111,7 @@ const isTenantHouseStatusHighlighted = (status?: string) => {
 };
 
 const TenantHouseDescription = () => {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const insets = useSafeAreaInsets();
   const navigation = useNavigation<TenantHouseNavProp>();
   const route = useRoute<TenantHouseRouteProp>();
@@ -126,6 +133,7 @@ const TenantHouseDescription = () => {
     pendingInvoiceId,
     accessStatus: routeAccessStatus,
     accessReason: routeAccessReason,
+    handoverDate: routeHandoverDate,
     memberRole: routeMemberRole,
   } = route.params;
 
@@ -178,6 +186,8 @@ const TenantHouseDescription = () => {
         detailHouse?.accessReason ??
         routeAccessReason ??
         null,
+      handoverDate:
+        accessHouse?.handoverDate ?? detailHouse?.handoverDate ?? routeHandoverDate,
       memberRole: accessHouse?.memberRole ?? detailHouse?.memberRole ?? routeMemberRole,
     };
   }, [
@@ -194,6 +204,7 @@ const TenantHouseDescription = () => {
     routeAccessReason,
     routeAccessStatus,
     routeFunctionalAreas,
+    routeHandoverDate,
     routeMemberRole,
     status,
     ward,
@@ -218,6 +229,40 @@ const TenantHouseDescription = () => {
     invoicesLoading,
     invoiceListForBanner,
   ]);
+  const accessBlock = useMemo(() => {
+    if (!buildingIdStr) return null;
+    return getTenantAccessBlock(currentHouse, invoiceListForBanner);
+  }, [buildingIdStr, currentHouse, invoiceListForBanner]);
+  const accessReasonText = useMemo(
+    () =>
+      translateTenantAccessReason(
+        currentHouse.accessReason,
+        currentHouse.accessStatus,
+        t
+      ),
+    [currentHouse.accessReason, currentHouse.accessStatus, t]
+  );
+  const accessBannerLine = useMemo(() => {
+    if (!accessBlock) return "";
+    if (accessBlock === "handover") {
+      return (
+        accessReasonText ||
+        t("home.access.handover_body", {
+          date: currentHouse.handoverDate
+            ? formatDayMonthNumeric(new Date(currentHouse.handoverDate), i18n.language)
+            : "—",
+        })
+      );
+    }
+    if (accessBlock === "deposit") {
+      return accessReasonText || t("home.access.deposit_body");
+    }
+    if (accessBlock === "payment_restricted") {
+      return accessReasonText || t("home.access.payment_restricted_banner");
+    }
+    return "";
+  }, [accessBlock, accessReasonText, currentHouse.handoverDate, t, i18n.language]);
+  const canUseHouseDetailFeatures = !accessBlock && !showPaymentBanner;
   const { data: userProfile, isPending: profilePending } = useUserProfile();
   const profileMainHouseId = String(userProfile?.mainHouseId ?? "").trim();
   const hasPersistedMainHouse = useMemo(
@@ -362,7 +407,10 @@ const TenantHouseDescription = () => {
     return currentHouse;
   }, [currentHouse]);
 
-  const { data: functionalAreasRes } = useFunctionalAreasByHouseId(buildingId);
+  const { data: functionalAreasRes } = useFunctionalAreasByHouseId(
+    buildingId,
+    canUseHouseDetailFeatures
+  );
 
   const effectiveFunctionalAreas = useMemo((): FunctionalAreaFromApi[] => {
     return mergeFunctionalAreasForHouse(houseForMerge, functionalAreasRes?.data);
@@ -392,7 +440,10 @@ const TenantHouseDescription = () => {
   const {
     data: itemsData,
     isLoading: loadingItems,
-  } = useAssetItems({ houseId: buildingId });
+  } = useAssetItems({
+    houseId: buildingId,
+    enabled: canUseHouseDetailFeatures && Boolean(buildingId),
+  });
 
   const devices: AssetItemFromApi[] = useMemo(
     () => asAssetItemArray(itemsData?.data).filter((item) => item.houseId === buildingId),
@@ -823,6 +874,13 @@ const TenantHouseDescription = () => {
           </Pressable>
         ) : null}
 
+        {accessBlock && accessBannerLine ? (
+          <View style={tenantHouseStyles.paymentBanner}>
+            <Text style={tenantHouseStyles.paymentBannerText}>{accessBannerLine}</Text>
+          </View>
+        ) : null}
+
+        {canUseHouseDetailFeatures ? (
         <View style={tenantHouseStyles.housePlanSectionWrap}>
           <View style={homeStyles.homeZoneCard}>
             {deviceDropdownSections ? (
@@ -920,6 +978,7 @@ const TenantHouseDescription = () => {
             ) : null}
           </View>
         </View>
+        ) : null}
 
         {showPaymentBanner ? (
           <View style={tenantHouseStyles.paymentBanner}>

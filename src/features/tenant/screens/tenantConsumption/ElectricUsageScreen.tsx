@@ -458,9 +458,13 @@ const ElectricUsageScreen = ({ showHeader = true }: ElectricUsageScreenProps) =>
   const { t, i18n } = useTranslation();
   const { houseId, functionalAreas, thingId, iotNodes, house } = useTenantContext();
   const accessBlock = useMemo(() => (house ? getTenantAccessBlock(house) : null), [house]);
+  const runtimeHouseId = accessBlock ? null : houseId;
   const iotConnected = useTenantIoTConnection(thingId);
   const { scrollAtTop, onScrollForRefreshGate } = useRefreshControlGate();
-  const { data: assetItemsData } = useAssetItems({ houseId: houseId ?? undefined });
+  const { data: assetItemsData } = useAssetItems({
+    houseId: runtimeHouseId ?? undefined,
+    enabled: !accessBlock && Boolean(runtimeHouseId),
+  });
   const assetItems = useMemo(
     () => asAssetItemArray(assetItemsData?.data),
     [assetItemsData?.data]
@@ -501,12 +505,12 @@ const ElectricUsageScreen = ({ showHeader = true }: ElectricUsageScreenProps) =>
   const areaLabel = areaChips.find((c) => c.id === selectedAreaId)?.label ?? "";
 
   const usage = useTenantUsage({
-    houseId,
+    houseId: runtimeHouseId,
     metric: "electricity",
     areaId: activeAreaId,
   });
   const forecast = useTenantForecast({
-    houseId,
+    houseId: runtimeHouseId,
     metric: "electricity",
     areaId: activeAreaId,
   });
@@ -518,13 +522,13 @@ const ElectricUsageScreen = ({ showHeader = true }: ElectricUsageScreenProps) =>
     [areasWithNode]
   );
   const areaDistribution = useAreasUsageDistribution({
-    houseId,
+    houseId: runtimeHouseId,
     metric: "electricity",
     areas: distAreas,
   });
 
   const { power, gas, environment, powerHistory } = useAreaTelemetry(thingId, activeAreaId);
-  const powerCtrl = usePowerControl(houseId);
+  const powerCtrl = usePowerControl(runtimeHouseId);
 
   const [powerState, setPowerState] = useState<AreaPowerStateResponse | null>(null);
   const [isAreaLoading, setIsAreaLoading] = useState(false);
@@ -541,14 +545,14 @@ const ElectricUsageScreen = ({ showHeader = true }: ElectricUsageScreenProps) =>
   }, [selectedAreaId, isHouseLevel]);
 
   useEffect(() => {
-    if (!activeAreaId || !houseId) {
+    if (!activeAreaId || !runtimeHouseId) {
       setPowerState(null);
       setIsAreaLoading(false);
       return;
     }
     const reqId = ++powerStateReqRef.current;
     iotCommandApi
-      .getAreaPowerState(houseId, activeAreaId)
+      .getAreaPowerState(runtimeHouseId, activeAreaId)
       .then((res) => {
         if (reqId !== powerStateReqRef.current) return;
         setPowerState(res);
@@ -559,7 +563,7 @@ const ElectricUsageScreen = ({ showHeader = true }: ElectricUsageScreenProps) =>
         setPowerState(null);
         setIsAreaLoading(false);
       });
-  }, [activeAreaId, houseId]);
+  }, [activeAreaId, runtimeHouseId]);
 
   const isPowered = powerState?.powered ?? true;
 
@@ -619,14 +623,14 @@ const ElectricUsageScreen = ({ showHeader = true }: ElectricUsageScreenProps) =>
       }),
       forecast.refetch(),
     ];
-    if (activeAreaId && houseId) {
+    if (activeAreaId && runtimeHouseId) {
       tasks.push(
-        iotCommandApi.getAreaPowerState(houseId, activeAreaId).then(setPowerState).catch(() => {})
+        iotCommandApi.getAreaPowerState(runtimeHouseId, activeAreaId).then(setPowerState).catch(() => {})
       );
     }
     await Promise.all(tasks);
     setPullRefreshing(false);
-  }, [usage.refetch, areaDistribution.refetch, forecast.refetch, activeAreaId, houseId]);
+  }, [usage.refetch, areaDistribution.refetch, forecast.refetch, activeAreaId, runtimeHouseId]);
 
   const f = power?.features;
 

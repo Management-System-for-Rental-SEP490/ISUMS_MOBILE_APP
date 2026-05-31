@@ -31,7 +31,12 @@ import {
   useFunctionalAreasByHouseId,
   useTenantContext,
 } from "../../../../shared/hooks";
-import { mergeFunctionalAreasForHouse } from "../../../../shared/utils";
+import {
+  formatDayMonthNumeric,
+  getTenantAccessBlock,
+  mergeFunctionalAreasForHouse,
+  translateTenantAccessReason,
+} from "../../../../shared/utils";
 import { tenantItemDescriptionStyles as itemScreenStyles } from "./tenantItemDescriptionStyles";
 import {
   getAssetItemById,
@@ -85,11 +90,12 @@ function mapApiStatusToDeviceStatus(apiStatus: string): DeviceStatus {
 }
 
 export default function TenantItemDescriptionScreen() {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const insets = useSafeAreaInsets();
   const navigation = useNavigation<NavProp>();
   const route = useRoute<RoutePropType>();
   const { house } = useTenantContext();
+  const accessBlock = useMemo(() => getTenantAccessBlock(house), [house]);
   const { data: categoriesData } = useAssetCategories();
   const categories = categoriesData?.data ?? [];
 
@@ -107,7 +113,7 @@ export default function TenantItemDescriptionScreen() {
 
   const houseIdForAreas = String(item.houseId ?? "").trim();
   const { data: functionalAreasByHouseRes } =
-    useFunctionalAreasByHouseId(houseIdForAreas);
+    useFunctionalAreasByHouseId(houseIdForAreas, !accessBlock);
 
   const placementFunctionalAreas = useMemo(
     () =>
@@ -120,6 +126,7 @@ export default function TenantItemDescriptionScreen() {
 
   useFocusEffect(
     useCallback(() => {
+      if (accessBlock) return;
       let isActive = true;
       (async () => {
         try {
@@ -162,7 +169,7 @@ export default function TenantItemDescriptionScreen() {
       return () => {
         isActive = false;
       };
-    }, [initialItem.id, initialItem.nfcTag, initialItem.qrTag])
+    }, [accessBlock, initialItem.id, initialItem.nfcTag, initialItem.qrTag])
   );
 
   useEffect(() => {
@@ -240,6 +247,32 @@ export default function TenantItemDescriptionScreen() {
   ];
 
   const isDifferentHouse = house && item.houseId !== house.id;
+  const accessBlockBody = useMemo(() => {
+    if (!accessBlock) return "";
+    const reason = translateTenantAccessReason(house?.accessReason, house?.accessStatus, t);
+    if (accessBlock === "handover") {
+      return (
+        reason ||
+        t("home.access.handover_body", {
+          date: house?.handoverDate
+            ? formatDayMonthNumeric(new Date(house.handoverDate), i18n.language)
+            : "—",
+        })
+      );
+    }
+    if (accessBlock === "deposit") return reason || t("home.access.deposit_body");
+    if (accessBlock === "payment_restricted") {
+      return reason || t("home.access.payment_restricted_banner");
+    }
+    return reason;
+  }, [
+    accessBlock,
+    house?.accessReason,
+    house?.accessStatus,
+    house?.handoverDate,
+    t,
+    i18n.language,
+  ]);
 
   return (
     <View style={itemScreenStyles.container}>
@@ -271,7 +304,15 @@ export default function TenantItemDescriptionScreen() {
         </View>
       )}
 
-      {loading ? (
+      {accessBlock ? (
+        <View style={itemScreenStyles.errorBanner}>
+          <Text style={itemScreenStyles.errorBannerText}>
+            {accessBlockBody}
+          </Text>
+        </View>
+      ) : null}
+
+      {accessBlock ? null : loading ? (
         <View style={{ flex: 1, position: "relative" }}>
           <RefreshLogoOverlay visible mode="page" />
         </View>

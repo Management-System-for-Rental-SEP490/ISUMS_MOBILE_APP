@@ -68,6 +68,7 @@ export type RootStackParamList = AuthStackParamList & {
     pendingInvoiceId?: string | null;
     accessStatus?: TenantHouseAccessStatus;
     accessReason?: string | null;
+    handoverDate?: string;
     memberRole?: TenantHouseMemberRole;
   };
   /**

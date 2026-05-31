@@ -279,7 +279,7 @@ export default {
         "device_not_in_your_house": "Thiết bị này không thuộc căn nhà đang chọn. Vui lòng đổi nhà hoặc quét thiết bị thuộc nhà hiện tại.",
         "rescan": "Quét lại",
         "nfc_handover_blocked_title": "Chưa bàn giao nhà",
-        "nfc_handover_blocked_body": "Căn nhà chưa đến ngày bàn giao theo hợp đồng. Bạn chỉ có thể quét mã QR; quét NFC sẽ được bật sau khi bàn giao."
+        "nfc_handover_blocked_body": "Căn nhà chưa đến ngày bàn giao theo hợp đồng. Tính năng quét thiết bị sẽ được bật sau khi bàn giao."
     },
     "billing": {
         "title": "Bảng điều khiển Billing",

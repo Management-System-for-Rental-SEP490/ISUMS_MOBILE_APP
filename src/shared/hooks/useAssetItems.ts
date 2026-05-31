@@ -19,6 +19,7 @@ import type {
 export type UseAssetItemsParams = {
   houseId?: string;
   categoryId?: string | null;
+  enabled?: boolean;
 };
 
 /**
@@ -45,7 +46,7 @@ export const IOT_DEVICE_KEYS = {
  */
 export const useAssetItems = (params: UseAssetItemsParams = {}) => {
   const { i18n } = useTranslation();
-  const { houseId, categoryId } = params;
+  const { houseId, categoryId, enabled = true } = params;
 
   const queryKey = houseId
     ? ([...ASSET_ITEM_KEYS.byHouse(houseId, categoryId), i18n.language] as const)
@@ -68,6 +69,7 @@ export const useAssetItems = (params: UseAssetItemsParams = {}) => {
         categoryId: (categoryId ?? undefined) as AssetItemsParams["categoryId"],
       });
     },
+    enabled,
   });
 };
 
