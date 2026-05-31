@@ -2,6 +2,7 @@
  * Hooks IoT tenant: WebSocket realtime + REST usage + điều khiển điện.
  */
 import { useCallback, useEffect, useRef, useState } from "react";
+import { APP_FOREGROUND_GET_POLL_MS } from "../../../shared/api/config";
 import { iotClient } from "../../../shared/services/iotClient";
 import type { TelemetryMessage } from "../../../shared/types";
 import iotCommandApi, {
@@ -10,27 +11,60 @@ import iotCommandApi, {
 } from "../../../shared/services/iotCommandApi";
 
 const HISTORY_SIZE = 50;
+const IOT_OFFLINE_GRACE_MS = 10_000;
 
 export function useTenantIoTConnection(thingId: string): boolean {
-  const [connected, setConnected] = useState(() => iotClient.isConnected);
+  const [live, setLive] = useState(() => iotClient.isConnected);
+  const offlineTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     if (!thingId) return;
     iotClient.connect();
     iotClient.subscribe(thingId);
-    setConnected(iotClient.isConnected);
-    const onConn = () => setConnected(true);
-    const onDisc = () => setConnected(false);
-    iotClient.on("connected", onConn);
-    iotClient.on("disconnected", onDisc);
+
+    const clearOfflineTimer = () => {
+      if (offlineTimerRef.current) {
+        clearTimeout(offlineTimerRef.current);
+        offlineTimerRef.current = null;
+      }
+    };
+
+    const startOfflineCountdown = () => {
+      if (offlineTimerRef.current) return;
+      offlineTimerRef.current = setTimeout(() => {
+        setLive(false);
+        offlineTimerRef.current = null;
+      }, IOT_OFFLINE_GRACE_MS);
+    };
+
+    const onConnected = () => {
+      clearOfflineTimer();
+      setLive(true);
+    };
+
+    const onDisconnected = () => {
+      startOfflineCountdown();
+    };
+
+    if (iotClient.isConnected) {
+      onConnected();
+    } else {
+      setLive(true);
+      startOfflineCountdown();
+    }
+
+    iotClient.on("connected", onConnected);
+    iotClient.on("disconnected", onDisconnected);
+
     return () => {
-      iotClient.removeListener("connected", onConn);
-      iotClient.removeListener("disconnected", onDisc);
+      iotClient.removeListener("connected", onConnected);
+      iotClient.removeListener("disconnected", onDisconnected);
       iotClient.unsubscribe(thingId);
+      clearOfflineTimer();
     };
   }, [thingId]);
 
-  return connected;
+  return live;
 }
 
 export interface TenantTelemetryState {
@@ -196,6 +230,7 @@ export function useTenantUsage(params: {
   const [monthVal, setMonth] = useState(0);
   const [loading, setLoading] = useState(false);
   const genRef = useRef(0);
+  const hasLoadedRef = useRef(false);
 
   const load = useCallback(async () => {
     if (!houseId) {
@@ -203,13 +238,11 @@ export function useTenantUsage(params: {
       setWeek(0);
       setMonth(0);
       setLoading(false);
+      hasLoadedRef.current = false;
       return;
     }
     const gen = ++genRef.current;
-    setDay(0);
-    setWeek(0);
-    setMonth(0);
-    setLoading(true);
+    if (!hasLoadedRef.current) setLoading(true);
     const now = new Date();
     const dayStr = now.toISOString().slice(0, 10);
     const wkStr = toIsoWeek(now);
@@ -225,14 +258,25 @@ export function useTenantUsage(params: {
       setDay(d);
       setWeek(w);
       setMonth(m);
+      hasLoadedRef.current = true;
     } finally {
       if (gen === genRef.current) setLoading(false);
     }
   }, [houseId, metric, areaId]);
 
   useEffect(() => {
+    setDay(0);
+    setWeek(0);
+    setMonth(0);
+    hasLoadedRef.current = false;
+  }, [houseId, metric, areaId]);
+
+  useEffect(() => {
     void load();
-  }, [load]);
+    if (!houseId) return;
+    const interval = setInterval(() => void load(), APP_FOREGROUND_GET_POLL_MS);
+    return () => clearInterval(interval);
+  }, [houseId, load]);
 
   const unit = metric === "electricity" ? "kWh" : "L";
 

@@ -34,6 +34,7 @@ export interface NotificationPreferences {
 
 export interface SubscriptionInfo {
   userId: string;
+  houseId: string;
   tier: "FREE" | "PREMIUM";
   premiumStartedAt: string | null;
   premiumUntil: string | null;
@@ -96,8 +97,14 @@ export const updatePreferences = async (
   return unwrap<NotificationPreferences>(r);
 };
 
-export const fetchSubscription = async (): Promise<SubscriptionInfo> => {
-  const r = await axiosClient.get(`${BACKEND_API_BASE}/notifications/preferences/me/subscription`);
+export const fetchSubscription = async (houseId: string): Promise<SubscriptionInfo> => {
+  if (!houseId) {
+    throw new Error("houseId is required to fetch subscription");
+  }
+  const r = await axiosClient.get(
+    `${BACKEND_API_BASE}/notifications/preferences/me/subscription`,
+    { params: { houseId } }
+  );
   return unwrap<SubscriptionInfo>(r);
 };
 
@@ -152,24 +159,21 @@ export function planDisplayName(plan: SubscriptionPlan, locale: string): string 
   }
 }
 
-/**
- * PREMIUM subscription upgrade via Payment-Service VNPay flow. Returns
- * a signed VNPay URL string opened via {@code WebBrowser.openBrowserAsync}.
- *
- * <p>Two purchase shapes — pass {@code planId} for a curated catalogue
- * plan (BE looks up authoritative price + duration), or {@code months}
- * for the legacy flat-rate flow. The BE prefers planId when both arrive.
- */
 export const createSubscriptionPaymentLink = async (args: {
+  houseId: string;
   planId?: string;
   months?: number;
   bankCode?: string | null;
   locale?: string;
 }): Promise<string> => {
+  if (!args.houseId) {
+    throw new Error("houseId is required to create a subscription payment");
+  }
   try {
     const r = await axiosClient.post(
       `${BACKEND_API_BASE}/payments/vnpay/subscription`,
       {
+        houseId:  args.houseId,
         planId:   args.planId   ?? null,
         months:   args.months   ?? null,
         bankCode: args.bankCode ?? null,
@@ -178,15 +182,9 @@ export const createSubscriptionPaymentLink = async (args: {
     );
     return unwrap<string>(r);
   } catch (err: any) {
-    // Surface the BE's friendly message (Vietnamese — e.g. "Bạn có 1 yêu
-    // cầu thanh toán PREMIUM đang chờ...") instead of axios's generic
-    // "Request failed with status code 400" — the modal alert prints
-    // err.message verbatim.
     const beMessage = err?.response?.data?.message;
     if (typeof beMessage === "string" && beMessage.length > 0) {
       const wrapped = new Error(beMessage);
-      // Preserve the original error chain so consumers can still inspect
-      // status / response if they need granular handling.
       (wrapped as any).cause = err;
       (wrapped as any).status = err?.response?.status;
       throw wrapped;

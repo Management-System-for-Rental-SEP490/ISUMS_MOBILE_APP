@@ -163,8 +163,13 @@ export interface ContractRelocationRequestFromApi {
 // =========================================================
 
 /**
- * Body tạo link thanh toán VNPay (tenant đã đăng nhập).
- * Chỉ một luồng: hoặc `invoiceIds` (tiền nhà/cọc), hoặc `quoteId` (báo giá sửa chữa — ticket `WAITING_PAYMENT`), không gửi cả hai.
+ * Body tạo link thanh toán VNPay (tenant đã đăng nhập) — `POST /api/payments/vnpay`.
+ *
+ * Swagger (hai luồng, chỉ một trong hai):
+ * - **Invoice:** `invoiceIds` — một hoặc nhiều hóa đơn **tiền thuê / cọc** (rental/deposit).
+ * - **Quote:** `quoteId` — báo giá sửa chữa đã duyệt; ticket thường ở trạng thái **WAITING_PAYMENT**.
+ *
+ * App: tiền nhà → luôn `invoiceIds`; phí sửa chữa / issue → luôn `quoteId` (không thay bằng `invoice.id`).
  */
 export type VnpayPaymentCreateRequest =
   | {
@@ -824,7 +829,22 @@ export interface TenantTicketFromApi {
   title: string;
   localizedDescription?: string | null;
   description: string;
+  titleTranslations?: Record<string, string> | null;
+  descriptionTranslations?: Record<string, string> | null;
   createdAt: string;
+  /**
+   * Slot ca làm việc — BE danh sách thường trả cùng ticket; dùng để hiển thị giờ trên card
+   * không cần GET `/schedules/work_slots/{id}`.
+   */
+  startTime?: string | null;
+  /** Kết thúc slot — cùng luồng với `startTime`. */
+  endTime?: string | null;
+  /**
+   * Báo giá kèm GET list — giữ `totalPrice`/`status` cho card; `items` có thể rỗng sau khi app thu gọn bộ nhớ.
+   */
+  quote?: IssueQuoteFromApi | null;
+  /** Ảnh đính kèm ticket — BE có thể trả ở danh sách; dùng tránh GET ảnh lặp. */
+  images?: Array<{ id: string; url: string; createdAt?: string | null }>;
 }
 
 // =========================================================
@@ -866,8 +886,10 @@ export interface IssueTicketResponseFromApi {
   id: string;
   ticketId: string;
   actorId: string;
+  /** Chuỗi, JSON I18n, hoặc object; có thể kèm `contentTranslations` / `content_translations`. */
   content: string;
   localizedContent?: string | null;
+  contentTranslations?: Record<string, string> | null;
   createdAt: string;
 }
 
@@ -900,6 +922,8 @@ export interface IssueQuoteItemFromApi {
 /** Một quote cho một ticket (GET /api/issues/quotes/ticket/:ticketId) */
 export interface IssueQuoteFromApi {
   id: string;
+  /** Một số bản BE trả UUID báo giá ở đây thay vì `id` — app chuẩn hoá qua `normalizeIssueQuoteRow`. */
+  quoteId?: string | null;
   issueId: string;
   staffId?: string | null;
   assetId?: string | null;

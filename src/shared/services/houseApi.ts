@@ -4,7 +4,7 @@
  * và xử lý refresh token khi 401.
  */
 import axiosClient from "../api/axiosClient";
-import { ASSETS_API_BASE, BACKEND_API_BASE } from "../api/config";
+import { BACKEND_API_BASE } from "../api/config";
 import { mapTenantAccessItemToHouse } from "../utils/tenantAccess";
 import { resolveLocalizedJsonStringFromI18n } from "../utils/resolveLocalizedJsonString";
 import type {
@@ -87,9 +87,8 @@ export const getTenantHouses = async (): Promise<HousesApiResponse> => {
 };
 
 /**
- * Chi tiết một căn theo id (GET /api/houses/{id}) — dùng khi có `houseId` trên hóa đơn/hợp đồng
- * nhưng căn không còn trong my-access (lấy `name` hiển thị).
- * Lỗi mạng/403/404: trả `null`, không ném exception.
+ * Chi tiết một căn theo id (GET /api/houses/{id}).
+ * BE trả payload đầy đủ — không có chọn field; client giảm tải bằng cách không gọi khi đã có tên trong `my-access` / danh sách nhà.
  */
 export const getHouseById = async (houseId: string): Promise<ApiResponse<HouseFromApi> | null> => {
   const id = String(houseId ?? "").trim();
@@ -147,7 +146,7 @@ export const getHouseIotAlerts = async (
   sp.set("date", params.date);
   const c = params.cursor;
   if (c) sp.set("cursor", c);
-  const url = `${ASSETS_API_BASE}/assets/houses/${encodeURIComponent(
+  const url = `${BACKEND_API_BASE}/assets/houses/${encodeURIComponent(
     houseId
   )}/iot/alerts?${sp.toString()}`;
   const response = await axiosClient.get<HouseIotAlertsApiResponse>(url);

@@ -1,5 +1,5 @@
 import axiosClient from "../api/axiosClient";
-import { ASSETS_API_BASE } from "../api/config";
+import { BACKEND_API_BASE } from "../api/config";
 
 export type PowerAction = "ON" | "OFF";
 
@@ -20,7 +20,7 @@ const iotCommandApi = {
   ): Promise<AreaPowerStateResponse> => {
     return axiosClient
       .put<{ data: AreaPowerStateResponse }>(
-        `${ASSETS_API_BASE}/assets/houses/${houseId}/areas/${areaId}/iot/power`,
+        `${BACKEND_API_BASE}/assets/houses/${houseId}/areas/${areaId}/iot/power`,
         { action }
       )
       .then((r) => r.data.data);
@@ -32,7 +32,7 @@ const iotCommandApi = {
   ): Promise<AreaPowerStateResponse> => {
     return axiosClient
       .get<{ data: AreaPowerStateResponse }>(
-        `${ASSETS_API_BASE}/assets/houses/${houseId}/areas/${areaId}/iot/power`
+        `${BACKEND_API_BASE}/assets/houses/${houseId}/areas/${areaId}/iot/power`
       )
       .then((r) => r.data.data);
   },

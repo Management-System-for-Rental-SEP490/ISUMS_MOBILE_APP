@@ -203,7 +203,7 @@ const HeroCard = ({
   <View style={[hc.card, { borderLeftColor: accent }]}>
     <Text style={hc.label}>{label}</Text>
     <View style={hc.row}>
-      {loading ? (
+      {loading && dayVal === 0 && weekVal === 0 && monthVal === 0 ? (
         <>
           <View style={hc.cell}><Skel w={52} h={28} /><Skel w={36} h={11} mt={6} /></View>
           <View style={hc.divider} />

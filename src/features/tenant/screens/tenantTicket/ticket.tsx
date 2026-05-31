@@ -14,6 +14,7 @@ import {
   View,
 } from "react-native";
 import * as ImagePicker from "expo-image-picker";
+import { useQueryClient } from "@tanstack/react-query";
 import { CustomAlert as Alert } from "../../../../shared/components/alert";
 import { RouteProp, useNavigation, useRoute } from "@react-navigation/native";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
@@ -42,6 +43,7 @@ import {
 } from "../../../../shared/services/issuesApi";
 import { TicketAssetSelect, type TicketAssetSelection } from "./TicketAssetSelect";
 import { useKeyboardBottomInset } from "../../../../shared/hooks/useKeyboardBottomInset";
+import { TENANT_ISSUE_TICKET_KEYS } from "../../../../shared/hooks/useTenantIssueTickets";
 
 type TicketRouteProp = RouteProp<RootStackParamList, "Ticket">;
 type TicketNavigationProp = NativeStackNavigationProp<RootStackParamList, "Ticket">;
@@ -60,21 +62,24 @@ const TicketScreen = () => {
   const insets = useSafeAreaInsets();
   const route = useRoute<TicketRouteProp>();
   const navigation = useNavigation<TicketNavigationProp>();
-  const { houseId: rawHouseId, presetAsset } = route.params;
+  const { houseId: rawHouseId, presetAsset, presetTicketType } = route.params;
   const houseId = String(rawHouseId ?? "").trim();
 
   const needAssetPicker = !presetAsset;
 
+  const initialTicketType: TenantTicketCreateType =
+    presetTicketType === "QUESTION" || presetTicketType === "REPAIR" ? presetTicketType : "REPAIR";
+
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
-  const [ticketType, setTicketType] = useState<TenantTicketCreateType>("REPAIR");
+  const [ticketType, setTicketType] = useState<TenantTicketCreateType>(initialTicketType);
   const [pickedAsset, setPickedAsset] = useState<TicketAssetSelection | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [selectedImages, setSelectedImages] = useState<TicketImageToUpload[]>([]);
   const [imageCaptureVisible, setImageCaptureVisible] = useState(false);
   const [typeSwitchW, setTypeSwitchW] = useState(0);
   const typeSlideAnim = useRef(
-    new Animated.Value(ticketType === "REPAIR" ? 0 : 1)
+    new Animated.Value(initialTicketType === "REPAIR" ? 0 : 1)
   ).current;
   const scrollRef = useRef<ScrollView>(null);
   const scrollYRef = useRef(0);
@@ -84,6 +89,7 @@ const TicketScreen = () => {
   const lastAndroidScrollOptsRef = useRef<AndroidScrollOpts>({});
   const keyboardInsetRef = useRef(0);
   const keyboardInset = useKeyboardBottomInset();
+  const queryClient = useQueryClient();
   const androidScrollDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
@@ -188,6 +194,11 @@ const TicketScreen = () => {
       return;
     }
 
+    if (selectedImages.length === 0) {
+      Alert.alert(t("ticket.validation_error_title"), t("ticket.images_required"));
+      return;
+    }
+
     setSubmitting(true);
     try {
       const createdTicket = await createTenantTicket({
@@ -209,6 +220,8 @@ const TicketScreen = () => {
           ticketId: createdTicket.id,
         });
       }
+
+      void queryClient.invalidateQueries({ queryKey: TENANT_ISSUE_TICKET_KEYS.list() });
 
       Alert.alert(t("ticket.success_title"), t("ticket.success_message"), [
         { text: t("common.close"), onPress: () => navigation.goBack() },

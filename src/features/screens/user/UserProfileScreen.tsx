@@ -15,6 +15,7 @@ import {
   neutral,
 } from "../../../shared/theme/color";
 import { useTranslation } from "react-i18next";
+import { useQueryClient } from "@tanstack/react-query";
 import {
   useHouseNamesByIds,
   useMyEContracts,
@@ -47,8 +48,9 @@ const E_CONTRACTS_PREVIEW_MAX = 2;
 
 const UserProfileScreen = () => {
   const { t } = useTranslation();
+  const queryClient = useQueryClient();
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
-  const { user, role, idToken, logout } = useAuthStore();
+  const { user, role } = useAuthStore();
   const [eContractsListExpanded, setEContractsListExpanded] = useState(false);
 
   const {
@@ -155,6 +157,10 @@ const UserProfileScreen = () => {
     return !isHandoverDateReached(house.handoverDate);
   }, [tenantAccessLoading, house]);
 
+  /**
+   * Đăng xuất: khóa UI màn tải ngay → xóa cache React Query + token cục bộ → gọi Keycloak SSO
+   * (Custom Tab có thể hiện trên cùng; sau đó một lần mở khóa → Login, không nháy dữ liệu phiên cũ).
+   */
   const handleLogout = () => {
     Alert.alert(
       t('profile.logout_confirm_title'),
@@ -165,14 +171,19 @@ const UserProfileScreen = () => {
           text: t('profile.logout'),
           style: "destructive",
           onPress: async () => {
-            // Không chờ vô hạn logout SSO: nếu Keycloak không redirect về app,
-            // vẫn cho phép app logout cục bộ và quay lại màn Login.
             const logoutTimeoutMs = 7000;
-            await Promise.race([
-              logoutKeycloak(idToken),
-              new Promise<void>((resolve) => setTimeout(resolve, logoutTimeoutMs)),
-            ]);
-            logout();
+            const tokenSnapshot = useAuthStore.getState().idToken;
+            useAuthStore.getState().setLogoutUiLocked(true);
+            try {
+              queryClient.clear();
+              useAuthStore.getState().logout();
+              await Promise.race([
+                logoutKeycloak(tokenSnapshot),
+                new Promise<void>((resolve) => setTimeout(resolve, logoutTimeoutMs)),
+              ]);
+            } finally {
+              useAuthStore.getState().setLogoutUiLocked(false);
+            }
           },
         },
       ]

@@ -134,6 +134,18 @@ function looksLikeQuotePendingPaymentError(text: string): boolean {
   );
 }
 
+function looksLikeQuoteAlreadyPaidError(text: string): boolean {
+  const u = text.toLowerCase();
+  return (
+    u.includes("quote has been paid") ||
+    u.includes("quote already paid") ||
+    u.includes("already been paid") ||
+    u.includes("invoice has been paid") ||
+    u.includes("báo giá đã được thanh toán") ||
+    u.includes("hóa đơn đã được thanh toán")
+  );
+}
+
 export function formatApiErrorForTenantAlert(
   error: unknown,
   t: TAlert,
@@ -142,6 +154,15 @@ export function formatApiErrorForTenantAlert(
   const { status, statusText, lines } = collectApiErrorTexts(error);
   const fromApi = lines.join("\n").trim();
   const body = fromApi || defaultBodyForPayment(kind, status, t);
+
+  const isQuoteAlreadyPaid =
+    kind === "payment_link" &&
+    status === 400 &&
+    looksLikeQuoteAlreadyPaidError(body);
+
+  if (isQuoteAlreadyPaid) {
+    return t("tenant_payment.quote_already_paid_body");
+  }
 
   const showQuotePendingHint =
     kind === "payment_link" &&

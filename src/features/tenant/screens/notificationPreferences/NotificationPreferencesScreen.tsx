@@ -27,6 +27,7 @@ import {
 } from "./api";
 import InAppPaymentWebView from "@shared/components/InAppPaymentWebView";
 import { CustomAlert } from "@shared/components/alert";
+import { useAuthStore } from "../../../../store/useAuthStore";
 
 /**
  * Tenant-facing notification preferences. Lets the tenant toggle each
@@ -53,31 +54,24 @@ const LANGUAGES: { value: NotificationPreferences["language"]; label: string }[]
 export default function NotificationPreferencesScreen() {
   const { t } = useTranslation();
   const qc = useQueryClient();
+  const { houseId } = useAuthStore();
 
   const prefsQ = useQuery({
     queryKey: ["notif", "prefs"],
     queryFn: fetchPreferences,
   });
   const subQ = useQuery({
-    queryKey: ["notif", "subscription"],
-    queryFn: fetchSubscription,
-    // Always trust the BE on tier — TanStack's default 5-min staleness is
-    // too long for a screen the user navigates back to right after paying.
+    queryKey: ["notif", "subscription", houseId],
+    queryFn: () => fetchSubscription(houseId as string),
+    enabled: !!houseId,
     refetchOnMount: "always",
     staleTime: 0,
   });
-  // Coming back into this screen (e.g. from the Home banner or after a
-  // VNPay return through deep-link / WebView callback) should always pull
-  // fresh tier so the card flips PREMIUM the moment the BE listener has
-  // processed the Kafka event — no stale FREE display while data is in
-  // flight on a slow network.
   useFocusEffect(
     useCallback(() => {
       qc.invalidateQueries({ queryKey: ["notif", "subscription"] });
     }, [qc])
   );
-  // Managers feed the escalation-target picker. Best-effort: an empty
-  // list just disables the picker — nothing else hard-fails.
   const managersQ = useQuery<ManagerSummary[]>({
     queryKey: ["users", "managers"],
     queryFn: fetchManagers,
@@ -89,7 +83,10 @@ export default function NotificationPreferencesScreen() {
     if (prefsQ.data) setDraft(prefsQ.data);
   }, [prefsQ.data]);
 
-  const isPremium = subQ.data?.tier === "PREMIUM";
+  const isPremium =
+    !!houseId &&
+    subQ.data?.tier === "PREMIUM" &&
+    subQ.data?.houseId === houseId;
 
   const saveMut = useMutation({
     mutationFn: (patch: UpdatePreferencesPatch) => updatePreferences(patch),
@@ -111,17 +108,14 @@ export default function NotificationPreferencesScreen() {
     onError: (err: any) => Alert.alert("Error", err?.message ?? "Failed"),
   });
 
-  // Self-serve upgrade — Payment-Service returns the signed VNPay URL as a
-  // plain string. We feed it to the in-app WebView so the gateway page
-  // never leaves the app shell (no Custom Tabs, no exposed URL bar). Tier
-  // flip lands via Kafka IPN, so we re-fetch subscription state once the
-  // user dismisses the WebView (success or failure).
   const [paymentWebViewUrl, setPaymentWebViewUrl] = useState<string | null>(null);
   const upgradeMut = useMutation({
-    // Legacy fallback path on the prefs screen — the real catalogue picker
-    // lives on Home ("Mua gói"). When called here we always go monthly so
-    // the BE falls through to the price-per-month config (19k flat).
-    mutationFn: (months: number) => createSubscriptionPaymentLink({ months }),
+    mutationFn: (months: number) => {
+      if (!houseId) {
+        throw new Error(t("home.premium_no_house", "Vui lòng chọn nhà trước khi mua gói."));
+      }
+      return createSubscriptionPaymentLink({ houseId, months });
+    },
     onSuccess: (url) => {
       setPaymentWebViewUrl(url);
     },

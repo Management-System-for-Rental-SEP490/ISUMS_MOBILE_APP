@@ -4,6 +4,7 @@ import * as WebBrowser from "expo-web-browser";
 import InAppBrowser from "react-native-inappbrowser-reborn";
 import { AuthPayload, UserRole } from "../types";
 import { useAuthStore } from "../../store/useAuthStore";
+import { useKeycloakWebViewStore } from "../../store/useKeycloakWebViewStore";
 import { CustomAlert } from "../components/alert";
 import i18n from "../i18n";
 
@@ -23,7 +24,7 @@ const getKeycloakBaseUrl = (): string => {
 };
 
 // Cấu hình Keycloak
-const KEYCLOAK_CONFIG = {
+export const KEYCLOAK_CONFIG = {
   get baseUrl() {
     return getKeycloakBaseUrl();
   },
@@ -34,7 +35,7 @@ const KEYCLOAK_CONFIG = {
     if (Platform.OS === 'web') {
       return process.env.EXPO_PUBLIC_KEYCLOAK_REDIRECT_WEB || "http://localhost/callback";
     }
-    return process.env.EXPO_PUBLIC_KEYCLOAK_REDIRECT_NATIVE || "isumstenant://callback";
+    return process.env.EXPO_PUBLIC_KEYCLOAK_REDIRECT_NATIVE || "com.isums.tenant.app:/oauth2callback";
   },
 };
 
@@ -60,15 +61,14 @@ export const KEYCLOAK_WEBVIEW_VIEWPORT_HEIGHT_RESET_JS =
 
 export type KeycloakInAppBrowserMode = "oauth" | "browse";
 
-/** Chrome Custom Tabs / SFSafariViewController: ẩn title bar & URL bar tối đa có thể. */
 export const KEYCLOAK_IN_APP_BROWSER_OPTIONS = {
   showTitle: false,
-  enableUrlBarHiding: true,
+  enableUrlBarHiding: false,
   enableDefaultShare: false,
   showInRecents: false,
   dismissButtonStyle: "close" as const,
   ephemeralWebSession: false,
-  enableBarCollapsing: true,
+  enableBarCollapsing: false,
   forceCloseOnRedirection: true,
 };
 
@@ -101,33 +101,26 @@ export async function beginKeycloakInAppSession(
     return;
   }
 
-  dismissInAppBrowser();
+  const browserMode = options?.browserMode ?? "oauth";
 
-  const available = await InAppBrowser.isAvailable();
-  if (!available) {
+  if (browserMode === "browse") {
     const can = await Linking.canOpenURL(initialUrl);
     if (can) await Linking.openURL(initialUrl);
     return;
   }
 
-  const browserMode = options?.browserMode ?? "oauth";
-
-  if (browserMode === "browse") {
-    await InAppBrowser.open(initialUrl, { ...KEYCLOAK_IN_APP_BROWSER_OPTIONS });
-    return;
-  }
-
   const redirectUri = getKeycloakRedirectUri();
-  const result = await InAppBrowser.openAuth(initialUrl, redirectUri, KEYCLOAK_IN_APP_BROWSER_OPTIONS);
+  const result = await useKeycloakWebViewStore.getState().beginAuth(initialUrl, redirectUri);
 
-  if (result.type === "success" && result.url.startsWith(redirectUri) && options?.onAppRedirect) {
+  if (result.type === "success" && result.url && result.url.startsWith(redirectUri) && options?.onAppRedirect) {
     await options.onAppRedirect(result.url);
   }
 }
 
-/** Đóng Custom Tabs / phiên auth đang mở (nút Đóng hoặc hủy). */
+/** Đóng WebView modal đang mở (nút Đóng hoặc hủy). */
 export function keycloakInAppUserDismissed(): void {
   dismissInAppBrowser();
+  useKeycloakWebViewStore.getState().cancel();
 }
 
 function buildLogoutUrl(idToken?: string | null): string {
@@ -172,6 +165,7 @@ export const getKeycloakAuthUrl = (locale?: string): string => {
   const resolvedLocale = normalizeKeycloakLocale(locale);
   params.append("kc_locale", resolvedLocale);
   params.append("ui_locales", resolvedLocale);
+  params.append("debug", "1");
 
   return `${KEYCLOAK_CONFIG.baseUrl}/realms/${KEYCLOAK_CONFIG.realm}/protocol/openid-connect/auth?${params.toString()}`;
 };
@@ -194,6 +188,22 @@ export function appendKeycloakAuthLoginHint(authUrl: string, loginHint?: string 
   }
 }
 
+export function buildKeycloakFirstLoginUpdatePasswordUrl(loginHint: string, locale?: string): string {
+  return appendKeycloakAuthLoginHint(getKeycloakAuthUrl(locale), loginHint);
+}
+
+export class KeycloakFirstLoginRequiredError extends Error {
+  readonly code = "REQUIRES_UPDATE_PASSWORD" as const;
+  readonly firstLoginUrl: string;
+  readonly username: string;
+  constructor(firstLoginUrl: string, username: string) {
+    super("Account requires UPDATE_PASSWORD before first login");
+    this.name = "KeycloakFirstLoginRequiredError";
+    this.firstLoginUrl = firstLoginUrl;
+    this.username = username;
+  }
+}
+
 /** Luồng đăng nhập: mở Keycloak trong Custom Tabs / SFSafariViewController (ẩn URL bar tối đa có thể). */
 export async function openKeycloakAuthorizationInAppBrowser(locale?: string) {
   const authUrl = getKeycloakAuthUrl(locale);
@@ -205,15 +215,7 @@ export async function openKeycloakAuthorizationInAppBrowser(locale?: string) {
     return { type: "dismiss" as const };
   }
 
-  dismissInAppBrowser();
-  const available = await InAppBrowser.isAvailable();
-  if (!available) {
-    const can = await Linking.canOpenURL(authUrl);
-    if (can) await Linking.openURL(authUrl);
-    return { type: "dismiss" as const };
-  }
-
-  return InAppBrowser.openAuth(authUrl, redirectUri, KEYCLOAK_IN_APP_BROWSER_OPTIONS);
+  return useKeycloakWebViewStore.getState().beginAuth(authUrl, redirectUri);
 }
 
 // Trao đổi authorization code lấy access token
@@ -274,11 +276,86 @@ export const exchangeCodeForToken = async (code: string): Promise<AuthPayload> =
   } catch (error: any) {
     const errorMessage = error.response?.data?.error_description 
       || error.response?.data?.error 
-      || error.message 
+      || error.message
       || "Không thể lấy token từ Keycloak";
     throw new Error(`Lỗi đăng nhập: ${errorMessage}`);
   }
 };
+
+/**
+ * Direct Grant Login — gọi POST /token với grant_type=password.
+ * Cần bật "Direct Access Grants Enabled" cho client `mobile-app` ở Keycloak admin console.
+ * Đây là cách production (giống banking/Spotify/Netflix mobile) — login form native trong app, không qua CCT/WebView, KHÔNG hiện URL bar.
+ */
+export async function signInWithDirectGrant(
+  username: string,
+  password: string,
+  locale?: string,
+): Promise<AuthPayload> {
+  if (!username?.trim() || !password) {
+    throw new Error("Vui lòng nhập tên đăng nhập và mật khẩu");
+  }
+  const tokenUrl = `${KEYCLOAK_CONFIG.baseUrl}/realms/${KEYCLOAK_CONFIG.realm}/protocol/openid-connect/token`;
+  const params = new URLSearchParams({
+    grant_type: "password",
+    client_id: KEYCLOAK_CONFIG.clientId,
+    username: username.trim(),
+    password,
+    scope: "openid profile email",
+  });
+
+  let access_token: string;
+  let refresh_token: string | undefined;
+  let id_token: string | undefined;
+  try {
+    const response = await axios.post(tokenUrl, params, {
+      headers: {
+        "Content-Type": "application/x-www-form-urlencoded",
+        "Accept-Language": getKeycloakAcceptLanguageHeader(locale),
+      },
+      timeout: 20000,
+    });
+    access_token = response.data.access_token;
+    refresh_token = response.data.refresh_token;
+    id_token = response.data.id_token;
+  } catch (error: any) {
+    const desc = error?.response?.data?.error_description as string | undefined;
+    const code = error?.response?.data?.error as string | undefined;
+    if (code === "invalid_grant" && /not\s+fully\s+set\s+up|account.*setup|account.*not.*ready|required\s*action/i.test(desc ?? "")) {
+      const url = buildKeycloakFirstLoginUpdatePasswordUrl(username.trim(), locale);
+      throw new KeycloakFirstLoginRequiredError(url, username.trim());
+    }
+    if (code === "invalid_grant" || /invalid.*credentials|invalid.*user|invalid.*password/i.test(desc ?? "")) {
+      throw new Error("Sai tên đăng nhập hoặc mật khẩu");
+    }
+    if (code === "unauthorized_client" || /direct.*grant.*not.*enabled|direct.*access.*grants/i.test(desc ?? "")) {
+      throw new Error("Client chưa bật Direct Access Grants. Liên hệ admin bật trong Keycloak.");
+    }
+    if (code === "invalid_client") {
+      throw new Error("Cấu hình client sai. Liên hệ admin.");
+    }
+    if (desc) throw new Error(desc);
+    throw new Error(error?.message || "Đăng nhập thất bại");
+  }
+
+  const userInfo = await getUserInfo(access_token);
+  const role = determineUserRole(userInfo, access_token);
+
+  let houseId: string | undefined;
+  const rawHouseId = userInfo.attributes?.houseId || userInfo.houseId;
+  if (Array.isArray(rawHouseId)) houseId = rawHouseId[0];
+  else if (typeof rawHouseId === "string") houseId = rawHouseId;
+
+  return {
+    username: userInfo.preferred_username || userInfo.name || username,
+    role,
+    token: access_token,
+    refreshToken: refresh_token,
+    idToken: id_token,
+    houseId,
+  };
+}
+
 // ... (giữ nguyên getUserInfo, decodeJWT, determineUserRole) ...
 
 // ... (giữ nguyên openKeycloakLogin, handleKeycloakCallback, openAccountManagement) ...
@@ -286,7 +363,7 @@ export const exchangeCodeForToken = async (code: string): Promise<AuthPayload> =
 
 // Lấy thông tin user từ Keycloak userinfo endpoint
 //Giống API get user
-const getUserInfo = async (accessToken: string) => {
+export const getUserInfo = async (accessToken: string) => {
   const userInfoUrl = `${KEYCLOAK_CONFIG.baseUrl}/realms/${KEYCLOAK_CONFIG.realm}/protocol/openid-connect/userinfo`;
   const response = await axios.get(userInfoUrl, {
     headers: {
@@ -297,7 +374,7 @@ const getUserInfo = async (accessToken: string) => {
 };
 
 // Decode JWT token (không verify signature, chỉ để lấy claims)
-const decodeJWT = (token: string): any => {
+export const decodeJWT = (token: string): any => {
   try {
     const base64Url = token.split('.')[1];//split là hàm để tách chuỗi thành một mảng các chuỗi con, dấu chấm là dấu phân tách.
     const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/'); //JWT gồm 3 phần tách bởi dấu chấm (header.payload.signature). Ta lấy phần giữa là payload.
@@ -323,7 +400,7 @@ const decodeJWT = (token: string): any => {
 // => Đảm bảo luôn là chuỗi hex 2 ký tự (byte).
 // '%' + ...: Thêm dấu % vào trước. Kết quả có dạng %41, %C3, %A9...
 // Xác định role của user từ token hoặc userInfo
-const determineUserRole = (userInfo: any, accessToken: string): UserRole => { //hàm bắt buộc phải trả về kiểu UserRole.
+export const determineUserRole = (userInfo: any, accessToken: string): UserRole => { //hàm bắt buộc phải trả về kiểu UserRole.
   const tokenClaims = decodeJWT(accessToken);
   
   if (tokenClaims) {
@@ -424,21 +501,22 @@ export const refreshAccessToken = async (refreshToken: string): Promise<AuthPayl
   }
 };
 
-// Mở Keycloak login page trong browser
+// Mở Keycloak login page — trên mobile dùng WebView modal (đã thay Custom Tabs để fix dead-zone Android)
 export const openKeycloakLogin = async (locale?: string): Promise<WebBrowser.WebBrowserAuthSessionResult | null> => {
   try {
     const authUrl = getKeycloakAuthUrl(locale);
     const redirectUrl = KEYCLOAK_CONFIG.redirectUri;
 
-    // Trên web, mở trong tab mới
     if (Platform.OS === 'web') {
       window.open(authUrl, '_blank');
       return null;
     }
-    
-    // Trên mobile, dùng expo-web-browser
-    const result = await WebBrowser.openAuthSessionAsync(authUrl, redirectUrl);
-    return result;
+
+    const r = await useKeycloakWebViewStore.getState().beginAuth(authUrl, redirectUrl);
+    if (r.type === "success" && r.url) {
+      return { type: "success", url: r.url } as WebBrowser.WebBrowserAuthSessionResult;
+    }
+    return { type: r.type === "cancel" ? "cancel" : "dismiss" } as WebBrowser.WebBrowserAuthSessionResult;
 
   } catch (error: any) {
     throw new Error(`Không thể mở trang đăng nhập: ${error.message || error}`);

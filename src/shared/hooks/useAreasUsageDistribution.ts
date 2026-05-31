@@ -2,6 +2,7 @@
  * Tổng tiêu thụ tháng hiện tại theo từng khu vực (REST song song).
  */
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { APP_FOREGROUND_GET_POLL_MS } from "../api/config";
 import { iotClient } from "../services/iotClient";
 
 interface AreaInput {
@@ -80,7 +81,10 @@ export function useAreasUsageDistribution({
 
   useEffect(() => {
     void load();
-  }, [load]);
+    if (!houseId || !areas.length) return;
+    const interval = setInterval(() => void load(), APP_FOREGROUND_GET_POLL_MS);
+    return () => clearInterval(interval);
+  }, [houseId, areas.length, load]);
 
   return { items, loading, refetch: load };
 }

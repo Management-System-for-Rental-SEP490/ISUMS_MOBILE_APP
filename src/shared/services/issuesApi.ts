@@ -1,6 +1,6 @@
 import axios from "axios";
 import axiosClient from "../api/axiosClient";
-import { BACKEND_API_BASE, FALLBACK_BACKEND_URL } from "../api/config";
+import { BACKEND_API_BASE, ISSUES_TENANT_LIST_TIMEOUT_MS } from "../api/config";
 import i18n from "../i18n";
 import { toAppLocaleCode } from "../utils/resolveLocalizedJsonString";
 import { useAuthStore } from "../../store/useAuthStore";
@@ -71,14 +71,57 @@ function normalizeIssueQuote(row: IssueQuoteFromApi): IssueQuoteFromApi {
 }
 
 /**
+ * Chuẩn hoá một bản ghi báo giá từ BE cho client.
+ *
+ * **Mục đích:** Một số endpoint trả UUID báo giá trong `quoteId` / `quote_id` mà không (hoặc rỗng) trường `id`.
+ * Khi đó `paymentQuote?.id` rỗng → app rơi sang thanh toán VNPay bằng `invoiceIds`; BE chỉ cập nhật ticket khi thanh toán luồng `quoteId` → ticket kẹt `WAITING_PAYMENT`.
+ *
+ * **Hành vi:** Gộp các ứng viên theo thứ tự `id` → `quoteId` → `quote_id`; nếu khớp `id` hiện tại thì trả nguyên bản, không thì trả shallow copy có `id` đã điền.
+ */
+export function normalizeIssueQuoteRow(row: IssueQuoteFromApi): IssueQuoteFromApi {
+  const ext = row as IssueQuoteFromApi & { quote_id?: string | null };
+  const merged =
+    String(row.id ?? "").trim() ||
+    String(row.quoteId ?? "").trim() ||
+    String(ext.quote_id ?? "").trim();
+  if (!merged) return row;
+  if (merged === String(row.id ?? "").trim()) return row;
+  return { ...row, id: merged };
+}
+
+/**
+ * Thu gọn body sau GET danh sách: `quote.items` làm payload phình; list chỉ cần `totalPrice`/status ẩn trong card.
+ * Giữ tối đa một ảnh trong `images`. Màn chi tiết luôn tải lại đủ qua `getTenantTicketById`.
+ *
+ * @param rows - parse xong từ BE (có thể hàng trăm phần tử).
+ * @returns Bản shallow copy an toàn cho React Query cache.
+ */
+function slimTenantTicketsForMemory(rows: TenantTicketFromApi[]): TenantTicketFromApi[] {
+  if (!rows.length) return rows;
+  return rows.map((row) => {
+    const localized = normalizeTenantTicket(row);
+    const r = localized as TenantTicketFromApi & { quote?: IssueQuoteFromApi | null };
+    const images =
+      Array.isArray(r.images) && r.images.length > 1 ? [r.images[0]] : r.images;
+    const quote =
+      r.quote != null && typeof r.quote === "object"
+        ? normalizeIssueQuoteRow({ ...r.quote, items: [] } satisfies IssueQuoteFromApi)
+        : r.quote ?? undefined;
+    return { ...r, images, quote } as TenantTicketFromApi;
+  });
+}
+
+/**
  * Danh sách ticket của tenant đang đăng nhập (GET /api/issues/tickets/tenant).
  */
 export const getTenantTickets = async (): Promise<TenantTicketFromApi[]> => {
   const url = `${BACKEND_API_BASE}/issues/tickets/tenant`;
-  //const url = `${FALLBACK_BACKEND_URL}/issues/tickets/tenant`;
-  const response = await axiosClient.get<ApiResponse<TenantTicketFromApi[]>>(url);
+  //const url = `${BACKEND_API_BASE}/issues/tickets/tenant`;
+  const response = await axiosClient.get<ApiResponse<TenantTicketFromApi[]>>(url, {
+    timeout: ISSUES_TENANT_LIST_TIMEOUT_MS,
+  });
   if (response.data?.success && Array.isArray(response.data.data)) {
-    return response.data.data.map(normalizeTenantTicket);
+    return slimTenantTicketsForMemory(response.data.data);
   }
   return [];
 };
@@ -93,12 +136,16 @@ export const getTenantTicketById = async (
   const id = ticketId?.trim();
   if (!id) return null;
 
-  //const url = `${FALLBACK_BACKEND_URL}/issues/tickets/${encodeURIComponent(id)}`;
+  //const url = `${BACKEND_API_BASE}/issues/tickets/${encodeURIComponent(id)}`;
   const url = `${BACKEND_API_BASE}/issues/tickets/${encodeURIComponent(id)}`;
   const response = await axiosClient.get<ApiResponse<TenantTicketFromApi>>(url);
 
   if (response.data?.success && response.data.data && typeof response.data.data === "object") {
-    return normalizeTenantTicket(response.data.data);
+    const localized = normalizeTenantTicket(response.data.data);
+    if (localized.quote != null && typeof localized.quote === "object") {
+      return { ...localized, quote: normalizeIssueQuoteRow(localized.quote) } as TenantTicketFromApi;
+    }
+    return localized;
   }
 
   return null;
@@ -109,7 +156,9 @@ export const getTenantTicketById = async (
  */
 export const getIssueResponses = async (): Promise<IssueTicketResponseFromApi[]> => {
   const url = `${BACKEND_API_BASE}/issues/responses`;
-  const response = await axiosClient.get<ApiResponse<IssueTicketResponseFromApi[]>>(url);
+  const response = await axiosClient.get<ApiResponse<IssueTicketResponseFromApi[]>>(url, {
+    timeout: ISSUES_TENANT_LIST_TIMEOUT_MS,
+  });
   if (response.data?.success && Array.isArray(response.data.data)) {
     return response.data.data.map(normalizeIssueResponse);
   }
@@ -137,7 +186,7 @@ export const getIssueResponseById = async (
  * Dùng cho luồng quote + payment.
  */
 export const getIssueBanners = async (): Promise<IssueBannerFromApi[]> => {
-  //const url = `${FALLBACK_BACKEND_URL}/issues/banners`;
+  //const url = `${BACKEND_API_BASE}/issues/banners`;
   const url = `${BACKEND_API_BASE}/issues/banners`;
   const response = await axiosClient.get<ApiResponse<IssueBannerFromApi[]>>(url);
   if (response.data?.success && Array.isArray(response.data.data)) {
@@ -152,7 +201,7 @@ export const getIssueBanners = async (): Promise<IssueBannerFromApi[]> => {
 export const createTenantTicket = async (
   payload: CreateTenantTicketPayload
 ): Promise<TenantTicketFromApi> => {
-  //const url = `${FALLBACK_BACKEND_URL}/issues/tickets`;
+  //const url = `${BACKEND_API_BASE}/issues/tickets`;
   const url = `${BACKEND_API_BASE}/issues/tickets`;
   try {
     const response = await axiosClient.post<ApiResponse<TenantTicketFromApi>>(url, payload);
@@ -193,7 +242,7 @@ export const uploadTenantTicketImages = async (
 ): Promise<void> => {
   if (!ticketId || images.length === 0) return;
 
-  //const url = `${FALLBACK_BACKEND_URL}/issues/tickets/${encodeURIComponent(ticketId)}/images`;
+  //const url = `${BACKEND_API_BASE}/issues/tickets/${encodeURIComponent(ticketId)}/images`;
   const url = `${BACKEND_API_BASE}/issues/tickets/${encodeURIComponent(ticketId)}/images`;
   //const url = `${BACKEND_API_BASE}/issues/tickets/${encodeURIComponent(ticketId)}/images`;
   const formData = new FormData();
@@ -291,7 +340,7 @@ export const getTenantTicketImages = async (
 ): Promise<TenantTicketImageFromApi[]> => {
   if (!ticketId) return [];
 
-  //const url = `${FALLBACK_BACKEND_URL}/issues/tickets/${encodeURIComponent(ticketId)}/images`;
+  //const url = `${BACKEND_API_BASE}/issues/tickets/${encodeURIComponent(ticketId)}/images`;
   const url = `${BACKEND_API_BASE}/issues/tickets/${encodeURIComponent(ticketId)}/images`;
   const response = await axiosClient.get<ApiResponse<TenantTicketImageFromApi[]>>(url);
 
@@ -318,11 +367,13 @@ export const getIssueQuotesByTicket = async (
     return null;
   };
 
+  const mapNorm = (rows: IssueQuoteFromApi[]) => rows.map(normalizeIssueQuoteRow);
+
   const primary = `${BACKEND_API_BASE}/issues/quotes/ticket/${id}`;
   try {
     const response = await axiosClient.get<ApiResponse<IssueQuoteFromApi[]>>(primary);
     const rows = parseQuotes(response.data);
-    if (rows != null) return rows;
+    if (rows != null) return mapNorm(rows);
   } catch (e: unknown) {
     const status = (e as { response?: { status?: number } })?.response?.status;
     if (status !== 404) throw e;
@@ -332,7 +383,7 @@ export const getIssueQuotesByTicket = async (
   try {
     const response = await axiosClient.get<ApiResponse<IssueQuoteFromApi[]>>(alt);
     const rows = parseQuotes(response.data);
-    if (rows != null) return rows;
+    if (rows != null) return mapNorm(rows);
   } catch {
     /* im lặng — coi như không có báo giá */
   }
@@ -348,7 +399,7 @@ export const getIssueQuotesByTicket = async (
 export const confirmIssueQuoteStatus = async (quoteId: string): Promise<void> => {
   if (!quoteId?.trim()) return;
   const url = `${BACKEND_API_BASE}/issues/quotes/${encodeURIComponent(quoteId)}/status`;
- // const url = `${FALLBACK_BACKEND_URL}/issues/quotes/${encodeURIComponent(quoteId)}/status`;
+ // const url = `${BACKEND_API_BASE}/issues/quotes/${encodeURIComponent(quoteId)}/status`;
   // BE yêu cầu PUT để xác nhận.
   // Theo Postman bạn cung cấp: body phải gửi { status: "APPROVED" }.
   const response = await axiosClient.put<ApiResponse<unknown>>(url, { status: "APPROVED" });

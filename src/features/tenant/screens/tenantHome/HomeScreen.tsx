@@ -30,8 +30,9 @@ import {
   RootStackParamList,
 } from "../../../../shared/types";
 import { useTranslation } from "react-i18next";
+import { getIssueResponseContentForUi } from "../../../../shared/utils/issueTicketLocalizedText";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { NavigationProp, useFocusEffect } from "@react-navigation/native";
+import { NavigationProp, useFocusEffect, useIsFocused } from "@react-navigation/native";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import homeStyles, { HOME_CARD_STACK_GAP } from "./homeStyles";
 import {
@@ -75,6 +76,7 @@ import {
 import { CustomAlert } from "../../../../shared/components/alert";
 import Icons from "../../../../shared/theme/icon";
 import { tenantFooterLinks } from "../../../../shared/constants/tenantFooterLinks";
+import { APP_FOREGROUND_GET_POLL_MS } from "../../../../shared/api/config";
 import { IotPushAlertOverlay } from "../../components/IotPushAlertOverlay";
 
 const EMPTY_TENANT_HOUSES: HouseFromApi[] = [];
@@ -196,6 +198,11 @@ function HomeQuestionTickerCard({ items, getZoneLabel, onOpen }: HomeQuestionTic
   const safeIdx = items.length === 0 ? 0 : idx % items.length;
   const item = items[safeIdx];
 
+  const tickerContent = useMemo(
+    () => (item ? getIssueResponseContentForUi(item) : ""),
+    [item, i18n.language]
+  );
+
   useEffect(() => {
     if (!item) return;
     opacity.setValue(0.72);
@@ -221,7 +228,7 @@ function HomeQuestionTickerCard({ items, getZoneLabel, onOpen }: HomeQuestionTic
           pressed && Platform.OS === "ios" ? { opacity: 0.92 } : null,
         ]}
         accessibilityRole="button"
-        accessibilityLabel={`${t("home.question_feedback_card_title")}. ${item.content ?? ""}. ${zone}. ${t("home.question_ticker_a11y")}`}
+        accessibilityLabel={`${t("home.question_feedback_card_title")}. ${tickerContent}. ${zone}. ${t("home.question_ticker_a11y")}`}
       >
         <View style={homeStyles.questionTickerIconCircle}>
           <Icons.brain color="#4F46E5" size={20} />
@@ -229,7 +236,7 @@ function HomeQuestionTickerCard({ items, getZoneLabel, onOpen }: HomeQuestionTic
         <View style={homeStyles.questionTickerBody}>
           <Animated.View style={{ opacity }}>
             <Text style={homeStyles.questionTickerText} numberOfLines={2} ellipsizeMode="tail">
-              {item.content || "—"}
+              {tickerContent.trim() || "—"}
             </Text>
             <Text style={homeStyles.questionTickerMeta} numberOfLines={1}>
               {zone} · {dateLine}
@@ -261,6 +268,7 @@ const HomeScreen = ({ navigation }: HomeScreenProps) => {
   const queryClient = useQueryClient();
   const { houseId, setHouseId } = useAuthStore();
   const { t, i18n } = useTranslation();
+  const homeTabFocused = useIsFocused();
   const { width: windowWidth } = useWindowDimensions();
   const insets = useSafeAreaInsets();
   /** Home là màn `Main` trên root stack — dùng stack này; trước đây qua tab nên cần getParent. */
@@ -282,19 +290,17 @@ const HomeScreen = ({ navigation }: HomeScreenProps) => {
   const [marketplaceHouses, setMarketplaceHouses] = useState<HouseFromApi[]>([]);
   const [marketplaceLoading, setMarketplaceLoading] = useState(false);
 
-  // PREMIUM subscription state for Home — drives the badge in the header
-  // strip + the "Mua gói"/"Gia hạn" cell label. Stale-while-revalidate so
-  // the user sees their last-known tier instantly on cold-open while the
-  // network call refreshes in the background.
-  // staleTime=0 + invalidate on focus = banner reflects tier within one
-  // RTT after the BE Kafka listener has processed the activation event.
   const subscriptionQuery = useQuery<SubscriptionInfo>({
-    queryKey: ["notif", "subscription"],
-    queryFn: fetchSubscription,
+    queryKey: ["notif", "subscription", houseId],
+    queryFn: () => fetchSubscription(houseId as string),
+    enabled: !!houseId,
     refetchOnMount: "always",
     staleTime: 0,
   });
-  const isPremium = subscriptionQuery.data?.tier === "PREMIUM";
+  const isPremium =
+    !!houseId &&
+    subscriptionQuery.data?.tier === "PREMIUM" &&
+    subscriptionQuery.data?.houseId === houseId;
   const premiumUntilLabel = useMemo(() => {
     const u = subscriptionQuery.data?.premiumUntil;
     if (!u) return null;
@@ -423,7 +429,7 @@ const HomeScreen = ({ navigation }: HomeScreenProps) => {
     data: invoiceListRaw,
     isLoading: invoicesLoading,
     refetch: refetchInvoices,
-  } = useTenantInvoices(invoiceQueryEnabled);
+  } = useTenantInvoices(invoiceQueryEnabled, { focused: homeTabFocused });
   const invoiceList = invoiceListRaw ?? EMPTY_TENANT_INVOICES;
 
   const accessBlock = useMemo(() => {
@@ -562,6 +568,14 @@ const HomeScreen = ({ navigation }: HomeScreenProps) => {
       void loadMarketplaceHouses();
     }, [loadMarketplaceHouses]),
   );
+
+  useEffect(() => {
+    if (!homeTabFocused || !hasAnyTenantHouse) return;
+    const id = setInterval(() => {
+      void loadQuestionTicker();
+    }, APP_FOREGROUND_GET_POLL_MS);
+    return () => clearInterval(id);
+  }, [homeTabFocused, hasAnyTenantHouse, loadQuestionTicker]);
 
   const zoneLabelForQuestionTicket = useCallback(
     (ticketId: string) => {
@@ -1593,7 +1607,16 @@ const HomeScreen = ({ navigation }: HomeScreenProps) => {
                       onPress={async () => {
                         try {
                           setPremiumPlanLoading(plan.id);
-                          const url = await createSubscriptionPaymentLink({ planId: plan.id });
+                          if (!houseId) {
+                            CustomAlert.alert(
+                              t("common.error", "Lỗi"),
+                              t("home.premium_no_house", "Vui lòng chọn nhà trước khi mua gói."),
+                              [{ text: t("common.close", "Đóng") }],
+                              { type: "error" }
+                            );
+                            return;
+                          }
+                          const url = await createSubscriptionPaymentLink({ houseId, planId: plan.id });
                           // Hand the signed URL to the in-app WebView so the
                           // checkout stays inside the app shell — no system
                           // browser, no URL bar exposing the gateway host.

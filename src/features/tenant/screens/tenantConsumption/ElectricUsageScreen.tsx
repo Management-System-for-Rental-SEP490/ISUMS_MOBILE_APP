@@ -26,7 +26,7 @@ import { useTenantForecast } from "../../hooks/useTenantForecast";
 import ForecastCard from "./ForecastCard";
 import HouseMasterPowerBtn from "./HouseMasterPowerBtn";
 import iotCommandApi, { type AreaPowerStateResponse } from "../../../../shared/services/iotCommandApi";
-import { DATA_LOAD_TIMEOUT_MS } from "../../../../shared/api/config";
+import { iotClient } from "../../../../shared/services/iotClient";
 import {
   brandPrimary,
   brandTintBg,
@@ -127,49 +127,71 @@ const Sparkline = ({
   );
 };
 
+const STALE_WARN_SECONDS = 30;
+const STALE_OFFLINE_SECONDS = 120;
+
+function formatAgoText(seconds: number): string {
+  if (seconds < 5) return "…";
+  if (seconds < 60) return `${seconds}s`;
+  if (seconds < 3600) return `${Math.floor(seconds / 60)}m`;
+  return `${Math.floor(seconds / 3600)}h`;
+}
+
 const LiveBadge = ({ on, lastTs }: { on: boolean; lastTs?: number }) => {
   const { t } = useTranslation();
-  const [ago, setAgo] = useState("");
+  const [seconds, setSeconds] = useState<number | null>(null);
   useEffect(() => {
     if (!lastTs) {
-      setAgo("");
+      setSeconds(null);
       return;
     }
-    const tick = () => {
-      const s = Math.round((Date.now() - lastTs) / 1000);
-      setAgo(s < 5 ? "…" : `${s}s`);
-    };
+    const tick = () => setSeconds(Math.round((Date.now() - lastTs) / 1000));
     tick();
-    const t = setInterval(tick, 5000);
-    return () => clearInterval(t);
+    const id = setInterval(tick, 1000);
+    return () => clearInterval(id);
   }, [lastTs]);
+
+  const isStale = seconds != null && seconds >= STALE_WARN_SECONDS;
+  const isOffline = !on || (seconds != null && seconds >= STALE_OFFLINE_SECONDS);
+  const showLive = on && !isStale;
+
+  let bg: string;
+  let dot: string;
+  let label: string;
+  let labelColor: string;
+
+  if (isOffline) {
+    bg = iotConnectionBadge.offBackground;
+    dot = iotConnectionBadge.offDot;
+    label = t("consumption.iot_offline");
+    labelColor = iotConnectionBadge.offLabel;
+  } else if (isStale) {
+    bg = "rgba(245,158,11,0.15)";
+    dot = "#f59e0b";
+    label = t("consumption.iot_stale", { defaultValue: "Đang chờ dữ liệu" });
+    labelColor = "#b45309";
+  } else if (showLive) {
+    bg = iotConnectionBadge.onBackground;
+    dot = iotConnectionBadge.onDot;
+    label = t("consumption.iot_live");
+    labelColor = iotConnectionBadge.onLabel;
+  } else {
+    bg = iotConnectionBadge.offBackground;
+    dot = iotConnectionBadge.offDot;
+    label = t("consumption.iot_offline");
+    labelColor = iotConnectionBadge.offLabel;
+  }
+
   return (
     <View style={lb.row}>
-      {ago ? <Text style={lb.ago}>{ago}</Text> : null}
-      <View
-        style={[
-          lb.wrap,
-          {
-            backgroundColor: on
-              ? iotConnectionBadge.onBackground
-              : iotConnectionBadge.offBackground,
-          },
-        ]}
-      >
-        <View
-          style={[
-            lb.dot,
-            { backgroundColor: on ? iotConnectionBadge.onDot : iotConnectionBadge.offDot },
-          ]}
-        />
-        <Text
-          style={[
-            lb.txt,
-            { color: on ? iotConnectionBadge.onLabel : iotConnectionBadge.offLabel },
-          ]}
-        >
-          {on ? t("consumption.iot_live") : t("consumption.iot_offline")}
+      {seconds != null ? (
+        <Text style={[lb.ago, isStale ? { color: "#b45309", fontWeight: "600" } : null]}>
+          {formatAgoText(seconds)}
         </Text>
+      ) : null}
+      <View style={[lb.wrap, { backgroundColor: bg }]}>
+        <View style={[lb.dot, { backgroundColor: dot }]} />
+        <Text style={[lb.txt, { color: labelColor }]}>{label}</Text>
       </View>
     </View>
   );
@@ -260,7 +282,7 @@ const HeroCard = ({
       ) : null}
     </View>
     <View style={hc.row}>
-      {loading ? (
+      {loading && dayVal === 0 && weekVal === 0 && monthVal === 0 ? (
         <>
           <View style={hc.cell}><Skel w={52} h={28} /><Skel w={36} h={11} mt={6} /></View>
           <View style={hc.vDiv} />
@@ -324,7 +346,7 @@ const MonthlyUsageCard = ({
           <Text style={mc.monthLine}>{monthCaption}</Text>
         </View>
       </View>
-      {loading ? (
+      {loading && monthVal === 0 ? (
         <Skel w={140} h={38} r={10} mt={8} />
       ) : (
         <View style={mc.valueRow}>
@@ -506,8 +528,6 @@ const ElectricUsageScreen = ({ showHeader = true }: ElectricUsageScreenProps) =>
 
   const [powerState, setPowerState] = useState<AreaPowerStateResponse | null>(null);
   const [isAreaLoading, setIsAreaLoading] = useState(false);
-  /** Hết DATA_LOAD_TIMEOUT_MS mà chưa có telemetry realtime → ẩn card “Theo dõi điện”. */
-  const [monitoringTimedOut, setMonitoringTimedOut] = useState(false);
   const prevAreaRef = useRef<string | null>(null);
   const powerStateReqRef = useRef(0);
 
@@ -516,7 +536,6 @@ const ElectricUsageScreen = ({ showHeader = true }: ElectricUsageScreenProps) =>
       prevAreaRef.current = selectedAreaId;
       if (!isHouseLevel) {
         setIsAreaLoading(true);
-        setMonitoringTimedOut(false);
       }
     }
   }, [selectedAreaId, isHouseLevel]);
@@ -590,7 +609,7 @@ const ElectricUsageScreen = ({ showHeader = true }: ElectricUsageScreenProps) =>
   const [pullRefreshing, setPullRefreshing] = useState(false);
   const onRefresh = useCallback(async () => {
     setPullRefreshing(true);
-    setMonitoringTimedOut(false);
+    iotClient.forceReconnect();
     const tasks: Promise<unknown>[] = [
       Promise.resolve().then(() => {
         usage.refetch();
@@ -610,24 +629,6 @@ const ElectricUsageScreen = ({ showHeader = true }: ElectricUsageScreenProps) =>
   }, [usage.refetch, areaDistribution.refetch, forecast.refetch, activeAreaId, houseId]);
 
   const f = power?.features;
-
-  useEffect(() => {
-    if (isHouseLevel || !activeAreaId || !houseId) {
-      setMonitoringTimedOut(false);
-      return;
-    }
-    if (!isPowered) {
-      setMonitoringTimedOut(false);
-      return;
-    }
-    if (f) {
-      setMonitoringTimedOut(false);
-      return;
-    }
-    if (isAreaLoading) return;
-    const t = setTimeout(() => setMonitoringTimedOut(true), DATA_LOAD_TIMEOUT_MS);
-    return () => clearTimeout(t);
-  }, [activeAreaId, houseId, isHouseLevel, isPowered, isAreaLoading, f, thingId]);
 
   const g = gas?.features;
   const e = environment?.features;
@@ -758,7 +759,7 @@ const ElectricUsageScreen = ({ showHeader = true }: ElectricUsageScreenProps) =>
                 <Text style={styles.offTitle}>{t("consumption.area_power_off_title")}</Text>
                 <Text style={styles.offSub}>{t("consumption.area_power_off_body")}</Text>
               </Card>
-            ) : monitoringTimedOut ? null : (
+            ) : (
               <Card>
                 <CardHeader
                   title={t("consumption.monitoring_electric")}

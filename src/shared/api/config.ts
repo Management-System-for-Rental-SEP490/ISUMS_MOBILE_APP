@@ -1,5 +1,4 @@
-// PRIMARY = API chung (users, houses, schedules…). FALLBACK/ngrok = bản dev cục bộ.
-// Module asset (/assets/*) mặc định gọi ASSETS_API_BASE (= fallback); đổi sau qua env.
+// Một base REST duy nhất: EXPO_PUBLIC_BACKEND_API_PRIMARY (Keycloak / AWS IoT là host khác).
 
 /**
  * Thời gian chờ tối đa (ms) cho mọi luồng tải dữ liệu (axios, pull-to-refresh/refetch, IoT REST usage…).
@@ -11,48 +10,74 @@ export const DATA_LOAD_TIMEOUT_MS = 6000 as const;
 /** Cùng giá trị với {@link DATA_LOAD_TIMEOUT_MS} — `axios` dùng làm `timeout` (hủy request nếu quá lâu). */
 export const API_REQUEST_TIMEOUT_MS = DATA_LOAD_TIMEOUT_MS;
 
-const DEFAULT_PRIMARY = "https://api-dev.isums.pro/api";
+/**
+ * Sau hydrate + đăng nhập: invalidate cache một lần — chỉ lịch làm mới nền, không ép delay hiển thị UI.
+ */
+export const APP_BACKGROUND_SOFT_INVALIDATE_DELAY_MS = 2_000 as const;
 
-function readEnvTrimmed(envKey: string, fallback: string): string {
+/**
+ * React Query — `staleTime` mặc định (chuyển màn / remount / kéo refresh).
+ * Hai hook danh sách ticket staff & tenant giữ `staleTime: Infinity` + poll riêng.
+ */
+export const QUERY_DEFAULT_STALE_TIME_MS = 5_000 as const;
+
+/** Cùng contract `queryKey` với app Staff (đợt invalidate nền bỏ qua hai danh sách ticket). */
+export function isIssueTicketStaffOrTenantListQueryKey(queryKey: readonly unknown[]): boolean {
+  if (queryKey[0] !== "issues") return false;
+  if (queryKey[1] === "tickets" && queryKey[2] === "staff") return true;
+  if (queryKey[1] === "tenantTickets" && queryKey[2] === "list") return true;
+  return false;
+}
+
+/**
+ * Chu kỳ poll GET khi màn đang mở — đồng bộ với Staff app (`STAFF_FOREGROUND_GET_POLL_MS`).
+ * Ticket, hóa đơn, thông báo fallback, REST tiêu thụ điện/nước theo căn đang hiển thị…
+ */
+export const APP_FOREGROUND_GET_POLL_MS = 5000 as const;
+
+/**
+ * Poll GET danh sách ticket tenant (list + responses cùng bundle) — 9s; khớp staff `STAFF_TICKET_LIST_POLL_MS`.
+ * Các query chi tiết / hóa đơn / IoT vẫn dùng {@link APP_FOREGROUND_GET_POLL_MS}.
+ */
+export const TENANT_TICKET_LIST_POLL_MS = 9_000 as const;
+
+/**
+ * Timeout dài hơn cho GET danh sách issues không phân trang (ticket tenant + responses):
+ * payload lớn và nén (vd. zstd) → download + JSON.parse có thể vượt {@link DATA_LOAD_TIMEOUT_MS}.
+ * Chỉ truyền vào các request trong `issuesApi` tương ứng — không nâng timeout mặc định toàn app.
+ */
+export const ISSUES_TENANT_LIST_TIMEOUT_MS = 90_000 as const;
+
+function readEnvTrimmed(envKey: string): string {
   const v =
     typeof process !== "undefined" && process.env?.[envKey]
       ? String(process.env[envKey]).trim()
       : "";
-  return v || fallback;
+  return v;
 }
 
-export const PRIMARY_BACKEND_URL = readEnvTrimmed(
-  "EXPO_PUBLIC_BACKEND_API_PRIMARY",
-  DEFAULT_PRIMARY
-);
+export const PRIMARY_BACKEND_URL = readEnvTrimmed("EXPO_PUBLIC_BACKEND_API_PRIMARY");
 
-export const FALLBACK_BACKEND_URL = PRIMARY_BACKEND_URL;
 export const BACKEND_URL_PRIMARY = PRIMARY_BACKEND_URL;
-export const BACKEND_URL_FALLBACK = PRIMARY_BACKEND_URL;
+
+/** Base REST duy nhất (users, nhà, `/assets/*`, …). `.env`: `EXPO_PUBLIC_BACKEND_API_PRIMARY`. */
 export const BACKEND_API_BASE = PRIMARY_BACKEND_URL;
+
+/** Alias cho IoT forecast API — đi qua axiosClient + Bearer token chung. */
 export const ASSETS_API_BASE = PRIMARY_BACKEND_URL;
 
-const DEFAULT_IOT_WS =
-  "wss://a98erfaotg.execute-api.ap-southeast-1.amazonaws.com/production/";
-const DEFAULT_IOT_REST =
-  "https://m0etrbg5l2.execute-api.ap-southeast-1.amazonaws.com/dev";
+/** WebSocket telemetry — `.env`: `EXPO_PUBLIC_IOT_WS_URL` */
+export const IOT_WS_URL = readEnvTrimmed("EXPO_PUBLIC_IOT_WS_URL");
 
-/** WebSocket telemetry AWS — khai báo trong .env EXPO_PUBLIC_IOT_WS_URL */
-export const IOT_WS_URL = readEnvTrimmed("EXPO_PUBLIC_IOT_WS_URL", DEFAULT_IOT_WS);
-
-/** REST usage điện/nước — khai báo trong .env EXPO_PUBLIC_IOT_REST_BASE */
-export const IOT_REST_BASE = readEnvTrimmed(
-  "EXPO_PUBLIC_IOT_REST_BASE",
-  DEFAULT_IOT_REST
-);
+/** REST usage điện/nước — `.env`: `EXPO_PUBLIC_IOT_REST_BASE` */
+export const IOT_REST_BASE = readEnvTrimmed("EXPO_PUBLIC_IOT_REST_BASE");
 
 /**
  * Legacy: URL template tự ghép (trước khi có POST /api/payments/vnpay).
  * Luồng tenant hiện dùng `createVnpayPaymentLink` trong `tenantPaymentApi.ts`.
  */
 export const TENANT_PAYMENT_URL_TEMPLATE = readEnvTrimmed(
-  "EXPO_PUBLIC_TENANT_PAYMENT_URL_TEMPLATE",
-  ""
+  "EXPO_PUBLIC_TENANT_PAYMENT_URL_TEMPLATE"
 );
 
 // --- Notification domain (REST + optional realtime/push) — defensive defaults ---
@@ -89,11 +114,11 @@ const rawPollMs = (() => {
     typeof process !== "undefined" && process.env?.EXPO_PUBLIC_NOTIFICATION_POLL_INTERVAL_MS
       ? Number(process.env.EXPO_PUBLIC_NOTIFICATION_POLL_INTERVAL_MS)
       : NaN;
-  const n = Number.isFinite(v) ? v : 20000;
-  return Math.min(30_000, Math.max(10_000, n));
+  const n = Number.isFinite(v) ? v : APP_FOREGROUND_GET_POLL_MS;
+  return Math.min(300_000, Math.max(APP_FOREGROUND_GET_POLL_MS, n));
 })();
 
-/** Khoảng poll fallback (ms), clamp 10_000..30_000. */
+/** Khoảng poll fallback — mặc định cùng {@link APP_FOREGROUND_GET_POLL_MS}, clamp ≥ 5s. */
 export const NOTIFICATION_POLL_INTERVAL_MS = rawPollMs;
 
 /**
@@ -105,11 +130,8 @@ export const NOTIFICATION_READ_ALL_AVAILABLE = readEnvBool(
   false
 );
 
-/** URL stream (SSE/WS) — để trống nếu chưa có BE. */
-export const NOTIFICATION_STREAM_URL = readEnvTrimmed(
-  "EXPO_PUBLIC_NOTIFICATION_STREAM_URL",
-  ""
-);
+/** URL stream (SSE/WS) — tùy chọn trong `.env`. */
+export const NOTIFICATION_STREAM_URL = readEnvTrimmed("EXPO_PUBLIC_NOTIFICATION_STREAM_URL");
 
 const rawIdleMs = (() => {
   const v =

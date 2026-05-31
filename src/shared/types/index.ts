@@ -15,6 +15,7 @@ import type {
 
 export type AuthStackParamList = {
   AuthLogin: undefined;
+  AuthLoginForm: undefined;
 };
 
 export type HeaderVariant = "default" | "electric" | "water"; // định nghĩa các loại variant của header
@@ -28,8 +29,13 @@ export type RootStackParamList = AuthStackParamList & {
   /**
    * Tạo ticket tenant (POST /issues/tickets).
    * `houseId` bắt buộc; có `presetAsset` khi vào từ chi tiết thiết bị, không có khi vào từ danh sách ticket (+ chọn thiết bị trong form).
+   * `presetTicketType`: mặc định REPAIR; QUESTION khi vào từ danh sách giải đáp thắc mắc.
    */
-  Ticket: { houseId: string; presetAsset?: { id: string; displayName: string } };
+  Ticket: {
+    houseId: string;
+    presetAsset?: { id: string; displayName: string };
+    presetTicketType?: "REPAIR" | "QUESTION";
+  };
   /** Danh sách ticket tenant đã gửi (từ hồ sơ / ứng dụng). */
   TenantTicketList: undefined;
   /** Chi tiết một ticket (dữ liệu từ danh sách + tên thiết bị fetch theo assetId). */
@@ -74,8 +80,9 @@ export type RootStackParamList = AuthStackParamList & {
   /** Hóa đơn sửa chữa / ticket: tổng quan + lịch sử lượt thanh toán. */
   TenantIssueInvoice: { invoice: TenantInvoiceFromApi };
   /**
-   * WebView VNPay — `checkoutUrl` từ POST tạo link (tiền nhà: `invoiceIds`, sửa chữa: `quoteId`).
-   * Sau redirect, app hiển thị màn kết quả trong app rồi `afterSuccess` thoát (không tải HTML `vnp_ReturnUrl`).
+   * WebView VNPay — `checkoutUrl` từ POST tạo link.
+   * Body tạo link phải khớp Swagger: **Invoice** → `invoiceIds` (tiền nhà/cọc); **Quote** → `quoteId` (sửa chữa / WAITING_PAYMENT).
+   * Sau redirect: màn kết quả in-app rồi `afterSuccess` (không tải HTML `vnp_ReturnUrl`).
    */
   VnpayCheckout: {
     checkoutUrl: string;
@@ -83,13 +90,17 @@ export type RootStackParamList = AuthStackParamList & {
     /** Khi `afterSuccess` = `ticketDetail` — dùng để reset stack về đúng ticket. */
     ticketForAfterSuccess?: TenantTicketFromApi;
     /**
-     * Tuỳ chọn — chỉnh copy màn xác nhận/kết quả (tiền nhà dùng `house_invoice`).
-     * `repair_quote`: thanh toán báo giá ticket; `repair_fee_invoice`: hóa đơn phí sửa chữa.
+     * Tuỳ chọn — copy màn kết quả (không đổi body POST).
+     * - `house_invoice`: ngữ cảnh **Invoice** (`invoiceIds` — tiền nhà/cọc).
+     * - `repair_quote`: ngữ cảnh **Quote** (`quoteId` — sửa chữa).
+     * - `repair_fee_invoice`: tùy chọn / tương thích; luồng sửa chữa hiện dùng `repair_quote` khi POST dùng `quoteId`.
      */
     vnpayUiContext?: "house_invoice" | "repair_quote" | "repair_fee_invoice";
   };
   /** Trang tiêu thụ (gộp điện + nước) với switch toggle. */
   ConsumptionScreen: { initialTab?: "electric" | "water" } | undefined;
+  /** Smart Home V2 — IoT hub redesign (Điện / Nước). */
+  SmartHomeScreen: { initialTab?: "electric" | "water" } | undefined;
   /** Thông báo (chuyển từ tab sang stack screen). */
   NotificationScreen: undefined;
   /** Chi tiết cảnh báo IoT (từ banner hoặc danh sách). */
@@ -155,6 +166,13 @@ export type AuthState = {
   onboardedUsers: string[]; // Danh sách username đã xem onboarding
   keycloakInAppSession: KeycloakInAppSession | null;
   setKeycloakInAppSession: (s: KeycloakInAppSession | null) => void;
+  /**
+   * Khi user xác nhận đăng xuất: khóa UI (chỉ hiện màn tải toàn màn) trong lúc gọi SSO logout,
+   * tránh nhảy Login rồi lại thấy Custom Tab / dữ liệu phiên cũ.
+   * Không persist — không đưa vào partialize.
+   */
+  logoutUiLocked: boolean;
+  setLogoutUiLocked: (locked: boolean) => void;
   login: (data: AuthPayload) => void;
   logout: () => void;
   completeOnboarding: () => void; // Hàm xác nhận user hiện tại đã xem xong

@@ -85,7 +85,27 @@ const ConsumptionScreen = () => {
         </View>
       </StackScreenTitleHeaderStrip>
 
-      {/* Switch toggle */}
+      <Pressable
+        onPress={() => navigation.navigate("SmartHomeScreen", { initialTab: activeTab })}
+        style={({ pressed }) => [styles.v2Banner, { opacity: pressed ? 0.85 : 1 }]}
+        accessibilityRole="button"
+      >
+        <View style={styles.v2BannerInner}>
+          <Text style={styles.v2BannerEmoji}>✨</Text>
+          <View style={{ flex: 1 }}>
+            <Text style={styles.v2BannerTitle}>
+              {t("smart.try_v2", { defaultValue: "Xem chi tiết hơn" })}
+            </Text>
+            <Text style={styles.v2BannerSub}>
+              {t("smart.try_v2_sub", {
+                defaultValue: "Chỉ số real-time, dự đoán & ước tính chi phí, chất lượng không khí",
+              })}
+            </Text>
+          </View>
+          <Icons.chevronForward size={18} color={brandPrimary} />
+        </View>
+      </Pressable>
+
       <View style={styles.switchContainer}>
         <View style={styles.switchTrack}>
           <Animated.View
@@ -207,5 +227,34 @@ const styles = StyleSheet.create({
   contentRow: {
     flexDirection: "row",
     flex: 1,
+  },
+  v2Banner: {
+    marginHorizontal: 16,
+    marginTop: 12,
+    borderRadius: 14,
+    backgroundColor: "rgba(59, 181, 130, 0.08)",
+    borderWidth: 1,
+    borderColor: "rgba(59, 181, 130, 0.25)",
+    overflow: "hidden",
+  },
+  v2BannerInner: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    gap: 12,
+  },
+  v2BannerEmoji: {
+    fontSize: 22,
+  },
+  v2BannerTitle: {
+    fontSize: 14,
+    fontWeight: "700",
+    color: brandPrimary,
+  },
+  v2BannerSub: {
+    fontSize: 11,
+    color: neutral.textSecondary,
+    marginTop: 2,
   },
 });

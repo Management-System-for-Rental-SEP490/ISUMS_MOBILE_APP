@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { useFocusEffect } from "@react-navigation/native";
+import { useIsFocused } from "@react-navigation/native";
 import {
   FlatList,
   Image,
@@ -20,21 +20,32 @@ import type { IssueQuoteFromApi } from "../../../../shared/types/api";
 import { getAssetItemById } from "../../../../shared/services/assetItemApi";
 import {
   confirmIssueQuoteStatus,
-  getIssueQuotesByTicket,
-  getIssueResponses,
-  getTenantTicketById,
-  getTenantTicketImages,
+  normalizeIssueQuoteRow,
   type TenantTicketImageFromApi,
 } from "../../../../shared/services/issuesApi";
 import { useTenantInvoices } from "../../../../shared/hooks";
+import {
+  useIssueQuotesByTicketQuery,
+  useTenantIssueResponsesQuery,
+  useTenantTicketByIdQuery,
+  useTenantTicketImagesQuery,
+  useTenantWorkSlotByIdQuery,
+} from "../../../../shared/hooks/useTenantIssueTickets";
 import { isTenantInvoicePayable, isTenantTicketIssueInvoice } from "../../../../shared/utils/tenantInvoice";
 import { InvoicePaymentFlowSection } from "../tenantInvoice/InvoicePaymentFlowSection";
 import { createVnpayPaymentLink } from "../../../../shared/services/tenantPaymentApi";
-import { getWorkSlotById } from "../../../../shared/services/scheduleApi";
 import Icons from "../../../../shared/theme/icon";
 import { brandPrimary, brandSecondary, neutral } from "../../../../shared/theme/color";
 import { tenantTicketDetailStyles as styles, tenantTicketListStyles as badge } from "./ticketStyles";
-import { formatTenantIssueDateTime, formatVndDisplay } from "../../../../shared/utils";
+import {
+  formatTenantIssueDateTime,
+  formatVndDisplay,
+} from "../../../../shared/utils";
+import {
+  getIssueResponseContentForUi,
+  getTenantTicketDescriptionForUi,
+  getTenantTicketTitleForUi,
+} from "../../../../shared/utils/issueTicketLocalizedText";
 import { formatApiErrorForTenantAlert } from "../../../../shared/utils/apiErrorMessage";
 import {
   StackScreenTitleBadge,
@@ -108,15 +119,24 @@ function pickLatestResponseForTicket(
   });
 }
 
+function isNilUuid(v: string | null | undefined): boolean {
+  const s = String(v ?? "").trim();
+  return !s || s === "00000000-0000-0000-0000-000000000000"; //
+}
+
 const TenantTicketDetailScreen = ({ navigation, route }: Props) => {
   const { t, i18n } = useTranslation();
   const insets = useSafeAreaInsets();
   const initialTicket = route.params.ticket;
-  const [ticket, setTicket] = useState(initialTicket);
-  /** Chờ lần đầu `getTenantTicketById` — tránh hiển thị UUID (ví dụ `assignedStaffId`) trước khi BE trả đủ tên/SĐT. */
-  const [ticketDetailLoading, setTicketDetailLoading] = useState(true);
-  const [predictedHandlingTime, setPredictedHandlingTime] = useState<string | null>(null);
-  const [workSlotLoading, setWorkSlotLoading] = useState(false);
+  const isFocused = useIsFocused();
+  const stableTicketId = String(initialTicket.id ?? "").trim();
+
+  const { data: invoiceQueryData } = useTenantInvoices(true, { focused: isFocused });
+
+  const ticketDetailQuery = useTenantTicketByIdQuery(stableTicketId, { focused: isFocused });
+  const ticket = ticketDetailQuery.data ?? initialTicket;
+  /** Lần đầu GET chi tiết — tránh flash UUID staff trước khi BE trả tên/SĐT. */
+  const ticketDetailLoading = ticketDetailQuery.isLoading;
 
   const locale = useMemo(() => {
     const lang = String(i18n.language || "").toLowerCase();
@@ -127,16 +147,12 @@ const TenantTicketDetailScreen = ({ navigation, route }: Props) => {
 
   const [assetName, setAssetName] = useState<string | null>(null);
   const [assetLoading, setAssetLoading] = useState(true);
-  const [ticketImages, setTicketImages] = useState<TenantTicketImageFromApi[]>([]);
-  const [imagesLoading, setImagesLoading] = useState(false);
   /** Index ảnh đang xem fullscreen; null = đóng modal. */
   const [activeImageIndex, setActiveImageIndex] = useState<number | null>(null);
   const imageModalListRef = useRef<FlatList<TenantTicketImageFromApi>>(null);
   const { width: windowWidth } = useWindowDimensions();
   const imageModalPageWidth = Math.max(0, windowWidth - 32);
 
-  const [quotesLoading, setQuotesLoading] = useState(false);
-  const [quotes, setQuotes] = useState<IssueQuoteFromApi[]>([]);
   const [confirmQuoteLoading, setConfirmQuoteLoading] = useState(false);
   const [confirmQuoteError, setConfirmQuoteError] = useState<string | null>(null);
   const [payRepairLoading, setPayRepairLoading] = useState(false);
@@ -146,10 +162,36 @@ const TenantTicketDetailScreen = ({ navigation, route }: Props) => {
     [ticket?.type]
   );
 
-  const [questionResponse, setQuestionResponse] = useState<IssueTicketResponseFromApi | null>(null);
-  const [questionResponseLoading, setQuestionResponseLoading] = useState(false);
+  const imagesQuery = useTenantTicketImagesQuery(stableTicketId, {
+    focused: isFocused,
+    enabled: Boolean(stableTicketId) && !isQuestionTicket,
+  });
+  const ticketImages = imagesQuery.data ?? [];
+  const imagesLoading = imagesQuery.isFetching;
 
-  const { data: invoiceQueryData, refetch: refetchTenantInvoices } = useTenantInvoices();
+  const responsesQuery = useTenantIssueResponsesQuery({
+    focused: isFocused,
+    enabled: isQuestionTicket && Boolean(stableTicketId),
+  });
+  const questionResponseLoading = responsesQuery.isFetching;
+  const questionResponse = useMemo(() => {
+    if (!isQuestionTicket || !ticket?.id || !responsesQuery.data) return null;
+    return pickLatestResponseForTicket(responsesQuery.data, String(ticket.id).trim());
+  }, [isQuestionTicket, ticket?.id, responsesQuery.data]);
+
+  const displayTicketTitle = useMemo(
+    () => getTenantTicketTitleForUi(ticket),
+    [ticket, i18n.language]
+  );
+  const displayTicketDescription = useMemo(
+    () => getTenantTicketDescriptionForUi(ticket),
+    [ticket, i18n.language]
+  );
+  const displayQuestionResponseContent = useMemo(
+    () => (questionResponse ? getIssueResponseContentForUi(questionResponse) : ""),
+    [questionResponse, i18n.language]
+  );
+
   const linkedRepairInvoice = useMemo(() => {
     const rows = invoiceQueryData ?? [];
     const tid = String(ticket?.id ?? "").trim();
@@ -164,11 +206,55 @@ const TenantTicketDetailScreen = ({ navigation, route }: Props) => {
     [linkedRepairInvoice]
   );
 
-  useFocusEffect(
-    useCallback(() => {
-      void refetchTenantInvoices();
-    }, [refetchTenantInvoices])
+  const shouldFetchQuotes = useMemo(() => {
+    if (!ticket?.id) return false;
+    const tid = String(ticket.id).trim();
+    const st = normalizeIssueStatus(ticket.status);
+    const hasLinkedRepairForTicket =
+      linkedRepairInvoice != null &&
+      String(linkedRepairInvoice.issueTicketId ?? "").trim() === tid;
+    return (
+      ticketNeedsTenantQuoteConfirm(ticket.status) ||
+      st === "WAITING_PAYMENT" ||
+      hasLinkedRepairForTicket
+    );
+  }, [ticket?.id, ticket?.status, linkedRepairInvoice]);
+
+  const quotesQuery = useIssueQuotesByTicketQuery(stableTicketId, {
+    focused: isFocused,
+    enabled: shouldFetchQuotes,
+  });
+  const quotes = quotesQuery.data ?? [];
+  const quotesLoading = quotesQuery.isFetching;
+
+  const pad2 = (n: number) => String(n).padStart(2, "0");
+
+  // Format đúng yêu cầu: "9:45 - 10:45, 27/03/2026"
+  const formatSlotRange = useCallback(
+    (startIso: string, endIso: string) => {
+      const sd = new Date(startIso);
+      const ed = new Date(endIso);
+      if (Number.isNaN(sd.getTime()) || Number.isNaN(ed.getTime())) return null;
+
+      const startTime = `${sd.getHours()}:${pad2(sd.getMinutes())}`;
+      const endTime = `${ed.getHours()}:${pad2(ed.getMinutes())}`;
+      const dateStr = `${pad2(sd.getDate())}/${pad2(sd.getMonth() + 1)}/${sd.getFullYear()}`;
+
+      return `${startTime} - ${endTime}, ${dateStr}`;
+    },
+    [locale]
   );
+
+  const workSlotQuery = useTenantWorkSlotByIdQuery(ticket.slotId, {
+    focused: isFocused,
+    enabled: !isQuestionTicket && !isNilUuid(ticket.slotId),
+  });
+  const workSlotLoading = workSlotQuery.isFetching;
+  const predictedHandlingTime = useMemo(() => {
+    const slot = workSlotQuery.data?.data;
+    if (!slot?.startTime || !slot?.endTime) return null;
+    return formatSlotRange(slot.startTime, slot.endTime);
+  }, [workSlotQuery.data, formatSlotRange]);
 
   const loadAsset = useCallback(async () => {
     if (String(ticket?.type ?? "").toUpperCase() === "QUESTION") {
@@ -191,32 +277,6 @@ const TenantTicketDetailScreen = ({ navigation, route }: Props) => {
     loadAsset();
   }, [loadAsset]);
 
-  const loadImages = useCallback(async () => {
-    if (String(ticket?.type ?? "").toUpperCase() === "QUESTION") {
-      setTicketImages([]);
-      setImagesLoading(false);
-      return;
-    }
-    if (!ticket?.id) {
-      setTicketImages([]);
-      return;
-    }
-    setImagesLoading(true);
-    try {
-      const imgs = await getTenantTicketImages(ticket.id);
-      setTicketImages(imgs);
-    } catch (e) {
-      console.error("[TenantTicketDetailScreen] loadImages failed", e);
-      setTicketImages([]);
-    } finally {
-      setImagesLoading(false);
-    }
-  }, [ticket?.id, ticket?.type]);
-
-  useEffect(() => {
-    loadImages();
-  }, [loadImages]);
-
   useEffect(() => {
     if (activeImageIndex == null || ticketImages.length === 0) return;
     const index = Math.min(Math.max(0, activeImageIndex), ticketImages.length - 1);
@@ -226,43 +286,33 @@ const TenantTicketDetailScreen = ({ navigation, route }: Props) => {
     return () => clearTimeout(timer);
   }, [activeImageIndex, ticketImages]);
 
-  useEffect(() => {
-    if (!isQuestionTicket || !ticket?.id) {
-      setQuestionResponse(null);
-      setQuestionResponseLoading(false);
-      return;
-    }
-    let cancelled = false;
-    const tid = String(ticket.id).trim();
-    setQuestionResponseLoading(true);
-    void getIssueResponses()
-      .then((responses) => {
-        if (cancelled) return;
-        setQuestionResponse(pickLatestResponseForTicket(responses, tid));
-      })
-      .catch(() => {
-        if (!cancelled) setQuestionResponse(null);
-      })
-      .finally(() => {
-        if (!cancelled) setQuestionResponseLoading(false);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [i18n.language, isQuestionTicket, ticket?.id]);
-
   const activeQuote = useMemo(() => {
     if (!quotes?.length) return null;
     const waiting = quotes.find((q) => quoteAwaitingTenantConfirm(q));
     return waiting ?? quotes[0] ?? null;
   }, [quotes]);
 
-  /** Báo giá đã duyệt — hiển thị kèm nút thanh toán (WAITING_PAYMENT). */
+  /**
+   * Báo giá dùng cho VNPay luồng `quoteId` (WAITING_PAYMENT).
+   * Ưu tiên GET `/quotes/ticket/...`; nếu thiếu `id` trên BE thì `normalizeIssueQuoteRow` đã xử lý trong service.
+   * Fallback: `ticket.quote` từ GET chi tiết ticket (khi danh sách quotes rỗng hoặc chưa fetch).
+   */
   const paymentQuote = useMemo(() => {
-    if (!quotes?.length) return null;
-    const approved = quotes.find((q) => normalizeIssueStatus(q.status) === "APPROVED");
-    return approved ?? quotes[0] ?? null;
-  }, [quotes]);
+    const fromList = (): IssueQuoteFromApi | null => {
+      if (!quotes?.length) return null;
+      const approved = quotes.find((q) => normalizeIssueStatus(q.status) === "APPROVED");
+      const picked = approved ?? quotes[0] ?? null;
+      return picked ? normalizeIssueQuoteRow(picked) : null;
+    };
+    const listed = fromList();
+    if (listed && String(listed.id ?? "").trim()) return listed;
+    const embedded = ticket?.quote;
+    if (embedded && typeof embedded === "object") {
+      const n = normalizeIssueQuoteRow(embedded);
+      if (String(n.id ?? "").trim()) return n;
+    }
+    return listed;
+  }, [quotes, ticket?.quote]);
 
   const formatMoney = useCallback(
     (v: number) => formatVndDisplay(v, locale, t),
@@ -305,119 +355,6 @@ const TenantTicketDetailScreen = ({ navigation, route }: Props) => {
     return `${heading}\n${itemsLine}${totalSuffix}`;
   }, [quoteForPaidRepairDisplay, t, formatMoney]);
 
-  const refreshTicket = useCallback(async () => {
-    try {
-      if (!ticket?.id) {
-        setTicketDetailLoading(false);
-        return;
-      }
-      const updated = await getTenantTicketById(ticket.id);
-      if (updated) setTicket(updated);
-    } catch {
-      // giữ ticket cũ nếu refresh lỗi
-    } finally {
-      setTicketDetailLoading(false);
-    }
-  }, [i18n.language, ticket?.id]);
-
-  const pad2 = (n: number) => String(n).padStart(2, "0");
-
-  // Format đúng yêu cầu: "9:45 - 10:45, 27/03/2026"
-  const formatSlotRange = useCallback(
-    (startIso: string, endIso: string) => {
-      const sd = new Date(startIso);
-      const ed = new Date(endIso);
-      if (Number.isNaN(sd.getTime()) || Number.isNaN(ed.getTime())) return null;
-
-      const startTime = `${sd.getHours()}:${pad2(sd.getMinutes())}`;
-      const endTime = `${ed.getHours()}:${pad2(ed.getMinutes())}`;
-      const dateStr = `${pad2(sd.getDate())}/${pad2(sd.getMonth() + 1)}/${sd.getFullYear()}`;
-
-      return `${startTime} - ${endTime}, ${dateStr}`;
-    },
-    [locale]
-  );
-
-  useEffect(() => {
-    refreshTicket();
-  }, [refreshTicket]);
-
-  useEffect(() => {
-    let cancelled = false;
-
-    const run = async () => {
-      setPredictedHandlingTime(null);
-      setWorkSlotLoading(false);
-
-      if (String(ticket?.type ?? "").toUpperCase() === "QUESTION") return;
-
-      // Không có slot thì không thể suy ra startTime.
-      if (nilUuid(ticket.slotId)) return;
-
-      setWorkSlotLoading(true);
-      try {
-        const res = await getWorkSlotById(String(ticket.slotId));
-        const slot = res?.data;
-        if (!cancelled && slot?.startTime && slot?.endTime) {
-          setPredictedHandlingTime(formatSlotRange(slot.startTime, slot.endTime));
-        } else if (!cancelled) {
-          setPredictedHandlingTime(null);
-        }
-      } catch (e) {
-        if (!cancelled) {
-          console.error("[TenantTicketDetail] load predicted handling time failed", e);
-        }
-      } finally {
-        if (!cancelled) setWorkSlotLoading(false);
-      }
-    };
-
-    run();
-    return () => {
-      cancelled = true;
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [ticket.slotId, ticket?.type, locale]);
-
-  const loadQuotes = useCallback(async () => {
-    if (!ticket?.id) {
-      setQuotes([]);
-      return;
-    }
-
-    const tid = String(ticket.id).trim();
-    const st = normalizeIssueStatus(ticket.status);
-    const hasLinkedRepairForTicket =
-      linkedRepairInvoice != null &&
-      String(linkedRepairInvoice.issueTicketId ?? "").trim() === tid;
-
-    const shouldFetch =
-      ticketNeedsTenantQuoteConfirm(ticket.status) ||
-      st === "WAITING_PAYMENT" ||
-      hasLinkedRepairForTicket;
-
-    if (!shouldFetch) {
-      setQuotes([]);
-      return;
-    }
-
-    setConfirmQuoteError(null);
-    setQuotesLoading(true);
-    try {
-      const res = await getIssueQuotesByTicket(ticket.id);
-      setQuotes(res);
-    } catch (e) {
-      console.error("[TenantTicketDetail] loadQuotes failed", e);
-      setQuotes([]);
-    } finally {
-      setQuotesLoading(false);
-    }
-  }, [i18n.language, ticket?.id, ticket.status, linkedRepairInvoice]);
-
-  useEffect(() => {
-    loadQuotes();
-  }, [loadQuotes]);
-
   const handleConfirmQuote = useCallback(async () => {
     if (!activeQuote?.id) return;
     if (confirmQuoteLoading) return;
@@ -426,8 +363,8 @@ const TenantTicketDetailScreen = ({ navigation, route }: Props) => {
     setConfirmQuoteLoading(true);
     try {
       await confirmIssueQuoteStatus(activeQuote.id);
-      await refreshTicket();
-      await loadQuotes();
+      await ticketDetailQuery.refetch();
+      await quotesQuery.refetch();
       navigation.navigate("TenantTicketList");
       Alert.alert(
         t("tenant_ticket_detail.confirm_quote_success_title"),
@@ -441,9 +378,19 @@ const TenantTicketDetailScreen = ({ navigation, route }: Props) => {
     } finally {
       setConfirmQuoteLoading(false);
     }
-  }, [activeQuote?.id, confirmQuoteLoading, loadQuotes, navigation, refreshTicket, t]);
+  }, [
+    activeQuote?.id,
+    confirmQuoteLoading,
+    navigation,
+    quotesQuery,
+    t,
+    ticketDetailQuery,
+  ]);
 
-  /** Ưu tiên `quoteId` (báo giá đã duyệt); không có thì hóa đơn sửa chữa / danh sách. */
+  /**
+   * Thanh toán sửa chữa ticket issue: nếu có báo giá → VNPay **`quoteId`** (không gửi `invoiceIds`).
+   * Không có `quoteId` hợp lệ → điều hướng hóa đơn / danh sách (luồng `invoiceIds` khi user thanh toán từ đó).
+   */
   const handlePayRepair = useCallback(async () => {
     if (payRepairLoading) return;
     const qid = String(paymentQuote?.id ?? "").trim();
@@ -551,11 +498,10 @@ const TenantTicketDetailScreen = ({ navigation, route }: Props) => {
     return badge.typeDefaultText;
   };
 
-  const nilUuid = (v: string | null | undefined) =>
-    v == null || String(v).trim() === "";
-
   const sv = statusVisual(ticket.status);
-  const staffAssigned = !nilUuid(ticket.assignedStaffId);
+
+  /** Có staff gán khi id khác rỗng (UUID 0000... vẫn coi là «có id» — không dùng logic slot). */
+  const staffAssigned = Boolean(String(ticket.assignedStaffId ?? "").trim());
   const staffNameTrim = String(ticket.staffName ?? "").trim();
   const staffPhoneTrim = String(ticket.staffPhone ?? "").trim();
   const staffNamePending = staffAssigned && ticketDetailLoading && !staffNameTrim;
@@ -597,7 +543,9 @@ const TenantTicketDetailScreen = ({ navigation, route }: Props) => {
         {isQuestionTicket ? (
           <>
             <View style={styles.heroCard}>
-              <Text style={styles.heroTitle}>{ticket.title?.trim() ? ticket.title : "—"}</Text>
+              <Text style={styles.heroTitle}>
+                {displayTicketTitle.trim() ? displayTicketTitle : "—"}
+              </Text>
               <View style={styles.heroDateRow}>
                 <Icons.clock size={15} color={neutral.textMuted} />
                 <Text style={styles.heroDateText}>
@@ -611,7 +559,7 @@ const TenantTicketDetailScreen = ({ navigation, route }: Props) => {
               headerIcon={<Icons.helpOutline size={22} color={brandPrimary} />}
             >
               <Text style={styles.descriptionBody} selectable>
-                {ticket.description?.trim() ? ticket.description : "—"}
+                {displayTicketDescription.trim() ? displayTicketDescription : "—"}
               </Text>
             </TicketDetailSection>
 
@@ -627,7 +575,7 @@ const TenantTicketDetailScreen = ({ navigation, route }: Props) => {
               ) : questionResponse ? (
                 <>
                   <Text style={styles.descriptionBody} selectable>
-                    {questionResponse.content?.trim() ? questionResponse.content : "—"}
+                    {displayQuestionResponseContent.trim() ? displayQuestionResponseContent : "—"}
                   </Text>
                   <View style={[styles.heroDateRow, { marginTop: 12 }]}>
                     <Icons.clock size={15} color={neutral.textMuted} />
@@ -645,7 +593,7 @@ const TenantTicketDetailScreen = ({ navigation, route }: Props) => {
         ) : (
           <>
             <View style={styles.heroCard}>
-              <Text style={styles.heroTitle}>{ticket.title}</Text>
+              <Text style={styles.heroTitle}>{displayTicketTitle}</Text>
               <View style={styles.badgeRow}>
                 <View style={[badge.typeTag, typeTagBg(ticket.type), { marginBottom: 0 }]}>
                   <Text style={[badge.typeTagText, typeTagFg(ticket.type)]}>{typeLabel(ticket.type)}</Text>
@@ -728,7 +676,7 @@ const TenantTicketDetailScreen = ({ navigation, route }: Props) => {
               </View>
               <View style={[styles.detailFieldRow, styles.detailFieldRowLast]}>
                 <Text style={styles.fieldLabel}>{t("tenant_ticket_detail.field_slot")}</Text>
-                {nilUuid(ticket.slotId) ? (
+                {isNilUuid(ticket.slotId) ? (
                   <Text style={styles.fieldValueMuted} selectable>
                     {t("tenant_ticket_detail.no_slot")}
                   </Text>
@@ -753,7 +701,7 @@ const TenantTicketDetailScreen = ({ navigation, route }: Props) => {
               headerIcon={<Icons.subject size={22} color={brandPrimary} />}
             >
               <Text style={styles.descriptionBody} selectable>
-                {ticket.description?.trim() ? ticket.description : "—"}
+                {displayTicketDescription.trim() ? displayTicketDescription : "—"}
               </Text>
             </TicketDetailSection>
 
@@ -946,7 +894,7 @@ const TenantTicketDetailScreen = ({ navigation, route }: Props) => {
                 repairInvoicePaid
                   ? (repairPaymentContentLabel ??
                     t("tenant_ticket_detail.payment_content_repair_fallback", {
-                      title: ticket.title?.trim() ? ticket.title : "—",
+                      title: displayTicketTitle.trim() ? displayTicketTitle : "—",
                     }))
                   : undefined
               }

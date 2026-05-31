@@ -5,11 +5,16 @@ import { EventEmitter } from "eventemitter3";
 import { DATA_LOAD_TIMEOUT_MS, IOT_WS_URL, IOT_REST_BASE } from "../api/config";
 import type { TelemetryMessage, TelemetryStream, UsageData } from "../types/iot";
 
+const SILENCE_RECONNECT_MS = 60_000;
+const WATCHDOG_INTERVAL_MS = 10_000;
+
 class IotClient extends EventEmitter {
   private ws: WebSocket | null = null;
   private subscriptions = new Set<string>();
   private topicSubs = new Set<string>();
   private reconnectTimer: ReturnType<typeof setTimeout> | null = null;
+  private watchdogTimer: ReturnType<typeof setInterval> | null = null;
+  private lastMessageAt = 0;
   private shouldConnect = false;
 
   get isConnected(): boolean {
@@ -19,14 +24,47 @@ class IotClient extends EventEmitter {
   connect(): void {
     this.shouldConnect = true;
     this._connect();
+    this._startWatchdog();
   }
 
   disconnect(): void {
     this.shouldConnect = false;
     if (this.reconnectTimer) clearTimeout(this.reconnectTimer);
     this.reconnectTimer = null;
+    this._stopWatchdog();
     this.ws?.close();
     this.ws = null;
+  }
+
+  forceReconnect(): void {
+    if (!this.shouldConnect) return;
+    try {
+      this.ws?.close();
+    } catch {
+      /* ignore */
+    }
+    this.ws = null;
+    if (this.reconnectTimer) clearTimeout(this.reconnectTimer);
+    this.reconnectTimer = setTimeout(() => this._connect(), 250);
+  }
+
+  private _startWatchdog(): void {
+    if (this.watchdogTimer) return;
+    this.lastMessageAt = Date.now();
+    this.watchdogTimer = setInterval(() => {
+      if (!this.shouldConnect) return;
+      if (this.subscriptions.size === 0 && this.topicSubs.size === 0) return;
+      const silentFor = Date.now() - this.lastMessageAt;
+      if (silentFor > SILENCE_RECONNECT_MS) {
+        this.lastMessageAt = Date.now();
+        this.forceReconnect();
+      }
+    }, WATCHDOG_INTERVAL_MS);
+  }
+
+  private _stopWatchdog(): void {
+    if (this.watchdogTimer) clearInterval(this.watchdogTimer);
+    this.watchdogTimer = null;
   }
 
   subscribe(thing: string): void {
@@ -75,6 +113,7 @@ class IotClient extends EventEmitter {
     this.ws = new WebSocket(IOT_WS_URL);
 
     this.ws.onopen = () => {
+      this.lastMessageAt = Date.now();
       this.emit("connected");
       this.subscriptions.forEach((thing) =>
         this._send({ action: "subscribe", thing })
@@ -85,6 +124,7 @@ class IotClient extends EventEmitter {
     };
 
     this.ws.onmessage = (event) => {
+      this.lastMessageAt = Date.now();
       try {
         const msg = JSON.parse(event.data);
         this.emit("telemetry", msg);

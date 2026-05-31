@@ -1,5 +1,5 @@
 import { StyleSheet } from "react-native";
-import { brandSecondary, neutral } from "../../../../shared/theme/color";
+import { brandPrimary, brandSecondary, neutral } from "../../../../shared/theme/color";
 import { appTypography } from "../../../../shared/utils/typography";
 
 /** Danh sách phản hồi hỏi đáp — cùng tông với tenantTicketList. */
@@ -141,6 +141,23 @@ export const tenantQuestionListStyles = StyleSheet.create({
     paddingVertical: 40,
     paddingHorizontal: 24,
     lineHeight: 22,
+  },
+  /** FAB (+) góc dưới phải — đồng bộ `tenantTicketList`. */
+  fab: {
+    position: "absolute",
+    right: 20,
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: brandPrimary,
+    alignItems: "center",
+    justifyContent: "center",
+    zIndex: 20,
+    shadowColor: neutral.slate900,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 8,
+    elevation: 12,
   },
 });
 

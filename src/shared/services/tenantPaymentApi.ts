@@ -1,5 +1,5 @@
 import axiosClient from "../api/axiosClient";
-import { BACKEND_API_BASE, FALLBACK_BACKEND_URL } from "../api/config";
+import { BACKEND_API_BASE } from "../api/config";
 import type { ApiResponse, VnpayPaymentCreateRequest } from "../types/api";
 
 /** URL redirect sau thanh toán có đủ tham số VNPay để gửi BE xác thực. */
@@ -136,9 +136,6 @@ function buildVnpayReturnValidateUrls(redirectUrl: string, search: string): stri
   }
 
   add(`${BACKEND_API_BASE}/payments/vnpay/return${search}`);
-  //add(`${FALLBACK_BACKEND_URL}/payments/vnpay/return${search}`);
-  //add(`${BACKEND_API_BASE}/payments/result${search}`);
-  //add(`${FALLBACK_BACKEND_URL}/payments/result${search}`);
 
   if (parsed) {
     const noHash = redirectUrl.split("#")[0]?.trim() ?? "";
@@ -179,11 +176,31 @@ export async function validateVnpayReturnUrl(
   const candidates = buildVnpayReturnValidateUrls(redirectUrl, search);
   let lastError: unknown;
 
+  if (__DEV__) {
+    console.log("[VNPAY] validateVnpayReturnUrl", {
+      candidateCount: candidates.length,
+      hasVnpResponseCode: search.includes("vnp_ResponseCode="),
+    });
+  }
+
   for (const requestUrl of candidates) {
     try {
       const response = await axiosClient.get<unknown>(requestUrl);
       const body = response.data;
       if (isApiResponseShape(body)) {
+        if (__DEV__) {
+          console.log("[VNPAY] validateVnpayReturnUrl ok", {
+            requestHost: (() => {
+              try {
+                return new URL(requestUrl).host;
+              } catch {
+                return "?";
+              }
+            })(),
+            success: body.success,
+            message: typeof body.message === "string" ? body.message.slice(0, 120) : undefined,
+          });
+        }
         return body;
       }
     } catch (e: unknown) {
@@ -225,9 +242,13 @@ export type CreateVnpayPaymentLinkOptions = {
   bankCode?: string;
 };
 
-/** Luồng hóa đơn tiền nhà/cọc — một hoặc nhiều `invoiceId`. */
+/**
+ * Swagger **Invoice** flow: `{ invoiceIds }` — tiền nhà / cọc (một hoặc nhiều hóa đơn thuê & deposit).
+ */
 export type CreateVnpayPaymentInvoicePayload = { invoiceIds: string[]; quoteId?: never };
-/** Luồng báo giá sửa chữa — ticket `WAITING_PAYMENT`. */
+/**
+ * Swagger **Quote** flow: `{ quoteId }` — báo giá sửa chữa đã duyệt (ticket thường WAITING_PAYMENT).
+ */
 export type CreateVnpayPaymentQuotePayload = { quoteId: string; invoiceIds?: never };
 
 export type CreateVnpayPaymentLinkPayload = CreateVnpayPaymentInvoicePayload | CreateVnpayPaymentQuotePayload;
@@ -258,14 +279,15 @@ function joinVnpayCreateLinkFailureMessage(resBody: ApiResponse<string> | undefi
 }
 
 /**
- * Tạo link thanh toán VNPay — **POST** `{BACKEND_API_BASE}/payments/vnpay` (cùng Swagger `POST /api/payments/vnpay`).
+ * Tạo link thanh toán VNPay — **POST** `{BACKEND_API_BASE}/payments/vnpay`.
  *
- * **Body (đúng Swagger):**
- * - Luồng báo giá: `{ quoteId, bankCode?, locale }` — không gửi `invoiceIds`.
- * - Luồng hóa đơn: `{ invoiceIds, bankCode?, locale }` — không gửi `quoteId`.
- * - `bankCode` mặc định `""`, `locale` từ app (`vn` / `en` / `ja`).
+ * Hai luồng (Swagger — chỉ một trong hai trong body):
+ * - **Invoice:** `invoiceIds` (rental/deposit invoices).
+ * - **Quote:** `quoteId` (approved repair quote; ticket thường WAITING_PAYMENT).
  *
- * **Response:** wrapper `success` + `data` là **chuỗi** URL VNPay (sandbox/production). `Bearer` gắn bởi axios.
+ * `bankCode` mặc định `""`, `locale` từ app (`vn` / `en` / `ja`).
+ *
+ * **Response:** wrapper `success` + `data` là chuỗi URL VNPay. `Bearer` qua axios.
  *
  * @returns URL đầy đủ mở WebView.
  */
@@ -295,11 +317,43 @@ export async function createVnpayPaymentLink(
     ? { quoteId: quoteRaw, bankCode, locale }
     : { invoiceIds, bankCode, locale };
 
+  if (__DEV__) {
+    // ticket_issue_quote = body quoteId; rent_or_invoice_ids = body invoiceIds (tiền nhà/cọc, …)
+    console.log("[VNPAY] createVnpayPaymentLink → POST", {
+      postPath: "/payments/vnpay",
+      nghiepVu: quoteRaw ? "ticket_issue_quote" : "rent_or_invoice_ids",
+      quoteId: quoteRaw || undefined,
+      invoiceCount: quoteRaw ? 0 : invoiceIds.length,
+      invoiceIdsPreview: quoteRaw ? undefined : invoiceIds.slice(0, 5),
+      locale,
+    });
+  }
+
   const response = await axiosClient.post<ApiResponse<string>>(url, body);
   const resBody = response.data;
   const link = typeof resBody?.data === "string" ? resBody.data.trim() : "";
   if (!resBody?.success || !link) {
+    if (__DEV__) {
+      console.warn("[VNPAY] createVnpayPaymentLink BE refused", {
+        success: resBody?.success,
+        message: typeof resBody?.message === "string" ? resBody.message.slice(0, 200) : resBody?.message,
+      });
+    }
     throw new Error(joinVnpayCreateLinkFailureMessage(resBody));
   }
+
+  if (__DEV__) {
+    try {
+      const u = new URL(link);
+      console.log("[VNPAY] createVnpayPaymentLink ok", {
+        checkoutHost: u.host,
+        pathname: u.pathname,
+        linkLength: link.length,
+      });
+    } catch {
+      console.log("[VNPAY] createVnpayPaymentLink ok", { linkLength: link.length });
+    }
+  }
+
   return link;
 }

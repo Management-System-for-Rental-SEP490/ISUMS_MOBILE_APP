@@ -2,6 +2,9 @@ import { create } from "zustand";
 import { persist, createJSONStorage } from "zustand/middleware";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useHomeIotAlertDismissStore } from "./useHomeIotAlertDismissStore";
+import { useCategoryFilterStore } from "./useCategoryFilterStore";
+import { useNotificationTransportStore } from "./useNotificationTransportStore";
+import { useIotPushAlertStore } from "./useIotPushAlertStore";
 import { AuthState, ForgotPasswordState, RegisterState, MenuModalState } from "../shared/types";
 
 /*
@@ -46,6 +49,8 @@ const useAuthStore = create<AuthState>()(
       onboardedUsers: [], // Danh sách các user đã xem Intro
       keycloakInAppSession: null,
       setKeycloakInAppSession: (s) => set({ keycloakInAppSession: s }),
+      logoutUiLocked: false,
+      setLogoutUiLocked: (locked) => set({ logoutUiLocked: locked }),
 
       setHouseId: (id: string | null) => set({ houseId: id }),
 
@@ -62,6 +67,7 @@ const useAuthStore = create<AuthState>()(
           // qua ensureTenantMainHouseSynced() ở navigation.
           houseId: data.role === "tenant" ? null : data.houseId ?? null,
           isLoggedIn: true,
+          logoutUiLocked: false,
           // Giữ nguyên onboardedUsers
           onboardedUsers: state.onboardedUsers, 
         }));
@@ -69,6 +75,15 @@ const useAuthStore = create<AuthState>()(
 
       logout: () => {
         useHomeIotAlertDismissStore.getState().clearAllDismissed();
+        useIotPushAlertStore.getState().clearPending();
+        useNotificationTransportStore.setState({
+          realtimeUnavailable: false,
+          realtimeReason: null,
+        });
+        useCategoryFilterStore.setState({
+          homeSelectedCategoryId: null,
+          buildingSelectedCategoryId: {},
+        });
         set((state) => ({
           user: null,
           role: null,
@@ -110,6 +125,13 @@ const useAuthStore = create<AuthState>()(
         isLoggedIn: state.isLoggedIn,
         onboardedUsers: state.onboardedUsers, // lưu xuống ổ cứng
       }),
+      /** Luôn gộp vào snapshot đầy đủ; cờ logout UI không được lấy từ storage — tránh Hermes/state thiếu field sau hydrate. */
+      merge: (persistedState, currentState) =>
+        ({
+          ...currentState,
+          ...(persistedState as object ?? {}),
+          logoutUiLocked: false,
+        }) satisfies AuthState,
     }
   )
 );

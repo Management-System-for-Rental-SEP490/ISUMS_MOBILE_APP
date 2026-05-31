@@ -106,6 +106,15 @@ export function isTenantRepairInvoiceFlow(
 }
 
 /**
+ * Id ticket issue gắn hóa đơn repair — dùng gọi API báo giá khi cần `quoteId` cho VNPay mà BE không gửi sẵn trên invoice.
+ */
+export function resolveTenantInvoiceIssueTicketId(
+  inv: Pick<TenantInvoiceFromApi, "issueTicketId" | "issueId">
+): string {
+  return String(inv.issueTicketId ?? inv.issueId ?? "").trim();
+}
+
+/**
  * Còn hóa đơn tiền nhà/cọc chưa trả trên căn — **không** tính hóa đơn issue (`type`: ISSUE hoặc gắn ticket).
  * Dùng banner / nhắc thanh toán tiền nhà; **không** dùng để chặn vào nhà (chặn theo `accessStatus` từ my-access).
  */
@@ -123,6 +132,17 @@ export function tenantHouseHasUnpaidRentExcludingIssue(
   );
 }
 
+export function isTenantInvoiceTerminal(status: string | undefined): boolean {
+  const u = String(status ?? "").trim().toUpperCase();
+  return (
+    u === "CANCELLED" ||
+    u === "VOID" ||
+    u === "TRANSFERRED" ||
+    u === "FORFEITED" ||
+    u === "REFUNDED"
+  );
+}
+
 export function isTenantInvoicePayable(status: string | undefined): boolean {
   const u = String(status ?? "").trim().toUpperCase();
   if (
@@ -131,7 +151,10 @@ export function isTenantInvoicePayable(status: string | undefined): boolean {
     u === "COMPLETED" ||
     u === "SUCCESS" ||
     u === "CANCELLED" ||
-    u === "VOID"
+    u === "VOID" ||
+    u === "TRANSFERRED" ||
+    u === "FORFEITED" ||
+    u === "REFUNDED"
   ) {
     return false;
   }

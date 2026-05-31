@@ -13,6 +13,7 @@ import {
 } from "../../../../shared/utils/tenantInvoice";
 import { formatTenantIssueDateTime } from "../../../../shared/utils";
 import { formatApiErrorForTenantAlert } from "../../../../shared/utils/apiErrorMessage";
+import { resolveVnpayQuoteIdForRepairInvoice } from "../../../../shared/services/tenantInvoiceApi";
 import { createVnpayPaymentLink } from "../../../../shared/services/tenantPaymentApi";
 import Icons from "../../../../shared/theme/icon";
 import { neutral } from "../../../../shared/theme/color";
@@ -72,14 +73,24 @@ export default function TenantIssueInvoiceScreen({ navigation, route }: Props) {
     if (!invId) return;
     setCreatingLink(true);
     try {
+      const quoteId = (await resolveVnpayQuoteIdForRepairInvoice(invoice)) ?? "";
+      if (!quoteId) {
+        CustomAlert.alert(
+          t("tenant_payment.title"),
+          t("tenant_payment.missing_quote_for_issue_vnpay"),
+          [{ text: t("common.close") }],
+          { type: "error" }
+        );
+        return;
+      }
       const checkoutUrl = await createVnpayPaymentLink(
-        { invoiceIds: [invId] },
+        { quoteId },
         { appLanguage: i18n.language }
       );
       navigation.navigate("VnpayCheckout", {
         checkoutUrl,
         afterSuccess: "invoiceList",
-        vnpayUiContext: "repair_fee_invoice",
+        vnpayUiContext: "repair_quote",
       });
     } catch (e: unknown) {
       const msg = formatApiErrorForTenantAlert(e, t, "payment_link");
@@ -87,7 +98,7 @@ export default function TenantIssueInvoiceScreen({ navigation, route }: Props) {
     } finally {
       setCreatingLink(false);
     }
-  }, [creatingLink, invoice.id, i18n.language, navigation, t]);
+  }, [creatingLink, invoice, i18n.language, navigation, t]);
 
   return (
     <View style={styles.container}>

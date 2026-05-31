@@ -6,6 +6,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useTranslation } from "react-i18next";
 import { RootStackParamList } from "../../../../shared/types";
 import { formatTenantIssueDateTime } from "../../../../shared/utils";
+import { getIssueResponseContentForUi } from "../../../../shared/utils/issueTicketLocalizedText";
 import Icons from "../../../../shared/theme/icon";
 import { neutral } from "../../../../shared/theme/color";
 import { tenantQuestionDetailStyles as styles } from "./tenantQuestionStyles";
@@ -34,6 +35,11 @@ const TenantQuestionDetailScreen = () => {
   const [localizedResponse, setLocalizedResponse] =
     useState<IssueTicketResponseFromApi>(r);
   const zoneLabel = params.zoneLabel?.trim() || null;
+
+  const contentDisplay = useMemo(
+    () => getIssueResponseContentForUi(localizedResponse),
+    [localizedResponse, i18n.language]
+  );
 
   const locale = useMemo(() => {
     const lang = String(i18n.language || "").toLowerCase();
@@ -86,7 +92,7 @@ const TenantQuestionDetailScreen = () => {
         showsVerticalScrollIndicator={false}
       >
         <View style={styles.heroCard}>
-          <Text style={styles.heroTitle}>{localizedResponse.content || "—"}</Text>
+          <Text style={styles.heroTitle}>{contentDisplay.trim() || "—"}</Text>
           <View style={styles.heroDateRow}>
             <Icons.clock size={15} color={neutral.textMuted} />
             <Text style={styles.heroDateText}>
@@ -111,7 +117,7 @@ const TenantQuestionDetailScreen = () => {
           <View style={[styles.panelRow, styles.panelRowLast]}>
             <Text style={styles.fieldLabel}>{t("tenant_question_detail.field_content")}</Text>
             <Text style={styles.fieldValue} selectable>
-              {localizedResponse.content ?? ""}
+              {contentDisplay}
             </Text>
           </View>
         </View>
