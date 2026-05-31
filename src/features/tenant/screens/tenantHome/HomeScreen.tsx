@@ -12,6 +12,7 @@ import {
   useWindowDimensions,
   Linking,
   Animated,
+  InteractionManager,
 } from "react-native";
 import InAppPaymentWebView from "../../../../shared/components/InAppPaymentWebView";
 import { useAuthStore } from "../../../../store/useAuthStore";
@@ -66,7 +67,6 @@ import {
   translateTenantAccessReason,
 } from "../../../../shared/utils";
 import { getIssueResponses, getTenantTickets } from "../../../../shared/services/issuesApi";
-import { getMarketplaceHouses } from "../../../../shared/services/econtractApi";
 import { getHomeGreetingI18nKey } from "../../../../shared/utils/homeTimeGreeting";
 import {
   isTenantInvoiceDueUrgent,
@@ -76,7 +76,6 @@ import {
 import { CustomAlert } from "../../../../shared/components/alert";
 import Icons from "../../../../shared/theme/icon";
 import { tenantFooterLinks } from "../../../../shared/constants/tenantFooterLinks";
-import { APP_FOREGROUND_GET_POLL_MS } from "../../../../shared/api/config";
 import { IotPushAlertOverlay } from "../../components/IotPushAlertOverlay";
 
 const EMPTY_TENANT_HOUSES: HouseFromApi[] = [];
@@ -285,17 +284,19 @@ const HomeScreen = ({ navigation }: HomeScreenProps) => {
   // overlay with a controlled URL so back-navigation, OTP retries, etc. all
   // happen inside the app shell (no system browser, no exposed URL bar).
   const [paymentWebViewUrl, setPaymentWebViewUrl] = useState<string | null>(null);
-  // Marketplace: nhà có thể chuyển sang (AVAILABLE + DEPOSIT_BOOKABLE).
-  // Hiện trên home để tenant duyệt, click → BuildingDetail.
-  const [marketplaceHouses, setMarketplaceHouses] = useState<HouseFromApi[]>([]);
-  const [marketplaceLoading, setMarketplaceLoading] = useState(false);
 
+  // PREMIUM subscription state for Home — drives the badge in the header
+  // strip + the "Mua gói"/"Gia hạn" cell label. Stale-while-revalidate so
+  // the user sees their last-known tier instantly on cold-open while the
+  // network call refreshes in the background.
+  // useFocusEffect bên dưới đã invalidate query này mỗi lần Home focus →
+  // không cần refetchOnMount:"always" (tránh double-fetch khi mount).
+  // staleTime 2 phút: tab-switch nhanh dùng cache, vẫn fresh sau mỗi lần focus.
   const subscriptionQuery = useQuery<SubscriptionInfo>({
     queryKey: ["notif", "subscription", houseId],
     queryFn: () => fetchSubscription(houseId as string),
     enabled: !!houseId,
-    refetchOnMount: "always",
-    staleTime: 0,
+    staleTime: 1000 * 60 * 2,
   });
   const isPremium =
     !!houseId &&
@@ -532,50 +533,27 @@ const HomeScreen = ({ navigation }: HomeScreenProps) => {
     }
   }, [hasAnyTenantHouse, i18n.language]);
 
+  /**
+   * useFocusEffect duy nhất xử lý cả mount và focus-back:
+   * - Subscription invalidate: chạy ngay (không defer) để badge header cập nhật tier nhanh nhất.
+   * - Question ticker: defer qua InteractionManager — không cạnh tranh băng thông
+   *   với các query chính (useUserProfile, useTenantHouses, useTenantInvoices…) khi first paint.
+   *   useEffect riêng cho loadQuestionTicker đã bị gỡ vì useFocusEffect đã bao phủ cả mount.
+   */
   useFocusEffect(
     useCallback(() => {
-      void loadQuestionTicker();
       // Coming back from the VNPay WebView (or a deep-link payment return)
       // we need fresh tier — invalidate so the badge in the header strip
       // flips to PREMIUM as soon as the BE Kafka listener has processed
       // the subscription-activated event.
       queryClient.invalidateQueries({ queryKey: ["notif", "subscription"] });
+
+      const task = InteractionManager.runAfterInteractions(() => {
+        void loadQuestionTicker();
+      });
+      return () => task.cancel();
     }, [loadQuestionTicker, queryClient])
   );
-
-  useEffect(() => {
-    void loadQuestionTicker();
-  }, [loadQuestionTicker]);
-
-  // Marketplace fetch: AVAILABLE + DEPOSIT_BOOKABLE houses for the home banner.
-  // Run on first mount and on focus so the list refreshes when tenant comes
-  // back from BuildingDetail / UserContractDetail. Failures degrade silently
-  // — empty list just hides the section.
-  const loadMarketplaceHouses = useCallback(async () => {
-    setMarketplaceLoading(true);
-    try {
-      const rows = await getMarketplaceHouses();
-      setMarketplaceHouses(rows);
-    } catch {
-      setMarketplaceHouses([]);
-    } finally {
-      setMarketplaceLoading(false);
-    }
-  }, []);
-
-  useFocusEffect(
-    useCallback(() => {
-      void loadMarketplaceHouses();
-    }, [loadMarketplaceHouses]),
-  );
-
-  useEffect(() => {
-    if (!homeTabFocused || !hasAnyTenantHouse) return;
-    const id = setInterval(() => {
-      void loadQuestionTicker();
-    }, APP_FOREGROUND_GET_POLL_MS);
-    return () => clearInterval(id);
-  }, [homeTabFocused, hasAnyTenantHouse, loadQuestionTicker]);
 
   const zoneLabelForQuestionTicket = useCallback(
     (ticketId: string) => {
@@ -596,18 +574,16 @@ const HomeScreen = ({ navigation }: HomeScreenProps) => {
     [rootNavigation, zoneLabelForQuestionTicket]
   );
 
-  /** Hóa đơn cần thanh toán trên toàn bộ căn tenant đang có (dải header + tổng mở). */
-  const headerPayableInvoices = useMemo(() => {
-    const ids = new Set(
-      tenantHouses.map((h) => String(h.id ?? "").trim()).filter((id) => id.length > 0)
-    );
-    return invoiceList.filter((inv) => {
-      if (!isTenantInvoicePayable(inv.status)) return false;
-      const hid = String(inv.houseId ?? "").trim();
-      if (hid.length === 0) return true;
-      return ids.size === 0 || ids.has(hid);
-    });
-  }, [invoiceList, tenantHouses]);
+  /**
+   * Hóa đơn cần thanh toán dùng cho dải header — đồng bộ với trang danh sách hóa đơn.
+   * Không lọc theo căn (tenantHouses) vì danh sách hóa đơn cũng hiển thị toàn bộ;
+   * lọc houseId trước đây gây mâu thuẫn: hóa đơn UNPAID có houseId không nằm trong
+   * my-access vẫn xuất hiện trên list nhưng Home đếm = 0 → "Không có hóa đơn cần thanh toán".
+   */
+  const headerPayableInvoices = useMemo(
+    () => invoiceList.filter((inv) => isTenantInvoicePayable(inv.status)),
+    [invoiceList]
+  );
 
   const headerPayableCount = useMemo(
     () => headerPayableInvoices.length + TENANT_HOME_HEADER_PAYABLE_TICKET_PLACEHOLDER,
@@ -640,6 +616,7 @@ const HomeScreen = ({ navigation }: HomeScreenProps) => {
     waterUsage.refetch,
     loadQuestionTicker,
   ]);
+
 
   const handleSelectMainHouse = useCallback(
     async (selectedHouseId: string) => {
@@ -1232,113 +1209,6 @@ const HomeScreen = ({ navigation }: HomeScreenProps) => {
               </View>
             ) : null}
 
-        {marketplaceHouses.length > 0 || marketplaceLoading ? (
-          <View style={homeStyles.marketplaceSection}>
-            <View style={homeStyles.marketplaceHeader}>
-              <View style={{ flex: 1 }}>
-                <Text style={homeStyles.marketplaceTitle}>
-                  {t("home.marketplace.title")}
-                </Text>
-                <Text style={homeStyles.marketplaceSubtitle}>
-                  {t("home.marketplace.subtitle")}
-                </Text>
-              </View>
-            </View>
-            {marketplaceLoading ? (
-              <View style={homeStyles.marketplaceLoading}>
-                <RefreshLogoInline logoPx={20} />
-              </View>
-            ) : (
-              <ScrollView
-                horizontal
-                showsHorizontalScrollIndicator={false}
-                contentContainerStyle={homeStyles.marketplaceListContent}
-              >
-                {marketplaceHouses.slice(0, 10).map((mhouse) => {
-                  const isBookable = mhouse.availability === "DEPOSIT_BOOKABLE";
-                  const cityLine = [mhouse.ward, mhouse.commune, mhouse.city]
-                    .filter(Boolean)
-                    .join(" · ");
-                  return (
-                    <Pressable
-                      key={String(mhouse.id ?? "")}
-                      onPress={() => {
-                        rootNavigation.navigate("BuildingDetail", {
-                          buildingId: mhouse.id,
-                          buildingName: mhouse.name,
-                          buildingAddress: mhouse.address,
-                          description: mhouse.description,
-                          ward: mhouse.ward,
-                          commune: mhouse.commune,
-                          city: mhouse.city,
-                          status: mhouse.status,
-                        });
-                      }}
-                      style={({ pressed }) => [
-                        homeStyles.marketplaceCard,
-                        pressed && homeStyles.marketplaceCardPressed,
-                      ]}
-                    >
-                      <View
-                        style={[
-                          homeStyles.marketplaceBadge,
-                          isBookable
-                            ? homeStyles.marketplaceBadgeBookable
-                            : homeStyles.marketplaceBadgeAvailable,
-                        ]}
-                      >
-                        <Text
-                          style={[
-                            homeStyles.marketplaceBadgeText,
-                            isBookable
-                              ? homeStyles.marketplaceBadgeTextBookable
-                              : homeStyles.marketplaceBadgeTextAvailable,
-                          ]}
-                        >
-                          {isBookable
-                            ? t("home.marketplace.badge_bookable")
-                            : t("home.marketplace.badge_available")}
-                        </Text>
-                      </View>
-                      <Text
-                        style={homeStyles.marketplaceCardTitle}
-                        numberOfLines={1}
-                      >
-                        {mhouse.name || "—"}
-                      </Text>
-                      <Text
-                        style={homeStyles.marketplaceCardAddress}
-                        numberOfLines={2}
-                      >
-                        {mhouse.address || cityLine || "—"}
-                      </Text>
-                      {isBookable && mhouse.availableFrom ? (
-                        <Text
-                          style={homeStyles.marketplaceCardHandover}
-                          numberOfLines={1}
-                        >
-                          {t("home.marketplace.handover_from", {
-                            date: formatDayMonthNumeric(
-                              new Date(mhouse.availableFrom),
-                              i18n.language,
-                            ),
-                          })}
-                        </Text>
-                      ) : (
-                        <Text
-                          style={homeStyles.marketplaceCardAvailableNow}
-                          numberOfLines={1}
-                        >
-                          {t("home.marketplace.handover_now")}
-                        </Text>
-                      )}
-                    </Pressable>
-                  );
-                })}
-              </ScrollView>
-            )}
-          </View>
-        ) : null}
 
         <View
           style={homeStyles.homeSiteFooter}
@@ -1522,6 +1392,7 @@ const HomeScreen = ({ navigation }: HomeScreenProps) => {
           </View>
         </TouchableWithoutFeedback>
       </Modal>
+
       <IotPushAlertOverlay />
 
       {/* PREMIUM upgrade modal — bottom sheet style. Tier flip is driven
@@ -1549,7 +1420,7 @@ const HomeScreen = ({ navigation }: HomeScreenProps) => {
                   borderTopRightRadius: 24,
                   paddingTop: 8,
                   paddingHorizontal: 20,
-                  paddingBottom: 24,
+                  paddingBottom: 24 + insets.bottom,
                   maxHeight: "85%",
                 }}
               >

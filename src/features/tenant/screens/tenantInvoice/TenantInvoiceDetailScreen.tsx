@@ -1,13 +1,12 @@
 import React, { useCallback, useEffect, useLayoutEffect, useMemo, useState } from "react";
 import { ScrollView, Text, TouchableOpacity, View } from "react-native";
-import { useIsFocused } from "@react-navigation/native";
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { useTranslation } from "react-i18next";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import FontAwesome5 from "@expo/vector-icons/FontAwesome5";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import { CustomAlert } from "../../../../shared/components/alert";
-import { RootStackParamList, TenantInvoiceFromApi } from "../../../../shared/types";
+import { RootStackParamList, TenantInvoiceFromApi, TenantTicketFromApi } from "../../../../shared/types";
 import {
   formatTenantInvoiceAmount,
   formatTenantInvoiceCardTitle,
@@ -15,14 +14,13 @@ import {
   isTenantInvoicePayable,
   isTenantRepairInvoiceFlow,
 } from "../../../../shared/utils/tenantInvoice";
-import { formatTenantIssueDateTime, formatVndDisplay, logAllInvoicePaymentIdResolutions } from "../../../../shared/utils";
+import { formatTenantIssueDateTime } from "../../../../shared/utils";
 import { formatApiErrorForTenantAlert } from "../../../../shared/utils/apiErrorMessage";
 import Icons from "../../../../shared/theme/icon";
-import { resolveVnpayQuoteIdForRepairInvoice } from "../../../../shared/services/tenantInvoiceApi";
 import { createVnpayPaymentLink } from "../../../../shared/services/tenantPaymentApi";
 import { neutral, tenantInvoicePaidBadgeFg } from "../../../../shared/theme/color";
 import { useAuthStore } from "../../../../store/useAuthStore";
-import { useHouseById, useTenantHouses, useTenantInvoiceDetailQuery, useTenantInvoices } from "../../../../shared/hooks";
+import { useHouseById, useTenantHouses, useTenantInvoices } from "../../../../shared/hooks";
 import {
   isHouseIdOutsideTenantAccess,
   shortHouseIdForDisplay,
@@ -39,13 +37,7 @@ import {
 } from "../../../../shared/components/StackScreenTitleBadge";
 import { tenantInvoiceStyles as styles } from "./tenantInvoiceStyles";
 import { RefreshLogoInline, RefreshLogoOverlay } from "@shared/components/RefreshLogoOverlay";
-import { InvoicePaymentFlowSection } from "./InvoicePaymentFlowSection";
-import { getIssueBanners, getIssueQuotesByTicket } from "../../../../shared/services/issuesApi";
-import type { InvoiceIssueItemFromApi, IssueBannerFromApi, IssueQuoteFromApi } from "../../../../shared/types/api";
-
-function normalizeIssueQuoteStatus(status: string | undefined): string {
-  return String(status ?? "").trim().toUpperCase();
-}
+import { fetchTenantInvoiceDetail } from "../../../../shared/services/tenantInvoiceApi";
 
 type Props = NativeStackScreenProps<RootStackParamList, "TenantInvoiceDetail">;
 
@@ -54,13 +46,7 @@ const EMPTY_TENANT_INVOICES: TenantInvoiceFromApi[] = [];
 export default function TenantInvoiceDetailScreen({ navigation, route }: Props) {
   const { t, i18n } = useTranslation();
   const insets = useSafeAreaInsets();
-  const isFocused = useIsFocused();
   const { invoice } = route.params;
-  const invIdFromRoute = String(invoice.id ?? "").trim();
-  const invoiceDetailQuery = useTenantInvoiceDetailQuery(invIdFromRoute, {
-    focused: isFocused,
-    enabled: Boolean(invIdFromRoute),
-  });
   const [detailInvoice, setDetailInvoice] = useState<Partial<TenantInvoiceFromApi>>({});
   const mergedInvoice = useMemo(
     () => ({ ...invoice, ...detailInvoice }),
@@ -73,7 +59,7 @@ export default function TenantInvoiceDetailScreen({ navigation, route }: Props) 
     }
   }, [mergedInvoice, navigation]);
   const { houseId: selectedHouseIdFromStore } = useAuthStore();
-  const { data: invoiceQueryData } = useTenantInvoices(true, { focused: isFocused });
+  const { data: invoiceQueryData } = useTenantInvoices();
   const { data: housesData } = useTenantHouses();
   const rawInvoiceData = invoiceQueryData ?? EMPTY_TENANT_INVOICES;
   const [creatingLink, setCreatingLink] = useState(false);
@@ -194,195 +180,84 @@ export default function TenantInvoiceDetailScreen({ navigation, route }: Props) 
     [mergedInvoice]
   );
 
-  const [issueQuotes, setIssueQuotes] = useState<IssueQuoteFromApi[]>([]);
-  const [issueQuotesLoading, setIssueQuotesLoading] = useState(false);
-  const [issueBannersCatalog, setIssueBannersCatalog] = useState<IssueBannerFromApi[]>([]);
-
-  useEffect(() => {
-    const row = invoiceDetailQuery.data?.invoice;
-    if (row) setDetailInvoice(row);
-  }, [invoiceDetailQuery.data]);
-
   useEffect(() => {
     let cancelled = false;
     const invId = String(invoice.id ?? "").trim();
     if (!invId) return;
-
-    const detail = invoiceDetailQuery.data;
-    if (!detail?.invoice) {
-      setIssueQuotesLoading(invoiceDetailQuery.isFetching);
-      if (invoiceDetailQuery.isFetched && !invoiceDetailQuery.isFetching && !detail) {
-        setIssueQuotes([]);
-        setIssueBannersCatalog([]);
-      }
-      return;
-    }
-
-    setIssueQuotesLoading(true);
     void (async () => {
       try {
-        const payments = detail.payments ?? [];
-        const inv = detail.invoice;
-
-        const shouldIssueFlow =
-          isTenantInvoiceIssueType(inv) ||
-          Boolean(String(inv.issueTicketId ?? "").trim()) ||
-          Boolean(String(inv.issueId ?? "").trim()) ||
-          Boolean(String(inv.quoteId ?? "").trim()) ||
-          (inv.issueItems?.length ?? 0) > 0;
-
-        if (!shouldIssueFlow) {
-          if (!cancelled) {
-            setIssueQuotes([]);
-            setIssueBannersCatalog([]);
-          }
-          return;
+        const detail = await fetchTenantInvoiceDetail(invId);
+        if (!cancelled && detail?.invoice) {
+          setDetailInvoice(detail.invoice);
         }
-
-        const tid =
-          String(inv.issueId ?? "").trim() ||
-          String(inv.issueTicketId ?? "").trim() ||
-          String(invoice.issueTicketId ?? "").trim();
-        let quotes: IssueQuoteFromApi[] = [];
-        let ticketIdUsedForFetch: string | null = tid || null;
-
-        const hasIssueItemsFromApi = (inv.issueItems?.length ?? 0) > 0;
-        if (hasIssueItemsFromApi) {
-          quotes = [];
-        } else if (tid) {
-          quotes = await getIssueQuotesByTicket(tid);
-        } else if (String(inv.quoteId ?? "").trim()) {
-          const qid = String(inv.quoteId).trim();
-          try {
-            quotes = await getIssueQuotesByTicket(qid);
-            ticketIdUsedForFetch = qid;
-          } catch {
-            /* ignore */
-          }
-        } else if (payments.length > 0) {
-          const tryId = String(payments[0]?.id ?? "").trim();
-          if (tryId) {
-            try {
-              quotes = await getIssueQuotesByTicket(tryId);
-              ticketIdUsedForFetch = tryId;
-            } catch {
-              /* ignore */
-            }
-          }
-        }
-
-        const items = inv.issueItems ?? [];
-        const needBannerCatalog = items.some((x) => String(x.bannerId ?? "").trim());
-        if (needBannerCatalog) {
-          try {
-            const b = await getIssueBanners();
-            if (!cancelled) setIssueBannersCatalog(b);
-          } catch {
-            if (!cancelled) setIssueBannersCatalog([]);
-          }
-        } else if (!cancelled) {
-          setIssueBannersCatalog([]);
-        }
-
-        logAllInvoicePaymentIdResolutions(invId, payments, tid || null, quotes, ticketIdUsedForFetch);
-
-        if (!cancelled) setIssueQuotes(quotes);
       } catch {
-        if (!cancelled) {
-          setIssueQuotes([]);
-          setIssueBannersCatalog([]);
-        }
-      } finally {
-        if (!cancelled) setIssueQuotesLoading(false);
+        /* giữ dữ liệu cũ nếu lỗi */
       }
     })();
     return () => {
       cancelled = true;
     };
-  }, [
-    i18n.language,
-    invoice.id,
-    invoice.issueTicketId,
-    invoiceDetailQuery.data,
-    invoiceDetailQuery.isFetched,
-    invoiceDetailQuery.isFetching,
-  ]);
+  }, [invoice.id]);
 
-  const issueQuoteForDisplay = useMemo(() => {
-    if (!issueQuotes.length) return null;
-    const approved = issueQuotes.find((q) => normalizeIssueQuoteStatus(q.status) === "APPROVED");
-    if (approved) return approved;
-    return (
-      [...issueQuotes].sort((a, b) => {
-        const ta = new Date(a.createdAt ?? 0).getTime();
-        const tb = new Date(b.createdAt ?? 0).getTime();
-        if (tb !== ta) return tb - ta;
-        return String(a.id).localeCompare(String(b.id));
-      })[0] ?? null
-    );
-  }, [issueQuotes]);
-
-  const invoiceIssueItemsLines = useMemo((): InvoiceIssueItemFromApi[] => {
-    const raw = mergedInvoice.issueItems;
-    return Array.isArray(raw) && raw.length > 0 ? raw : [];
-  }, [mergedInvoice.issueItems]);
-
-  /** Luôn rỗng — tránh `ReferenceError` khi Metro/HMR còn chunk cũ tham chiếu tên biến này. */
-  const quoteTicketBannerRows = useMemo(() => [] as { key: string; labelKey: string; id: string }[], []);
-  void quoteTicketBannerRows;
-
-  const issueQuoteDisplayTotal = useMemo(() => {
-    if (invoiceIssueItemsLines.length > 0) {
-      return invoiceIssueItemsLines.reduce((s, x) => s + Number(x.price ?? 0), 0);
-    }
-    return Number(issueQuoteForDisplay?.totalPrice ?? 0);
-  }, [invoiceIssueItemsLines, issueQuoteForDisplay]);
-
-  const hasIssueQuoteLines =
-    invoiceIssueItemsLines.length > 0 ||
-    Boolean(issueQuoteForDisplay?.items && issueQuoteForDisplay.items.length > 0);
-
-  const formatIssueMoney = useCallback(
-    (v: number) => formatVndDisplay(v, locale, t),
-    [locale, t]
+  /**
+   * ID ticket sửa chữa liên kết với hóa đơn này (dùng để điều hướng sang TenantTicketDetail).
+   * Ưu tiên issueTicketId; fallback issueId nếu không có.
+   */
+  const issueTicketId = useMemo(
+    () =>
+      String(mergedInvoice.issueTicketId ?? mergedInvoice.issueId ?? "").trim(),
+    [mergedInvoice.issueTicketId, mergedInvoice.issueId]
   );
+
+  /**
+   * Điều hướng sang TenantTicketDetail nếu có ticket ID, ngược lại mở TenantTicketList.
+   * - Có ticket ID (issueTicketId | issueId): mở chi tiết ticket với stub tối thiểu;
+   *   TenantTicketDetail tự fetch đầy đủ qua getTenantTicketById khi mount.
+   * - Không có ticket ID (BE không trả về): mở danh sách ticket để user tự tìm.
+   */
+  const handleOpenTicketDetail = useCallback(() => {
+    if (issueTicketId) {
+      navigation.navigate("TenantTicketDetail", {
+        ticket: {
+          id: issueTicketId,
+          tenantId: "",
+          houseId: String(mergedInvoice.houseId ?? ""),
+          assetId: "",
+          assignedStaffId: null,
+          slotId: null,
+          type: "REPAIR",
+          status: "CREATED",
+          title: "",
+          description: "",
+          createdAt: String(mergedInvoice.createdAt ?? new Date().toISOString()),
+        } as TenantTicketFromApi,
+      });
+    } else {
+      navigation.navigate("TenantTicketList");
+    }
+  }, [issueTicketId, mergedInvoice.houseId, mergedInvoice.createdAt, navigation]);
 
   const openPay = useCallback(async () => {
     if (creatingLink) return;
     const invId = String(mergedInvoice.id ?? "").trim();
     if (!invId) return;
-    /**
-     * `selectedIds`: luồng **tiền nhà/cọc** (POST VNPay `invoiceIds`).
-     * Hóa đơn sửa chữa: một `invId`; tiền nhà/cọc cùng căn có thể gộp thêm hóa đơn bắt buộc.
-     */
+    /** Hóa đơn sửa chữa: chỉ một id; tiền nhà/cọc cùng căn có thể gộp với các hóa đơn bắt buộc khác. */
     const selectedIds = isTenantRepairInvoiceFlow(mergedInvoice)
       ? [invId]
       : Array.from(new Set([invId, ...mandatorySelectedHouseInvoiceIds].filter(Boolean)));
     if (selectedIds.length === 0) return;
     setCreatingLink(true);
     try {
-      /** Chỉ hóa đơn repair/ISSUE mới resolve `quoteId`; tiền nhà (`!isRepair`) không gọi API này — vẫn `invoiceIds` như cũ. */
-      const isRepair = isTenantRepairInvoiceFlow(mergedInvoice);
-      const repairQuoteId = isRepair
-        ? (await resolveVnpayQuoteIdForRepairInvoice(mergedInvoice)) ?? ""
-        : "";
-      const useQuoteFlow = isRepair && Boolean(repairQuoteId);
-      if (isRepair && !repairQuoteId) {
-        CustomAlert.alert(
-          t("tenant_payment.title"),
-          t("tenant_payment.missing_quote_for_issue_vnpay"),
-          [{ text: t("common.close") }],
-          { type: "error" }
-        );
-        return;
-      }
-      const checkoutUrl = useQuoteFlow
-        ? await createVnpayPaymentLink({ quoteId: repairQuoteId }, { appLanguage: i18n.language })
-        : await createVnpayPaymentLink({ invoiceIds: selectedIds }, { appLanguage: i18n.language });
+      const checkoutUrl = await createVnpayPaymentLink(
+        { invoiceIds: selectedIds },
+        { appLanguage: i18n.language }
+      );
       navigation.navigate("VnpayCheckout", {
         checkoutUrl,
         afterSuccess: "invoiceList",
-        ...(useQuoteFlow ? { vnpayUiContext: "repair_quote" as const } : { vnpayUiContext: "house_invoice" as const }),
+        ...(isTenantRepairInvoiceFlow(mergedInvoice)
+          ? { vnpayUiContext: "repair_fee_invoice" as const }
+          : { vnpayUiContext: "house_invoice" as const }),
       });
     } catch (e: unknown) {
       const msg = formatApiErrorForTenantAlert(e, t, "payment_link");
@@ -545,71 +420,18 @@ export default function TenantInvoiceDetailScreen({ navigation, route }: Props) 
         {issueFlow ? (
           <View style={styles.detailFeeCard}>
             <Text style={styles.detailFeeCardTitle}>{t("tenant_invoice.issue_quote_section_title")}</Text>
-            {issueQuotesLoading ? (
-              <View style={[styles.issueQuoteLoadingRow, { flexDirection: "column", alignItems: "flex-start" }]}>
-                <RefreshLogoInline logoPx={20} showLabel />
-              </View>
-            ) : hasIssueQuoteLines ? (
-              <>
-                {invoiceIssueItemsLines.length > 0
-                  ? invoiceIssueItemsLines.map((it) => {
-                      const banner =
-                        it.bannerId != null && String(it.bannerId).trim()
-                          ? issueBannersCatalog.find((b) => b.id === String(it.bannerId).trim())
-                          : undefined;
-                      return (
-                        <View key={it.id}>
-                          <View style={styles.issueQuoteLineRow}>
-                            <View style={{ flex: 1, minWidth: 0 }}>
-                              <Text style={styles.issueQuoteLineName} numberOfLines={2}>
-                                {it.itemName}
-                              </Text>
-                            </View>
-                            <Text style={styles.issueQuoteLinePrice}>{formatIssueMoney(Number(it.price ?? 0))}</Text>
-                          </View>
-                          {banner ? (
-                            <View style={styles.issueBannerCatalogRow}>
-                              <Text style={styles.issueBannerCatalogName} numberOfLines={2}>
-                                {t("tenant_invoice.issue_quote_banner_catalog")}: {banner.name}
-                              </Text>
-                              <Text style={styles.issueBannerCatalogPrice}>
-                                {formatIssueMoney(Number(banner.currentPrice ?? 0))}
-                              </Text>
-                            </View>
-                          ) : null}
-                        </View>
-                      );
-                    })
-                  : (issueQuoteForDisplay?.items ?? []).map((it) => (
-                      <View key={it.id} style={styles.issueQuoteLineRow}>
-                        <View style={{ flex: 1, minWidth: 0 }}>
-                          <Text style={styles.issueQuoteLineName} numberOfLines={2}>
-                            {it.itemName}
-                          </Text>
-                          {it.description != null && String(it.description).trim() !== "" ? (
-                            <Text style={styles.issueQuoteLineDesc} numberOfLines={3}>
-                              {String(it.description).trim()}
-                            </Text>
-                          ) : null}
-                        </View>
-                        <Text style={styles.issueQuoteLinePrice}>{formatIssueMoney(Number(it.price ?? 0))}</Text>
-                      </View>
-                    ))}
-                <View style={styles.issueQuoteDivider} />
-                <View style={styles.issueQuoteTotalRow}>
-                  <Text style={styles.issueQuoteTotalLabel}>
-                    {t("tenant_ticket_detail.quote_total_label")}
-                  </Text>
-                  <Text style={styles.issueQuoteTotalValue}>{formatIssueMoney(issueQuoteDisplayTotal)}</Text>
-                </View>
-              </>
-            ) : (
-              <Text style={styles.meta}>{t("tenant_invoice.issue_quote_empty")}</Text>
-            )}
+            <Text style={styles.meta}>{t("tenant_invoice.issue_quote_empty")}</Text>
+            <TouchableOpacity
+              style={[styles.detailPayButton, { marginTop: 14 }]}
+              onPress={handleOpenTicketDetail}
+              activeOpacity={0.85}
+              accessibilityRole="button"
+            >
+              <Icons.invoice size={20} color={neutral.surface} />
+              <Text style={styles.detailPayButtonText}>{t("tenant_invoice.view_ticket_detail_btn")}</Text>
+            </TouchableOpacity>
           </View>
         ) : null}
-
-        <InvoicePaymentFlowSection invoiceId={mergedInvoice.id} />
 
         {!payable ? (
           <View style={styles.detailNoticeCard}>

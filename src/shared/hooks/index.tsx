@@ -21,3 +21,4 @@ export * from "./useFormatters";
 export * from "./useDensity";
 export * from "./useTariff";
 export * from "./useIotSafetyConfig";
+export * from "./useNotificationBadgeCount";

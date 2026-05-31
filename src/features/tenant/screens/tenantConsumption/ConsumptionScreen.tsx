@@ -31,9 +31,20 @@ const ConsumptionScreen = () => {
   const [activeTab, setActiveTab] = useState<"electric" | "water">(initialTab);
   const slideAnim = useRef(new Animated.Value(initialTab === "electric" ? 0 : 1)).current;
 
+  /**
+   * Theo dõi tab nào đã từng được mở ít nhất 1 lần.
+   * Chỉ mount component khi tab được visit lần đầu, sau đó ẩn bằng display:none
+   * thay vì unmount — tránh request IoT bị bắn lại mỗi lần switch tab.
+   */
+  const [mountedTabs, setMountedTabs] = useState<{ electric: boolean; water: boolean }>({
+    electric: initialTab === "electric",
+    water: initialTab === "water",
+  });
+
   const switchTab = (tab: "electric" | "water") => {
     if (tab === activeTab) return;
     setActiveTab(tab);
+    setMountedTabs((prev) => ({ ...prev, [tab]: true }));
     Animated.spring(slideAnim, {
       toValue: tab === "electric" ? 0 : 1,
       useNativeDriver: true,
@@ -162,20 +173,25 @@ const ConsumptionScreen = () => {
         </View>
       </View>
 
-      {/* Content area */}
-      <Animated.View
-        style={[
-          styles.contentRow,
-          { width: screenWidth * 2, transform: [{ translateX }] },
-        ]}
-      >
-        <View style={{ width: screenWidth, flex: 1 }}>
-          <ElectricUsageScreen showHeader={false} />
-        </View>
-        <View style={{ width: screenWidth, flex: 1 }}>
-          <WaterUsageScreen showHeader={false} />
-        </View>
-      </Animated.View>
+      {/* Content area — lazy mount: mỗi tab chỉ mount lần đầu khi được truy cập.
+          Cả hai view phải luôn giữ width trong layout để translateX slide đúng vị trí.
+          Không dùng display:"none" vì sẽ làm mất không gian layout khiến tab off-screen
+          bị translate ra ngoài màn hình thay vì nằm ở cột bên cạnh. */}
+      <View style={styles.contentClip}>
+        <Animated.View
+          style={[
+            styles.contentRow,
+            { width: screenWidth * 2, transform: [{ translateX }] },
+          ]}
+        >
+          <View style={{ width: screenWidth, flex: 1 }}>
+            {mountedTabs.electric && <ElectricUsageScreen showHeader={false} />}
+          </View>
+          <View style={{ width: screenWidth, flex: 1 }}>
+            {mountedTabs.water && <WaterUsageScreen showHeader={false} />}
+          </View>
+        </Animated.View>
+      </View>
     </View>
   );
 };
@@ -223,6 +239,10 @@ const styles = StyleSheet.create({
   },
   switchTabTextActive: {
     color: neutral.surface,
+  },
+  contentClip: {
+    flex: 1,
+    overflow: "hidden",
   },
   contentRow: {
     flexDirection: "row",

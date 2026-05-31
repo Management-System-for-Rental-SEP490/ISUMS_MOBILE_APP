@@ -11,6 +11,7 @@ import type {
   IssueQuoteFromApi,
   IssueTicketResponseFromApi,
   TenantTicketFromApi,
+  TenantTicketImageFromApi,
 } from "../types/api";
 
 export type TenantTicketCreateType = "REPAIR" | "QUESTION";
@@ -32,12 +33,14 @@ function pickLocalizedString(...values: Array<unknown>): string | undefined {
   return undefined;
 }
 
-function normalizeTenantTicket(row: TenantTicketFromApi): TenantTicketFromApi {
-  return {
-    ...row,
-    title: pickLocalizedString(row.localizedTitle, row.title) ?? "",
-    description: pickLocalizedString(row.localizedDescription, row.description) ?? "",
-  };
+/** Lấy chuỗi id/text đầu tiên khác rỗng (UUID, tên, …) từ nhiều nguồn BE có thể trả. */
+function firstNonEmptyTrimmed(...vals: unknown[]): string | undefined {
+  for (const v of vals) {
+    if (v == null) continue;
+    const s = String(v).trim();
+    if (s.length > 0) return s;
+  }
+  return undefined;
 }
 
 function normalizeIssueResponse(
@@ -46,13 +49,6 @@ function normalizeIssueResponse(
   return {
     ...row,
     content: pickLocalizedString(row.localizedContent, row.content) ?? "",
-  };
-}
-
-function normalizeIssueBanner(row: IssueBannerFromApi): IssueBannerFromApi {
-  return {
-    ...row,
-    name: pickLocalizedString(row.localizedName, row.name) ?? "",
   };
 }
 
@@ -109,6 +105,121 @@ function slimTenantTicketsForMemory(rows: TenantTicketFromApi[]): TenantTicketFr
         : r.quote ?? undefined;
     return { ...r, images, quote } as TenantTicketFromApi;
   });
+}
+
+/**
+ * Chuẩn hoá một ticket tenant sau GET list/detail: i18n title/description,
+ * flatten tên/SĐT staff (flat + `assigned_staff` snake_case + object `assignedStaff`),
+ * map `asset.display_name` → `displayName`, và chuẩn hoá `quote` / `latestTicketResponse`.
+ */
+function normalizeTenantTicket(row: TenantTicketFromApi): TenantTicketFromApi {
+  const raw = row as unknown as Record<string, unknown>;
+
+  const assignedStaff =
+    row.assignedStaff ?? (raw.assigned_staff as TenantTicketFromApi["assignedStaff"] | undefined);
+  const party =
+    assignedStaff && typeof assignedStaff === "object"
+      ? (assignedStaff as unknown as Record<string, unknown>)
+      : null;
+
+  const assetSrc =
+    (row.asset as unknown as Record<string, unknown> | undefined) ??
+    (raw.asset as Record<string, unknown> | undefined) ??
+    (raw.asset_item as Record<string, unknown> | undefined);
+
+  let mergedAsset = row.asset;
+  if (assetSrc && typeof assetSrc === "object") {
+    const displayName = pickLocalizedString(
+      assetSrc.displayName as string | undefined,
+      assetSrc.display_name as string | undefined
+    );
+    mergedAsset = {
+      ...(assetSrc as unknown as NonNullable<TenantTicketFromApi["asset"]>),
+      ...(displayName ? { displayName } : {}),
+    };
+  }
+
+  const mergedAssignedStaffId =
+    firstNonEmptyTrimmed(row.assignedStaffId, raw.assigned_staff_id, party?.id) ?? null;
+
+  const mergedRow: TenantTicketFromApi = {
+    ...row,
+    assignedStaff: assignedStaff ?? row.assignedStaff,
+    assignedStaffId: mergedAssignedStaffId,
+    asset: mergedAsset ?? row.asset,
+  };
+
+  const staffName =
+    pickLocalizedString(
+      mergedRow.staffName,
+      raw.staff_name as string | undefined,
+      party?.name as string | undefined,
+      party?.fullName as string | undefined,
+      party?.full_name as string | undefined
+    ) ?? null;
+  const staffPhone =
+    pickLocalizedString(
+      mergedRow.staffPhone,
+      raw.staff_phone as string | undefined,
+      party?.phoneNumber as string | undefined,
+      party?.phone as string | undefined,
+      party?.phone_number as string | undefined
+    ) ?? null;
+  const quote =
+    mergedRow.quote && typeof mergedRow.quote === "object" && "id" in mergedRow.quote && mergedRow.quote.id
+      ? normalizeIssueQuote(mergedRow.quote)
+      : mergedRow.quote ?? null;
+
+  const rawLatest = mergedRow.latestTicketResponse;
+  const latestTicketResponse =
+    rawLatest && typeof rawLatest === "object" && String(rawLatest.id ?? "").trim()
+      ? normalizeIssueResponse({
+          ...rawLatest,
+          ticketId: String(rawLatest.ticketId ?? "").trim() || mergedRow.id,
+          actorId: String(rawLatest.actorId ?? "").trim(),
+        })
+      : null;
+
+  return {
+    ...mergedRow,
+    title: pickLocalizedString(mergedRow.localizedTitle, mergedRow.title) ?? "",
+    description: pickLocalizedString(mergedRow.localizedDescription, mergedRow.description) ?? "",
+    staffName,
+    staffPhone,
+    quote,
+    latestTicketResponse,
+  };
+}
+
+/** URL thumbnail đầu tiên từ `images` embed (GET /issues/tickets/tenant). */
+export function getTenantTicketThumbUrl(ticket: TenantTicketFromApi): string | undefined {
+  const u = ticket.images?.[0]?.url?.trim();
+  return u || undefined;
+}
+
+/** Tên thiết bị từ `asset` embed; hỗ trợ `display_name` (snake_case) một số bản BE. */
+export function getTenantTicketAssetDisplayName(ticket: TenantTicketFromApi): string | null {
+  const a = ticket.asset as Record<string, unknown> | undefined | null;
+  if (!a || typeof a !== "object") return null;
+  const n = pickLocalizedString(
+    a.displayName as string | undefined,
+    a.display_name as string | undefined
+  );
+  const t = n?.trim();
+  return t || null;
+}
+
+/** Báo giá embed thành mảng (0–1 phần tử) cho UI quote. */
+export function getTenantTicketEmbeddedQuotes(ticket: TenantTicketFromApi): IssueQuoteFromApi[] {
+  if (ticket.quote?.id) return [ticket.quote];
+  return [];
+}
+
+function normalizeIssueBanner(row: IssueBannerFromApi): IssueBannerFromApi {
+  return {
+    ...row,
+    name: pickLocalizedString(row.localizedName, row.name) ?? "",
+  };
 }
 
 /**
@@ -325,11 +436,7 @@ export const uploadTenantTicketImages = async (
   }
 };
 
-export type TenantTicketImageFromApi = {
-  id: string;
-  url: string;
-  createdAt?: string | null;
-};
+export type { TenantTicketImageFromApi };
 
 /**
  * Lấy danh sách ảnh đính kèm của ticket tenant.

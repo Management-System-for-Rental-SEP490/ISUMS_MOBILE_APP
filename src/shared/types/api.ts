@@ -409,6 +409,17 @@ export interface HouseFromApi {
   memberRole?: TenantHouseMemberRole;
   /** Tài liệu hợp đồng (PDF…) — khi BE trả về. */
   contractDocuments?: TenantContractDocumentFromApi[];
+  /** Ảnh căn nhà — GET /api/houses/{id}. */
+  images?: HouseImageFromApi[];
+  /** BE: hạn chế thanh toán / truy cập khi chưa thanh toán cọc hoặc tiền thuê. */
+  paymentRestricted?: boolean;
+}
+
+/** Ảnh đính kèm căn nhà từ GET /api/houses/{id}. */
+export interface HouseImageFromApi {
+  id: string;
+  url: string;
+  createdAt?: string;
 }
 
 /** Response body của API GET /api/houses. */
@@ -799,10 +810,61 @@ export type QuoteStatus =
 /** Alias giữ tương thích ngược cho các chỗ cũ đang dùng tên TenantTicketStatus. */
 export type TenantTicketStatus = IssueStatus;
 
-/** Một ticket do tenant gửi (danh sách / chi tiết sau này). */
+/** Ảnh đính kèm ticket — embed trong GET /issues/tickets/tenant hoặc GET .../images. */
+export interface TenantTicketImageFromApi {
+  id: string;
+  url: string;
+  createdAt?: string | null;
+}
+
+/** User embed (tenant / staff) trong payload ticket. */
+export interface IssueTicketPartyFromApi {
+  id: string;
+  name?: string | null;
+  email?: string | null;
+  identityNumber?: string | null;
+  isEnabled?: boolean;
+  keycloakId?: string | null;
+  phoneNumber?: string | null;
+  roles?: string[];
+}
+
+/** Nhà embed trong ticket tenant (subset GET /houses). */
+export interface TenantTicketHouseEmbedFromApi {
+  id: string;
+  userRentalId?: string | null;
+  name?: string | null;
+  address?: string | null;
+  ward?: string | null;
+  commune?: string | null;
+  city?: string | null;
+  description?: string | null;
+  status?: string | null;
+  regionId?: string | null;
+}
+
+/** Thiết bị embed trong ticket tenant (subset GET /asset/items). */
+export interface TenantTicketAssetEmbedFromApi {
+  id: string;
+  houseId?: string | null;
+  displayName?: string | null;
+  serialNumber?: string | null;
+  nfcId?: string | null;
+  conditionPercent?: number | null;
+  status?: string | null;
+  category?: {
+    id: string;
+    name?: string | null;
+    compensationPercent?: number | null;
+    description?: string | null;
+  } | null;
+}
+
+/** Một ticket do tenant gửi (GET /issues/tickets/tenant và GET /issues/tickets/:id). */
 export interface TenantTicketFromApi {
   id: string;
   tenantId: string;
+  tenantPhone?: string | null;
   houseId: string;
   assetId: string;
   assignedStaffId: string | null;
@@ -811,17 +873,14 @@ export interface TenantTicketFromApi {
    * Thiếu trường → UI coi là tiêu chuẩn.
    */
   priority?: string | null;
-  /**
-   * Tên nhân viên phụ trách (BE có thể trả ở endpoint ticket-by-id).
-   * Nếu endpoint danh sách không có, có thể null/undefined.
-   */
+  /** Tên nhân viên phụ trách (flat hoặc suy từ `assignedStaff`). */
   staffName?: string | null;
-  /**
-   * Số điện thoại nhân viên phụ trách (BE có thể trả ở endpoint ticket-by-id).
-   * Nếu endpoint danh sách không có, có thể null/undefined.
-   */
+  /** SĐT nhân viên phụ trách (flat hoặc suy từ `assignedStaff.phoneNumber`). */
   staffPhone?: string | null;
   slotId: string | null;
+  /** Khung giờ ca làm (embed từ work slot — GET /issues/tickets/tenant). */
+  startTime?: string | null;
+  endTime?: string | null;
   type: string;
   status: IssueStatus;
   quoteStatus?: QuoteStatus | null;
@@ -832,19 +891,18 @@ export interface TenantTicketFromApi {
   titleTranslations?: Record<string, string> | null;
   descriptionTranslations?: Record<string, string> | null;
   createdAt: string;
-  /**
-   * Slot ca làm việc — BE danh sách thường trả cùng ticket; dùng để hiển thị giờ trên card
-   * không cần GET `/schedules/work_slots/{id}`.
-   */
-  startTime?: string | null;
-  /** Kết thúc slot — cùng luồng với `startTime`. */
-  endTime?: string | null;
-  /**
-   * Báo giá kèm GET list — giữ `totalPrice`/`status` cho card; `items` có thể rỗng sau khi app thu gọn bộ nhớ.
-   */
+  images?: TenantTicketImageFromApi[];
+  tenant?: IssueTicketPartyFromApi | null;
+  assignedStaff?: IssueTicketPartyFromApi | null;
+  house?: TenantTicketHouseEmbedFromApi | null;
+  asset?: TenantTicketAssetEmbedFromApi | null;
+  /** Báo giá mới nhất embed — tránh GET /issues/quotes/ticket/:id khi đã có. */
   quote?: IssueQuoteFromApi | null;
-  /** Ảnh đính kèm ticket — BE có thể trả ở danh sách; dùng tránh GET ảnh lặp. */
-  images?: Array<{ id: string; url: string; createdAt?: string | null }>;
+  /**
+   * Phản hồi staff mới nhất cho ticket QUESTION — BE nhúng trong GET ticket by id
+   * (thay gọi GET /issues/responses trên màn chi tiết).
+   */
+  latestTicketResponse?: IssueTicketResponseFromApi | null;
 }
 
 // =========================================================
@@ -919,7 +977,7 @@ export interface IssueQuoteItemFromApi {
   cost?: number | null;
 }
 
-/** Một quote cho một ticket (GET /api/issues/quotes/ticket/:ticketId) */
+/** Một quote cho một ticket (GET /api/issues/quotes/ticket/:ticketId hoặc embed ticket). */
 export interface IssueQuoteFromApi {
   id: string;
   /** Một số bản BE trả UUID báo giá ở đây thay vì `id` — app chuẩn hoá qua `normalizeIssueQuoteRow`. */
@@ -929,6 +987,7 @@ export interface IssueQuoteFromApi {
   assetId?: string | null;
   tenantId?: string | null;
   totalPrice: number;
+  isTenantFault?: boolean | null;
   status: QuoteStatus | string;
   items: IssueQuoteItemFromApi[];
   createdAt?: string | null;

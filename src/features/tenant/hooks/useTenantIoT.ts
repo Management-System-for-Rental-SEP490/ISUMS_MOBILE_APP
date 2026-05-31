@@ -1,7 +1,7 @@
 /**
  * Hooks IoT tenant: WebSocket realtime + REST usage + điều khiển điện.
  */
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useReducer, useRef, useState } from "react";
 import { APP_FOREGROUND_GET_POLL_MS } from "../../../shared/api/config";
 import { iotClient } from "../../../shared/services/iotClient";
 import type { TelemetryMessage } from "../../../shared/types";
@@ -86,41 +86,55 @@ function latestInMap(map: AreaMap): TelemetryMessage | null {
   return vals.reduce((a, b) => (a.ts >= b.ts ? a : b));
 }
 
+// --- useReducer thay thế 8 useState riêng lẻ ---
+// Trước: mỗi WebSocket message trigger 2 setState riêng (map + history) → 2 re-render
+// Sau:   1 dispatch gộp cả 2 thay đổi vào 1 re-render duy nhất
+type TelemetryMapsState = {
+  powerMap: AreaMap;
+  waterMap: AreaMap;
+  gasMap: AreaMap;
+  envMap: AreaMap;
+  powerHistory: TelemetryMessage[];
+  waterHistory: TelemetryMessage[];
+  gasHistory: TelemetryMessage[];
+  envHistory: TelemetryMessage[];
+};
+
+const initialMapsState: TelemetryMapsState = {
+  powerMap: {}, waterMap: {}, gasMap: {}, envMap: {},
+  powerHistory: [], waterHistory: [], gasHistory: [], envHistory: [],
+};
+
+type TelemetryMapsAction = { type: "message"; msg: TelemetryMessage };
+
+function telemetryMapsReducer(
+  state: TelemetryMapsState,
+  action: TelemetryMapsAction
+): TelemetryMapsState {
+  const { msg } = action;
+  const key = msg.areaId || "__house__";
+  const append = (prev: TelemetryMessage[]) =>
+    [...prev.slice(-(HISTORY_SIZE - 1)), msg];
+  switch (msg.stream) {
+    case "power":
+      return { ...state, powerMap: { ...state.powerMap, [key]: msg }, powerHistory: append(state.powerHistory) };
+    case "water":
+      return { ...state, waterMap: { ...state.waterMap, [key]: msg }, waterHistory: append(state.waterHistory) };
+    case "gas":
+      return { ...state, gasMap: { ...state.gasMap, [key]: msg }, gasHistory: append(state.gasHistory) };
+    case "environment":
+      return { ...state, envMap: { ...state.envMap, [key]: msg }, envHistory: append(state.envHistory) };
+    default:
+      return state;
+  }
+}
+
 function useTelemetryAreaMaps(thingId: string) {
-  const [powerMap, setPowerMap] = useState<AreaMap>({});
-  const [waterMap, setWaterMap] = useState<AreaMap>({});
-  const [gasMap, setGasMap] = useState<AreaMap>({});
-  const [envMap, setEnvMap] = useState<AreaMap>({});
-  const [powerHistory, setPowerHistory] = useState<TelemetryMessage[]>([]);
-  const [waterHistory, setWaterHistory] = useState<TelemetryMessage[]>([]);
-  const [gasHistory, setGasHistory] = useState<TelemetryMessage[]>([]);
-  const [envHistory, setEnvHistory] = useState<TelemetryMessage[]>([]);
+  const [state, dispatch] = useReducer(telemetryMapsReducer, initialMapsState);
 
   useEffect(() => {
     if (!thingId) return;
-    const handler = (msg: TelemetryMessage) => {
-      const key = msg.areaId || "__house__";
-      const append = (prev: TelemetryMessage[]) =>
-        [...prev.slice(-(HISTORY_SIZE - 1)), msg];
-      switch (msg.stream) {
-        case "power":
-          setPowerMap((p) => ({ ...p, [key]: msg }));
-          setPowerHistory(append);
-          break;
-        case "water":
-          setWaterMap((p) => ({ ...p, [key]: msg }));
-          setWaterHistory(append);
-          break;
-        case "gas":
-          setGasMap((p) => ({ ...p, [key]: msg }));
-          setGasHistory(append);
-          break;
-        case "environment":
-          setEnvMap((p) => ({ ...p, [key]: msg }));
-          setEnvHistory(append);
-          break;
-      }
-    };
+    const handler = (msg: TelemetryMessage) => dispatch({ type: "message", msg });
     iotClient.on(`telemetry:${thingId}`, handler);
     return () => {
       iotClient.removeListener(`telemetry:${thingId}`, handler);
@@ -128,14 +142,14 @@ function useTelemetryAreaMaps(thingId: string) {
   }, [thingId]);
 
   return {
-    powerMap,
-    waterMap,
-    gasMap,
-    envMap,
-    powerHistory,
-    waterHistory,
-    gasHistory,
-    envHistory,
+    powerMap: state.powerMap,
+    waterMap: state.waterMap,
+    gasMap: state.gasMap,
+    envMap: state.envMap,
+    powerHistory: state.powerHistory,
+    waterHistory: state.waterHistory,
+    gasHistory: state.gasHistory,
+    envHistory: state.envHistory,
   };
 }
 

@@ -571,26 +571,31 @@ export default function UserContractDetailScreen({ navigation, route }: Props) {
           if (!relocationLoading) setRelocationVisible(false);
         }}
       >
-        <SafeAreaView style={styles.relocationModalRoot} edges={["top", "left", "right", "bottom"]}>
-          <View style={styles.pdfModalHeader}>
-            <View style={styles.pdfModalHeaderSide}>
-              <TouchableOpacity
-                onPress={() => {
-                  if (!relocationLoading) setRelocationVisible(false);
-                }}
-                activeOpacity={0.7}
-                hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
-                accessibilityRole="button"
-                accessibilityLabel={t("common.close")}
-              >
-                <Icons.close size={22} color={neutral.text} />
-              </TouchableOpacity>
+        <View style={styles.relocationModalRoot}>
+          <StackScreenTitleHeaderStrip>
+            <View style={stackScreenTitleRowStyle}>
+              <View style={stackScreenTitleSideSlotStyle}>
+                <TouchableOpacity
+                  style={stackScreenTitleBackBtnOnBrand}
+                  onPress={() => {
+                    if (!relocationLoading) setRelocationVisible(false);
+                  }}
+                  activeOpacity={0.7}
+                  hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+                  accessibilityRole="button"
+                  accessibilityLabel={t("common.close")}
+                >
+                  <Icons.close size={22} color={stackScreenTitleOnBrandIconColor} />
+                </TouchableOpacity>
+              </View>
+              <View style={stackScreenTitleCenterSlotStyle}>
+                <StackScreenTitleBadge numberOfLines={1}>
+                  {t("profile.relocation_title")}
+                </StackScreenTitleBadge>
+              </View>
+              <StackScreenTitleBarBalance />
             </View>
-            <Text style={styles.pdfModalTitle} numberOfLines={1}>
-              {t("profile.relocation_title")}
-            </Text>
-            <View style={styles.pdfModalHeaderSide} />
-          </View>
+          </StackScreenTitleHeaderStrip>
 
           <ScrollView
             style={styles.relocationModalScroll}
@@ -607,9 +612,6 @@ export default function UserContractDetailScreen({ navigation, route }: Props) {
                   {t("profile.relocation_current_house")}
                 </Text>
                 <Text style={styles.relocationSummaryTitle}>{houseDisplayName}</Text>
-                <Text style={styles.relocationSummarySub}>
-                  {shortHouseIdForDisplay(String(contract.houseId ?? ""))}
-                </Text>
               </View>
             </View>
 
@@ -810,7 +812,7 @@ export default function UserContractDetailScreen({ navigation, route }: Props) {
             </View>
           </ScrollView>
 
-          <View style={styles.relocationFooter}>
+          <View style={[styles.relocationFooter, { paddingBottom: Math.max(insets.bottom, 16) }]}>
             <TouchableOpacity
               style={[styles.relocationSecondaryBtn, relocationLoading && styles.pdfBtnDisabled]}
               onPress={() => {
@@ -837,7 +839,7 @@ export default function UserContractDetailScreen({ navigation, route }: Props) {
               </Text>
             </TouchableOpacity>
           </View>
-        </SafeAreaView>
+        </View>
       </Modal>
 
       <StackScreenTitleHeaderStrip>

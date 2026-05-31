@@ -13,7 +13,6 @@ import { useAuthStore } from "./src/store/useAuthStore";
 import { RefreshLogoOverlay } from "./src/shared/components/RefreshLogoOverlay";
 import { neutral } from "./src/shared/theme/color";
 import { GlobalAlert } from "./src/shared/components/alert";
-import { QUERY_DEFAULT_STALE_TIME_MS } from "./src/shared/api/config";
 import { ThemeProvider, useTheme } from "./src/shared/design/ThemeProvider";
 import { KeycloakWebViewModal } from "./src/shared/components/KeycloakWebViewModal";
 
@@ -21,8 +20,8 @@ import { KeycloakWebViewModal } from "./src/shared/components/KeycloakWebViewMod
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
-      retry: 2,
-      staleTime: QUERY_DEFAULT_STALE_TIME_MS,
+      retry: 1, // Thử lại 1 lần nếu request thất bại (giảm từ 2 → tránh chờ 3x timeout khi network kém).
+      staleTime: 1000 * 60 * 5, // Data "tươi" trong 5 phút — tránh refetch trùng giữa các màn.
       refetchOnWindowFocus: false,
       refetchOnReconnect: true,
     },

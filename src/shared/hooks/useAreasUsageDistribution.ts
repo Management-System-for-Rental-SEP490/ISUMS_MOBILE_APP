@@ -64,13 +64,16 @@ export function useAreasUsageDistribution({
     setLoading(true);
     try {
       const bucket = currentMonthBucket();
-      const results = await Promise.all(
-        areas.map(async (area) => ({
-          areaId: area.id,
-          areaName: area.name,
-          value: await fetchAreaUsage(houseId, area.id, metric, bucket),
-        }))
-      );
+      /**
+       * Gọi tuần tự từng area thay vì Promise.all song song.
+       * Tránh bắn N request cùng lúc khi có nhiều khu vực — hook này
+       * được dùng chung cho cả điện lẫn nước nên ảnh hưởng kép.
+       */
+      const results: DistributionItem[] = [];
+      for (const area of areas) {
+        const value = await fetchAreaUsage(houseId, area.id, metric, bucket);
+        results.push({ areaId: area.id, areaName: area.name, value });
+      }
       setItems(results.filter((r) => r.value > 0));
     } catch {
       setItems([]);

@@ -5,6 +5,7 @@ import { useAuthStore } from "../../store/useAuthStore";
 import { getTenantHouses } from "./houseApi";
 import i18n from "../i18n";
 import { AppLocaleCode, toAppLocaleCode } from "../utils/resolveLocalizedJsonString";
+import type { QueryClient } from "@tanstack/react-query";
 
 /**
  * Lấy thông tin chi tiết user hiện tại (GET /api/users/me).
@@ -124,10 +125,20 @@ export const updateMainHouse = async (
  * - GET /users/me có `mainHouseId` → gán store (nhà mặc định sau lần chọn đầu, lưu bằng PUT /users/main-house).
  * - Chưa có `mainHouseId` và chỉ 1 nhà (my-access) → PUT main-house + gán store.
  * - Nhiều nhà mà chưa có `mainHouseId` → không tự PUT, không gán từ token; Home mở modal chọn lần đầu.
+ *
+ * @param queryClient — nếu truyền vào (từ login-edge effect), kết quả sẽ được seed vào React Query cache.
+ *   Mục đích: tránh gọi trùng /users/me và /houses/my-access khi HomeScreen mount ngay sau.
+ *   Query key được inline tương ứng với USER_KEYS.profile() và [...HOUSES_KEYS.tenant, locale].
  */
-export async function ensureTenantMainHouseSynced(): Promise<void> {
+export async function ensureTenantMainHouseSynced(queryClient?: QueryClient): Promise<void> {
   const profile = await getUserProfile();
   if (!profile) return;
+
+  // Seed profile vào RQ cache ngay sau khi fetch — HomeScreen sẽ dùng cache thay vì gọi lại /users/me.
+  // Key khớp với USER_KEYS.profile() = ["user", "profile"] trong useUserProfile.ts.
+  if (queryClient) {
+    queryClient.setQueryData(["user", "profile"], profile);
+  }
 
   const savedLanguage = toAppLocaleCode(profile.language ?? "vi");
   if (toAppLocaleCode(i18n.language) !== savedLanguage) {
@@ -148,6 +159,13 @@ export async function ensureTenantMainHouseSynced(): Promise<void> {
   try {
     const housesRes = await getTenantHouses();
     list = housesRes.success && Array.isArray(housesRes.data) ? housesRes.data : [];
+
+    // Seed danh sách nhà vào RQ cache — HomeScreen sẽ dùng cache thay vì gọi lại /houses/my-access.
+    // Key khớp với [...HOUSES_KEYS.tenant, locale] = ["houses", "tenant", <locale>] trong useHouses.ts.
+    // Dùng savedLanguage (locale sau khi đồng bộ ngôn ngữ profile) để khớp đúng key.
+    if (queryClient) {
+      queryClient.setQueryData(["houses", "tenant", savedLanguage], housesRes);
+    }
   } catch {
     return;
   }
