@@ -1,6 +1,11 @@
 import axios from "axios";
 import axiosClient from "../api/axiosClient";
-import { BACKEND_API_BASE, ISSUES_TENANT_LIST_TIMEOUT_MS } from "../api/config";
+import {
+  BACKEND_API_BASE,
+  ISSUES_TENANT_LIST_TIMEOUT_MS,
+  TICKET_CREATE_TIMEOUT_MS,
+  TICKET_IMAGE_UPLOAD_TIMEOUT_MS,
+} from "../api/config";
 import i18n from "../i18n";
 import { toAppLocaleCode } from "../utils/resolveLocalizedJsonString";
 import { useAuthStore } from "../../store/useAuthStore";
@@ -308,14 +313,16 @@ export const getIssueBanners = async (): Promise<IssueBannerFromApi[]> => {
 
 /**
  * Tenant gửi ticket (POST /api/issues/tickets).
+ * Timeout 20s: đủ chỗ cho access token hết hạn → interceptor refresh (~2s) + retry.
  */
 export const createTenantTicket = async (
   payload: CreateTenantTicketPayload
 ): Promise<TenantTicketFromApi> => {
-  //const url = `${BACKEND_API_BASE}/issues/tickets`;
   const url = `${BACKEND_API_BASE}/issues/tickets`;
   try {
-    const response = await axiosClient.post<ApiResponse<TenantTicketFromApi>>(url, payload);
+    const response = await axiosClient.post<ApiResponse<TenantTicketFromApi>>(url, payload, {
+      timeout: TICKET_CREATE_TIMEOUT_MS,
+    });
     const body = response.data;
     if (body?.success && body.data && typeof body.data === "object" && "id" in body.data) {
       return body.data;
@@ -347,92 +354,73 @@ export type TicketImageToUpload = {
  * BE handle việc đẩy lên S3/AWS.
  * Endpoint: POST /issues/tickets/:id/images
  */
+/**
+ * Upload ảnh đính kèm ticket — dùng axiosClient để hưởng interceptor auto-refresh token.
+ *
+ * Chiến lược retry tuần tự (lần lượt):
+ * - Thử gửi toàn bộ images 1 lần.
+ * - Nếu gặp lỗi network / timeout (không phải lỗi 4xx có nghĩa), chờ UPLOAD_RETRY_DELAY_MS rồi thử lại 1 lần.
+ * - Interceptor axiosClient tự xử lý 401 → refresh token → retry — không cần xử lý thủ công.
+ *
+ * @param ticketId  ID ticket vừa tạo.
+ * @param images    Danh sách ảnh cần upload.
+ */
 export const uploadTenantTicketImages = async (
   ticketId: string,
   images: TicketImageToUpload[],
 ): Promise<void> => {
   if (!ticketId || images.length === 0) return;
 
-  //const url = `${BACKEND_API_BASE}/issues/tickets/${encodeURIComponent(ticketId)}/images`;
   const url = `${BACKEND_API_BASE}/issues/tickets/${encodeURIComponent(ticketId)}/images`;
-  //const url = `${BACKEND_API_BASE}/issues/tickets/${encodeURIComponent(ticketId)}/images`;
-  const formData = new FormData();
 
-  console.log("[uploadTenantTicketImages] start", {
-    ticketId,
-    count: images.length,
-    files: images.map((img, idx) => ({
-      idx,
-      uri: img.uri,
-      fileName: img.fileName,
-      mimeType: img.mimeType,
-    })),
-  });
-
-  images.forEach((img, idx) => {
-    const name = img.fileName ?? `ticket-${ticketId}-${idx}.jpg`;
-    const type = img.mimeType ?? "image/jpeg";
-
-    // React Native FormData expects { uri, name, type }.
-    formData.append(
-      "files",
-      {
+  /** Tạo FormData từ danh sách ảnh. */
+  const buildFormData = () => {
+    const fd = new FormData();
+    images.forEach((img, idx) => {
+      fd.append("files", {
         uri: img.uri,
-        name,
-        type,
-      } as any,
-    );
-  });
+        name: img.fileName ?? `ticket-${ticketId}-${idx}.jpg`,
+        type: img.mimeType ?? "image/jpeg",
+      } as any);
+    });
+    return fd;
+  };
 
-  const token = useAuthStore.getState().token;
-  if (!token) {
-    throw new Error("Missing auth token for image upload");
-  }
+  const UPLOAD_RETRY_DELAY_MS = 1_500;
+
+  /** Gửi 1 lần và throw nếu lỗi. */
+  const attempt = async (attempt: number) => {
+    if (__DEV__) {
+      console.log(`[uploadTenantTicketImages] attempt ${attempt}`, { ticketId, count: images.length });
+    }
+    // axiosClient có interceptor auto-refresh 401 và timeout từ TICKET_IMAGE_UPLOAD_TIMEOUT_MS.
+    // Không set Content-Type thủ công — axios + RN tự đặt multipart/form-data + boundary.
+    await axiosClient.post(url, buildFormData(), {
+      headers: { "Content-Type": "multipart/form-data" },
+      timeout: TICKET_IMAGE_UPLOAD_TIMEOUT_MS,
+    });
+  };
 
   try {
-    console.log("[uploadTenantTicketImages] fetch POST", { url, ticketId });
-
-    // Important: Không set Content-Type thủ công, RN sẽ tự set multipart boundary.
-    const response = await fetch(url, {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${token}`,
-        "Accept-Language": toAppLocaleCode(i18n.language),
-      },
-      body: formData,
-    });
-
-    const rawText = await response.text();
-    let parsed: unknown = null;
-    try {
-      parsed = rawText ? JSON.parse(rawText) : null;
-    } catch {
-      parsed = rawText;
-    }
-
-    const success = typeof parsed === "object" && parsed !== null && "success" in (parsed as any) ? (parsed as any).success : undefined;
-    const message =
-      typeof parsed === "object" && parsed !== null && "message" in (parsed as any) ? (parsed as any).message : undefined;
-
-    console.log("[uploadTenantTicketImages] fetch response", {
-      ticketId,
-      ok: response.ok,
-      status: response.status,
-      success,
-      message,
-      rawTextSnippet: typeof rawText === "string" ? rawText.slice(0, 200) : undefined,
-    });
-
-    if (!response.ok) {
-      throw new Error(message || `Upload failed (HTTP ${response.status})`);
-    }
-
-    if (parsed && typeof parsed === "object" && "success" in (parsed as any) && !(parsed as any).success) {
-      throw new Error(message || "Upload failed");
-    }
+    await attempt(1);
   } catch (e) {
-    console.error("[uploadTenantTicketImages] upload failed", { ticketId, error: e });
-    throw e instanceof Error ? e : new Error("Upload ticket images failed");
+    // Chỉ retry khi lỗi không có response (network/timeout) — không retry 4xx/5xx có nghĩa.
+    const isNetworkOrTimeout =
+      axios.isAxiosError(e) && (!e.response || e.code === "ECONNABORTED");
+
+    if (isNetworkOrTimeout) {
+      if (__DEV__) {
+        console.warn("[uploadTenantTicketImages] lần 1 lỗi network/timeout, chờ rồi thử lại", {
+          ticketId,
+          code: axios.isAxiosError(e) ? e.code : undefined,
+        });
+      }
+      // Chờ trước khi thử lại — giảm xác suất hit server đang bận.
+      await new Promise((res) => setTimeout(res, UPLOAD_RETRY_DELAY_MS));
+      await attempt(2); // Throw thẳng nếu lần 2 vẫn lỗi
+    } else {
+      throw e instanceof Error ? e : new Error("Upload ticket images failed");
+    }
   }
 };
 

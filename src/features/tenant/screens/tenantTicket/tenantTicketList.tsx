@@ -152,6 +152,13 @@ const TenantTicketListScreen = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  /**
+   * Thời điểm load thành công gần nhất (ms).
+   * useFocusEffect bỏ qua nếu data < TICKET_LIST_STALE_MS (30s) — tránh re-fetch
+   * mỗi lần navigate back từ ticket detail.
+   */
+  const lastLoadedAtRef = useRef<number>(0);
+  const TICKET_LIST_STALE_MS = 30_000;
   const { scrollAtTop, onScrollForRefreshGate } = useRefreshControlGate();
   const [error, setError] = useState<string | null>(null);
   /** Phản hồi staff cho ticket QUESTION (để biết đã trả lời + mở chi tiết hỏi đáp). */
@@ -185,6 +192,7 @@ const TenantTicketListScreen = () => {
       setResponseByTicketId(latestResponseByQuestionTicketId(sorted, responses));
       setAllItems(sorted);
       setCurrentPage(1);
+      lastLoadedAtRef.current = Date.now();
     } catch {
       if (__DEV__) {
         console.warn(
@@ -203,8 +211,11 @@ const TenantTicketListScreen = () => {
 
   useFocusEffect(
     useCallback(() => {
+      const stale = Date.now() - lastLoadedAtRef.current > TICKET_LIST_STALE_MS;
+      // Bỏ qua nếu data mới hơn 30s và đã có dữ liệu (ví dụ navigate back từ detail)
+      if (!stale && allItems.length > 0) return;
       load(false);
-    }, [load])
+    }, [load, allItems.length])
   );
 
   useEffect(() => {

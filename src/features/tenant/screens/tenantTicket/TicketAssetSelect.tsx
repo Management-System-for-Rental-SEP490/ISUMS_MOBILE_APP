@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import React, { useMemo, useState } from "react";
 import {
   FlatList,
   KeyboardAvoidingView,
@@ -14,7 +14,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useTranslation } from "react-i18next";
 import type { AssetItemFromApi } from "../../../../shared/types/api";
 import { normalizeAssetItemStatusFromApi } from "../../../../shared/types/api";
-import { getAssetItemsByHouseId } from "../../../../shared/services/assetItemApi";
+import { useAssetItems, asAssetItemArray } from "../../../../shared/hooks";
 import Icons from "../../../../shared/theme/icon";
 import { neutral } from "../../../../shared/theme/color";
 import { RefreshLogoOverlay } from "@shared/components/RefreshLogoOverlay";
@@ -34,35 +34,31 @@ function normalizeName(item: AssetItemFromApi, unnamedLabel: string): string {
 }
 
 export function TicketAssetSelect({ houseId, value, onChange }: Props) {
-  const { t, i18n } = useTranslation();
+  const { t } = useTranslation();
   const insets = useSafeAreaInsets();
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
-  const [loading, setLoading] = useState(false);
-  const [items, setItems] = useState<AssetItemFromApi[]>([]);
-  const [loadError, setLoadError] = useState(false);
 
-  const load = useCallback(async () => {
-    const hid = String(houseId || "").trim();
-    if (!hid) return;
-    setLoading(true);
-    setLoadError(false);
-    try {
-      const res = await getAssetItemsByHouseId(hid);
-      setItems(Array.isArray(res.data) ? res.data : []);
-    } catch {
-      setLoadError(true);
-      setItems([]);
-    } finally {
-      setLoading(false);
-    }
-  }, [houseId, i18n.language]);
+  /**
+   * Dùng useAssetItems (React Query) thay vì fetch thủ công mỗi lần mở modal.
+   * - Lần đầu mở: fetch và cache (staleTime 5 phút từ App.tsx defaultOptions).
+   * - Lần mở tiếp theo trong 5 phút: trả cache tức thì, không gọi thêm request.
+   * - enabled=true luôn (fetch background ngay khi component mount — modal chưa mở
+   *   nhưng asset sẽ sẵn sàng trong cache khi user bấm chọn thiết bị).
+   */
+  const {
+    data: assetData,
+    isLoading: loading,
+    isError: loadError,
+    refetch,
+  } = useAssetItems({ houseId: houseId || undefined });
 
-  useEffect(() => {
-    if (!open) return;
+  const items: AssetItemFromApi[] = asAssetItemArray(assetData?.data);
+
+  const handleOpen = () => {
     setQuery("");
-    load();
-  }, [open, load]);
+    setOpen(true);
+  };
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -83,7 +79,7 @@ export function TicketAssetSelect({ houseId, value, onChange }: Props) {
     <>
       <TouchableOpacity
         style={styles.trigger}
-        onPress={() => setOpen(true)}
+        onPress={handleOpen}
         activeOpacity={0.75}
         accessibilityRole="button"
         accessibilityLabel={t("ticket.asset_field_label")}
@@ -128,7 +124,10 @@ export function TicketAssetSelect({ houseId, value, onChange }: Props) {
                   <RefreshLogoOverlay visible mode="page" />
                 </View>
               ) : loadError ? (
-                <Text style={styles.emptyText}>{t("ticket.asset_load_error")}</Text>
+                <TouchableOpacity onPress={() => void refetch()} style={{ padding: 16, alignItems: "center" }}>
+                  <Text style={styles.emptyText}>{t("ticket.asset_load_error")}</Text>
+                  <Text style={[styles.emptyText, { color: neutral.textSecondary, marginTop: 4, fontSize: 13 }]}>{t("common.tap_to_retry", "Chạm để thử lại")}</Text>
+                </TouchableOpacity>
               ) : (
                 <FlatList
                   style={styles.list}

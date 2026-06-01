@@ -48,6 +48,20 @@ export const TENANT_TICKET_LIST_POLL_MS = 9_000 as const;
  */
 export const ISSUES_TENANT_LIST_TIMEOUT_MS = 90_000 as const;
 
+/**
+ * Timeout cho POST /issues/tickets (tạo ticket): cần đủ thời gian để BE khởi tạo ticket
+ * + trường hợp access token hết hạn → interceptor refresh (~2s) + retry.
+ * 6s mặc định quá ngắn khi có refresh race → tăng lên 20s.
+ */
+export const TICKET_CREATE_TIMEOUT_MS = 20_000 as const;
+
+/**
+ * Timeout cho upload ảnh ticket (POST /issues/tickets/:id/images):
+ * BE xử lý S3 upload, có thể mất vài giây mỗi ảnh.
+ * 60s cho phép upload tối đa 5 ảnh dung lượng vừa.
+ */
+export const TICKET_IMAGE_UPLOAD_TIMEOUT_MS = 60_000 as const;
+
 function readEnvTrimmed(envKey: string): string {
   const v =
     typeof process !== "undefined" && process.env?.[envKey]
