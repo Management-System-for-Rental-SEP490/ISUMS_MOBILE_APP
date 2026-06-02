@@ -12,7 +12,9 @@ import {
   finalizeChangePasswordOAuthRedirect,
   finalizeChangePasswordFromInfoPageSuccess,
   consumeFirstLoginAutoFill,
+  hasPendingFirstLoginAutoFill,
   buildKeycloakAutoSubmitLoginJs,
+  KEYCLOAK_CP_PAGE_DETECT_JS,
 } from "../services/keycloakAuth";
 import { RefreshLogoOverlay } from "./RefreshLogoOverlay";
 import { useAndroidKeycloakWebViewSystemUi } from "../hooks/useAndroidKeycloakWebViewSystemUi";
@@ -46,6 +48,14 @@ const KeycloakChangePasswordWebViewOverlay = () => {
    * (e.g. page error → Keycloak login lại → onLoadEnd bắn thêm lần nữa).
    */
   const autoFillInjectedRef = useRef(false);
+  /**
+   * Cover loading trắng che toàn bộ WebView trong lúc auto-login + redirect.
+   * Chỉ bật khi luồng first-login có credential auto-fill; tắt khi:
+   *  - WebView báo đã tới trang đổi MK (postMessage page=change_password), hoặc
+   *  - sai mật khẩu tạm (page=login + hasError) → để user thấy lỗi, hoặc
+   *  - quá timeout an toàn (fallback, tránh kẹt màn trắng).
+   */
+  const [coverVisible, setCoverVisible] = useState(false);
   const [bottomPadding, setBottomPadding] = useState(0);
   const webViewRef = useRef<WebView>(null);
   const hardResetPaddingTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -62,8 +72,23 @@ const KeycloakChangePasswordWebViewOverlay = () => {
       setWebViewPageLoading(true);
       infoPageSuccessHandled.current = false;
       autoFillInjectedRef.current = false; // reset cho session mới
+      // Bật cover chỉ khi có credential auto-fill (luồng first-login auto submit).
+      // Nếu không có (vd. user mở đổi MK thủ công từ Settings) → không che, hiện luôn WebView.
+      setCoverVisible(hasPendingFirstLoginAutoFill());
+    } else {
+      setCoverVisible(false);
     }
   }, [active, session?.url]);
+
+  /**
+   * Timeout an toàn: nếu sau 12s vẫn chưa nhận được tín hiệu trang đổi MK / lỗi
+   * (mạng chậm, theme Keycloak custom đổi selector…) → tắt cover để user không kẹt màn trắng.
+   */
+  useEffect(() => {
+    if (!coverVisible) return;
+    const id = setTimeout(() => setCoverVisible(false), 12_000);
+    return () => clearTimeout(id);
+  }, [coverVisible]);
 
   const webViewSource = useMemo(() => {
     if (!session || session.flow !== "change_password") return undefined;
@@ -177,15 +202,32 @@ const KeycloakChangePasswordWebViewOverlay = () => {
 
   const handleWebViewMessage = useCallback(
     (event: WebViewMessageEvent) => {
-      if (!useAuthStore.getState().keycloakInAppSession || infoPageSuccessHandled.current) return;
+      if (!useAuthStore.getState().keycloakInAppSession) return;
+      let data: { type?: string; page?: string; hasError?: boolean };
       try {
-        const data = JSON.parse(event.nativeEvent.data) as { type?: string };
-        if (data?.type !== "isums_kc_info_success") return;
+        data = JSON.parse(event.nativeEvent.data);
+      } catch {
+        return; // ignore non-JSON
+      }
+
+      // Tín hiệu phát hiện loại trang — quyết định khi nào tắt cover loading.
+      if (data?.type === "isums_kc_page") {
+        if (data.page === "change_password") {
+          // Đã tới form đổi MK → tắt cover, hiện form thật cho user.
+          setCoverVisible(false);
+        } else if (data.page === "login" && data.hasError) {
+          // Sai mật khẩu tạm → tắt cover để user thấy lỗi & nhập lại.
+          setCoverVisible(false);
+        }
+        // page="login" (no error) / "other" → giữ cover, auto-submit đang chạy.
+        return;
+      }
+
+      if (infoPageSuccessHandled.current) return;
+      if (data?.type === "isums_kc_info_success") {
         infoPageSuccessHandled.current = true;
         setKeycloakInAppSession(null);
         finalizeChangePasswordFromInfoPageSuccess();
-      } catch {
-        /* ignore non-JSON */
       }
     },
     [setKeycloakInAppSession]
@@ -199,9 +241,8 @@ const KeycloakChangePasswordWebViewOverlay = () => {
     <View style={loginStyles.webViewOverlay} collapsable={false}>
       <StatusBar translucent backgroundColor="transparent" barStyle="light-content" />
 
-      {/* Banner giải thích — tránh user nhầm tưởng bị đẩy về trang login.
-          Keycloak web login hiện vì chưa có session browser; sau khi đăng nhập
-          Keycloak sẽ tự chuyển sang form đổi mật khẩu lần đầu. */}
+      {/* Banner giải thích — cover loading đã che bước auto-login phía trước,
+          khi banner này lộ ra thì user đang ở form đổi mật khẩu. */}
       <View style={overlayStyles.banner}>
         <Text style={overlayStyles.bannerTitle}>
           {t("login_first_change_password_title", "Đổi mật khẩu lần đầu")}
@@ -209,11 +250,11 @@ const KeycloakChangePasswordWebViewOverlay = () => {
         <Text style={overlayStyles.bannerSub}>
           {session?.username
             ? t("login_first_change_password_sub_with_user",
-                "Đăng nhập lại rồi đặt mật khẩu mới cho tài khoản {{username}}",
+                "Đặt mật khẩu mới để kích hoạt tài khoản {{username}}",
                 { username: session.username }
               )
             : t("login_first_change_password_sub",
-                "Đăng nhập rồi đặt mật khẩu mới để kích hoạt tài khoản"
+                "Đặt mật khẩu mới để kích hoạt tài khoản"
               )
           }
         </Text>
@@ -238,6 +279,8 @@ const KeycloakChangePasswordWebViewOverlay = () => {
           onLoadStart={() => setWebViewPageLoading(true)}
           onLoadEnd={() => {
             setWebViewPageLoading(false);
+            // Báo loại trang hiện tại về RN (mỗi lần load) → quyết định tắt cover.
+            webViewRef.current?.injectJavaScript(KEYCLOAK_CP_PAGE_DETECT_JS);
             // Tự động điền + submit form đăng nhập Keycloak — chỉ 1 lần đầu.
             // consumeFirstLoginAutoFill() trả null nếu đã dùng rồi hoặc không có.
             if (!autoFillInjectedRef.current) {
@@ -265,11 +308,29 @@ const KeycloakChangePasswordWebViewOverlay = () => {
           </View>
         ) : null}
       </View>
+
+      {/* Cover trắng che TOÀN BỘ (banner + WebView) trong lúc auto-login + redirect.
+          pointerEvents="auto" chặn user chạm vào trang login phía dưới.
+          Tắt khi WebView báo đã tới trang đổi MK / lỗi / timeout. */}
+      {coverVisible ? (
+        <View style={overlayStyles.fullCover} pointerEvents="auto">
+          <RefreshLogoOverlay visible mode="page" />
+        </View>
+      ) : null}
     </View>
   );
 };
 
 const overlayStyles = StyleSheet.create({
+  /** Cover trắng full-screen che WebView trong lúc auto-login + redirect */
+  fullCover: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: "#FFFFFF",
+    alignItems: "center",
+    justifyContent: "center",
+    zIndex: 10,
+    elevation: 10,
+  },
   /** Banner phía trên WebView giải thích mục đích màn hình */
   banner: {
     backgroundColor: "#1A6B4A",   // màu brandPrimary tối hơn để tương phản với WebView

@@ -204,6 +204,11 @@ export function setFirstLoginAutoFill(username: string, password: string): void 
   _firstLoginAutoFill = { username, password };
 }
 
+/** Kiểm tra còn credential auto-fill chờ xử lý không (không xoá). Dùng để quyết định bật cover loading. */
+export function hasPendingFirstLoginAutoFill(): boolean {
+  return _firstLoginAutoFill != null;
+}
+
 /**
  * Lấy và xoá credential (chỉ dùng 1 lần).
  * Trả null nếu đã bị consume hoặc chưa set.
@@ -213,6 +218,31 @@ export function consumeFirstLoginAutoFill(): { username: string; password: strin
   _firstLoginAutoFill = null;
   return creds;
 }
+
+/**
+ * JS phát hiện loại trang Keycloak hiện tại và postMessage về RN.
+ * RN dùng để quyết định khi nào tắt cover loading:
+ *  - page="change_password" → đã tới form đổi MK → tắt cover.
+ *  - page="login" + hasError=true → sai mật khẩu tạm → tắt cover để user thấy lỗi.
+ *  - page="login" (no error) / "other" → còn trong luồng auto-submit → giữ cover.
+ *
+ * Selector tương thích theme Keycloak mặc định; field đổi MK thường là `#password-new`.
+ */
+export const KEYCLOAK_CP_PAGE_DETECT_JS = `
+(function(){
+  try {
+    function post(o){ if(window.ReactNativeWebView){ window.ReactNativeWebView.postMessage(JSON.stringify(o)); } }
+    var pwNew = document.querySelector('#password-new, input[name="password-new"]');
+    if (pwNew) { post({ type: 'isums_kc_page', page: 'change_password' }); return; }
+    var u = document.querySelector('#username, input[name="username"]');
+    var p = document.querySelector('#password, input[name="password"], input[type="password"]');
+    var errEl = document.querySelector('.kc-feedback-text, #input-error, .alert-error, .alert.alert-error, .pf-c-alert__title');
+    var hasError = !!(errEl && errEl.textContent && errEl.textContent.trim().length > 0);
+    if (u && p) { post({ type: 'isums_kc_page', page: 'login', hasError: hasError }); return; }
+    post({ type: 'isums_kc_page', page: 'other' });
+  } catch (e) {}
+})();true;
+`.trim();
 
 /**
  * Tạo JavaScript để tự động điền username/password vào form login Keycloak
