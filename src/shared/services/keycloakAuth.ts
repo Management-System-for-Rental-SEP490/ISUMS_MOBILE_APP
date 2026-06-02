@@ -192,6 +192,64 @@ export function buildKeycloakFirstLoginUpdatePasswordUrl(loginHint: string, loca
   return appendKeycloakAuthLoginHint(getKeycloakAuthUrl(locale), loginHint);
 }
 
+/**
+ * Credential tạm cho luồng first-login UPDATE_PASSWORD.
+ * Lưu trong bộ nhớ (không persist) — xoá ngay sau khi WebView inject xong.
+ * Mục đích: auto-fill + submit form đăng nhập Keycloak Web để user không phải nhập lại.
+ */
+let _firstLoginAutoFill: { username: string; password: string } | null = null;
+
+/** Gọi trước khi mở WebView overlay — lưu credential để inject vào WebView. */
+export function setFirstLoginAutoFill(username: string, password: string): void {
+  _firstLoginAutoFill = { username, password };
+}
+
+/**
+ * Lấy và xoá credential (chỉ dùng 1 lần).
+ * Trả null nếu đã bị consume hoặc chưa set.
+ */
+export function consumeFirstLoginAutoFill(): { username: string; password: string } | null {
+  const creds = _firstLoginAutoFill;
+  _firstLoginAutoFill = null;
+  return creds;
+}
+
+/**
+ * Tạo JavaScript để tự động điền username/password vào form login Keycloak
+ * và submit — Keycloak sẽ tự chuyển sang trang đổi mật khẩu.
+ *
+ * Tương thích Keycloak theme mặc định (`#username`, `#password`, `#kc-login`).
+ * Fallback sang selector rộng hơn nếu theme custom đổi id.
+ */
+export function buildKeycloakAutoSubmitLoginJs(username: string, password: string): string {
+  // Escape để tránh injection nếu username/password có ký tự đặc biệt
+  const safeUser = JSON.stringify(username);
+  const safePass = JSON.stringify(password);
+  return `
+(function() {
+  try {
+    function fill(el, val) {
+      if (!el) return false;
+      var desc = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, 'value');
+      if (desc && desc.set) { desc.set.call(el, val); }
+      else { el.value = val; }
+      el.dispatchEvent(new Event('input',  { bubbles: true }));
+      el.dispatchEvent(new Event('change', { bubbles: true }));
+      return true;
+    }
+    var u = document.querySelector('#username, input[name="username"]');
+    var p = document.querySelector('#password, input[name="password"], input[type="password"]');
+    var btn = document.querySelector('#kc-login, input[type="submit"][name="login"], button[name="login"]');
+    if (u && p && btn) {
+      fill(u, ${safeUser});
+      fill(p, ${safePass});
+      setTimeout(function() { btn.click(); }, 150);
+    }
+  } catch(e) {}
+})();true;
+  `.trim();
+}
+
 export class KeycloakFirstLoginRequiredError extends Error {
   readonly code = "REQUIRES_UPDATE_PASSWORD" as const;
   readonly firstLoginUrl: string;

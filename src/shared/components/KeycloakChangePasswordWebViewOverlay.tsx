@@ -11,6 +11,8 @@ import {
   KEYCLOAK_WEBVIEW_VIEWPORT_HEIGHT_RESET_JS,
   finalizeChangePasswordOAuthRedirect,
   finalizeChangePasswordFromInfoPageSuccess,
+  consumeFirstLoginAutoFill,
+  buildKeycloakAutoSubmitLoginJs,
 } from "../services/keycloakAuth";
 import { RefreshLogoOverlay } from "./RefreshLogoOverlay";
 import { useAndroidKeycloakWebViewSystemUi } from "../hooks/useAndroidKeycloakWebViewSystemUi";
@@ -39,6 +41,11 @@ const KeycloakChangePasswordWebViewOverlay = () => {
   const setKeycloakInAppSession = useAuthStore((s) => s.setKeycloakInAppSession);
 
   const [webViewPageLoading, setWebViewPageLoading] = useState(true);
+  /**
+   * Đã inject auto-fill chưa — tránh inject lại khi Keycloak redirect nội bộ
+   * (e.g. page error → Keycloak login lại → onLoadEnd bắn thêm lần nữa).
+   */
+  const autoFillInjectedRef = useRef(false);
   const [bottomPadding, setBottomPadding] = useState(0);
   const webViewRef = useRef<WebView>(null);
   const hardResetPaddingTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -54,6 +61,7 @@ const KeycloakChangePasswordWebViewOverlay = () => {
     if (active) {
       setWebViewPageLoading(true);
       infoPageSuccessHandled.current = false;
+      autoFillInjectedRef.current = false; // reset cho session mới
     }
   }, [active, session?.url]);
 
@@ -228,7 +236,19 @@ const KeycloakChangePasswordWebViewOverlay = () => {
           onNavigationStateChange={handleNavStateChange}
           onMessage={handleWebViewMessage}
           onLoadStart={() => setWebViewPageLoading(true)}
-          onLoadEnd={() => setWebViewPageLoading(false)}
+          onLoadEnd={() => {
+            setWebViewPageLoading(false);
+            // Tự động điền + submit form đăng nhập Keycloak — chỉ 1 lần đầu.
+            // consumeFirstLoginAutoFill() trả null nếu đã dùng rồi hoặc không có.
+            if (!autoFillInjectedRef.current) {
+              const creds = consumeFirstLoginAutoFill();
+              if (creds) {
+                autoFillInjectedRef.current = true;
+                const js = buildKeycloakAutoSubmitLoginJs(creds.username, creds.password);
+                webViewRef.current?.injectJavaScript(js);
+              }
+            }
+          }}
           startInLoadingState={false}
           setSupportMultipleWindows={false}
           nestedScrollEnabled

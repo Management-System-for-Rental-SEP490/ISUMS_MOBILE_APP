@@ -27,6 +27,7 @@ import {
   signInWithDirectGrant,
   logoutKeycloak,
   KeycloakFirstLoginRequiredError,
+  setFirstLoginAutoFill,
 } from "../../../shared/services/keycloakAuth";
 import { signInWithAppAuth } from "../../../shared/services/keycloakAppAuth";
 import { brandGradient, brandSecondary, neutral } from "../../../shared/theme/color";
@@ -75,6 +76,9 @@ const LoginFormScreen = () => {
       useAuthStore.getState().login(payload);
     } catch (err) {
       if (err instanceof KeycloakFirstLoginRequiredError) {
+        // Lưu credential tạm để WebView auto-fill + submit form Keycloak
+        // → user không cần nhập lại, thẳng tới trang đổi mật khẩu.
+        setFirstLoginAutoFill(username.trim(), password);
         useAuthStore.getState().setKeycloakInAppSession({
           flow: "change_password",
           url: err.firstLoginUrl,
