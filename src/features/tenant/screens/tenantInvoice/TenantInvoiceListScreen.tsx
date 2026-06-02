@@ -342,7 +342,7 @@ export default function TenantInvoiceListScreen() {
       );
       navigation.navigate("VnpayCheckout", {
         checkoutUrl,
-        afterSuccess: "invoiceList",
+        afterSuccess: "home",
         vnpayUiContext,
       });
     } catch (e: unknown) {

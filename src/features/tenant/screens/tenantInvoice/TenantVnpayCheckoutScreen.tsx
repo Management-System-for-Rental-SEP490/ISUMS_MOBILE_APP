@@ -151,14 +151,12 @@ export default function TenantVnpayCheckoutScreen({ navigation, route }: Props) 
         if (__DEV__) {
           console.log("[VNPAY] return BE verify result", { ok, successField: payload.success });
         }
+        // Hiện kết quả NGAY sau khi BE verify — không chờ refetch.
+        // Invalidate chạy nền (fire-and-forget): khi user bấm "Hoàn tất" về Home/hóa đơn
+        // thì data đã/đang được làm mới, không chặn màn kết quả.
         if (ok) {
-          await Promise.all([
-            queryClient.invalidateQueries({ queryKey: TENANT_INVOICES_QUERY_KEY }),
-            queryClient.invalidateQueries({ queryKey: HOUSES_KEYS.tenant }),
-          ]);
-        }
-        await new Promise((resolve) => setTimeout(resolve, 280));
-        if (ok) {
+          void queryClient.invalidateQueries({ queryKey: TENANT_INVOICES_QUERY_KEY });
+          void queryClient.invalidateQueries({ queryKey: HOUSES_KEYS.tenant });
           setReturnUi({ kind: "success", fields });
         } else {
           setReturnUi({ kind: "failed", fields });
@@ -168,17 +166,13 @@ export default function TenantVnpayCheckoutScreen({ navigation, route }: Props) 
           if (__DEV__) {
             console.log("[VNPAY] gateway success + verify skipped → invalidate caches");
           }
-          await Promise.all([
-            queryClient.invalidateQueries({ queryKey: TENANT_INVOICES_QUERY_KEY }),
-            queryClient.invalidateQueries({ queryKey: HOUSES_KEYS.tenant }),
-          ]);
-          await new Promise((resolve) => setTimeout(resolve, 280));
+          void queryClient.invalidateQueries({ queryKey: TENANT_INVOICES_QUERY_KEY });
+          void queryClient.invalidateQueries({ queryKey: HOUSES_KEYS.tenant });
           setReturnUi({ kind: "verify_skipped", fields });
           return;
         }
 
         handledVnpayReturnUrlsRef.current.delete(url);
-        await new Promise((resolve) => setTimeout(resolve, 220));
         setReturnUi({ kind: "failed", fields });
       }
     },

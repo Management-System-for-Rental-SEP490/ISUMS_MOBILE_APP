@@ -89,7 +89,7 @@ export default function TenantIssueInvoiceScreen({ navigation, route }: Props) {
       );
       navigation.navigate("VnpayCheckout", {
         checkoutUrl,
-        afterSuccess: "invoiceList",
+        afterSuccess: "home",
         vnpayUiContext: "repair_quote",
       });
     } catch (e: unknown) {

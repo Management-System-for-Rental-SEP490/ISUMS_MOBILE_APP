@@ -254,7 +254,7 @@ export default function TenantInvoiceDetailScreen({ navigation, route }: Props) 
       );
       navigation.navigate("VnpayCheckout", {
         checkoutUrl,
-        afterSuccess: "invoiceList",
+        afterSuccess: "home",
         ...(isTenantRepairInvoiceFlow(mergedInvoice)
           ? { vnpayUiContext: "repair_fee_invoice" as const }
           : { vnpayUiContext: "house_invoice" as const }),
