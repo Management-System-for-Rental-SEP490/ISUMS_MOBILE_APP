@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { View, Text, BackHandler, Platform, Keyboard, StatusBar, Linking } from "react-native";
+import { View, Text, BackHandler, Platform, Keyboard, StatusBar, Linking, StyleSheet } from "react-native";
 import WebView, { WebViewMessageEvent, WebViewNavigation } from "react-native-webview";
 import { useTranslation } from "react-i18next";
 import { useAuthStore } from "../../store/useAuthStore";
@@ -189,7 +189,28 @@ const KeycloakChangePasswordWebViewOverlay = () => {
 
   return (
     <View style={loginStyles.webViewOverlay} collapsable={false}>
-      <StatusBar translucent backgroundColor="transparent" barStyle="dark-content" />
+      <StatusBar translucent backgroundColor="transparent" barStyle="light-content" />
+
+      {/* Banner giải thích — tránh user nhầm tưởng bị đẩy về trang login.
+          Keycloak web login hiện vì chưa có session browser; sau khi đăng nhập
+          Keycloak sẽ tự chuyển sang form đổi mật khẩu lần đầu. */}
+      <View style={overlayStyles.banner}>
+        <Text style={overlayStyles.bannerTitle}>
+          {t("login_first_change_password_title", "Đổi mật khẩu lần đầu")}
+        </Text>
+        <Text style={overlayStyles.bannerSub}>
+          {session?.username
+            ? t("login_first_change_password_sub_with_user",
+                "Đăng nhập lại rồi đặt mật khẩu mới cho tài khoản {{username}}",
+                { username: session.username }
+              )
+            : t("login_first_change_password_sub",
+                "Đăng nhập rồi đặt mật khẩu mới để kích hoạt tài khoản"
+              )
+          }
+        </Text>
+      </View>
+
       <View
         style={{
           flex: 1,
@@ -227,5 +248,26 @@ const KeycloakChangePasswordWebViewOverlay = () => {
     </View>
   );
 };
+
+const overlayStyles = StyleSheet.create({
+  /** Banner phía trên WebView giải thích mục đích màn hình */
+  banner: {
+    backgroundColor: "#1A6B4A",   // màu brandPrimary tối hơn để tương phản với WebView
+    paddingHorizontal: 20,
+    paddingVertical: 14,
+    gap: 4,
+  },
+  bannerTitle: {
+    color: "#FFFFFF",
+    fontSize: 16,
+    fontWeight: "700",
+    letterSpacing: -0.2,
+  },
+  bannerSub: {
+    color: "rgba(255,255,255,0.85)",
+    fontSize: 13,
+    lineHeight: 18,
+  },
+});
 
 export default KeycloakChangePasswordWebViewOverlay;

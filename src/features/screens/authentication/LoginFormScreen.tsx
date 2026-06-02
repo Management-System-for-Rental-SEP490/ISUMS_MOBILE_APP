@@ -78,6 +78,7 @@ const LoginFormScreen = () => {
         useAuthStore.getState().setKeycloakInAppSession({
           flow: "change_password",
           url: err.firstLoginUrl,
+          username: username.trim(),
         });
         setErrorMsg("");
         return;

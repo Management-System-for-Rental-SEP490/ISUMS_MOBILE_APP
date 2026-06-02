@@ -152,6 +152,8 @@ export type AuthPayload = {
 export type KeycloakInAppSession = {
   url: string;
   flow: "change_password";
+  /** Username để hiển thị trong header banner (giúp user biết đang đổi MK cho tài khoản nào). */
+  username?: string;
 };
 
 export type AuthState = {
