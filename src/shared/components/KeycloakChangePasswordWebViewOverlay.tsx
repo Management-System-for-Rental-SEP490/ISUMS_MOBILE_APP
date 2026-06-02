@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { View, Text, BackHandler, Platform, Keyboard, StatusBar, Linking, StyleSheet } from "react-native";
+import { View, BackHandler, Platform, Keyboard, StatusBar, Linking, StyleSheet } from "react-native";
 import WebView, { WebViewMessageEvent, WebViewNavigation } from "react-native-webview";
 import { useTranslation } from "react-i18next";
 import { useAuthStore } from "../../store/useAuthStore";
@@ -38,7 +38,7 @@ function normalizeAuthCallbackUrl(rawUrl: string): string {
  * WebView toàn màn cho luồng đổi mật khẩu Keycloak (`kc_action=UPDATE_PASSWORD`), đồng bộ với LoginScreen.
  */
 const KeycloakChangePasswordWebViewOverlay = () => {
-  const { t, i18n } = useTranslation();
+  const { i18n } = useTranslation();
   const session = useAuthStore((s) => s.keycloakInAppSession);
   const setKeycloakInAppSession = useAuthStore((s) => s.setKeycloakInAppSession);
 
@@ -239,26 +239,7 @@ const KeycloakChangePasswordWebViewOverlay = () => {
 
   return (
     <View style={loginStyles.webViewOverlay} collapsable={false}>
-      <StatusBar translucent backgroundColor="transparent" barStyle="light-content" />
-
-      {/* Banner giải thích — cover loading đã che bước auto-login phía trước,
-          khi banner này lộ ra thì user đang ở form đổi mật khẩu. */}
-      <View style={overlayStyles.banner}>
-        <Text style={overlayStyles.bannerTitle}>
-          {t("login_first_change_password_title", "Đổi mật khẩu lần đầu")}
-        </Text>
-        <Text style={overlayStyles.bannerSub}>
-          {session?.username
-            ? t("login_first_change_password_sub_with_user",
-                "Đặt mật khẩu mới để kích hoạt tài khoản {{username}}",
-                { username: session.username }
-              )
-            : t("login_first_change_password_sub",
-                "Đặt mật khẩu mới để kích hoạt tài khoản"
-              )
-          }
-        </Text>
-      </View>
+      <StatusBar translucent backgroundColor="transparent" barStyle="dark-content" />
 
       <View
         style={{
@@ -309,12 +290,12 @@ const KeycloakChangePasswordWebViewOverlay = () => {
         ) : null}
       </View>
 
-      {/* Cover trắng che TOÀN BỘ (banner + WebView) trong lúc auto-login + redirect.
+      {/* Cover trắng che TOÀN BỘ WebView trong lúc auto-login + redirect.
           pointerEvents="auto" chặn user chạm vào trang login phía dưới.
           Tắt khi WebView báo đã tới trang đổi MK / lỗi / timeout. */}
       {coverVisible ? (
         <View style={overlayStyles.fullCover} pointerEvents="auto">
-          <RefreshLogoOverlay visible mode="page" />
+          <RefreshLogoOverlay visible mode="page" labelKey="login_redirecting_change_password" />
         </View>
       ) : null}
     </View>
@@ -330,24 +311,6 @@ const overlayStyles = StyleSheet.create({
     justifyContent: "center",
     zIndex: 10,
     elevation: 10,
-  },
-  /** Banner phía trên WebView giải thích mục đích màn hình */
-  banner: {
-    backgroundColor: "#1A6B4A",   // màu brandPrimary tối hơn để tương phản với WebView
-    paddingHorizontal: 20,
-    paddingVertical: 14,
-    gap: 4,
-  },
-  bannerTitle: {
-    color: "#FFFFFF",
-    fontSize: 16,
-    fontWeight: "700",
-    letterSpacing: -0.2,
-  },
-  bannerSub: {
-    color: "rgba(255,255,255,0.85)",
-    fontSize: 13,
-    lineHeight: 18,
   },
 });
 

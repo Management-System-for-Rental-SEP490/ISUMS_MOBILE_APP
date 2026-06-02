@@ -255,27 +255,43 @@ export function buildKeycloakAutoSubmitLoginJs(username: string, password: strin
   // Escape để tránh injection nếu username/password có ký tự đặc biệt
   const safeUser = JSON.stringify(username);
   const safePass = JSON.stringify(password);
+  // Self-poller: fill + submit NGAY khi field xuất hiện (poll mỗi 30ms),
+  // không đợi onLoadEnd (full load) và không delay cứng 150ms → nhanh nhất có thể.
+  // Guard window.__isumsAutoSubmitted: chỉ submit 1 lần / document.
+  // Dừng nếu thấy field đổi MK (#password-new) — tránh chạy nhầm trên trang đổi MK.
   return `
 (function() {
-  try {
-    function fill(el, val) {
-      if (!el) return false;
-      var desc = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, 'value');
-      if (desc && desc.set) { desc.set.call(el, val); }
-      else { el.value = val; }
-      el.dispatchEvent(new Event('input',  { bubbles: true }));
-      el.dispatchEvent(new Event('change', { bubbles: true }));
-      return true;
-    }
-    var u = document.querySelector('#username, input[name="username"]');
-    var p = document.querySelector('#password, input[name="password"], input[type="password"]');
-    var btn = document.querySelector('#kc-login, input[type="submit"][name="login"], button[name="login"]');
-    if (u && p && btn) {
-      fill(u, ${safeUser});
-      fill(p, ${safePass});
-      setTimeout(function() { btn.click(); }, 150);
-    }
-  } catch(e) {}
+  if (window.__isumsAutoLoginPolling) return;
+  window.__isumsAutoLoginPolling = true;
+  function fill(el, val) {
+    if (!el) return false;
+    var desc = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, 'value');
+    if (desc && desc.set) { desc.set.call(el, val); } else { el.value = val; }
+    el.dispatchEvent(new Event('input',  { bubbles: true }));
+    el.dispatchEvent(new Event('change', { bubbles: true }));
+    return true;
+  }
+  var tries = 0;
+  var timer = setInterval(function() {
+    tries++;
+    try {
+      if (document.querySelector('#password-new, input[name="password-new"]')) {
+        clearInterval(timer); return; // đã là trang đổi MK, không submit login
+      }
+      var u = document.querySelector('#username, input[name="username"]');
+      var p = document.querySelector('#password, input[name="password"], input[type="password"]');
+      var btn = document.querySelector('#kc-login, input[type="submit"][name="login"], button[name="login"]');
+      if (u && p && btn && !window.__isumsAutoSubmitted) {
+        window.__isumsAutoSubmitted = true;
+        fill(u, ${safeUser});
+        fill(p, ${safePass});
+        clearInterval(timer);
+        btn.click();
+        return;
+      }
+      if (tries > 120) clearInterval(timer); // ~3.6s thì bỏ cuộc
+    } catch (e) { clearInterval(timer); }
+  }, 30);
 })();true;
   `.trim();
 }

@@ -1,6 +1,7 @@
 export default {
     "login_btn": "Đăng nhập với tài khoản ISUMS",
     "login_btn_short": "Đăng nhập",
+    "login_redirecting_change_password": "Đang chuyển đến trang đổi mật khẩu…",
     "welcome": "Chào mừng bạn đến với ISUMS",
     "description": "Vui lòng đăng nhập để tiếp tục sử dụng ứng dụng",
     "username_placeholder": "Tên đăng nhập",

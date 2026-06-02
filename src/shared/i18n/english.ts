@@ -1,6 +1,7 @@
 export default {
     "login_btn": "Login with ISUMS account",
     "login_btn_short": "Login",
+    "login_redirecting_change_password": "Redirecting to the change-password page…",
     "welcome": "Welcome to ISUMS",
     "description": "Please login to continue using the application",
     "username_placeholder": "Username",

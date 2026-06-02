@@ -1,6 +1,7 @@
 export default {
     "login_btn": "ISUMSアカウントでログイン",
     "login_btn_short": "ログイン",
+    "login_redirecting_change_password": "パスワード変更ページに移動しています…",
     "welcome": "ISUMSへようこそ",
     "description": "アプリケーションの使用を続けるにはログインしてください",
     "username_placeholder": "ユーザー名",
