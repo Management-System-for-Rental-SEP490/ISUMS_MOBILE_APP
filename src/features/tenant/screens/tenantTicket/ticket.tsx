@@ -42,6 +42,7 @@ import {
   type TicketImageToUpload,
 } from "../../../../shared/services/issuesApi";
 import { TicketAssetSelect, type TicketAssetSelection } from "./TicketAssetSelect";
+import { resizeTicketImagesForUpload } from "../../../../shared/utils/resizeTicketImage";
 import { useKeyboardBottomInset } from "../../../../shared/hooks/useKeyboardBottomInset";
 import { TENANT_ISSUE_TICKET_KEYS } from "../../../../shared/hooks/useTenantIssueTickets";
 
@@ -210,11 +211,13 @@ const TicketScreen = () => {
       });
 
       if (selectedImages.length > 0) {
+        // Resize + nén ảnh trước khi upload — giảm dung lượng ~10x → upload nhanh hơn nhiều.
+        const resized = await resizeTicketImagesForUpload(selectedImages);
         console.log("[TicketScreen] created ticket ok, uploading images", {
           ticketId: createdTicket.id,
-          selectedImagesCount: selectedImages.length,
+          selectedImagesCount: resized.length,
         });
-        await uploadTenantTicketImages(createdTicket.id, selectedImages);
+        await uploadTenantTicketImages(createdTicket.id, resized);
       } else {
         console.log("[TicketScreen] created ticket ok, no images to upload", {
           ticketId: createdTicket.id,
