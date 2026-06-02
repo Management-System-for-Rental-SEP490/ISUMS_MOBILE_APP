@@ -580,7 +580,12 @@ export async function finalizeChangePasswordOAuthRedirect(callbackUrl: string): 
       );
       return;
     }
-    useAuthStore.getState().logout();
+    /**
+     * Đổi mật khẩu lần đầu thành công: dùng token từ code exchange để login thẳng vào app
+     * thay vì logout + bắt user nhập lại (UX tệ, gây nhầm lẫn "sao phải nhập lại").
+     * Token từ Keycloak sau UPDATE_PASSWORD là token hợp lệ của phiên mới.
+     */
+    useAuthStore.getState().login(authPayload);
     CustomAlert.alert(
       i18n.t("profile.change_password_success_title"),
       i18n.t("profile.change_password_success_message"),
@@ -597,13 +602,16 @@ export async function finalizeChangePasswordOAuthRedirect(callbackUrl: string): 
 
 /**
  * Keycloak đôi khi trả trang info (success) mà không redirect về redirect_uri — theme gửi postMessage vào WebView.
- * Cùng hậu quả UX với nhánh OAuth thành công: đăng xuất cục bộ + báo đổi MK xong.
+ * Nhánh này không có code để exchange token → chỉ có thể logout và yêu cầu đăng nhập lại.
+ * Hiển thị thông báo rõ ràng để user không bị nhầm lẫn.
  */
 export function finalizeChangePasswordFromInfoPageSuccess(): void {
   useAuthStore.getState().logout();
   CustomAlert.alert(
     i18n.t("profile.change_password_success_title"),
-    i18n.t("profile.change_password_success_message"),
+    i18n.t("profile.change_password_success_message_relogin",
+      "Mật khẩu đã được cập nhật. Vui lòng đăng nhập lại với mật khẩu mới."
+    ),
     [{ text: i18n.t("common.close") }]
   );
 }
