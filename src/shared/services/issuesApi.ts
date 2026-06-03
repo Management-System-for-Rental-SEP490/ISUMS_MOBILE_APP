@@ -315,16 +315,31 @@ export const getIssueBanners = async (): Promise<IssueBannerFromApi[]> => {
  * Tenant gửi ticket (POST /api/issues/tickets).
  * Timeout 20s: đủ chỗ cho access token hết hạn → interceptor refresh (~2s) + retry.
  */
+const issuesPerfNow = () => (typeof performance !== "undefined" ? performance.now() : Date.now());
+
 export const createTenantTicket = async (
   payload: CreateTenantTicketPayload
 ): Promise<TenantTicketFromApi> => {
   const url = `${BACKEND_API_BASE}/issues/tickets`;
+  const t0 = __DEV__ ? issuesPerfNow() : 0;
+  if (__DEV__) {
+    console.log("[TicketSubmit:API] createTenantTicket → POST /issues/tickets", {
+      type: payload.type,
+      houseId: payload.houseId,
+      assetId: payload.assetId,
+    });
+  }
   try {
     const response = await axiosClient.post<ApiResponse<TenantTicketFromApi>>(url, payload, {
       timeout: TICKET_CREATE_TIMEOUT_MS,
     });
     const body = response.data;
     if (body?.success && body.data && typeof body.data === "object" && "id" in body.data) {
+      if (__DEV__) {
+        console.log(
+          `[TicketSubmit:API] createTenantTicket OK ${(issuesPerfNow() - t0).toFixed(0)}ms — id=${body.data.id}`
+        );
+      }
       return body.data;
     }
     const msg =
@@ -333,6 +348,16 @@ export const createTenantTicket = async (
         : "Create ticket failed";
     throw new Error(msg);
   } catch (e) {
+    if (__DEV__) {
+      const st = axios.isAxiosError(e) ? e.response?.status : undefined;
+      const code = axios.isAxiosError(e) ? e.code : undefined;
+      console.warn(
+        `[TicketSubmit:API] createTenantTicket FAIL ${(issuesPerfNow() - t0).toFixed(0)}ms` +
+          (st != null ? ` status=${st}` : "") +
+          (code ? ` code=${code}` : ""),
+        e
+      );
+    }
     if (axios.isAxiosError(e)) {
       const d = e.response?.data;
       if (d && typeof d === "object" && "message" in d && typeof (d as { message: string }).message === "string") {
@@ -389,9 +414,13 @@ export const uploadTenantTicketImages = async (
   const UPLOAD_RETRY_DELAY_MS = 1_500;
 
   /** Gửi 1 lần và throw nếu lỗi. */
-  const attempt = async (attempt: number) => {
+  const attempt = async (attemptNo: number) => {
+    const t0 = __DEV__ ? issuesPerfNow() : 0;
     if (__DEV__) {
-      console.log(`[uploadTenantTicketImages] attempt ${attempt}`, { ticketId, count: images.length });
+      console.log(
+        `[TicketSubmit:API] uploadTenantTicketImages attempt ${attemptNo} — POST .../images`,
+        { ticketId, count: images.length }
+      );
     }
     // axiosClient có interceptor auto-refresh 401 và timeout từ TICKET_IMAGE_UPLOAD_TIMEOUT_MS.
     // Không set Content-Type thủ công — axios + RN tự đặt multipart/form-data + boundary.
@@ -399,6 +428,11 @@ export const uploadTenantTicketImages = async (
       headers: { "Content-Type": "multipart/form-data" },
       timeout: TICKET_IMAGE_UPLOAD_TIMEOUT_MS,
     });
+    if (__DEV__) {
+      console.log(
+        `[TicketSubmit:API] uploadTenantTicketImages attempt ${attemptNo} OK ${(issuesPerfNow() - t0).toFixed(0)}ms`
+      );
+    }
   };
 
   try {
@@ -410,7 +444,7 @@ export const uploadTenantTicketImages = async (
 
     if (isNetworkOrTimeout) {
       if (__DEV__) {
-        console.warn("[uploadTenantTicketImages] lần 1 lỗi network/timeout, chờ rồi thử lại", {
+        console.warn("[TicketSubmit:API] upload lần 1 lỗi network/timeout, chờ 1.5s rồi thử lại", {
           ticketId,
           code: axios.isAxiosError(e) ? e.code : undefined,
         });

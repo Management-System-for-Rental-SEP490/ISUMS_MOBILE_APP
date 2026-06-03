@@ -13,7 +13,10 @@ import type { TicketImageToUpload } from "../services/issuesApi";
 const MAX_WIDTH = 1600;
 const COMPRESS = 0.6;
 
-async function resizeOne(img: TicketImageToUpload): Promise<TicketImageToUpload> {
+const resizePerfNow = () => (typeof performance !== "undefined" ? performance.now() : Date.now());
+
+async function resizeOne(img: TicketImageToUpload, index: number): Promise<TicketImageToUpload> {
+  const t0 = __DEV__ ? resizePerfNow() : 0;
   try {
     const ctx = ImageManipulator.manipulate(img.uri);
     // Chỉ set width → manipulator tự giữ tỉ lệ (height auto). Ảnh nhỏ hơn MAX_WIDTH
@@ -22,12 +25,23 @@ async function resizeOne(img: TicketImageToUpload): Promise<TicketImageToUpload>
     ctx.resize({ width: MAX_WIDTH });
     const ref = await ctx.renderAsync();
     const result = await ref.saveAsync({ compress: COMPRESS, format: SaveFormat.JPEG });
-    return {
+    const out = {
       uri: result.uri,
       fileName: (img.fileName?.replace(/\.[^.]+$/, "") ?? "ticket-image") + ".jpg",
       mimeType: "image/jpeg",
     };
+    if (__DEV__) {
+      console.log(
+        `[TicketSubmit] resize ảnh #${index + 1} OK ${(resizePerfNow() - t0).toFixed(0)}ms — uri đổi=${out.uri !== img.uri}`
+      );
+    }
+    return out;
   } catch {
+    if (__DEV__) {
+      console.warn(
+        `[TicketSubmit] resize ảnh #${index + 1} fallback ảnh gốc sau ${(resizePerfNow() - t0).toFixed(0)}ms`
+      );
+    }
     // Resize lỗi (ảnh hỏng, định dạng lạ…) → giữ ảnh gốc, không chặn gửi ticket.
     return img;
   }
@@ -41,5 +55,5 @@ export async function resizeTicketImagesForUpload(
   images: TicketImageToUpload[]
 ): Promise<TicketImageToUpload[]> {
   if (!images.length) return images;
-  return Promise.all(images.map(resizeOne));
+  return Promise.all(images.map((img, index) => resizeOne(img, index)));
 }

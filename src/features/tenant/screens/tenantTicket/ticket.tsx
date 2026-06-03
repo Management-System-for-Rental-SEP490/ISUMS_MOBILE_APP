@@ -51,6 +51,9 @@ type TicketNavigationProp = NativeStackNavigationProp<RootStackParamList, "Ticke
 
 const MAX_TICKET_ATTACHMENT_IMAGES = 5;
 
+/** Metro / Logcat: lọc `[TicketSubmit]`. */
+const perfNow = () => (typeof performance !== "undefined" ? performance.now() : Date.now());
+
 /** Khoảng hở phía trên bàn phím (px), Android. */
 const ANDROID_KEYBOARD_GAP = 16;
 /** Nâng thêm ô "Tiêu đề" so với ô khác (px). */
@@ -201,7 +204,20 @@ const TicketScreen = () => {
     }
 
     setSubmitting(true);
+    const submitT0 = perfNow();
+    let submitPhase = "init";
+    if (__DEV__) {
+      console.log(
+        `[TicketSubmit] bắt đầu — POST tạo ticket → resize ảnh (local) → POST upload ảnh (tuần tự). ` +
+          `imageCount=${selectedImages.length}, type=${ticketType}`
+      );
+    }
     try {
+      submitPhase = "create_ticket";
+      const createT0 = perfNow();
+      if (__DEV__) {
+        console.log("[TicketSubmit] ① POST /issues/tickets — tạo ticket trên BE");
+      }
       const createdTicket = await createTenantTicket({
         houseId,
         assetId: resolvedAsset.id,
@@ -209,27 +225,68 @@ const TicketScreen = () => {
         description: description.trim(),
         type: ticketType,
       });
-
-      if (selectedImages.length > 0) {
-        // Resize + nén ảnh trước khi upload — giảm dung lượng ~10x → upload nhanh hơn nhiều.
-        const resized = await resizeTicketImagesForUpload(selectedImages);
-        console.log("[TicketScreen] created ticket ok, uploading images", {
-          ticketId: createdTicket.id,
-          selectedImagesCount: resized.length,
-        });
-        await uploadTenantTicketImages(createdTicket.id, resized);
-      } else {
-        console.log("[TicketScreen] created ticket ok, no images to upload", {
-          ticketId: createdTicket.id,
-        });
+      if (__DEV__) {
+        console.log(
+          `[TicketSubmit] ① xong ${(perfNow() - createT0).toFixed(0)}ms — ticketId=${createdTicket.id}`
+        );
       }
 
+      /**
+       * Upload ảnh CHẠY NỀN — không chặn popup thành công.
+       * Lý do: BE lưu ảnh lên S3 mất ~2.4s (nút thắt chính), trong khi tạo ticket chỉ ~0.6s.
+       * Tách upload ra nền → "nhấn gửi → popup" chỉ còn ~thời gian tạo ticket.
+       * Upload xong (hoặc lỗi) đều invalidate danh sách để ảnh hiện ra ở lần xem kế tiếp.
+       * uploadTenantTicketImages đã có retry 1 lần khi lỗi mạng/timeout.
+       */
+      const imagesToUpload = selectedImages;
+      if (imagesToUpload.length > 0) {
+        void (async () => {
+          const bgT0 = perfNow();
+          try {
+            const resized = await resizeTicketImagesForUpload(imagesToUpload);
+            if (__DEV__) {
+              console.log(
+                `[TicketSubmit:bg] resize xong ${(perfNow() - bgT0).toFixed(0)}ms → upload ${resized.length} ảnh (nền)`
+              );
+            }
+            await uploadTenantTicketImages(createdTicket.id, resized);
+            if (__DEV__) {
+              console.log(`[TicketSubmit:bg] upload ảnh nền xong ${(perfNow() - bgT0).toFixed(0)}ms`);
+            }
+          } catch (bgErr) {
+            if (__DEV__) {
+              console.warn("[TicketSubmit:bg] upload ảnh nền thất bại (ticket đã tạo, ảnh có thể thiếu)", bgErr);
+            }
+          } finally {
+            // Dù xong hay lỗi: làm mới danh sách để thấy ticket + ảnh (nếu lên được).
+            void queryClient.invalidateQueries({ queryKey: TENANT_ISSUE_TICKET_KEYS.list() });
+          }
+        })();
+      }
+
+      // Làm mới danh sách ngay để ticket mới xuất hiện (ảnh sẽ điền vào sau khi upload nền xong).
       void queryClient.invalidateQueries({ queryKey: TENANT_ISSUE_TICKET_KEYS.list() });
 
+      if (__DEV__) {
+        console.log(
+          `[TicketSubmit] hoàn tất ${(perfNow() - submitT0).toFixed(0)}ms — popup ngay (ảnh upload nền)`
+        );
+      }
       Alert.alert(t("ticket.success_title"), t("ticket.success_message"), [
         { text: t("common.close"), onPress: () => navigation.goBack() },
       ]);
     } catch (e) {
+      const axiosStatus =
+        e && typeof e === "object" && "response" in e
+          ? (e as { response?: { status?: number } }).response?.status
+          : undefined;
+      if (__DEV__) {
+        console.warn(
+          `[TicketSubmit] lỗi tại phase=${submitPhase} sau ${(perfNow() - submitT0).toFixed(0)}ms` +
+            (axiosStatus != null ? ` — httpStatus=${axiosStatus}` : ""),
+          e
+        );
+      }
       const msg = e instanceof Error && e.message ? e.message : t("ticket.submit_error");
       Alert.alert(t("ticket.validation_error_title"), msg);
     } finally {
