@@ -110,6 +110,14 @@ class IotClient extends EventEmitter {
 
   private _connect(): void {
     if (this.ws?.readyState === WebSocket.OPEN) return;
+    // Guard: URL rỗng (env chưa cấu hình) → KHÔNG mở WebSocket.
+    // okhttp ném IllegalArgumentException khi URL không có scheme → crash native cả app.
+    if (!IOT_WS_URL || !/^wss?:\/\//i.test(IOT_WS_URL)) {
+      if (__DEV__) {
+        console.warn("[iotClient] IOT_WS_URL rỗng/không hợp lệ — bỏ qua kết nối WebSocket:", IOT_WS_URL);
+      }
+      return;
+    }
     this.ws = new WebSocket(IOT_WS_URL);
 
     this.ws.onopen = () => {

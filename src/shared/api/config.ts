@@ -68,15 +68,17 @@ export const TICKET_CREATE_TIMEOUT_MS = 20_000 as const;
  */
 export const TICKET_IMAGE_UPLOAD_TIMEOUT_MS = 60_000 as const;
 
-function readEnvTrimmed(envKey: string): string {
-  const v =
-    typeof process !== "undefined" && process.env?.[envKey]
-      ? String(process.env[envKey]).trim()
-      : "";
-  return v;
+/**
+ * QUAN TRỌNG (release/APK): chỉ nhận GIÁ TRỊ đã đọc tĩnh `process.env.EXPO_PUBLIC_X`.
+ * Babel-preset-expo chỉ inline biến `EXPO_PUBLIC_*` khi truy cập TĨNH (dotted literal);
+ * truy cập ĐỘNG `process.env[key]` KHÔNG được inline → rỗng trong release bundle
+ * (gây crash WebSocket URL rỗng + API base rỗng). Vì vậy helper này nhận value, không nhận key.
+ */
+function trimEnv(value: string | undefined | null): string {
+  return typeof value === "string" ? value.trim() : "";
 }
 
-export const PRIMARY_BACKEND_URL = readEnvTrimmed("EXPO_PUBLIC_BACKEND_API_PRIMARY");
+export const PRIMARY_BACKEND_URL = trimEnv(process.env.EXPO_PUBLIC_BACKEND_API_PRIMARY);
 
 export const BACKEND_URL_PRIMARY = PRIMARY_BACKEND_URL;
 
@@ -87,45 +89,44 @@ export const BACKEND_API_BASE = PRIMARY_BACKEND_URL;
 export const ASSETS_API_BASE = PRIMARY_BACKEND_URL;
 
 /** WebSocket telemetry — `.env`: `EXPO_PUBLIC_IOT_WS_URL` */
-export const IOT_WS_URL = readEnvTrimmed("EXPO_PUBLIC_IOT_WS_URL");
+export const IOT_WS_URL = trimEnv(process.env.EXPO_PUBLIC_IOT_WS_URL);
 
 /** REST usage điện/nước — `.env`: `EXPO_PUBLIC_IOT_REST_BASE` */
-export const IOT_REST_BASE = readEnvTrimmed("EXPO_PUBLIC_IOT_REST_BASE");
+export const IOT_REST_BASE = trimEnv(process.env.EXPO_PUBLIC_IOT_REST_BASE);
 
 /**
  * Legacy: URL template tự ghép (trước khi có POST /api/payments/vnpay).
  * Luồng tenant hiện dùng `createVnpayPaymentLink` trong `tenantPaymentApi.ts`.
  */
-export const TENANT_PAYMENT_URL_TEMPLATE = readEnvTrimmed(
-  "EXPO_PUBLIC_TENANT_PAYMENT_URL_TEMPLATE"
+export const TENANT_PAYMENT_URL_TEMPLATE = trimEnv(
+  process.env.EXPO_PUBLIC_TENANT_PAYMENT_URL_TEMPLATE
 );
 
 // --- Notification domain (REST + optional realtime/push) — defensive defaults ---
 
-function readEnvBool(envKey: string, fallback: boolean): boolean {
-  const v =
-    typeof process !== "undefined" && process.env?.[envKey] !== undefined
-      ? String(process.env[envKey]).trim().toLowerCase()
-      : "";
+/** Nhận GIÁ TRỊ tĩnh (xem ghi chú ở `trimEnv`) — không nhận key động. */
+function boolEnv(value: string | undefined | null, fallback: boolean): boolean {
+  if (value === undefined || value === null) return fallback;
+  const v = String(value).trim().toLowerCase();
   if (v === "") return fallback;
   return v === "1" || v === "true" || v === "yes";
 }
 
 /** Bật kết nối SSE/WS tới BE — mặc định false tới khi BE confirm endpoint. */
-export const NOTIFICATION_REALTIME_ENABLED = readEnvBool(
-  "EXPO_PUBLIC_NOTIFICATION_REALTIME_ENABLED",
+export const NOTIFICATION_REALTIME_ENABLED = boolEnv(
+  process.env.EXPO_PUBLIC_NOTIFICATION_REALTIME_ENABLED,
   false
 );
 
 /** Đăng ký FCM/APNs qua POST device-tokens — mặc định false. */
-export const NOTIFICATION_DEVICE_TOKEN_ENABLED = readEnvBool(
-  "EXPO_PUBLIC_NOTIFICATION_DEVICE_TOKEN_ENABLED",
+export const NOTIFICATION_DEVICE_TOKEN_ENABLED = boolEnv(
+  process.env.EXPO_PUBLIC_NOTIFICATION_DEVICE_TOKEN_ENABLED,
   false
 );
 
 /** Poll REST khi stream tắt/lỗi — mặc định true. */
-export const NOTIFICATION_POLL_FALLBACK_ENABLED = readEnvBool(
-  "EXPO_PUBLIC_NOTIFICATION_POLL_FALLBACK_ENABLED",
+export const NOTIFICATION_POLL_FALLBACK_ENABLED = boolEnv(
+  process.env.EXPO_PUBLIC_NOTIFICATION_POLL_FALLBACK_ENABLED,
   true
 );
 
@@ -145,13 +146,13 @@ export const NOTIFICATION_POLL_INTERVAL_MS = rawPollMs;
  * BE đã có PATCH read-all hay chưa — tick trên Swagger trước khi bật true.
  * false: không render nút "đọc hết" (tránh 404).
  */
-export const NOTIFICATION_READ_ALL_AVAILABLE = readEnvBool(
-  "EXPO_PUBLIC_NOTIFICATION_READ_ALL_AVAILABLE",
+export const NOTIFICATION_READ_ALL_AVAILABLE = boolEnv(
+  process.env.EXPO_PUBLIC_NOTIFICATION_READ_ALL_AVAILABLE,
   false
 );
 
 /** URL stream (SSE/WS) — tùy chọn trong `.env`. */
-export const NOTIFICATION_STREAM_URL = readEnvTrimmed("EXPO_PUBLIC_NOTIFICATION_STREAM_URL");
+export const NOTIFICATION_STREAM_URL = trimEnv(process.env.EXPO_PUBLIC_NOTIFICATION_STREAM_URL);
 
 const rawIdleMs = (() => {
   const v =
