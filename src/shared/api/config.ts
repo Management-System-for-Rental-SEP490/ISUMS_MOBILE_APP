@@ -2,10 +2,16 @@
 
 /**
  * Thời gian chờ tối đa (ms) cho mọi luồng tải dữ liệu (axios, pull-to-refresh/refetch, IoT REST usage…).
- * Đây là **trần**, không phải thời lượng tối thiểu: BE trả về sớm thì hiển thị ngay, không ép chờ 4 giây.
+ * Đây là **trần**, không phải thời lượng tối thiểu: BE trả về sớm thì hiển thị ngay, không ép chờ.
  * Quá hạn mà chưa có phản hồi hợp lệ → coi như không có dữ liệu; người dùng tải lại (vào lại trang / kéo refresh).
+ *
+ * 30s (trước đây 6s): 6s quá ngắn trên mạng mobile thật + APK release. Các endpoint payload
+ * nặng/nén (GET ticket-by-id embed asset/nhà/staff/ảnh/quote, asset list, work_slot) thường
+ * tải > 6s trên 4G → bị huỷ sớm và báo "không tải được", dù trên debug (máy/mạng dev) thì lọt.
+ * Danh sách ticket vốn đã dùng 90s (ISSUES_TENANT_LIST_TIMEOUT_MS); nay nâng trần chung cho
+ * các point-read còn lại. Trần cao chỉ ảnh hưởng khi request thực sự chậm — response nhanh vẫn hiện ngay.
  */
-export const DATA_LOAD_TIMEOUT_MS = 6000 as const;
+export const DATA_LOAD_TIMEOUT_MS = 30000 as const;
 
 /** Cùng giá trị với {@link DATA_LOAD_TIMEOUT_MS} — `axios` dùng làm `timeout` (hủy request nếu quá lâu). */
 export const API_REQUEST_TIMEOUT_MS = DATA_LOAD_TIMEOUT_MS;
