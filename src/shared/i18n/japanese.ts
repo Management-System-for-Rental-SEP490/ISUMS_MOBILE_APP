@@ -580,6 +580,7 @@ export default {
         "e_contract_status_IN_PROGRESS": "進行中",
         "e_contract_status_COMPLETED": "完了",
         "e_contract_status_PENDING_TERMINATION": "解約待ち",
+        "e_contract_status_REPLACED_BEFORE_DEPOSIT": "敷金前に契約置換済み",
         "e_contract_status_REPLACED_AFTER_DEPOSIT": "敷金後に契約置換済み",
         "e_contract_section_detail": "詳細",
         "e_contract_validity_caption": "有効期間",

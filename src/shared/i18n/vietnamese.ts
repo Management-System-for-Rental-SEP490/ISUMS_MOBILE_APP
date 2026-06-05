@@ -580,6 +580,7 @@ export default {
         "e_contract_status_IN_PROGRESS": "Đang thực hiện",
         "e_contract_status_COMPLETED": "Hoàn tất",
         "e_contract_status_PENDING_TERMINATION": "Chờ chấm dứt",
+        "e_contract_status_REPLACED_BEFORE_DEPOSIT": "Đã thay thế trước đặt cọc",
         "e_contract_status_REPLACED_AFTER_DEPOSIT": "Đã thay thế sau đặt cọc",
         "e_contract_section_detail": "Thông tin chi tiết",
         "e_contract_validity_caption": "Hiệu lực",

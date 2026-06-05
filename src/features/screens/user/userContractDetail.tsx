@@ -897,11 +897,6 @@ export default function UserContractDetailScreen({ navigation, route }: Props) {
                     ? t("profile.relocation_link_old_title")
                     : t("profile.relocation_link_new_title")}
                 </Text>
-                <Text style={styles.relocationLinkBannerLine}>
-                  {isCurrentOld
-                    ? t("profile.relocation_link_replaced_by", { code: linkedNumber || `#${linkedShortId}` })
-                    : t("profile.relocation_link_replaces", { code: linkedNumber || `#${linkedShortId}` })}
-                </Text>
               </View>
             </View>
           );
