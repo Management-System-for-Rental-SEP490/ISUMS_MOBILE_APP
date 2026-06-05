@@ -902,9 +902,6 @@ export default function UserContractDetailScreen({ navigation, route }: Props) {
                     ? t("profile.relocation_link_replaced_by", { code: linkedNumber || `#${linkedShortId}` })
                     : t("profile.relocation_link_replaces", { code: linkedNumber || `#${linkedShortId}` })}
                 </Text>
-                <Text style={styles.relocationLinkBannerSubtle}>
-                  {kindLabel}
-                </Text>
               </View>
             </View>
           );
